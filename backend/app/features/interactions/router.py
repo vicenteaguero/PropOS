@@ -2,7 +2,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends
 
-from app.core.dependencies import get_tenant_id
+from app.core.dependencies import get_tenant_id, require_role
 from app.features.interactions.schemas import (
     InteractionCreate,
     InteractionResponse,
@@ -13,7 +13,7 @@ from app.features.interactions.service import InteractionService
 router = APIRouter(prefix="/interactions", tags=["interactions"])
 
 
-@router.get("", response_model=list[InteractionResponse])
+@router.get("", response_model=list[InteractionResponse], dependencies=[Depends(require_role("ADMIN", "MANAGER", "AGENT", "VIEWER"))])
 async def list_interactions(
     tenant_id: UUID = Depends(get_tenant_id),
 ) -> list[dict]:
@@ -23,6 +23,7 @@ async def list_interactions(
 @router.get(
     "/{interaction_id}",
     response_model=InteractionResponse,
+    dependencies=[Depends(require_role("ADMIN", "MANAGER", "AGENT", "VIEWER"))],
 )
 async def get_interaction(
     interaction_id: UUID,
@@ -35,6 +36,7 @@ async def get_interaction(
     "",
     response_model=InteractionResponse,
     status_code=201,
+    dependencies=[Depends(require_role("ADMIN", "MANAGER", "AGENT"))],
 )
 async def create_interaction(
     payload: InteractionCreate,
@@ -46,6 +48,7 @@ async def create_interaction(
 @router.patch(
     "/{interaction_id}",
     response_model=InteractionResponse,
+    dependencies=[Depends(require_role("ADMIN", "MANAGER", "AGENT"))],
 )
 async def update_interaction(
     interaction_id: UUID,
@@ -57,7 +60,7 @@ async def update_interaction(
     )
 
 
-@router.delete("/{interaction_id}", status_code=204)
+@router.delete("/{interaction_id}", status_code=204, dependencies=[Depends(require_role("ADMIN", "MANAGER"))])
 async def delete_interaction(
     interaction_id: UUID,
     tenant_id: UUID = Depends(get_tenant_id),
