@@ -9,21 +9,23 @@ import { useContacts } from "@features/contacts/hooks/use-contacts";
 import type { ContactType } from "@features/contacts/types";
 
 const TYPE_LABELS: Record<ContactType, string> = {
-  buyer: "Comprador",
-  seller: "Vendedor",
-  tenant: "Arrendatario",
-  agent: "Agente",
-  investor: "Inversionista",
-  other: "Otro",
+  LANDOWNER: "Propietario",
+  BUYER: "Comprador",
+  SELLER: "Vendedor",
+  TENANT: "Arrendatario",
+  AGENT: "Agente",
+  INVESTOR: "Inversionista",
+  OTHER: "Otro",
 };
 
 const TYPE_VARIANTS: Record<ContactType, "default" | "secondary" | "outline"> = {
-  buyer: "default",
-  seller: "secondary",
-  tenant: "outline",
-  agent: "default",
-  investor: "secondary",
-  other: "outline",
+  LANDOWNER: "default",
+  BUYER: "default",
+  SELLER: "secondary",
+  TENANT: "outline",
+  AGENT: "default",
+  INVESTOR: "secondary",
+  OTHER: "outline",
 };
 
 function getInitials(name: string): string {
