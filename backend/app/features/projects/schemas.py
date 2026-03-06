@@ -12,7 +12,7 @@ from app.features.projects.constants import ProjectStatus
 class ProjectBase(BaseModel):
     title: str
     slug: str
-    status: ProjectStatus = ProjectStatus.DRAFT
+    status: ProjectStatus = ProjectStatus.PLANNING
     property_id: UUID | None = None
     microsite_config: dict[str, Any] | None = None
 
