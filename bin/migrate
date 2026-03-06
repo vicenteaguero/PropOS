@@ -1,0 +1,7 @@
+#!/bin/bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+bash "${SCRIPT_DIR}/scripts/log.sh" MAKE "🔄" "Running Supabase migrations"
+supabase db push --project-ref "${SUPABASE_PROJECT_ID}"
