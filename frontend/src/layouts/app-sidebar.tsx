@@ -77,24 +77,18 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild>
-              <div className="cursor-default">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                  <Building2 className="size-4" />
-                </div>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">PropOS</span>
-                  <span className="truncate text-xs text-muted-foreground">
-                    {user.fullName}
-                  </span>
-                </div>
-              </div>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+      <SidebarHeader className="flex-row items-center gap-2">
+        <img
+          src="/icon.svg"
+          alt="PropOS"
+          className="size-8 shrink-0 rounded-lg"
+        />
+        <div className="grid flex-1 text-left text-sm leading-tight">
+          <span className="truncate font-semibold">PropOS</span>
+          <span className="truncate text-xs text-muted-foreground">
+            {user.fullName}
+          </span>
+        </div>
       </SidebarHeader>
 
       <SidebarContent>
