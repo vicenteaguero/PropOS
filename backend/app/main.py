@@ -15,6 +15,7 @@ from app.features.interactions.router import router as interactions_router
 from app.features.projects.router import router as projects_router
 from app.features.properties.router import router as properties_router
 from app.features.users.router import router as users_router
+from app.features.notifications.router import router as notifications_router
 
 APP_TITLE = "PropOS API"
 APP_DESCRIPTION = "Real estate operations platform"
@@ -30,10 +31,14 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None]:
 
 
 def create_app() -> FastAPI:
+    is_production = settings.app_env == "production"
     application = FastAPI(
         title=APP_TITLE,
         description=APP_DESCRIPTION,
         lifespan=lifespan,
+        docs_url=None if is_production else "/docs",
+        redoc_url=None if is_production else "/redoc",
+        openapi_url=None if is_production else "/openapi.json",
     )
 
     application.add_middleware(
@@ -52,6 +57,7 @@ def create_app() -> FastAPI:
     application.include_router(interactions_router, prefix=API_PREFIX)
     application.include_router(documents_router, prefix=API_PREFIX)
     application.include_router(users_router, prefix=API_PREFIX)
+    application.include_router(notifications_router, prefix=API_PREFIX)
 
     @application.get(HEALTH_PATH)
     async def health_check() -> dict[str, str]:

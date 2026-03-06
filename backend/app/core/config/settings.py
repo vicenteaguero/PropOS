@@ -8,6 +8,9 @@ class Settings(BaseSettings):
     app_env: str = "development"
     log_level: str = "debug"
     allowed_origins: list[str] = ["http://localhost:5173"]
+    vapid_private_key: str = ""
+    vapid_public_key: str = ""
+    vapid_contact_email: str = "admin@propos.app"
 
     model_config = SettingsConfigDict(env_file=".env")
 
