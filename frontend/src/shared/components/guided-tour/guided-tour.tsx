@@ -33,9 +33,9 @@ export function GuidedTour() {
             {
               element: '[data-slot="sidebar"]',
               popover: {
-                title: "Menu de navegacion",
+                title: "Menú de navegación",
                 description:
-                  "Aqui encontraras todas las secciones de la aplicacion. Puedes expandir o colapsar el menu.",
+                  "Aquí encontrarás todas las secciones de la aplicación. Puedes expandir o colapsar el menú.",
                 side: "right",
                 align: "start",
               },
@@ -45,7 +45,7 @@ export function GuidedTour() {
               popover: {
                 title: "Propiedades",
                 description:
-                  "Administra tus propiedades: crea, edita y consulta toda la informacion de cada una.",
+                  "Administra tus propiedades: crea, edita y consulta toda la información de cada una.",
                 side: "right",
                 align: "center",
               },
@@ -55,7 +55,7 @@ export function GuidedTour() {
               popover: {
                 title: "Secciones adicionales",
                 description:
-                  "Accede a contactos, documentos y otras herramientas segun tu rol en la plataforma.",
+                  "Accede a contactos, documentos y otras herramientas según tu rol en la plataforma.",
                 side: "right",
                 align: "center",
               },
@@ -65,7 +65,7 @@ export function GuidedTour() {
               popover: {
                 title: "Barra superior",
                 description:
-                  "Desde aqui puedes abrir el menu lateral y acceder a tu perfil y opciones de cuenta.",
+                  "Desde aquí puedes abrir el menú lateral y acceder a tu perfil y opciones de cuenta.",
                 side: "bottom",
                 align: "center",
               },
@@ -73,9 +73,9 @@ export function GuidedTour() {
             {
               element: "main",
               popover: {
-                title: "Area de contenido",
+                title: "Área de contenido",
                 description:
-                  "Aqui se mostrara el contenido de cada seccion que selecciones en el menu.",
+                  "Aquí se mostrará el contenido de cada sección que selecciones en el menú.",
                 side: "top",
                 align: "center",
               },
