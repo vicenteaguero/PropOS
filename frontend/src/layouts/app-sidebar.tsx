@@ -77,7 +77,7 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader className="flex-row items-center justify-center gap-3 px-3 py-4">
+      <SidebarHeader className="flex-row items-center gap-3 px-4 py-4">
         <img
           src="/icon.svg"
           alt="PropOS"
