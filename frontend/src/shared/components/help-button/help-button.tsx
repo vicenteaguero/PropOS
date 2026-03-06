@@ -17,29 +17,29 @@ interface FaqItem {
 
 const FAQ_ITEMS: FaqItem[] = [
   {
-    question: "Como agrego una nueva propiedad?",
+    question: "¿Cómo agrego una nueva propiedad?",
     answer:
-      'Ve a la seccion "Propiedades" en el menu lateral y presiona el boton "Agregar propiedad". Completa el formulario con los datos requeridos.',
+      'Ve a la sección "Propiedades" en el menú lateral y presiona el botón "Agregar propiedad". Completa el formulario con los datos requeridos.',
   },
   {
-    question: "Como cambio mi contrasena?",
+    question: "¿Cómo cambio mi contraseña?",
     answer:
-      'Haz clic en tu avatar en la esquina superior derecha y selecciona "Configuracion". Desde ahi podras actualizar tu contrasena.',
+      'Haz clic en tu avatar en la esquina superior derecha y selecciona "Configuración". Desde ahí podrás actualizar tu contraseña.',
   },
   {
-    question: "Que roles existen en la plataforma?",
+    question: "¿Qué roles existen en la plataforma?",
     answer:
       "PropOS tiene varios roles: Administrador, Agente, Propietario, Comprador y Contenido. Cada rol tiene acceso a diferentes secciones y funcionalidades.",
   },
   {
-    question: "Como subo fotos a una propiedad?",
+    question: "¿Cómo subo fotos a una propiedad?",
     answer:
-      'Entra al detalle de la propiedad y busca la seccion de fotos. Puedes subir imagenes desde tu dispositivo o tomar fotos con la camara.',
+      'Entra al detalle de la propiedad y busca la sección de fotos. Puedes subir imágenes desde tu dispositivo o tomar fotos con la cámara.',
   },
   {
-    question: "Como contacto al soporte?",
+    question: "¿Cómo contacto al soporte?",
     answer:
-      "Si tienes problemas tecnicos o preguntas adicionales, comunicate con el administrador de tu organizacion.",
+      "Si tienes problemas técnicos o preguntas adicionales, comunícate con el administrador de tu organización.",
   },
 ];
 
@@ -70,7 +70,7 @@ export function HelpButton() {
           <SheetHeader>
             <SheetTitle>Centro de ayuda</SheetTitle>
             <SheetDescription>
-              Preguntas frecuentes y tutorial de la aplicacion.
+              Preguntas frecuentes y tutorial de la aplicación.
             </SheetDescription>
           </SheetHeader>
 
