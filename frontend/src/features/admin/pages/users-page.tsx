@@ -10,16 +10,18 @@ import type { UserRole } from "@features/admin/types";
 
 const ROLE_LABELS: Record<UserRole, string> = {
   ADMIN: "Administrador",
-  MANAGER: "Gerente",
   AGENT: "Agente",
-  VIEWER: "Visualizador",
+  LANDOWNER: "Propietario",
+  BUYER: "Comprador",
+  CONTENT: "Contenido",
 };
 
 const ROLE_VARIANTS: Record<UserRole, "default" | "secondary" | "outline"> = {
   ADMIN: "default",
-  MANAGER: "secondary",
-  AGENT: "outline",
-  VIEWER: "outline",
+  AGENT: "secondary",
+  LANDOWNER: "outline",
+  BUYER: "outline",
+  CONTENT: "secondary",
 };
 
 function getInitials(name: string | null): string {
