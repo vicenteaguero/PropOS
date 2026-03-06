@@ -222,7 +222,7 @@ function Sidebar({
       <div
         data-slot="sidebar-container"
         className={cn(
-          "fixed inset-y-0 z-10 hidden h-svh overflow-hidden transition-[width] duration-200 ease-linear md:flex",
+          "fixed inset-y-0 z-40 hidden h-svh overflow-hidden transition-[width] duration-200 ease-linear md:flex",
           "w-(--sidebar-width-icon) hover:w-(--sidebar-width)",
           side === "left" ? "left-0" : "right-0",
           variant === "floating" || variant === "inset"
