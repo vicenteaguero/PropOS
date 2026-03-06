@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -81,7 +82,8 @@ export function NewConversationDialog({ onCreated }: NewConversationDialogProps)
       </DialogTrigger>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>Nueva conversacion</DialogTitle>
+          <DialogTitle>Nueva conversación</DialogTitle>
+          <DialogDescription>Selecciona los participantes para iniciar un chat.</DialogDescription>
         </DialogHeader>
         <Input
           placeholder="Buscar usuarios..."
@@ -128,7 +130,7 @@ export function NewConversationDialog({ onCreated }: NewConversationDialogProps)
           disabled={selected.length === 0 || isPending}
           className="w-full"
         >
-          {isPending ? "Creando..." : "Crear conversacion"}
+          {isPending ? "Creando..." : "Crear conversación"}
         </Button>
       </DialogContent>
     </Dialog>
