@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Camera, ImagePlus, Mic, Bell } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,11 +6,10 @@ import { CameraCapture } from "@shared/components/camera-capture/camera-capture"
 import { AudioRecorder } from "@shared/components/audio-recorder/audio-recorder";
 import { PhotoPicker } from "@shared/components/photo-picker/photo-picker";
 import { useNotifications } from "@shared/hooks/use-notifications";
+import { useMediaFiles } from "@shared/hooks/use-media-files";
 
 export function TestLabPage() {
-  const [savedPhotos, setSavedPhotos] = useState<string[]>([]);
-  const [savedGallery, setSavedGallery] = useState<string[]>([]);
-  const [savedAudios, setSavedAudios] = useState<string[]>([]);
+  const { photos, galleryPhotos, audios, saveMediaFile } = useMediaFiles();
   const { permission, requestPermission, sendTestNotification } = useNotifications();
 
   const permissionColor = permission === "granted"
@@ -35,16 +33,16 @@ export function TestLabPage() {
             <CardDescription>Captura fotos con la cámara del dispositivo</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            <CameraCapture onSaved={(url) => setSavedPhotos((p) => [...p, url])} />
+            <CameraCapture onSaved={(url) => saveMediaFile(url, "photo", "camera")} />
 
-            {savedPhotos.length > 0 && (
+            {photos.length > 0 && (
               <div className="space-y-2">
                 <p className="text-xs font-medium text-muted-foreground">
-                  Fotos capturadas ({savedPhotos.length})
+                  Fotos capturadas ({photos.length})
                 </p>
                 <div className="grid grid-cols-3 gap-2">
-                  {savedPhotos.map((url) => (
-                    <img key={url} src={url} alt="Captured" className="rounded-md" />
+                  {photos.map((m) => (
+                    <img key={m.id} src={m.url} alt="Captured" className="rounded-md" />
                   ))}
                 </div>
               </div>
@@ -62,16 +60,16 @@ export function TestLabPage() {
             <CardDescription>Selecciona fotos del dispositivo</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            <PhotoPicker onSaved={(url) => setSavedGallery((p) => [...p, url])} />
+            <PhotoPicker onSaved={(url) => saveMediaFile(url, "photo", "gallery")} />
 
-            {savedGallery.length > 0 && (
+            {galleryPhotos.length > 0 && (
               <div className="space-y-2">
                 <p className="text-xs font-medium text-muted-foreground">
-                  Fotos seleccionadas ({savedGallery.length})
+                  Fotos seleccionadas ({galleryPhotos.length})
                 </p>
                 <div className="grid grid-cols-3 gap-2">
-                  {savedGallery.map((url) => (
-                    <img key={url} src={url} alt="Selected" className="rounded-md" />
+                  {galleryPhotos.map((m) => (
+                    <img key={m.id} src={m.url} alt="Selected" className="rounded-md" />
                   ))}
                 </div>
               </div>
@@ -89,15 +87,15 @@ export function TestLabPage() {
             <CardDescription>Graba audio con el micrófono</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            <AudioRecorder onSaved={(url) => setSavedAudios((p) => [...p, url])} />
+            <AudioRecorder onSaved={(url) => saveMediaFile(url, "audio", "recorder")} />
 
-            {savedAudios.length > 0 && (
+            {audios.length > 0 && (
               <div className="space-y-2">
                 <p className="text-xs font-medium text-muted-foreground">
-                  Grabaciones ({savedAudios.length})
+                  Grabaciones ({audios.length})
                 </p>
-                {savedAudios.map((url) => (
-                  <audio key={url} src={url} controls className="w-full" />
+                {audios.map((m) => (
+                  <audio key={m.id} src={m.url} controls className="w-full" />
                 ))}
               </div>
             )}
