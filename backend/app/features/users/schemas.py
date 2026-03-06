@@ -9,14 +9,15 @@ from pydantic import BaseModel
 
 class UserRole(str, Enum):
     ADMIN = "ADMIN"
-    MANAGER = "MANAGER"
     AGENT = "AGENT"
-    VIEWER = "VIEWER"
+    LANDOWNER = "LANDOWNER"
+    BUYER = "BUYER"
+    CONTENT = "CONTENT"
 
 
 class UserBase(BaseModel):
     full_name: str | None = None
-    role: UserRole = UserRole.VIEWER
+    role: UserRole = UserRole.AGENT
     is_active: bool = True
 
 
