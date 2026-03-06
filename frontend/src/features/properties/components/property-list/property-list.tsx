@@ -1,10 +1,14 @@
+import { useMemo } from "react";
 import { useProperties } from "@features/properties/hooks/use-properties";
 import { PropertyCard } from "@features/properties/components/property-card/property-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
+import type { Property, PropertyStatus } from "@features/properties/types";
 
 interface PropertyListProps {
   basePath: string;
+  searchQuery?: string;
+  statusFilter?: PropertyStatus[];
 }
 
 function PropertyListSkeleton() {
@@ -24,8 +28,29 @@ function PropertyListSkeleton() {
   );
 }
 
-export function PropertyList({ basePath }: PropertyListProps) {
+function matchesSearch(property: Property, query: string): boolean {
+  const q = query.toLowerCase();
+  return (
+    property.title.toLowerCase().includes(q) ||
+    (property.address?.toLowerCase().includes(q) ?? false) ||
+    (property.description?.toLowerCase().includes(q) ?? false)
+  );
+}
+
+export function PropertyList({ basePath, searchQuery = "", statusFilter = [] }: PropertyListProps) {
   const { data: properties, isLoading, isError, refetch } = useProperties();
+
+  const filtered = useMemo(() => {
+    if (!properties) return [];
+    let result = properties;
+    if (searchQuery) {
+      result = result.filter((p) => matchesSearch(p, searchQuery));
+    }
+    if (statusFilter.length > 0) {
+      result = result.filter((p) => statusFilter.includes(p.status));
+    }
+    return result;
+  }, [properties, searchQuery, statusFilter]);
 
   if (isLoading) {
     return <PropertyListSkeleton />;
@@ -51,9 +76,18 @@ export function PropertyList({ basePath }: PropertyListProps) {
     );
   }
 
+  if (filtered.length === 0) {
+    return (
+      <EmptyState
+        title="Sin resultados"
+        description="No se encontraron propiedades con los filtros aplicados."
+      />
+    );
+  }
+
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {properties.map((property) => (
+      {filtered.map((property) => (
         <PropertyCard key={property.id} property={property} basePath={basePath} />
       ))}
     </div>
