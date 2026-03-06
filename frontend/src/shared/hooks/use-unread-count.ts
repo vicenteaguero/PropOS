@@ -19,28 +19,32 @@ export function useUnreadCount() {
   const fetchCount = useCallback(async () => {
     if (!user) return;
 
-    const lastRead = getLastRead();
+    try {
+      const lastRead = getLastRead();
 
-    const { data: participations } = await supabase
-      .from("conversation_participants")
-      .select("conversation_id")
-      .eq("user_id", user.id);
+      const { data: participations, error: pError } = await supabase
+        .from("conversation_participants")
+        .select("conversation_id")
+        .eq("user_id", user.id);
 
-    if (!participations || participations.length === 0) {
+      if (pError || !participations || participations.length === 0) {
+        setCount(0);
+        return;
+      }
+
+      const conversationIds = participations.map((p) => p.conversation_id);
+
+      const { count: unread } = await supabase
+        .from("messages")
+        .select("*", { count: "exact", head: true })
+        .in("conversation_id", conversationIds)
+        .neq("sender_id", user.id)
+        .gt("created_at", lastRead);
+
+      setCount(unread ?? 0);
+    } catch {
       setCount(0);
-      return;
     }
-
-    const conversationIds = participations.map((p) => p.conversation_id);
-
-    const { count: unread } = await supabase
-      .from("messages")
-      .select("*", { count: "exact", head: true })
-      .in("conversation_id", conversationIds)
-      .neq("sender_id", user.id)
-      .gt("created_at", lastRead);
-
-    setCount(unread ?? 0);
   }, [user]);
 
   useEffect(() => {
