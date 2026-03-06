@@ -1,29 +1,41 @@
 import { useProperties } from "@features/properties/hooks/use-properties";
 import { PropertyCard } from "@features/properties/components/property-card/property-card";
-import { LoadingSpinner } from "@shared/components/loading-spinner/loading-spinner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
 
 interface PropertyListProps {
   basePath: string;
 }
 
-const EMPTY_TITLE = "Sin propiedades";
-const EMPTY_DESCRIPTION = "A\u00FAn no hay propiedades registradas en el sistema.";
-const ERROR_TITLE = "Error al cargar";
-const ERROR_DESCRIPTION = "No se pudieron cargar las propiedades. Int\u00E9ntalo de nuevo.";
+function PropertyListSkeleton() {
+  return (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="space-y-3 rounded-lg border border-border p-4">
+          <div className="flex items-start justify-between">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-5 w-16 rounded-full" />
+          </div>
+          <Skeleton className="h-3 w-48" />
+          <Skeleton className="h-3 w-24" />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export function PropertyList({ basePath }: PropertyListProps) {
   const { data: properties, isLoading, isError, refetch } = useProperties();
 
   if (isLoading) {
-    return <LoadingSpinner size="lg" />;
+    return <PropertyListSkeleton />;
   }
 
   if (isError) {
     return (
       <EmptyState
-        title={ERROR_TITLE}
-        description={ERROR_DESCRIPTION}
+        title="Error al cargar"
+        description="No se pudieron cargar las propiedades. Inténtalo de nuevo."
         actionLabel="Reintentar"
         onAction={() => { refetch(); }}
       />
@@ -31,11 +43,16 @@ export function PropertyList({ basePath }: PropertyListProps) {
   }
 
   if (!properties || properties.length === 0) {
-    return <EmptyState title={EMPTY_TITLE} description={EMPTY_DESCRIPTION} />;
+    return (
+      <EmptyState
+        title="Sin propiedades"
+        description="Aún no hay propiedades registradas en el sistema."
+      />
+    );
   }
 
   return (
-    <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {properties.map((property) => (
         <PropertyCard key={property.id} property={property} basePath={basePath} />
       ))}

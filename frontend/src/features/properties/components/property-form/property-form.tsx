@@ -1,4 +1,7 @@
 import { useState, type FormEvent } from "react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import type { Property, PropertyStatus, CreatePropertyPayload } from "@features/properties/types";
 
 interface PropertyFormProps {
@@ -13,19 +16,6 @@ const STATUS_OPTIONS: { value: PropertyStatus; label: string }[] = [
   { value: "SOLD", label: "Vendida" },
   { value: "INACTIVE", label: "Inactiva" },
 ];
-
-const FIELD_LABELS = {
-  TITLE: "T\u00EDtulo",
-  DESCRIPTION: "Descripci\u00F3n",
-  STATUS: "Estado",
-  ADDRESS: "Direcci\u00F3n",
-  SURFACE: "Superficie (m\u00B2)",
-  SUBMIT_CREATE: "Crear Propiedad",
-  SUBMIT_UPDATE: "Guardar Cambios",
-};
-
-const INPUT_CLASS =
-  "min-h-11 w-full rounded-md border border-gris-acero/30 bg-negro-carbon px-3 py-2 text-sm text-blanco-nieve placeholder:text-gris-acero/50 focus:border-rosa-antiguo focus:outline-none focus:ring-1 focus:ring-rosa-antiguo";
 
 export function PropertyForm({ initialData, onSubmit, isLoading }: PropertyFormProps) {
   const [title, setTitle] = useState(initialData?.title ?? "");
@@ -48,45 +38,38 @@ export function PropertyForm({ initialData, onSubmit, isLoading }: PropertyFormP
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4 p-4">
-      <div className="flex flex-col gap-1">
-        <label htmlFor="prop-title" className="text-sm font-medium text-gris-acero">
-          {FIELD_LABELS.TITLE}
-        </label>
-        <input
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="prop-title">Título</Label>
+        <Input
           id="prop-title"
           type="text"
           required
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          className={INPUT_CLASS}
           disabled={isLoading}
         />
       </div>
 
-      <div className="flex flex-col gap-1">
-        <label htmlFor="prop-description" className="text-sm font-medium text-gris-acero">
-          {FIELD_LABELS.DESCRIPTION}
-        </label>
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="prop-description">Descripción</Label>
         <textarea
           id="prop-description"
           rows={3}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          className={`${INPUT_CLASS} resize-none`}
+          className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
           disabled={isLoading}
         />
       </div>
 
-      <div className="flex flex-col gap-1">
-        <label htmlFor="prop-status" className="text-sm font-medium text-gris-acero">
-          {FIELD_LABELS.STATUS}
-        </label>
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="prop-status">Estado</Label>
         <select
           id="prop-status"
           value={status}
           onChange={(e) => setStatus(e.target.value as PropertyStatus)}
-          className={INPUT_CLASS}
+          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
           disabled={isLoading}
         >
           {STATUS_OPTIONS.map((opt) => (
@@ -97,43 +80,33 @@ export function PropertyForm({ initialData, onSubmit, isLoading }: PropertyFormP
         </select>
       </div>
 
-      <div className="flex flex-col gap-1">
-        <label htmlFor="prop-address" className="text-sm font-medium text-gris-acero">
-          {FIELD_LABELS.ADDRESS}
-        </label>
-        <input
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="prop-address">Dirección</Label>
+        <Input
           id="prop-address"
           type="text"
           value={address}
           onChange={(e) => setAddress(e.target.value)}
-          className={INPUT_CLASS}
           disabled={isLoading}
         />
       </div>
 
-      <div className="flex flex-col gap-1">
-        <label htmlFor="prop-surface" className="text-sm font-medium text-gris-acero">
-          {FIELD_LABELS.SURFACE}
-        </label>
-        <input
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="prop-surface">Superficie (m²)</Label>
+        <Input
           id="prop-surface"
           type="number"
           min="0"
           step="0.01"
           value={surfaceM2}
           onChange={(e) => setSurfaceM2(e.target.value)}
-          className={INPUT_CLASS}
           disabled={isLoading}
         />
       </div>
 
-      <button
-        type="submit"
-        disabled={isLoading}
-        className="mt-2 min-h-11 rounded-md bg-rosa-antiguo px-4 py-3 text-sm font-semibold text-negro-carbon transition-colors duration-150 hover:bg-rosa-suave disabled:opacity-50"
-      >
-        {initialData ? FIELD_LABELS.SUBMIT_UPDATE : FIELD_LABELS.SUBMIT_CREATE}
-      </button>
+      <Button type="submit" disabled={isLoading} className="mt-2">
+        {initialData ? "Guardar Cambios" : "Crear Propiedad"}
+      </Button>
     </form>
   );
 }

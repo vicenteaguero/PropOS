@@ -9,28 +9,26 @@ interface ProtectedRouteProps {
   requiredRole?: UserRole;
 }
 
-const LOGIN_PATH = "/login";
-
 export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
   const { isAuthenticated, isLoading, user } = useAuth();
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-negro-carbon">
+      <div className="flex h-screen items-center justify-center bg-background">
         <LoadingSpinner size="lg" />
       </div>
     );
   }
 
   if (!isAuthenticated) {
-    return <Navigate to={LOGIN_PATH} replace />;
+    return <Navigate to="/login" replace />;
   }
 
   if (requiredRole && user?.role !== requiredRole) {
     return (
-      <div className="flex h-screen flex-col items-center justify-center bg-negro-carbon px-4 text-center">
-        <h1 className="mb-2 text-2xl font-bold text-rosa-antiguo">403</h1>
-        <p className="text-gris-acero">No tienes permisos para acceder a esta secci&oacute;n.</p>
+      <div className="flex h-screen flex-col items-center justify-center bg-background px-4 text-center">
+        <h1 className="mb-2 text-2xl font-bold text-primary">403</h1>
+        <p className="text-muted-foreground">No tienes permisos para acceder a esta sección.</p>
       </div>
     );
   }
