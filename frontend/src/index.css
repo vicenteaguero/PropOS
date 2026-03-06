@@ -1,0 +1,13 @@
+@import "tailwindcss";
+
+@theme {
+  --color-rosa-antiguo: #D4919B;
+  --color-negro-carbon: #1C1816;
+  --color-blanco-nieve: #F9F6F4;
+  --color-gris-acero: #9E9E9E;
+  --color-rosa-suave: #F0D8DA;
+}
+
+body {
+  @apply bg-negro-carbon text-blanco-nieve;
+}
