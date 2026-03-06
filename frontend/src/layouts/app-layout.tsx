@@ -1,21 +1,76 @@
 import { Outlet } from "react-router-dom";
+import { LogOut } from "lucide-react";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { AppSidebar } from "@layouts/app-sidebar";
+import { useAuth } from "@shared/hooks/use-auth";
+import { HealthIndicator } from "@shared/components/health-indicator/health-indicator";
+import { GuidedTour } from "@shared/components/guided-tour/guided-tour";
+import { HelpButton } from "@shared/components/help-button/help-button";
+
+function getInitials(name: string): string {
+  return name
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+}
 
 export function AppLayout() {
+  const { user, signOut } = useAuth();
+
   return (
     <SidebarProvider defaultOpen={false}>
       <AppSidebar />
       <SidebarInset>
-        <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b border-border bg-background px-4 md:hidden">
+        <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b border-border bg-background px-4">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 h-4" />
+          <HealthIndicator />
+          <div className="flex-1" />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <Avatar size="sm">
+                  <AvatarFallback>
+                    {user ? getInitials(user.fullName) : "?"}
+                  </AvatarFallback>
+                </Avatar>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              {user && (
+                <>
+                  <DropdownMenuLabel className="font-normal">
+                    <p className="text-sm font-medium">{user.fullName}</p>
+                    <p className="text-xs text-muted-foreground capitalize">{user.role.toLowerCase()}</p>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                </>
+              )}
+              <DropdownMenuItem onClick={signOut}>
+                <LogOut className="size-4" />
+                Cerrar Sesion
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </header>
         <main className="flex-1">
           <Outlet />
         </main>
       </SidebarInset>
+      <GuidedTour />
+      <HelpButton />
     </SidebarProvider>
   );
 }
