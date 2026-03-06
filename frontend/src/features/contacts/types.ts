@@ -1,4 +1,4 @@
-export type ContactType = "buyer" | "seller" | "tenant" | "agent" | "investor" | "other";
+export type ContactType = "LANDOWNER" | "BUYER" | "SELLER" | "TENANT" | "AGENT" | "INVESTOR" | "OTHER";
 
 export interface Contact {
   id: string;
