@@ -8,19 +8,17 @@ import { useProjects } from "@features/projects/hooks/use-projects";
 import type { ProjectStatus } from "@features/projects/types";
 
 const STATUS_LABELS: Record<ProjectStatus, string> = {
-  draft: "Borrador",
-  active: "Activo",
-  paused: "Pausado",
-  completed: "Completado",
-  archived: "Archivado",
+  PLANNING: "Planeacion",
+  ACTIVE: "Activo",
+  PAUSED: "Pausado",
+  COMPLETED: "Completado",
 };
 
 const STATUS_VARIANTS: Record<ProjectStatus, "default" | "secondary" | "destructive" | "outline"> = {
-  draft: "outline",
-  active: "default",
-  paused: "secondary",
-  completed: "default",
-  archived: "destructive",
+  PLANNING: "outline",
+  ACTIVE: "default",
+  PAUSED: "secondary",
+  COMPLETED: "default",
 };
 
 function ProjectsListSkeleton() {
