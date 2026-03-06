@@ -14,6 +14,8 @@ interface PropertyFiltersProps {
 }
 
 export function PropertyFilters({ selected, onChange }: PropertyFiltersProps) {
+  const allSelected = selected.length === 0;
+
   function toggle(status: PropertyStatus) {
     if (selected.includes(status)) {
       onChange(selected.filter((s) => s !== status));
@@ -24,6 +26,14 @@ export function PropertyFilters({ selected, onChange }: PropertyFiltersProps) {
 
   return (
     <div className="flex flex-wrap gap-2">
+      <button type="button" onClick={() => onChange([])}>
+        <Badge
+          variant={allSelected ? "default" : "outline"}
+          className={allSelected ? "" : "opacity-60 hover:opacity-100"}
+        >
+          Todos
+        </Badge>
+      </button>
       {ALL_STATUSES.map(({ value, label }) => {
         const isActive = selected.includes(value);
         return (
