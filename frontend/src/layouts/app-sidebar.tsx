@@ -5,10 +5,12 @@ import {
   FolderKanban,
   Shield,
   MessageSquare,
+  MessageCircle,
   FileText,
   PenTool,
   FlaskConical,
   LogOut,
+  Settings,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -19,11 +21,14 @@ import {
   SidebarGroupContent,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarSeparator,
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@shared/hooks/use-auth";
+import { useUnreadCount, markChatAsRead } from "@shared/hooks/use-unread-count";
 import type { UserRole } from "@shared/types/auth";
 
 export interface SidebarNavItem {
@@ -38,28 +43,38 @@ const NAV_ITEMS_BY_ROLE: Record<UserRole, SidebarNavItem[]> = {
     { label: "Contactos", path: "/admin/contacts", icon: Users },
     { label: "Proyectos", path: "/admin/projects", icon: FolderKanban },
     { label: "Equipo", path: "/admin/users", icon: Shield },
+    { label: "Chat", path: "/admin/chat", icon: MessageCircle },
     { label: "Test Lab", path: "/admin/test-lab", icon: FlaskConical },
+    { label: "Configuracion", path: "/admin/settings", icon: Settings },
   ],
   AGENT: [
     { label: "Propiedades", path: "/agent/properties", icon: Building2 },
     { label: "Contactos", path: "/agent/contacts", icon: Users },
     { label: "Interacciones", path: "/agent/interactions", icon: MessageSquare },
+    { label: "Chat", path: "/agent/chat", icon: MessageCircle },
     { label: "Test Lab", path: "/agent/test-lab", icon: FlaskConical },
+    { label: "Configuracion", path: "/agent/settings", icon: Settings },
   ],
   LANDOWNER: [
     { label: "Mis Propiedades", path: "/landowner/properties", icon: Building2 },
     { label: "Documentos", path: "/landowner/documents", icon: FileText },
+    { label: "Chat", path: "/landowner/chat", icon: MessageCircle },
     { label: "Test Lab", path: "/landowner/test-lab", icon: FlaskConical },
+    { label: "Configuracion", path: "/landowner/settings", icon: Settings },
   ],
   BUYER: [
     { label: "Propiedades", path: "/buyer/properties", icon: Building2 },
     { label: "Proyectos", path: "/buyer/projects", icon: FolderKanban },
+    { label: "Chat", path: "/buyer/chat", icon: MessageCircle },
     { label: "Test Lab", path: "/buyer/test-lab", icon: FlaskConical },
+    { label: "Configuracion", path: "/buyer/settings", icon: Settings },
   ],
   CONTENT: [
     { label: "Proyectos", path: "/content/projects", icon: FolderKanban },
     { label: "Contenido", path: "/content/assets", icon: PenTool },
+    { label: "Chat", path: "/content/chat", icon: MessageCircle },
     { label: "Test Lab", path: "/content/test-lab", icon: FlaskConical },
+    { label: "Configuracion", path: "/content/settings", icon: Settings },
   ],
 };
 
@@ -69,7 +84,8 @@ export function getNavItemsForRole(role: UserRole): SidebarNavItem[] {
 
 export function AppSidebar() {
   const { user, signOut } = useAuth();
-  const { setOpenMobile, isMobile } = useSidebar();
+  const { state, setOpenMobile, isMobile } = useSidebar();
+  const unreadCount = useUnreadCount();
 
   if (!user) return null;
 
@@ -79,9 +95,9 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarHeader className="flex-row items-center gap-3 px-4 py-4">
         <img
-          src="/icon.svg"
+          src={state === "expanded" ? "/logo.png" : "/icon.svg"}
           alt="PropOS"
-          className="size-8 md:size-10 shrink-0 rounded-lg"
+          className="size-8 md:size-10 shrink-0 rounded-lg ring-2 ring-primary/20 shadow-lg shadow-primary/10"
         />
         <div className="grid flex-1 text-left text-sm leading-tight">
           <span className="truncate font-semibold">PropOS</span>
@@ -95,28 +111,40 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map((item) => (
-                <SidebarMenuItem key={item.path}>
-                  <SidebarMenuButton asChild tooltip={item.label}>
-                    <NavLink
-                      to={item.path}
-                      onClick={() => isMobile && setOpenMobile(false)}
-                      className={({ isActive }) =>
-                        isActive ? "text-sidebar-primary bg-sidebar-accent" : ""
-                      }
-                    >
-                      <item.icon />
-                      <span>{item.label}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {items.map((item) => {
+                const isChat = item.label === "Chat";
+                return (
+                  <SidebarMenuItem key={item.path}>
+                    <SidebarMenuButton asChild tooltip={item.label}>
+                      <NavLink
+                        to={item.path}
+                        onClick={() => {
+                          if (isMobile) setOpenMobile(false);
+                          if (isChat) markChatAsRead();
+                        }}
+                        className={({ isActive }) =>
+                          isActive ? "text-sidebar-primary bg-sidebar-accent" : ""
+                        }
+                      >
+                        <item.icon />
+                        <span>{item.label}</span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                    {isChat && unreadCount > 0 && (
+                      <SidebarMenuBadge className="bg-primary text-primary-foreground">
+                        {unreadCount > 99 ? "99+" : unreadCount}
+                      </SidebarMenuBadge>
+                    )}
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter>
+      <SidebarSeparator />
+      <SidebarFooter className="pb-4">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton onClick={() => { if (isMobile) setOpenMobile(false); signOut(); }} tooltip="Cerrar Sesión">
