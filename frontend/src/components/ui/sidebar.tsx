@@ -156,7 +156,7 @@ function Sidebar({
   variant?: "sidebar" | "floating" | "inset"
   collapsible?: "offcanvas" | "icon" | "none"
 }) {
-  const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
+  const { isMobile, state, openMobile, setOpenMobile, setOpen } = useSidebar()
 
   if (collapsible === "none") {
     return (
@@ -175,37 +175,28 @@ function Sidebar({
 
   if (isMobile) {
     return (
-      <>
-        {/* Backdrop – fades in/out, closes sidebar on tap */}
+      <div
+        data-slot="sidebar"
+        data-sidebar="sidebar"
+        data-mobile="true"
+        data-state={openMobile ? "expanded" : "collapsed"}
+        className={cn(
+          "shrink-0 bg-sidebar text-sidebar-foreground transition-[margin-left] duration-300 ease-in-out",
+          className
+        )}
+        style={{
+          width: SIDEBAR_WIDTH_MOBILE,
+          marginLeft: openMobile ? "0px" : `calc(-1 * ${SIDEBAR_WIDTH_MOBILE})`,
+        }}
+        {...props}
+      >
         <div
-          data-slot="sidebar-backdrop"
-          className={cn(
-            "fixed inset-0 z-40 bg-black/30 transition-opacity duration-300",
-            openMobile ? "opacity-100" : "pointer-events-none opacity-0"
-          )}
-          onClick={() => setOpenMobile(false)}
-        />
-        {/* Sidebar – sits in the flex flow so it pushes content */}
-        <div
-          data-slot="sidebar"
-          data-sidebar="sidebar"
-          data-mobile="true"
-          data-state={openMobile ? "expanded" : "collapsed"}
-          className={cn(
-            "relative z-50 shrink-0 overflow-hidden bg-sidebar text-sidebar-foreground transition-[width] duration-300 ease-in-out",
-            className
-          )}
-          style={{ width: openMobile ? SIDEBAR_WIDTH_MOBILE : "0px" }}
-          {...props}
+          className="flex h-svh flex-col"
+          style={{ width: SIDEBAR_WIDTH_MOBILE }}
         >
-          <div
-            className="flex h-svh flex-col"
-            style={{ width: SIDEBAR_WIDTH_MOBILE }}
-          >
-            {children}
-          </div>
+          {children}
         </div>
-      </>
+      </div>
     )
   }
 
@@ -232,6 +223,8 @@ function Sidebar({
       />
       <div
         data-slot="sidebar-container"
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
         className={cn(
           "fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear md:flex",
           side === "left"
@@ -308,17 +301,38 @@ function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
   )
 }
 
-function SidebarInset({ className, ...props }: React.ComponentProps<"main">) {
+function SidebarInset({
+  className,
+  children,
+  ...props
+}: React.ComponentProps<"main">) {
+  const { openMobile, setOpenMobile, isMobile } = useSidebar()
+
   return (
     <main
       data-slot="sidebar-inset"
       className={cn(
         "relative flex w-full flex-1 flex-col bg-background",
+        isMobile && "min-w-[100vw] shrink-0",
         "md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow-sm md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-2",
         className
       )}
       {...props}
-    />
+    >
+      {isMobile && (
+        <div
+          data-slot="sidebar-backdrop"
+          className={cn(
+            "absolute inset-0 z-50 bg-black/30 transition-opacity duration-300",
+            openMobile
+              ? "opacity-100"
+              : "pointer-events-none opacity-0"
+          )}
+          onClick={() => setOpenMobile(false)}
+        />
+      )}
+      {children}
+    </main>
   )
 }
 
