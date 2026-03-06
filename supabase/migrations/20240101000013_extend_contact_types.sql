@@ -1,0 +1,6 @@
+-- Extend contact_type enum with additional values
+ALTER TYPE contact_type ADD VALUE IF NOT EXISTS 'SELLER';
+ALTER TYPE contact_type ADD VALUE IF NOT EXISTS 'TENANT';
+ALTER TYPE contact_type ADD VALUE IF NOT EXISTS 'AGENT';
+ALTER TYPE contact_type ADD VALUE IF NOT EXISTS 'INVESTOR';
+ALTER TYPE contact_type ADD VALUE IF NOT EXISTS 'OTHER';
