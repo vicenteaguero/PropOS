@@ -13,14 +13,14 @@ from app.features.properties.service import PropertyService
 router = APIRouter(prefix="/properties", tags=["properties"])
 
 
-@router.get("", response_model=list[PropertyResponse], dependencies=[Depends(require_role("ADMIN", "MANAGER", "AGENT", "VIEWER"))])
+@router.get("", response_model=list[PropertyResponse], dependencies=[Depends(require_role("ADMIN", "AGENT"))])
 async def list_properties(
     tenant_id: UUID = Depends(get_tenant_id),
 ) -> list[dict]:
     return await PropertyService.list_properties(tenant_id)
 
 
-@router.get("/{property_id}", response_model=PropertyResponse, dependencies=[Depends(require_role("ADMIN", "MANAGER", "AGENT", "VIEWER"))])
+@router.get("/{property_id}", response_model=PropertyResponse, dependencies=[Depends(require_role("ADMIN", "AGENT"))])
 async def get_property(
     property_id: UUID,
     tenant_id: UUID = Depends(get_tenant_id),
@@ -28,7 +28,7 @@ async def get_property(
     return await PropertyService.get_property(property_id, tenant_id)
 
 
-@router.post("", response_model=PropertyResponse, status_code=201, dependencies=[Depends(require_role("ADMIN", "MANAGER", "AGENT"))])
+@router.post("", response_model=PropertyResponse, status_code=201, dependencies=[Depends(require_role("ADMIN", "AGENT"))])
 async def create_property(
     payload: PropertyCreate,
     tenant_id: UUID = Depends(get_tenant_id),
@@ -36,7 +36,7 @@ async def create_property(
     return await PropertyService.create_property(payload, tenant_id)
 
 
-@router.patch("/{property_id}", response_model=PropertyResponse, dependencies=[Depends(require_role("ADMIN", "MANAGER", "AGENT"))])
+@router.patch("/{property_id}", response_model=PropertyResponse, dependencies=[Depends(require_role("ADMIN", "AGENT"))])
 async def update_property(
     property_id: UUID,
     payload: PropertyUpdate,
@@ -45,7 +45,7 @@ async def update_property(
     return await PropertyService.update_property(property_id, payload, tenant_id)
 
 
-@router.delete("/{property_id}", status_code=204, dependencies=[Depends(require_role("ADMIN", "MANAGER"))])
+@router.delete("/{property_id}", status_code=204, dependencies=[Depends(require_role("ADMIN"))])
 async def delete_property(
     property_id: UUID,
     tenant_id: UUID = Depends(get_tenant_id),
