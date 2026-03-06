@@ -18,7 +18,7 @@ MOCK_CONTACT = {
     "full_name": "Service Test Contact",
     "email": "test@example.com",
     "phone": None,
-    "type": "buyer",
+    "type": "BUYER",
     "metadata": None,
     "created_at": "2024-01-01T00:00:00",
     "updated_at": "2024-01-01T00:00:00",
@@ -99,6 +99,22 @@ async def test_update_contact(mock_client):
     )
 
     assert result["full_name"] == "Updated Name"
+
+
+@pytest.mark.asyncio
+@patch("app.features.contacts.service.get_supabase_client")
+async def test_update_contact_with_type(mock_client):
+    updated = {**MOCK_CONTACT, "type": "SELLER"}
+    table_mock = _build_table_mock([updated])
+    mock_client.return_value.table.return_value = table_mock
+
+    payload = ContactUpdate(type="SELLER")
+
+    result = await ContactService.update_contact(
+        MOCK_CONTACT_ID, payload, MOCK_TENANT_ID
+    )
+
+    assert result["type"] == "SELLER"
 
 
 @pytest.mark.asyncio
