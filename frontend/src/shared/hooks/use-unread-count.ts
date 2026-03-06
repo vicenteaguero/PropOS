@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { supabase } from "@core/supabase/client";
 import { useAuth } from "@shared/hooks/use-auth";
 
@@ -15,9 +15,10 @@ export function markChatAsRead() {
 export function useUnreadCount() {
   const { user } = useAuth();
   const [count, setCount] = useState(0);
+  const disabled = useRef(false);
 
   const fetchCount = useCallback(async () => {
-    if (!user) return;
+    if (!user || disabled.current) return;
 
     try {
       const lastRead = getLastRead();
@@ -27,7 +28,12 @@ export function useUnreadCount() {
         .select("conversation_id")
         .eq("user_id", user.id);
 
-      if (pError || !participations || participations.length === 0) {
+      if (pError) {
+        disabled.current = true;
+        return;
+      }
+
+      if (!participations || participations.length === 0) {
         setCount(0);
         return;
       }
@@ -43,7 +49,7 @@ export function useUnreadCount() {
 
       setCount(unread ?? 0);
     } catch {
-      setCount(0);
+      disabled.current = true;
     }
   }, [user]);
 
@@ -52,7 +58,7 @@ export function useUnreadCount() {
   }, [fetchCount]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || disabled.current) return;
 
     const channel = supabase
       .channel("unread-messages")
