@@ -45,7 +45,7 @@ const NAV_ITEMS_BY_ROLE: Record<UserRole, SidebarNavItem[]> = {
     { label: "Equipo", path: "/admin/users", icon: Shield },
     { label: "Chat", path: "/admin/chat", icon: MessageCircle },
     { label: "Test Lab", path: "/admin/test-lab", icon: FlaskConical },
-    { label: "Configuracion", path: "/admin/settings", icon: Settings },
+    { label: "Configuración", path: "/admin/settings", icon: Settings },
   ],
   AGENT: [
     { label: "Propiedades", path: "/agent/properties", icon: Building2 },
@@ -53,28 +53,28 @@ const NAV_ITEMS_BY_ROLE: Record<UserRole, SidebarNavItem[]> = {
     { label: "Interacciones", path: "/agent/interactions", icon: MessageSquare },
     { label: "Chat", path: "/agent/chat", icon: MessageCircle },
     { label: "Test Lab", path: "/agent/test-lab", icon: FlaskConical },
-    { label: "Configuracion", path: "/agent/settings", icon: Settings },
+    { label: "Configuración", path: "/agent/settings", icon: Settings },
   ],
   LANDOWNER: [
     { label: "Mis Propiedades", path: "/landowner/properties", icon: Building2 },
     { label: "Documentos", path: "/landowner/documents", icon: FileText },
     { label: "Chat", path: "/landowner/chat", icon: MessageCircle },
     { label: "Test Lab", path: "/landowner/test-lab", icon: FlaskConical },
-    { label: "Configuracion", path: "/landowner/settings", icon: Settings },
+    { label: "Configuración", path: "/landowner/settings", icon: Settings },
   ],
   BUYER: [
     { label: "Propiedades", path: "/buyer/properties", icon: Building2 },
     { label: "Proyectos", path: "/buyer/projects", icon: FolderKanban },
     { label: "Chat", path: "/buyer/chat", icon: MessageCircle },
     { label: "Test Lab", path: "/buyer/test-lab", icon: FlaskConical },
-    { label: "Configuracion", path: "/buyer/settings", icon: Settings },
+    { label: "Configuración", path: "/buyer/settings", icon: Settings },
   ],
   CONTENT: [
     { label: "Proyectos", path: "/content/projects", icon: FolderKanban },
     { label: "Contenido", path: "/content/assets", icon: PenTool },
     { label: "Chat", path: "/content/chat", icon: MessageCircle },
     { label: "Test Lab", path: "/content/test-lab", icon: FlaskConical },
-    { label: "Configuracion", path: "/content/settings", icon: Settings },
+    { label: "Configuración", path: "/content/settings", icon: Settings },
   ],
 };
 
@@ -147,9 +147,9 @@ export function AppSidebar() {
       <SidebarFooter className="pb-4">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton onClick={() => { if (isMobile) setOpenMobile(false); signOut(); }} tooltip="Cerrar Sesión">
+            <SidebarMenuButton onClick={() => { if (isMobile) setOpenMobile(false); signOut(); }} tooltip="Cerrar sesión">
               <LogOut />
-              <span>Cerrar Sesión</span>
+              <span>Cerrar sesión</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
