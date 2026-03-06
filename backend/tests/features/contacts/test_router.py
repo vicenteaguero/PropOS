@@ -13,7 +13,7 @@ MOCK_CONTACT = {
     "full_name": "John Doe",
     "email": "john@example.com",
     "phone": "+1234567890",
-    "type": "buyer",
+    "type": "BUYER",
     "metadata": None,
     "created_at": "2024-01-01T00:00:00",
     "updated_at": "2024-01-01T00:00:00",
@@ -73,7 +73,7 @@ async def test_create_contact(mock_client, client):
         "full_name": "John Doe",
         "email": "john@example.com",
         "phone": "+1234567890",
-        "type": "buyer",
+        "type": "BUYER",
     }
 
     response = await client.post(CONTACTS_PATH, json=payload)
