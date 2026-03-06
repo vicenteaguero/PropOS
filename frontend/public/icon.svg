@@ -1,4 +1,28 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="64" fill="#1C1816"/>
-  <text x="256" y="360" font-family="Georgia, serif" font-size="360" font-weight="bold" fill="#D4919B" text-anchor="middle">P</text>
+<svg width="800" height="800" viewBox="0 0 800 800" xmlns="http://www.w3.org/2000/svg">
+  <rect width="800" height="800" fill="#D4919B"/>
+  
+  <g transform="translate(60, 150) scale(0.95)">
+    
+    <path d="M350 -10 L520 -10 L560 120 L350 120 Z" fill="#F0D8DA"/>
+    
+    <path d="M-20 420 L-20 550 L350 550 L350 470 Z" fill="#1C1816" opacity="0.3"/>
+    
+    <path d="M140 20 L50 240 L80 240 L80 530 L420 530 L420 230 L500 230 L500 110 L420 110 L420 60 L370 10 Z" fill="#1C1816"/>
+    
+    <rect x="130" y="350" width="55" height="75" fill="#F9F6F4"/>
+    <rect x="340" y="340" width="55" height="90" fill="#F9F6F4"/>
+    <rect x="240" y="130" width="75" height="85" fill="#F9F6F4"/>
+    <rect x="245" y="350" width="90" height="180" fill="#F9F6F4"/>
+    
+    <path d="M470 190 L650 190 L650 430 L470 430 Z" fill="#1C1816"/>
+    <rect x="530" y="250" width="55" height="75" fill="#F9F6F4"/>
+    
+    <g transform="translate(400, 430)">
+       <rect x="0" y="0" width="300" height="160" fill="#1C1816"/>
+       <rect x="10" y="-10" width="280" height="155" fill="#9E9E9E"/>
+       
+       <path d="M30 85 L180 85 L180 55 L270 55 L270 125 L180 125 L180 105 L30 105 Z" fill="#1C1816"/>
+       <circle cx="245" cy="90" r="14" fill="#9E9E9E"/>
+    </g>
+  </g>
 </svg>
