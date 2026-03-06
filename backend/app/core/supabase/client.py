@@ -9,7 +9,7 @@ from app.core.config.settings import settings
 
 @lru_cache(maxsize=1)
 def get_supabase_client() -> Client:
-    return create_client(
+    return create_client(  # pragma: no cover
         settings.supabase_url,
         settings.supabase_service_role_key,
     )
