@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/sidebar";
 import { useAuth } from "@shared/hooks/use-auth";
 import { useUnreadCount, markChatAsRead } from "@shared/hooks/use-unread-count";
+import { useHealthCheck } from "@shared/hooks/use-health-check";
 import type { UserRole } from "@shared/types/auth";
 
 export interface SidebarNavItem {
@@ -86,6 +87,10 @@ export function AppSidebar() {
   const { user, signOut } = useAuth();
   const { state, setOpenMobile, isMobile } = useSidebar();
   const unreadCount = useUnreadCount();
+  const { data: health } = useHealthCheck();
+  const healthStatus = health?.status ?? "down";
+  const healthColor = healthStatus === "healthy" ? "bg-emerald-500" : healthStatus === "degraded" ? "bg-yellow-500" : "bg-red-500";
+  const healthLabel = healthStatus === "healthy" ? "API conectada" : healthStatus === "degraded" ? "API lenta" : "API sin conexión";
 
   if (!user) return null;
 
@@ -146,6 +151,12 @@ export function AppSidebar() {
       <SidebarSeparator />
       <SidebarFooter className="pb-4">
         <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton tooltip={healthLabel} className="pointer-events-none">
+              <span className={`size-2 shrink-0 rounded-full ${healthColor}`} />
+              <span className="text-xs text-muted-foreground">{healthLabel}{health?.latency != null ? ` (${health.latency}ms)` : ""}</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton onClick={() => { if (isMobile) setOpenMobile(false); signOut(); }} tooltip="Cerrar sesión">
               <LogOut />
