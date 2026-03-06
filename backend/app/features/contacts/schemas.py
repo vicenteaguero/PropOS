@@ -13,7 +13,7 @@ class ContactBase(BaseModel):
     full_name: str
     email: str | None = None
     phone: str | None = None
-    type: ContactType = ContactType.OTHER
+    type: ContactType = ContactType.BUYER
     metadata: dict[str, Any] | None = None
 
 
