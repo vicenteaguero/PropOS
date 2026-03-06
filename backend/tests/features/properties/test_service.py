@@ -17,7 +17,7 @@ MOCK_PROPERTY = {
     "tenant_id": str(MOCK_TENANT_ID),
     "title": "Service Test Property",
     "description": None,
-    "status": "available",
+    "status": "AVAILABLE",
     "address": None,
     "surface_m2": None,
     "landowner_id": None,
@@ -94,6 +94,22 @@ async def test_update_property(mock_client):
     )
 
     assert result["title"] == "Updated Title"
+
+
+@pytest.mark.asyncio
+@patch("app.features.properties.service.get_supabase_client")
+async def test_update_property_with_status(mock_client):
+    updated = {**MOCK_PROPERTY, "status": "RESERVED"}
+    table_mock = _build_table_mock([updated])
+    mock_client.return_value.table.return_value = table_mock
+
+    payload = PropertyUpdate(status="RESERVED")
+
+    result = await PropertyService.update_property(
+        MOCK_PROPERTY_ID, payload, MOCK_TENANT_ID
+    )
+
+    assert result["status"] == "RESERVED"
 
 
 @pytest.mark.asyncio
