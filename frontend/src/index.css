@@ -98,3 +98,47 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* driver.js brand overrides */
+.propos-tour-popover.driver-popover {
+  background-color: #231F1C;
+  color: #F9F6F4;
+  border: 1px solid rgba(158, 158, 158, 0.2);
+}
+
+.propos-tour-popover .driver-popover-title {
+  color: #D4919B;
+  font-size: 1rem;
+}
+
+.propos-tour-popover .driver-popover-description {
+  color: #F9F6F4;
+}
+
+.propos-tour-popover .driver-popover-progress-text {
+  color: #9E9E9E;
+}
+
+.propos-tour-popover .driver-popover-navigation-btns .driver-popover-next-btn {
+  background-color: #D4919B;
+  color: #1C1816;
+  border: none;
+  text-shadow: none;
+}
+
+.propos-tour-popover .driver-popover-navigation-btns .driver-popover-prev-btn {
+  color: #9E9E9E;
+  border: 1px solid rgba(158, 158, 158, 0.3);
+  text-shadow: none;
+}
+
+.propos-tour-popover .driver-popover-close-btn {
+  color: #9E9E9E;
+}
+
+.propos-tour-popover .driver-popover-arrow-side-left .driver-popover-arrow,
+.propos-tour-popover .driver-popover-arrow-side-right .driver-popover-arrow,
+.propos-tour-popover .driver-popover-arrow-side-top .driver-popover-arrow,
+.propos-tour-popover .driver-popover-arrow-side-bottom .driver-popover-arrow {
+  border-color: #231F1C;
+}
