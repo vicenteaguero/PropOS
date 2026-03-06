@@ -2,12 +2,13 @@ from enum import Enum
 
 
 class ContactType(str, Enum):
-    BUYER = "buyer"
-    SELLER = "seller"
-    TENANT = "tenant"
-    AGENT = "agent"
-    INVESTOR = "investor"
-    OTHER = "other"
+    LANDOWNER = "LANDOWNER"
+    BUYER = "BUYER"
+    SELLER = "SELLER"
+    TENANT = "TENANT"
+    AGENT = "AGENT"
+    INVESTOR = "INVESTOR"
+    OTHER = "OTHER"
 
 
 CONTACTS_TABLE = "contacts"
