@@ -181,7 +181,7 @@ function Sidebar({
         data-mobile="true"
         data-state={openMobile ? "expanded" : "collapsed"}
         className={cn(
-          "shrink-0 bg-sidebar text-sidebar-foreground transition-[margin-left] duration-300 ease-in-out",
+          "shrink-0 select-none bg-sidebar text-sidebar-foreground transition-[margin-left] duration-300 ease-in-out",
           className
         )}
         style={{
@@ -235,7 +235,7 @@ function Sidebar({
         <div
           data-sidebar="sidebar"
           data-slot="sidebar-inner"
-          className="flex h-full w-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:shadow-sm"
+          className="flex h-full min-w-(--sidebar-width) flex-col select-none bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:shadow-sm [&_span]:transition-opacity [&_span]:duration-300 group-data-[state=collapsed]:[&_span]:opacity-0"
         >
           {children}
         </div>
