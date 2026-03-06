@@ -12,7 +12,7 @@ MOCK_PROPERTY = {
     "tenant_id": MOCK_TENANT_ID,
     "title": "Test Property",
     "description": "A test property",
-    "status": "available",
+    "status": "AVAILABLE",
     "address": "123 Test St",
     "surface_m2": 150.0,
     "landowner_id": None,
@@ -73,7 +73,7 @@ async def test_create_property(mock_client, client):
     payload = {
         "title": "Test Property",
         "description": "A test property",
-        "status": "available",
+        "status": "AVAILABLE",
         "address": "123 Test St",
         "surface_m2": 150.0,
     }
