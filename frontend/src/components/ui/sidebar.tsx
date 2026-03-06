@@ -156,7 +156,7 @@ function Sidebar({
   variant?: "sidebar" | "floating" | "inset"
   collapsible?: "offcanvas" | "icon" | "none"
 }) {
-  const { isMobile, openMobile } = useSidebar()
+  const { isMobile, state, openMobile, setOpen } = useSidebar()
 
   if (collapsible === "none") {
     return (
@@ -203,27 +203,27 @@ function Sidebar({
   return (
     <div
       className="group peer hidden text-sidebar-foreground md:block"
-      data-state="expanded"
+      data-state={state}
       data-variant={variant}
       data-side={side}
       data-slot="sidebar"
     >
-      {/* Gap stays at icon width so content never shifts */}
+      {/* Gap pushes content — transitions width on hover */}
       <div
         data-slot="sidebar-gap"
         className={cn(
-          "relative bg-transparent",
-          "group-data-[side=right]:rotate-180",
-          variant === "floating" || variant === "inset"
-            ? "w-[calc(var(--sidebar-width-icon)+(--spacing(4)))]"
-            : "w-(--sidebar-width-icon)"
+          "relative bg-transparent transition-[width] duration-300 ease-in-out",
+          "w-(--sidebar-width-icon) group-data-[state=expanded]:w-(--sidebar-width)",
+          "group-data-[side=right]:rotate-180"
         )}
       />
       <div
         data-slot="sidebar-container"
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
         className={cn(
-          "fixed inset-y-0 z-40 hidden h-svh overflow-hidden transition-[width] duration-200 ease-linear md:flex",
-          "w-(--sidebar-width-icon) hover:w-(--sidebar-width)",
+          "fixed inset-y-0 z-40 hidden h-svh overflow-hidden transition-[width] duration-300 ease-in-out md:flex",
+          "w-(--sidebar-width-icon) group-data-[state=expanded]:w-(--sidebar-width)",
           side === "left" ? "left-0" : "right-0",
           variant === "floating" || variant === "inset"
             ? "p-2"
