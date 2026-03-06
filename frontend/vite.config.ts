@@ -10,6 +10,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: "prompt",
+      devOptions: { enabled: false },
       manifest: {
         name: "PropOS",
         short_name: "PropOS",
@@ -29,6 +30,8 @@ export default defineConfig({
         ],
       },
       workbox: {
+        skipWaiting: true,
+        clientsClaim: true,
         runtimeCaching: [
           {
             urlPattern: /\/api\/.*/,

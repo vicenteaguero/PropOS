@@ -4,11 +4,20 @@ import { registerSW } from "virtual:pwa-register";
 import { App } from "@app/app";
 import "./index.css";
 
-// Prompt user to reload when a new service worker is available
+const UPDATE_INTERVAL_MS = 60 * 1000; // check every 60s
+
 const updateSW = registerSW({
   onNeedRefresh() {
     if (confirm("Nueva versión disponible. ¿Actualizar ahora?")) {
       updateSW(true);
+    }
+  },
+  onRegisteredSW(_url, registration) {
+    // Periodically check for SW updates — iOS doesn't do this on its own
+    if (registration) {
+      setInterval(() => {
+        registration.update();
+      }, UPDATE_INTERVAL_MS);
     }
   },
 });
