@@ -55,14 +55,9 @@ CREATE POLICY "conversations_update" ON conversations
     )
   );
 
--- Conversation participants: users can see participants of their conversations
+-- Conversation participants: users can see their own participations
 CREATE POLICY "participants_select" ON conversation_participants
-  FOR SELECT USING (
-    tenant_id = public.get_my_tenant_id()
-    AND conversation_id IN (
-      SELECT conversation_id FROM conversation_participants WHERE user_id = auth.uid()
-    )
-  );
+  FOR SELECT USING (user_id = auth.uid());
 
 CREATE POLICY "participants_insert" ON conversation_participants
   FOR INSERT WITH CHECK (tenant_id = public.get_my_tenant_id());
