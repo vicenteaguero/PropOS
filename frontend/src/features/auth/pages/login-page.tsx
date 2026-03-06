@@ -1,9 +1,7 @@
 import { Navigate } from "react-router-dom";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { LoginForm } from "@features/auth/components/login-form/login-form";
 import { useAuth } from "@shared/hooks/use-auth";
-
-const BRAND_NAME = "PropOS";
-const BRAND_TAGLINE = "Plataforma de gesti\u00F3n inmobiliaria";
 
 export function LoginPage() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -13,12 +11,16 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-negro-carbon px-4">
-      <div className="mb-8 text-center">
-        <h1 className="mb-2 text-3xl font-bold text-rosa-antiguo">{BRAND_NAME}</h1>
-        <p className="text-sm text-gris-acero">{BRAND_TAGLINE}</p>
-      </div>
-      <LoginForm />
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+      <Card className="w-full max-w-sm">
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl font-bold text-primary">PropOS</CardTitle>
+          <CardDescription>Plataforma de gestión inmobiliaria</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <LoginForm />
+        </CardContent>
+      </Card>
     </div>
   );
 }

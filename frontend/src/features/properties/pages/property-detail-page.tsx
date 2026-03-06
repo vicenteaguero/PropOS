@@ -1,6 +1,10 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { TopBar } from "@shared/components/top-bar/top-bar";
-import { LoadingSpinner } from "@shared/components/loading-spinner/loading-spinner";
+import { ArrowLeft } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
 import { useProperty } from "@features/properties/hooks/use-property";
 import type { PropertyStatus } from "@features/properties/types";
@@ -12,17 +16,12 @@ const STATUS_LABELS: Record<PropertyStatus, string> = {
   INACTIVE: "Inactiva",
 };
 
-const STATUS_COLORS: Record<PropertyStatus, string> = {
-  AVAILABLE: "bg-green-900/30 text-green-400",
-  RESERVED: "bg-yellow-900/30 text-yellow-400",
-  SOLD: "bg-blue-900/30 text-blue-400",
-  INACTIVE: "bg-gray-900/30 text-gray-400",
+const STATUS_VARIANTS: Record<PropertyStatus, "default" | "secondary" | "destructive" | "outline"> = {
+  AVAILABLE: "default",
+  RESERVED: "secondary",
+  SOLD: "outline",
+  INACTIVE: "destructive",
 };
-
-const SURFACE_UNIT = "m\u00B2";
-const NOT_FOUND_TITLE = "Propiedad no encontrada";
-const NOT_FOUND_DESC = "La propiedad que buscas no existe o fue eliminada.";
-const BACK_LABEL = "Volver";
 
 export function PropertyDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -31,86 +30,72 @@ export function PropertyDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col">
-        <TopBar
-          title="Cargando..."
-          actions={
-            <button
-              type="button"
-              onClick={() => navigate(-1)}
-              className="min-h-11 min-w-11 rounded-md px-3 py-2 text-sm text-gris-acero transition-colors duration-150 hover:text-blanco-nieve"
-            >
-              {BACK_LABEL}
-            </button>
-          }
-        />
-        <LoadingSpinner size="lg" />
+      <div className="flex flex-col gap-4 p-4">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-20 w-full" />
       </div>
     );
   }
 
   if (isError || !property) {
     return (
-      <div className="flex flex-col">
-        <TopBar title="Error" />
+      <div className="p-4">
         <EmptyState
-          title={NOT_FOUND_TITLE}
-          description={NOT_FOUND_DESC}
-          actionLabel={BACK_LABEL}
+          title="Propiedad no encontrada"
+          description="La propiedad que buscas no existe o fue eliminada."
+          actionLabel="Volver"
           onAction={() => navigate(-1)}
         />
       </div>
     );
   }
 
-  const statusLabel = STATUS_LABELS[property.status];
-  const statusColor = STATUS_COLORS[property.status];
-
   return (
-    <div className="flex flex-col">
-      <TopBar
-        title={property.title}
-        actions={
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="min-h-11 min-w-11 rounded-md px-3 py-2 text-sm text-gris-acero transition-colors duration-150 hover:text-blanco-nieve"
-          >
-            {BACK_LABEL}
-          </button>
-        }
-      />
-
-      <div className="flex flex-col gap-6 p-4">
-        <div className="flex items-center gap-3">
-          <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusColor}`}>
-            {statusLabel}
-          </span>
-        </div>
-
-        {property.description && (
-          <div>
-            <h2 className="mb-1 text-sm font-medium text-gris-acero">Descripci&oacute;n</h2>
-            <p className="text-sm text-blanco-nieve">{property.description}</p>
-          </div>
-        )}
-
-        {property.address && (
-          <div>
-            <h2 className="mb-1 text-sm font-medium text-gris-acero">Direcci&oacute;n</h2>
-            <p className="text-sm text-blanco-nieve">{property.address}</p>
-          </div>
-        )}
-
-        {property.surfaceM2 !== null && (
-          <div>
-            <h2 className="mb-1 text-sm font-medium text-gris-acero">Superficie</h2>
-            <p className="text-sm text-blanco-nieve">
-              {property.surfaceM2.toLocaleString()} {SURFACE_UNIT}
-            </p>
-          </div>
-        )}
+    <div className="flex flex-col gap-4 p-4">
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+          <ArrowLeft className="size-4" />
+        </Button>
+        <h1 className="text-lg font-semibold">{property.title}</h1>
+        <Badge variant={STATUS_VARIANTS[property.status]}>
+          {STATUS_LABELS[property.status]}
+        </Badge>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Detalles</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {property.description && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">Descripción</p>
+              <p className="text-sm">{property.description}</p>
+            </div>
+          )}
+
+          {property.address && (
+            <>
+              <Separator />
+              <div>
+                <p className="text-xs font-medium text-muted-foreground">Dirección</p>
+                <p className="text-sm">{property.address}</p>
+              </div>
+            </>
+          )}
+
+          {property.surfaceM2 !== null && (
+            <>
+              <Separator />
+              <div>
+                <p className="text-xs font-medium text-muted-foreground">Superficie</p>
+                <p className="text-sm">{property.surfaceM2.toLocaleString()} m²</p>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
