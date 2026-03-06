@@ -1,0 +1,7 @@
+export const COLORS = {
+  ROSA_ANTIGUO: "#D4919B",
+  NEGRO_CARBON: "#1C1816",
+  BLANCO_NIEVE: "#F9F6F4",
+  GRIS_ACERO: "#9E9E9E",
+  ROSA_SUAVE: "#F0D8DA",
+} as const;
