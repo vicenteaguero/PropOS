@@ -5,7 +5,6 @@ class PropertyStatus(str, Enum):
     AVAILABLE = "AVAILABLE"
     RESERVED = "RESERVED"
     SOLD = "SOLD"
-    RENTED = "RENTED"
     INACTIVE = "INACTIVE"
 
 
