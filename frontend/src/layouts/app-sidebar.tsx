@@ -21,6 +21,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@shared/hooks/use-auth";
 import type { UserRole } from "@shared/types/auth";
@@ -68,6 +69,7 @@ export function getNavItemsForRole(role: UserRole): SidebarNavItem[] {
 
 export function AppSidebar() {
   const { user, signOut } = useAuth();
+  const { setOpenMobile, isMobile } = useSidebar();
 
   if (!user) return null;
 
@@ -104,6 +106,7 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild tooltip={item.label}>
                     <NavLink
                       to={item.path}
+                      onClick={() => isMobile && setOpenMobile(false)}
                       className={({ isActive }) =>
                         isActive ? "text-sidebar-primary bg-sidebar-accent" : ""
                       }
@@ -122,7 +125,7 @@ export function AppSidebar() {
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton onClick={signOut} tooltip="Cerrar Sesión">
+            <SidebarMenuButton onClick={() => { if (isMobile) setOpenMobile(false); signOut(); }} tooltip="Cerrar Sesión">
               <LogOut />
               <span>Cerrar Sesión</span>
             </SidebarMenuButton>
