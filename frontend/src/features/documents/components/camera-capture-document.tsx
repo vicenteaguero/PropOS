@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Camera, Check, RotateCcw, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { compressBlob } from "../services/image-compression";
 import { imagesToPdf } from "../services/pdf-from-images";
 
@@ -22,8 +23,8 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props)
   const [shots, setShots] = useState<Shot[]>([]);
   const [busy, setBusy] = useState(false);
   const [fallback, setFallback] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  // Genera URLs solo cuando shots cambia, revoca anteriores → no leak.
   const shotUrls = useMemo(() => shots.map((s) => URL.createObjectURL(s.blob)), [shots]);
   useEffect(() => {
     return () => shotUrls.forEach((u) => URL.revokeObjectURL(u));
@@ -40,6 +41,7 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props)
     if (!open) {
       stopStream();
       setShots([]);
+      setSelectedId(null);
       setFallback(false);
       return;
     }
@@ -96,8 +98,11 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props)
     setShots((prev) => [...prev, ...arr]);
   };
 
-  const removeShot = (id: string) =>
-    setShots((prev) => prev.filter((s) => s.id !== id));
+  const removeSelected = () => {
+    if (!selectedId) return;
+    setShots((prev) => prev.filter((s) => s.id !== selectedId));
+    setSelectedId(null);
+  };
 
   const closeWithGuard = () => {
     if (shots.length > 0 && !confirm(`Descartar ${shots.length} captura(s) sin guardar?`)) {
@@ -126,21 +131,16 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props)
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-black/95">
-      <div className="flex items-center justify-between border-b border-border/50 px-4 py-3 text-white">
+    <div className="fixed inset-0 z-50 flex flex-col bg-overlay/95 text-foreground">
+      <div className="flex items-center justify-between border-b border-border/30 px-4 py-3">
         <div className="text-sm font-medium">Cámara · {shots.length} pág.</div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={closeWithGuard}
-          className="text-white hover:bg-white/10"
-        >
+        <Button variant="ghost" size="icon" onClick={closeWithGuard}>
           <X className="size-5" />
         </Button>
       </div>
       <div className="flex flex-1 items-center justify-center overflow-hidden">
         {fallback ? (
-          <label className="flex flex-col items-center gap-3 rounded-lg border-2 border-dashed border-white/40 p-8 text-center text-white">
+          <label className="flex flex-col items-center gap-3 rounded-lg border-2 border-dashed border-border/60 p-8 text-center">
             <Camera className="size-10" strokeWidth={1.4} />
             <span className="text-sm">Cámara no disponible. Selecciona fotos.</span>
             <input
@@ -161,32 +161,51 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props)
         )}
       </div>
       {shots.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto border-t border-border/50 px-4 py-3">
-          {shots.map((shot, i) => (
-            <div key={shot.id} className="relative shrink-0">
-              <img
-                src={shotUrls[i]}
-                alt={`shot ${i + 1}`}
-                className="h-20 w-16 rounded object-cover"
-              />
+        <div className="flex items-center gap-2 overflow-x-auto border-t border-border/30 px-4 py-3">
+          {shots.map((shot, i) => {
+            const isSelected = selectedId === shot.id;
+            return (
               <button
                 type="button"
-                onClick={() => removeShot(shot.id)}
-                className="absolute -right-1 -top-1 rounded-full bg-destructive p-0.5 text-white"
-                aria-label="Eliminar"
+                key={shot.id}
+                onClick={() => setSelectedId(isSelected ? null : shot.id)}
+                className={cn(
+                  "shrink-0 overflow-hidden rounded transition",
+                  isSelected
+                    ? "ring-2 ring-primary scale-105"
+                    : "ring-1 ring-border/40 hover:ring-border",
+                )}
+                aria-pressed={isSelected}
+                aria-label={`Página ${i + 1}`}
               >
-                <Trash2 className="size-3" />
+                <img
+                  src={shotUrls[i]}
+                  alt={`shot ${i + 1}`}
+                  className="h-20 w-16 object-cover"
+                />
               </button>
-            </div>
-          ))}
+            );
+          })}
+          {selectedId && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={removeSelected}
+              className="shrink-0"
+            >
+              <Trash2 className="size-4" /> Eliminar página
+            </Button>
+          )}
         </div>
       )}
-      <div className="flex items-center justify-around border-t border-border/50 px-4 py-3">
+      <div className="flex items-center justify-around border-t border-border/30 px-4 py-3">
         <Button
           variant="ghost"
           size="lg"
-          onClick={() => setShots([])}
-          className="text-white"
+          onClick={() => {
+            setShots([]);
+            setSelectedId(null);
+          }}
           disabled={shots.length === 0}
         >
           <RotateCcw className="size-5" /> Reiniciar
@@ -195,17 +214,12 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props)
           <Button
             size="lg"
             onClick={captureShot}
-            className="rounded-full bg-white text-black hover:bg-white/80"
+            className="rounded-full bg-foreground text-background hover:bg-foreground/85"
           >
             <Camera className="size-6" />
           </Button>
         )}
-        <Button
-          size="lg"
-          onClick={finalize}
-          disabled={shots.length === 0 || busy}
-          className="bg-primary"
-        >
+        <Button size="lg" onClick={finalize} disabled={shots.length === 0 || busy}>
           <Check className="size-5" /> Listo
         </Button>
       </div>
