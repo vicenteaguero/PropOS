@@ -10,10 +10,11 @@ ScanStatus = Literal["clean", "infected", "error", "skipped"]
 
 
 def scan_file(content: bytes) -> ScanStatus:
-    """V1 stub: marca todo como clean. V2 conectar ClamAV (clamd) o servicio externo."""
+    """V1 stub: marca como 'skipped' (NO 'clean' — eso falsificaría señal de seguridad).
+    V2 conectar ClamAV (clamd) o servicio externo y retornar 'clean'/'infected'."""
     logger.warning(
-        "antivirus stub invoked, returning 'clean'",
+        "antivirus stub invoked, returning 'skipped' (no real scan)",
         event_type="stub",
         size=len(content),
     )
-    return "clean"
+    return "skipped"
