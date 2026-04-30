@@ -95,10 +95,10 @@ export function UploadsReview({ portalId, defaults }: Props) {
               <span
                 className={
                   u.status === "approved"
-                    ? "text-emerald-400"
+                    ? "text-success"
                     : u.status === "rejected"
                       ? "text-destructive"
-                      : "text-yellow-400"
+                      : "text-warning"
                 }
               >
                 {u.status}
@@ -141,7 +141,7 @@ export function UploadsReview({ portalId, defaults }: Props) {
               <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
             </div>
             <div className="space-y-1 text-xs">
-              <Label>Vínculos automáticos del portal</Label>
+              <Label>Vínculos automáticos del enlace</Label>
               <ul className="rounded-md border border-border bg-muted/30 p-2 text-muted-foreground">
                 {labelDefault("property", defaults.propertyId) && (
                   <li>Propiedad: {labelDefault("property", defaults.propertyId)}</li>
