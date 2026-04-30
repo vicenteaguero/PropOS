@@ -31,6 +31,7 @@ export function FastAddFab() {
   const [open, setOpen] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [cameraOrigin, setCameraOrigin] = useState(false);
   const [displayName, setDisplayName] = useState("");
   const [propertyTitle, setPropertyTitle] = useState("");
   const [contactName, setContactName] = useState("");
@@ -44,6 +45,7 @@ export function FastAddFab() {
 
   const reset = () => {
     setPendingFile(null);
+    setCameraOrigin(false);
     setDisplayName("");
     setPropertyTitle("");
     setContactName("");
@@ -51,6 +53,7 @@ export function FastAddFab() {
 
   const handleSelectFile = (file: File) => {
     setPendingFile(file);
+    setCameraOrigin(false);
     setDisplayName(file.name.replace(/\.[^/.]+$/, ""));
   };
 
@@ -58,7 +61,9 @@ export function FastAddFab() {
     const file = new File([bytes], `escaneo-${Date.now()}.pdf`, {
       type: "application/pdf",
     });
-    handleSelectFile(file);
+    setPendingFile(file);
+    setCameraOrigin(true);
+    setDisplayName(`Escaneo ${new Date().toLocaleDateString("es-CL")}`);
   };
 
   const submit = async () => {
@@ -67,34 +72,44 @@ export function FastAddFab() {
       return;
     }
     setBusy(true);
+    let createdDocId: string | null = null;
     try {
       const doc = await create.mutateAsync({
         file: pendingFile,
         displayName,
-        origin: pendingFile.type === "application/pdf" && pendingFile.name.startsWith("escaneo-") ? "CAMERA" : "UPLOAD",
+        origin: cameraOrigin ? "CAMERA" : "UPLOAD",
       });
+      createdDocId = doc.id;
 
-      const matchingProp = propertyTitle
-        ? properties.find((p) => p.title.toLowerCase() === propertyTitle.toLowerCase())
-        : null;
+      // Assignments en paralelo. Si alguno falla, soft-delete del doc para no orphanar.
+      const assignments: Promise<unknown>[] = [];
       if (propertyTitle.trim()) {
-        const propertyId = matchingProp?.id ?? (await createProperty.mutateAsync(propertyTitle.trim())).id;
-        await assignTo(doc.id, "PROPERTY", propertyId);
+        const matchingProp = properties.find(
+          (p) => p.title.trim().toLowerCase() === propertyTitle.trim().toLowerCase(),
+        );
+        const propertyId =
+          matchingProp?.id ?? (await createProperty.mutateAsync(propertyTitle.trim())).id;
+        assignments.push(assignTo(doc.id, "PROPERTY", propertyId));
       }
-
-      const matchingContact = contactName
-        ? contacts.find((c) => c.full_name.toLowerCase() === contactName.toLowerCase())
-        : null;
       if (contactName.trim()) {
-        const contactId = matchingContact?.id ?? (await createContact.mutateAsync(contactName.trim())).id;
-        await assignTo(doc.id, "CONTACT", contactId);
+        const matchingContact = contacts.find(
+          (c) => c.full_name.trim().toLowerCase() === contactName.trim().toLowerCase(),
+        );
+        const contactId =
+          matchingContact?.id ?? (await createContact.mutateAsync(contactName.trim())).id;
+        assignments.push(assignTo(doc.id, "CONTACT", contactId));
       }
+      await Promise.all(assignments);
 
       toast.success("Documento agregado");
       reset();
       setOpen(false);
       navigate(`/${role}/documents/${doc.id}`);
     } catch (e) {
+      // Rollback: si doc creado pero assignment falló, soft-delete
+      if (createdDocId) {
+        documentsApi.remove(createdDocId).catch(() => undefined);
+      }
       toast.error(e instanceof Error ? e.message : "Error");
     } finally {
       setBusy(false);
