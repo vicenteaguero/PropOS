@@ -1,5 +1,24 @@
 import { NavLink } from "react-router-dom";
-import { FileText, Folder, Home, LogOut } from "lucide-react";
+import {
+  BarChart3,
+  Briefcase,
+  Building2,
+  CheckSquare,
+  ClipboardList,
+  Coins,
+  FileText,
+  Folder,
+  Home,
+  Inbox,
+  ListChecks,
+  LogOut,
+  Megaphone,
+  MessageSquare,
+  Receipt,
+  Sparkles,
+  Tag,
+  Users,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
   Sidebar,
@@ -28,11 +47,30 @@ export interface SidebarNavItem {
 const NAV_ITEMS_BY_ROLE: Record<UserRole, SidebarNavItem[]> = {
   ADMIN: [
     { label: "Inicio", path: "/admin", icon: Home, end: true },
+    { label: "Pendientes de Anita", path: "/admin/pendientes", icon: Inbox },
+    { label: "Personas", path: "/admin/personas", icon: Users },
+    { label: "Interacciones", path: "/admin/interacciones", icon: MessageSquare },
+    { label: "Tareas", path: "/admin/tareas", icon: CheckSquare },
+    { label: "Transacciones", path: "/admin/transacciones", icon: Coins },
+    { label: "Propiedades", path: "/admin/propiedades", icon: Home },
+    { label: "Proyectos", path: "/admin/proyectos", icon: Briefcase },
+    { label: "Oportunidades", path: "/admin/oportunidades", icon: ClipboardList },
+    { label: "Publicaciones", path: "/admin/publicaciones", icon: Megaphone },
+    { label: "Campañas", path: "/admin/campanas", icon: Megaphone },
+    { label: "Organizaciones", path: "/admin/organizaciones", icon: Building2 },
+    { label: "Tags", path: "/admin/tags", icon: Tag },
+    { label: "Workflows", path: "/admin/workflows", icon: ListChecks },
     { label: "Documentos", path: "/admin/documents", icon: FileText },
     { label: "Enlaces de subida", path: "/admin/documents/portals", icon: Folder },
+    { label: "Analítica", path: "/admin/analytics", icon: BarChart3 },
+    { label: "Costo Anita", path: "/admin/analytics/anita-cost", icon: Receipt },
   ],
   AGENT: [
     { label: "Inicio", path: "/agent", icon: Home, end: true },
+    { label: "Pendientes", path: "/agent/pendientes", icon: Inbox },
+    { label: "Personas", path: "/agent/personas", icon: Users },
+    { label: "Interacciones", path: "/agent/interacciones", icon: MessageSquare },
+    { label: "Tareas", path: "/agent/tareas", icon: CheckSquare },
     { label: "Documentos", path: "/agent/documents", icon: FileText },
     { label: "Enlaces de subida", path: "/agent/documents/portals", icon: Folder },
   ],
@@ -46,6 +84,7 @@ const NAV_ITEMS_BY_ROLE: Record<UserRole, SidebarNavItem[]> = {
   ],
   CONTENT: [
     { label: "Inicio", path: "/content", icon: Home, end: true },
+    { label: "Anita", path: "/content/pendientes", icon: Sparkles },
   ],
 };
 
