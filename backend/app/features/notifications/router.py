@@ -1,3 +1,4 @@
+# TODO: producción — auditar endpoints, payloads, dedup de suscripciones, manejo de errores VAPID antes de usar en feature real.
 from fastapi import APIRouter, Depends
 
 from app.core.dependencies import get_current_user, get_tenant_id, require_role

@@ -12,8 +12,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { AppSidebar } from "@layouts/app-sidebar";
 import { useAuth } from "@shared/hooks/use-auth";
-import { GuidedTour } from "@shared/components/guided-tour/guided-tour";
-import { HelpButton } from "@shared/components/help-button/help-button";
 
 function getInitials(name: string): string {
   return name
@@ -67,8 +65,6 @@ export function AppLayout() {
           <Outlet />
         </main>
       </SidebarInset>
-      <GuidedTour />
-      <HelpButton />
     </SidebarProvider>
   );
 }

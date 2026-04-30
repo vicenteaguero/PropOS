@@ -1,3 +1,4 @@
+# TODO: producción — auditar endpoints, RLS, permisos antes de exponer en feature real.
 from typing import Any
 from uuid import UUID
 
