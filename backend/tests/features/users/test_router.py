@@ -3,7 +3,7 @@ from uuid import uuid4
 
 import pytest
 
-USERS_PATH = "/api/users"
+USERS_PATH = "/api/v1/users"
 MOCK_USER_ID = "11111111-1111-1111-1111-111111111111"
 MOCK_OTHER_USER_ID = str(uuid4())
 MOCK_TENANT_ID = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
