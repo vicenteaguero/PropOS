@@ -9,8 +9,13 @@ from app.core.config.settings import settings
 from app.core.logging.logger import configure_logging, get_logger
 from app.core.middleware.tenant import TenantMiddleware
 from app.core.middleware.timing import TimingMiddleware
-from app.features.users.router import router as users_router
+from app.features.contacts.router import router as contacts_router
+from app.features.documents.router import public_router as documents_public_router
+from app.features.documents.router import router as documents_router
+from app.features.internal_areas.router import router as internal_areas_router
 from app.features.notifications.router import router as notifications_router
+from app.features.properties.router import router as properties_router
+from app.features.users.router import router as users_router
 
 APP_TITLE = "PropOS API"
 APP_DESCRIPTION = "Real estate operations platform"
@@ -48,6 +53,11 @@ def create_app() -> FastAPI:
 
     application.include_router(users_router, prefix=API_PREFIX)
     application.include_router(notifications_router, prefix=API_PREFIX)
+    application.include_router(properties_router, prefix=API_PREFIX)
+    application.include_router(contacts_router, prefix=API_PREFIX)
+    application.include_router(internal_areas_router, prefix=API_PREFIX)
+    application.include_router(documents_router, prefix=API_PREFIX)
+    application.include_router(documents_public_router)
 
     @application.get(HEALTH_PATH)
     async def health_check() -> dict[str, str]:
