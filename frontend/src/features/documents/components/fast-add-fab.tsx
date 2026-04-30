@@ -12,7 +12,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@shared/hooks/use-auth";
-import { useAddAssignment, useCreateDocument } from "../hooks/use-documents";
+import { documentsApi } from "../api/documents-api";
+import { useCreateDocument } from "../hooks/use-documents";
 import {
   useContacts,
   useCreateDraftContact,
@@ -202,7 +203,6 @@ async function assignTo(
   kind: "PROPERTY" | "CONTACT",
   id: string,
 ): Promise<void> {
-  const { documentsApi } = await import("../api/documents-api");
   await documentsApi.addAssignment(documentId, {
     target_kind: kind,
     ...(kind === "PROPERTY" ? { property_id: id } : { contact_id: id }),
