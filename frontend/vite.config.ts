@@ -73,4 +73,32 @@ export default defineConfig({
       "@layouts": path.resolve(__dirname, "./src/layouts"),
     },
   },
+  build: {
+    chunkSizeWarningLimit: 1500,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          "vendor-react": [
+            "react",
+            "react-dom",
+            "react-router-dom",
+            "@tanstack/react-query",
+            "@tanstack/react-virtual",
+          ],
+          "vendor-supabase": ["@supabase/supabase-js"],
+          "vendor-pdf": ["pdf-lib", "react-pdf", "pdfjs-dist"],
+          "vendor-dnd": ["@dnd-kit/core", "@dnd-kit/sortable", "@dnd-kit/utilities"],
+          "vendor-misc": [
+            "browser-image-compression",
+            "qrcode.react",
+            "file-type",
+            "mammoth",
+            "idb",
+            "sonner",
+            "lucide-react",
+          ],
+        },
+      },
+    },
+  },
 });
