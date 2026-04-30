@@ -10,6 +10,7 @@ from app.features.contacts.schemas import (
     ContactCreate,
     ContactResponse,
     ContactUpdate,
+    PersonAliasResponse,
 )
 from app.features.contacts.service import ContactService
 
@@ -21,8 +22,18 @@ async def list_contacts(
     tenant_id: UUID = Depends(get_tenant_id),
     q: str | None = Query(default=None),
     include_drafts: bool = Query(default=True),
+    include_deleted: bool = Query(default=False),
 ) -> list[dict]:
-    return await ContactService.list_contacts(tenant_id, q, include_drafts)
+    return await ContactService.list_contacts(tenant_id, q, include_drafts, include_deleted)
+
+
+@router.get("/search", response_model=list[ContactResponse])
+async def search_contacts(
+    q: str = Query(...),
+    limit: int = Query(default=10, ge=1, le=50),
+    tenant_id: UUID = Depends(get_tenant_id),
+) -> list[dict]:
+    return await ContactService.search_fuzzy(tenant_id, q, limit)
 
 
 @router.get("/{contact_id}", response_model=ContactResponse)
@@ -59,3 +70,20 @@ async def delete_contact(
     tenant_id: UUID = Depends(get_tenant_id),
 ):
     await ContactService.delete_contact(contact_id, tenant_id)
+
+
+@router.get("/{contact_id}/aliases", response_model=list[PersonAliasResponse])
+async def list_aliases(
+    contact_id: UUID,
+    tenant_id: UUID = Depends(get_tenant_id),
+) -> list[dict]:
+    return await ContactService.list_aliases(contact_id, tenant_id)
+
+
+@router.post("/{contact_id}/aliases", response_model=PersonAliasResponse, status_code=201)
+async def add_alias(
+    contact_id: UUID,
+    alias: str,
+    tenant_id: UUID = Depends(get_tenant_id),
+) -> dict:
+    return await ContactService.add_alias(contact_id, tenant_id, alias)
