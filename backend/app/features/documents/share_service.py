@@ -11,6 +11,7 @@ from app.features.documents.passwords import hash_password, verify_password
 from app.features.documents.slugs import generate_slug
 
 SHARE_LINKS_TABLE = "share_links"
+SHARE_HISTORY_TABLE = "share_link_history"
 DOCUMENTS_TABLE = "documents"
 VERSIONS_TABLE = "document_versions"
 
@@ -19,6 +20,35 @@ logger = get_logger("SHARE")
 
 def _to_response(row: dict) -> dict:
     return {**row, "has_password": bool(row.get("password_hash"))}
+
+
+def _audit(
+    client,
+    share_link_id: str,
+    tenant_id: str,
+    prev_doc: str | None,
+    new_doc: str,
+    prev_version: str | None,
+    new_version: str | None,
+    changed_by: str | None,
+    reason: str | None = None,
+) -> None:
+    """Audit explícito (triggers DB no funcionan con service-role: auth.uid() NULL)."""
+    try:
+        client.table(SHARE_HISTORY_TABLE).insert(
+            {
+                "share_link_id": share_link_id,
+                "tenant_id": tenant_id,
+                "prev_document_id": prev_doc,
+                "new_document_id": new_doc,
+                "prev_version_id": prev_version,
+                "new_version_id": new_version,
+                "changed_by": changed_by,
+                "reason": reason,
+            }
+        ).execute()
+    except Exception:  # pragma: no cover
+        logger.error("share audit insert failed", link=share_link_id)
 
 
 class ShareService:
@@ -54,7 +84,19 @@ class ShareService:
             "created_by": str(created_by),
         }
         response = client.table(SHARE_LINKS_TABLE).insert(record).execute()
-        return _to_response(response.data[0])
+        row = response.data[0]
+        _audit(
+            client,
+            share_link_id=row["id"],
+            tenant_id=str(tenant_id),
+            prev_doc=None,
+            new_doc=row["document_id"],
+            prev_version=None,
+            new_version=row.get("pinned_version_id"),
+            changed_by=str(created_by),
+            reason="created",
+        )
+        return _to_response(row)
 
     @staticmethod
     async def list_share_links(tenant_id: UUID) -> list[dict]:
@@ -71,9 +113,10 @@ class ShareService:
 
     @staticmethod
     async def update_share_link(
-        link_id: UUID, tenant_id: UUID, payload
+        link_id: UUID, tenant_id: UUID, changed_by: UUID, payload
     ) -> dict:
         client = get_supabase_client()
+        prev = await ShareService.get_share_link(link_id, tenant_id)
         data = payload.model_dump(exclude_unset=True)
         clear = data.pop("clear_password", False)
         if "password" in data:
@@ -88,7 +131,7 @@ class ShareService:
         if "expires_at" in data and data["expires_at"] is not None:
             data["expires_at"] = data["expires_at"].isoformat()
         if not data:
-            return await ShareService.get_share_link(link_id, tenant_id)
+            return prev
         (
             client.table(SHARE_LINKS_TABLE)
             .update(data)
@@ -96,7 +139,22 @@ class ShareService:
             .eq("tenant_id", str(tenant_id))
             .execute()
         )
-        return await ShareService.get_share_link(link_id, tenant_id)
+        new_state = await ShareService.get_share_link(link_id, tenant_id)
+        if (
+            prev["document_id"] != new_state["document_id"]
+            or prev.get("pinned_version_id") != new_state.get("pinned_version_id")
+        ):
+            _audit(
+                client,
+                share_link_id=str(link_id),
+                tenant_id=str(tenant_id),
+                prev_doc=prev["document_id"],
+                new_doc=new_state["document_id"],
+                prev_version=prev.get("pinned_version_id"),
+                new_version=new_state.get("pinned_version_id"),
+                changed_by=str(changed_by),
+            )
+        return new_state
 
     @staticmethod
     async def get_share_link(link_id: UUID, tenant_id: UUID) -> dict:
@@ -189,16 +247,13 @@ class ShareService:
         )
         url = storage.signed_url(version["normalized_path"], 3600)
 
-        # Increment view_count (best-effort, no error si falla)
+        # Increment view_count atómicamente vía RPC (best-effort, evita races)
         try:
-            (
-                client.table(SHARE_LINKS_TABLE)
-                .update({"view_count": (row.get("view_count") or 0) + 1})
-                .eq("id", row["id"])
-                .execute()
-            )
+            client.rpc(
+                "increment_share_link_views", {"p_id": row["id"]}
+            ).execute()
         except Exception:  # pragma: no cover
-            pass
+            logger.warning("view_count increment failed", link_id=row["id"])
 
         return {
             "slug": slug,
