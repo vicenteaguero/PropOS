@@ -86,12 +86,10 @@ export function DocumentEditor({ initialBytes, onCancel, onSave }: Props) {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     return () => sources.forEach((s) => URL.revokeObjectURL(s.blobUrl));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const addPdf = async (file: File) => {
