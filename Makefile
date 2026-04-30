@@ -39,8 +39,13 @@ stop:
 	docker-compose down
 
 migrate:
-	@bash scripts/log.sh MAKE "🔄" "Running Supabase migrations"
-	supabase db push
+	@bash scripts/log.sh MAKE "🔄" "Running Supabase migrations (pooler URL)"
+	@if [ -z "$$SUPABASE_DB_PASSWORD" ]; then echo "ERROR: SUPABASE_DB_PASSWORD not in .env" && exit 1; fi
+	@POOLER_URL=$$(cat supabase/.temp/pooler-url 2>/dev/null); \
+		if [ -z "$$POOLER_URL" ]; then echo "ERROR: supabase/.temp/pooler-url missing — run 'supabase link' first" && exit 1; fi; \
+		ENC_PASS=$$(python3 -c "import urllib.parse,os;print(urllib.parse.quote(os.environ['SUPABASE_DB_PASSWORD'], safe=''))"); \
+		DB_URL=$$(echo "$$POOLER_URL" | sed "s|@|:$$ENC_PASS@|"); \
+		supabase db push --db-url "$$DB_URL" --yes
 
 seed:
 	@bash scripts/log.sh MAKE "📝" "Seeding dev data"
