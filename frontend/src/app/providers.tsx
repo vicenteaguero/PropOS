@@ -39,9 +39,9 @@ export function Providers({ children }: ProvidersProps) {
               theme="dark"
               toastOptions={{
                 style: {
-                  background: "#231F1C",
-                  border: "1px solid rgba(158, 158, 158, 0.2)",
-                  color: "#F9F6F4",
+                  background: "var(--card)",
+                  border: "1px solid var(--border)",
+                  color: "var(--card-foreground)",
                 },
               }}
             />
