@@ -106,7 +106,7 @@ async def update_document(
 async def delete_document(
     document_id: UUID,
     tenant_id: UUID = Depends(get_tenant_id),
-) -> None:
+):
     await DocumentService.soft_delete_document(document_id, tenant_id)
 
 
@@ -187,7 +187,7 @@ async def delete_assignment(
     document_id: UUID,
     assignment_id: UUID,
     tenant_id: UUID = Depends(get_tenant_id),
-) -> None:
+):
     await DocumentService.remove_assignment(assignment_id, tenant_id)
 
 
@@ -232,7 +232,7 @@ async def update_share_link(
 async def delete_share_link(
     link_id: UUID,
     tenant_id: UUID = Depends(get_tenant_id),
-) -> None:
+):
     await ShareService.delete_share_link(link_id, tenant_id)
 
 
@@ -296,7 +296,7 @@ async def update_portal(
 async def delete_portal(
     portal_id: UUID,
     tenant_id: UUID = Depends(get_tenant_id),
-) -> None:
+):
     await PortalService.delete_portal(portal_id, tenant_id)
 
 
@@ -334,7 +334,7 @@ async def reject_upload(
     upload_id: UUID,
     tenant_id: UUID = Depends(get_tenant_id),
     current_user: dict[str, Any] = Depends(get_current_user),
-) -> None:
+):
     await PortalService.reject_upload(
         upload_id, tenant_id, UUID(current_user["id"])
     )
