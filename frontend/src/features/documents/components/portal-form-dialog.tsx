@@ -38,7 +38,7 @@ export function PortalFormDialog({ open, onOpenChange }: Props) {
         password: accessMode === "PASSWORD" ? password || undefined : undefined,
         max_file_size_mb: maxMb,
       });
-      toast.success("Portal creado");
+      toast.success("Enlace creado");
       setTitle("");
       setDescription("");
       setPassword("");
@@ -52,7 +52,7 @@ export function PortalFormDialog({ open, onOpenChange }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Nuevo portal de subida</DialogTitle>
+          <DialogTitle>Nuevo enlace de subida</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div className="space-y-1">
@@ -100,7 +100,7 @@ export function PortalFormDialog({ open, onOpenChange }: Props) {
             />
           </div>
           <Button onClick={submit} disabled={create.isPending} className="w-full">
-            Crear portal
+            Crear enlace
           </Button>
         </div>
       </DialogContent>
