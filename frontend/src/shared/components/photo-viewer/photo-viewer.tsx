@@ -16,7 +16,7 @@ export function PhotoViewer({ open, onClose, slides, index = 0 }: PhotoViewerPro
       slides={slides}
       index={index}
       styles={{
-        container: { backgroundColor: "rgba(0, 0, 0, 0.9)" },
+        container: { backgroundColor: "color-mix(in srgb, var(--overlay) 90%, transparent)" },
       }}
       controller={{ closeOnBackdropClick: true }}
     />
