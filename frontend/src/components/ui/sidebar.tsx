@@ -318,7 +318,7 @@ function SidebarInset({
         <div
           data-slot="sidebar-backdrop"
           className={cn(
-            "absolute inset-0 z-50 bg-black/30 transition-opacity duration-300",
+            "absolute inset-0 z-50 bg-overlay/30 transition-opacity duration-300",
             openMobile
               ? "opacity-100"
               : "pointer-events-none opacity-0"
