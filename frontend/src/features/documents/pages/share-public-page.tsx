@@ -23,11 +23,6 @@ export function SharePublicPage() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`${window.location.origin.replace(window.location.port, "")}`); // noop placeholder
-      } catch {
-        /* noop */
-      }
-      try {
         const v = await shareLinksApi.resolvePublic(slug);
         if (cancelled) return;
         setView(v);
