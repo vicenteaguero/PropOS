@@ -1,0 +1,372 @@
+from __future__ import annotations
+
+from uuid import UUID, uuid4
+
+from fastapi import HTTPException, status
+
+from app.core.logging.logger import get_logger
+from app.core.supabase.client import get_supabase_client
+from app.features.documents import storage
+from app.features.documents.hashing import sha256_hex
+from app.features.documents.metadata import extract_pdf_metadata, strip_pdf_metadata
+from app.features.documents.stubs.scan import scan_file
+from app.features.documents.validation import (
+    kind_from_mime,
+    validate_upload,
+)
+
+DOCUMENTS_TABLE = "documents"
+VERSIONS_TABLE = "document_versions"
+ASSIGNMENTS_TABLE = "document_assignments"
+
+logger = get_logger("DOCUMENTS")
+
+
+class DocumentService:
+    @staticmethod
+    async def list_documents(
+        tenant_id: UUID,
+        contact_id: UUID | None = None,
+        property_id: UUID | None = None,
+        area_id: UUID | None = None,
+        query: str | None = None,
+    ) -> list[dict]:
+        client = get_supabase_client()
+        if contact_id or property_id or area_id:
+            assign_q = client.table(ASSIGNMENTS_TABLE).select("document_id").eq(
+                "tenant_id", str(tenant_id)
+            )
+            if contact_id:
+                assign_q = assign_q.eq("contact_id", str(contact_id))
+            if property_id:
+                assign_q = assign_q.eq("property_id", str(property_id))
+            if area_id:
+                assign_q = assign_q.eq("internal_area_id", str(area_id))
+            doc_ids = [row["document_id"] for row in assign_q.execute().data]
+            if not doc_ids:
+                return []
+            builder = (
+                client.table(DOCUMENTS_TABLE)
+                .select("*")
+                .eq("tenant_id", str(tenant_id))
+                .is_("deleted_at", "null")
+                .in_("id", doc_ids)
+            )
+        else:
+            builder = (
+                client.table(DOCUMENTS_TABLE)
+                .select("*")
+                .eq("tenant_id", str(tenant_id))
+                .is_("deleted_at", "null")
+            )
+        if query:
+            builder = builder.ilike("display_name", f"%{query}%")
+        builder = builder.order("sort_order").order("created_at", desc=True)
+        return builder.execute().data
+
+    @staticmethod
+    async def get_document(document_id: UUID, tenant_id: UUID) -> dict:
+        client = get_supabase_client()
+        doc_resp = (
+            client.table(DOCUMENTS_TABLE)
+            .select("*")
+            .eq("id", str(document_id))
+            .eq("tenant_id", str(tenant_id))
+            .single()
+            .execute()
+        )
+        if not doc_resp.data:
+            raise HTTPException(status_code=404, detail="Document not found")
+        doc = doc_resp.data
+        versions = (
+            client.table(VERSIONS_TABLE)
+            .select("*")
+            .eq("document_id", str(document_id))
+            .order("version_number", desc=True)
+            .execute()
+            .data
+        )
+        assignments = (
+            client.table(ASSIGNMENTS_TABLE)
+            .select("*")
+            .eq("document_id", str(document_id))
+            .execute()
+            .data
+        )
+        doc["versions"] = versions
+        doc["assignments"] = assignments
+        doc["current_version"] = next(
+            (v for v in versions if v["id"] == doc.get("current_version_id")),
+            None,
+        )
+        return doc
+
+    @staticmethod
+    async def create_document_with_first_version(
+        tenant_id: UUID,
+        created_by: UUID,
+        display_name: str,
+        origin: str,
+        content: bytes,
+        declared_mime: str | None,
+        original_filename: str | None,
+        download_filename: str | None = None,
+    ) -> dict:
+        mime = validate_upload(content, declared_mime)
+        kind = kind_from_mime(mime)
+
+        # Para PDFs aplicamos strip de metadata; resto se guarda tal cual.
+        original_metadata: dict[str, object] = {}
+        page_count: int | None = None
+        if mime == "application/pdf":
+            original_metadata, page_count = extract_pdf_metadata(content)
+            normalized_content = strip_pdf_metadata(content)
+            normalized_mime = "application/pdf"
+        else:
+            normalized_content = content
+            normalized_mime = mime
+
+        sha = sha256_hex(normalized_content)
+        ext = storage.ext_for_mime(mime)
+        document_id = str(uuid4())
+
+        raw = storage.raw_path(str(tenant_id), document_id, sha, ext)
+        norm = storage.normalized_path(str(tenant_id), document_id, sha)
+        storage.upload_object(raw, content, mime)
+        storage.upload_object(norm, normalized_content, normalized_mime)
+
+        scan_status = scan_file(content)
+
+        client = get_supabase_client()
+        doc_payload = {
+            "id": document_id,
+            "tenant_id": str(tenant_id),
+            "display_name": display_name,
+            "kind": kind,
+            "origin": origin,
+            "created_by": str(created_by),
+        }
+        client.table(DOCUMENTS_TABLE).insert(doc_payload).execute()
+
+        version_payload = {
+            "document_id": document_id,
+            "tenant_id": str(tenant_id),
+            "version_number": 1,
+            "raw_path": raw,
+            "normalized_path": norm,
+            "size_bytes": len(normalized_content),
+            "page_count": page_count,
+            "sha256": sha,
+            "mime_type": normalized_mime,
+            "original_filename": original_filename,
+            "original_metadata": original_metadata,
+            "download_filename": download_filename or display_name,
+            "scan_status": scan_status,
+            "created_by": str(created_by),
+        }
+        version_row = (
+            client.table(VERSIONS_TABLE).insert(version_payload).execute().data[0]
+        )
+
+        client.table(DOCUMENTS_TABLE).update(
+            {"current_version_id": version_row["id"]}
+        ).eq("id", document_id).execute()
+
+        return await DocumentService.get_document(UUID(document_id), tenant_id)
+
+    @staticmethod
+    async def add_version(
+        document_id: UUID,
+        tenant_id: UUID,
+        created_by: UUID,
+        content: bytes,
+        declared_mime: str | None,
+        original_filename: str | None,
+        notes: str | None = None,
+        download_filename: str | None = None,
+    ) -> dict:
+        client = get_supabase_client()
+        doc_resp = (
+            client.table(DOCUMENTS_TABLE)
+            .select("*")
+            .eq("id", str(document_id))
+            .eq("tenant_id", str(tenant_id))
+            .single()
+            .execute()
+        )
+        if not doc_resp.data:
+            raise HTTPException(status_code=404, detail="Document not found")
+
+        mime = validate_upload(content, declared_mime)
+        original_metadata: dict[str, object] = {}
+        page_count: int | None = None
+        if mime == "application/pdf":
+            original_metadata, page_count = extract_pdf_metadata(content)
+            normalized_content = strip_pdf_metadata(content)
+            normalized_mime = "application/pdf"
+        else:
+            normalized_content = content
+            normalized_mime = mime
+
+        sha = sha256_hex(normalized_content)
+        ext = storage.ext_for_mime(mime)
+
+        # dedup: misma sha = no crea nueva versión, actualiza current pointer
+        existing = (
+            client.table(VERSIONS_TABLE)
+            .select("*")
+            .eq("document_id", str(document_id))
+            .eq("sha256", sha)
+            .execute()
+            .data
+        )
+        if existing:
+            existing_v = existing[0]
+            client.table(DOCUMENTS_TABLE).update(
+                {"current_version_id": existing_v["id"]}
+            ).eq("id", str(document_id)).execute()
+            return await DocumentService.get_document(document_id, tenant_id)
+
+        last = (
+            client.table(VERSIONS_TABLE)
+            .select("version_number")
+            .eq("document_id", str(document_id))
+            .order("version_number", desc=True)
+            .limit(1)
+            .execute()
+            .data
+        )
+        next_number = (last[0]["version_number"] + 1) if last else 1
+
+        raw = storage.raw_path(str(tenant_id), str(document_id), sha, ext)
+        norm = storage.normalized_path(str(tenant_id), str(document_id), sha)
+        storage.upload_object(raw, content, mime)
+        storage.upload_object(norm, normalized_content, normalized_mime)
+
+        scan_status = scan_file(content)
+
+        version_payload = {
+            "document_id": str(document_id),
+            "tenant_id": str(tenant_id),
+            "version_number": next_number,
+            "raw_path": raw,
+            "normalized_path": norm,
+            "size_bytes": len(normalized_content),
+            "page_count": page_count,
+            "sha256": sha,
+            "mime_type": normalized_mime,
+            "original_filename": original_filename,
+            "original_metadata": original_metadata,
+            "download_filename": download_filename,
+            "scan_status": scan_status,
+            "notes": notes,
+            "created_by": str(created_by),
+        }
+        version_row = (
+            client.table(VERSIONS_TABLE).insert(version_payload).execute().data[0]
+        )
+        client.table(DOCUMENTS_TABLE).update(
+            {"current_version_id": version_row["id"]}
+        ).eq("id", str(document_id)).execute()
+
+        return await DocumentService.get_document(document_id, tenant_id)
+
+    @staticmethod
+    async def update_document(
+        document_id: UUID, tenant_id: UUID, payload
+    ) -> dict:
+        client = get_supabase_client()
+        data = payload.model_dump(exclude_unset=True)
+        if not data:
+            return await DocumentService.get_document(document_id, tenant_id)
+        (
+            client.table(DOCUMENTS_TABLE)
+            .update(data)
+            .eq("id", str(document_id))
+            .eq("tenant_id", str(tenant_id))
+            .execute()
+        )
+        return await DocumentService.get_document(document_id, tenant_id)
+
+    @staticmethod
+    async def set_current_version(
+        document_id: UUID, version_id: UUID, tenant_id: UUID
+    ) -> dict:
+        client = get_supabase_client()
+        version = (
+            client.table(VERSIONS_TABLE)
+            .select("id, document_id")
+            .eq("id", str(version_id))
+            .eq("document_id", str(document_id))
+            .eq("tenant_id", str(tenant_id))
+            .single()
+            .execute()
+            .data
+        )
+        if not version:
+            raise HTTPException(status_code=404, detail="Version not found")
+        client.table(DOCUMENTS_TABLE).update(
+            {"current_version_id": str(version_id)}
+        ).eq("id", str(document_id)).eq("tenant_id", str(tenant_id)).execute()
+        return await DocumentService.get_document(document_id, tenant_id)
+
+    @staticmethod
+    async def soft_delete_document(document_id: UUID, tenant_id: UUID) -> None:
+        client = get_supabase_client()
+        from datetime import datetime, timezone
+
+        (
+            client.table(DOCUMENTS_TABLE)
+            .update({"deleted_at": datetime.now(timezone.utc).isoformat()})
+            .eq("id", str(document_id))
+            .eq("tenant_id", str(tenant_id))
+            .execute()
+        )
+
+    @staticmethod
+    async def add_assignment(
+        document_id: UUID, tenant_id: UUID, payload
+    ) -> dict:
+        client = get_supabase_client()
+        data = payload.model_dump()
+        data["target_kind"] = data["target_kind"].value
+        data["document_id"] = str(document_id)
+        data["tenant_id"] = str(tenant_id)
+        for key in ("contact_id", "property_id", "internal_area_id"):
+            if data.get(key) is not None:
+                data[key] = str(data[key])
+        response = client.table(ASSIGNMENTS_TABLE).insert(data).execute()
+        return response.data[0]
+
+    @staticmethod
+    async def remove_assignment(assignment_id: UUID, tenant_id: UUID) -> None:
+        client = get_supabase_client()
+        (
+            client.table(ASSIGNMENTS_TABLE)
+            .delete()
+            .eq("id", str(assignment_id))
+            .eq("tenant_id", str(tenant_id))
+            .execute()
+        )
+
+    @staticmethod
+    async def get_version_signed_url(
+        version_id: UUID, tenant_id: UUID, expires_in: int = 3600
+    ) -> tuple[str, dict]:
+        client = get_supabase_client()
+        version = (
+            client.table(VERSIONS_TABLE)
+            .select("*")
+            .eq("id", str(version_id))
+            .eq("tenant_id", str(tenant_id))
+            .single()
+            .execute()
+            .data
+        )
+        if not version:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Version not found",
+            )
+        url = storage.signed_url(version["normalized_path"], expires_in)
+        return url, version
