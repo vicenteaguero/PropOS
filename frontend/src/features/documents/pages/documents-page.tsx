@@ -15,6 +15,7 @@ import { ViewModeToggle } from "../components/view-mode-toggle";
 import { DocumentsGrid } from "../components/documents-grid";
 import { DocumentsList } from "../components/documents-list";
 import { UploadDropzone } from "../components/upload-dropzone";
+import { FastAddFab } from "../components/fast-add-fab";
 import { useCreateDocument, useDocuments } from "../hooks/use-documents";
 import type { DocumentItem, ViewMode } from "../types";
 
@@ -87,7 +88,7 @@ export function DocumentsPage() {
         actions={
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={() => navigate(`/${role}/documents/portals`)}>
-              <Folder className="size-4" /> Portales
+              <Folder className="size-4" /> Enlaces de subida
             </Button>
             <Button size="sm" onClick={() => setUploadOpen(true)}>
               <Plus className="size-4" /> Nuevo
@@ -146,6 +147,8 @@ export function DocumentsPage() {
           <DocumentsList documents={data} onOpen={openDocument} />
         )
       )}
+
+      <FastAddFab />
 
       <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
         <DialogContent className="max-w-lg">
