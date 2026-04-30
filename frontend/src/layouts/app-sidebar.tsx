@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { LogOut } from "lucide-react";
+import { FileText, Folder, LogOut } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
   Sidebar,
@@ -25,10 +25,20 @@ export interface SidebarNavItem {
 }
 
 const NAV_ITEMS_BY_ROLE: Record<UserRole, SidebarNavItem[]> = {
-  ADMIN: [],
-  AGENT: [],
-  LANDOWNER: [],
-  BUYER: [],
+  ADMIN: [
+    { label: "Documentos", path: "/admin/documents", icon: FileText },
+    { label: "Portales", path: "/admin/documents/portals", icon: Folder },
+  ],
+  AGENT: [
+    { label: "Documentos", path: "/agent/documents", icon: FileText },
+    { label: "Portales", path: "/agent/documents/portals", icon: Folder },
+  ],
+  LANDOWNER: [
+    { label: "Documentos", path: "/landowner/documents", icon: FileText },
+  ],
+  BUYER: [
+    { label: "Documentos", path: "/buyer/documents", icon: FileText },
+  ],
   CONTENT: [],
 };
 
