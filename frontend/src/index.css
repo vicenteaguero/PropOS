@@ -36,6 +36,12 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-overlay: var(--overlay);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -72,6 +78,12 @@
   --accent: #F0D8DA;
   --accent-foreground: #1C1816;
   --destructive: #ef4444;
+  --destructive-foreground: #F9F6F4;
+  --success: #34d399;
+  --success-foreground: #1C1816;
+  --warning: #eab308;
+  --warning-foreground: #1C1816;
+  --overlay: #000000;
   --border: rgba(158, 158, 158, 0.2);
   --input: rgba(158, 158, 158, 0.2);
   --ring: #D4919B;
@@ -101,44 +113,44 @@
 
 /* driver.js brand overrides */
 .propos-tour-popover.driver-popover {
-  background-color: #231F1C;
-  color: #F9F6F4;
-  border: 1px solid rgba(158, 158, 158, 0.2);
+  background-color: var(--card);
+  color: var(--card-foreground);
+  border: 1px solid var(--border);
 }
 
 .propos-tour-popover .driver-popover-title {
-  color: #D4919B;
+  color: var(--primary);
   font-size: 1rem;
 }
 
 .propos-tour-popover .driver-popover-description {
-  color: #F9F6F4;
+  color: var(--card-foreground);
 }
 
 .propos-tour-popover .driver-popover-progress-text {
-  color: #9E9E9E;
+  color: var(--muted-foreground);
 }
 
 .propos-tour-popover .driver-popover-navigation-btns .driver-popover-next-btn {
-  background-color: #D4919B;
-  color: #1C1816;
+  background-color: var(--primary);
+  color: var(--primary-foreground);
   border: none;
   text-shadow: none;
 }
 
 .propos-tour-popover .driver-popover-navigation-btns .driver-popover-prev-btn {
-  color: #9E9E9E;
-  border: 1px solid rgba(158, 158, 158, 0.3);
+  color: var(--muted-foreground);
+  border: 1px solid var(--border);
   text-shadow: none;
 }
 
 .propos-tour-popover .driver-popover-close-btn {
-  color: #9E9E9E;
+  color: var(--muted-foreground);
 }
 
 .propos-tour-popover .driver-popover-arrow-side-left .driver-popover-arrow,
 .propos-tour-popover .driver-popover-arrow-side-right .driver-popover-arrow,
 .propos-tour-popover .driver-popover-arrow-side-top .driver-popover-arrow,
 .propos-tour-popover .driver-popover-arrow-side-bottom .driver-popover-arrow {
-  border-color: #231F1C;
+  border-color: var(--card);
 }
