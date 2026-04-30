@@ -82,6 +82,7 @@ class DocumentService:
             client.table(VERSIONS_TABLE)
             .select("*")
             .eq("document_id", str(document_id))
+            .eq("tenant_id", str(tenant_id))
             .order("version_number", desc=True)
             .execute()
             .data
@@ -90,6 +91,7 @@ class DocumentService:
             client.table(ASSIGNMENTS_TABLE)
             .select("*")
             .eq("document_id", str(document_id))
+            .eq("tenant_id", str(tenant_id))
             .execute()
             .data
         )
@@ -146,8 +148,7 @@ class DocumentService:
             "origin": origin,
             "created_by": str(created_by),
         }
-        client.table(DOCUMENTS_TABLE).insert(doc_payload).execute()
-
+        ocr_status = "skipped" if mime != "application/pdf" else "pending"
         version_payload = {
             "document_id": document_id,
             "tenant_id": str(tenant_id),
@@ -162,15 +163,26 @@ class DocumentService:
             "original_metadata": original_metadata,
             "download_filename": download_filename or display_name,
             "scan_status": scan_status,
+            "ocr_status": ocr_status,
             "created_by": str(created_by),
         }
-        version_row = (
-            client.table(VERSIONS_TABLE).insert(version_payload).execute().data[0]
-        )
 
-        client.table(DOCUMENTS_TABLE).update(
-            {"current_version_id": version_row["id"]}
-        ).eq("id", document_id).execute()
+        try:
+            client.table(DOCUMENTS_TABLE).insert(doc_payload).execute()
+            version_row = (
+                client.table(VERSIONS_TABLE).insert(version_payload).execute().data[0]
+            )
+            client.table(DOCUMENTS_TABLE).update(
+                {"current_version_id": version_row["id"]}
+            ).eq("id", document_id).execute()
+        except Exception:
+            # Cleanup orphaned blobs si falla DB insert
+            for path in (raw, norm):
+                try:
+                    storage.delete_object(path)
+                except Exception:
+                    logger.error("orphan cleanup failed", path=path)
+            raise
 
         return await DocumentService.get_document(UUID(document_id), tenant_id)
 
@@ -216,6 +228,7 @@ class DocumentService:
             client.table(VERSIONS_TABLE)
             .select("*")
             .eq("document_id", str(document_id))
+            .eq("tenant_id", str(tenant_id))
             .eq("sha256", sha)
             .execute()
             .data
@@ -231,6 +244,7 @@ class DocumentService:
             client.table(VERSIONS_TABLE)
             .select("version_number")
             .eq("document_id", str(document_id))
+            .eq("tenant_id", str(tenant_id))
             .order("version_number", desc=True)
             .limit(1)
             .execute()
@@ -244,7 +258,7 @@ class DocumentService:
         storage.upload_object(norm, normalized_content, normalized_mime)
 
         scan_status = scan_file(content)
-
+        ocr_status = "skipped" if mime != "application/pdf" else "pending"
         version_payload = {
             "document_id": str(document_id),
             "tenant_id": str(tenant_id),
@@ -259,15 +273,24 @@ class DocumentService:
             "original_metadata": original_metadata,
             "download_filename": download_filename,
             "scan_status": scan_status,
+            "ocr_status": ocr_status,
             "notes": notes,
             "created_by": str(created_by),
         }
-        version_row = (
-            client.table(VERSIONS_TABLE).insert(version_payload).execute().data[0]
-        )
-        client.table(DOCUMENTS_TABLE).update(
-            {"current_version_id": version_row["id"]}
-        ).eq("id", str(document_id)).execute()
+        try:
+            version_row = (
+                client.table(VERSIONS_TABLE).insert(version_payload).execute().data[0]
+            )
+            client.table(DOCUMENTS_TABLE).update(
+                {"current_version_id": version_row["id"]}
+            ).eq("id", str(document_id)).execute()
+        except Exception:
+            for path in (raw, norm):
+                try:
+                    storage.delete_object(path)
+                except Exception:
+                    logger.error("orphan cleanup failed", path=path)
+            raise
 
         return await DocumentService.get_document(document_id, tenant_id)
 
