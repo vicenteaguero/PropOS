@@ -1,3 +1,4 @@
+// TODO: producción — refactor cuando una feature real consuma media uploads (revisar RLS, paths por tenant, garbage collection).
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@core/supabase/client";
 import { useAuth } from "@shared/hooks/use-auth";

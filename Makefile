@@ -1,7 +1,7 @@
 include .env
 export
 
-.PHONY: setup dev stop build migrate seed lint test clean logs backend-shell db-studio gcloud-auth deploy-backend-setup deploy-backend deploy-backend-verify deploy-frontend
+.PHONY: setup dev dev-frontend dev-pwa dev-pwa-hmr stop build migrate seed lint test clean logs backend-shell db-studio gcloud-auth deploy-backend-setup deploy-backend deploy-backend-verify deploy-frontend
 
 setup:
 	@bash scripts/setup.sh
@@ -10,6 +10,30 @@ dev:
 	@bash scripts/log.sh MAKE "🚀" "Starting PropOS dev environment"
 	@bash scripts/check_env.sh
 	docker-compose up --build
+
+dev-frontend:
+	@bash scripts/log.sh MAKE "⚡" "Starting Vite dev (HMR, no service worker)"
+	@LAN_IP=$$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || echo "<your-mac-ip>"); \
+		bash scripts/log.sh MAKE "📱" "iPhone same Wi-Fi: http://$$LAN_IP:5173"
+	cd frontend && npm run dev -- --host 0.0.0.0 --port 5173
+
+dev-pwa:
+	@bash scripts/log.sh MAKE "📦" "Building frontend with PWA service worker"
+	cd frontend && npm run build
+	@LAN_IP=$$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || echo "<your-mac-ip>"); \
+		bash scripts/log.sh MAKE "📱" "iPhone same Wi-Fi: http://$$LAN_IP:4173 (installable PWA)"
+	cd frontend && npm run preview -- --host 0.0.0.0 --port 4173
+
+dev-pwa-hmr:
+	@bash scripts/log.sh MAKE "⚡" "Backend (:8000) + Vite (:5173) + HTTPS proxy (:5443) — PWA + HMR"
+	@LAN_IP=$$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || echo "<your-mac-ip>"); \
+		bash scripts/log.sh MAKE "💻" "Mac:    https://localhost:5443"; \
+		bash scripts/log.sh MAKE "📱" "iPhone: https://$$LAN_IP:5443 (same Wi-Fi, root cert trusted)"
+	@cd backend && poetry install --quiet 2>/dev/null || true
+	cd frontend && VITE_DEV_PWA=true npx concurrently -k -n api,vite,https -c blue,green,magenta \
+		"cd ../backend && poetry run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload" \
+		"npm run dev -- --host 0.0.0.0 --port 5173" \
+		"npx local-ssl-proxy --source 5443 --target 5173 --hostname 0.0.0.0 --cert .certs/dev-cert.pem --key .certs/dev-key.pem"
 
 stop:
 	docker-compose down

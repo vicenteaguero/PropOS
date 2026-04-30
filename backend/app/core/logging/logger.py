@@ -31,6 +31,13 @@ def configure_logging(log_level: str = "debug") -> None:
         format="%(message)s",
         level=numeric_level,
     )
+    for noisy in (
+        "hpack", "hpack.hpack", "hpack.table",
+        "h2", "h2.connection", "h2.stream",
+        "httpx", "httpcore", "httpcore.http2", "httpcore.connection",
+        "watchfiles", "watchfiles.main",
+    ):
+        logging.getLogger(noisy).setLevel(logging.WARNING)
     structlog.configure(
         processors=[
             structlog.contextvars.merge_contextvars,

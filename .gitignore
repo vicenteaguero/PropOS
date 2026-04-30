@@ -211,6 +211,8 @@ node_modules/
 .DS_Store
 *.tsbuildinfo
 .vscode/
+.claude/
 backend/data/
 config/docker/cloudrun-env.yaml
 supabase/.temp/
+frontend/.certs/

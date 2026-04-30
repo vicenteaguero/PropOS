@@ -4,7 +4,10 @@ import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
 import path from "path";
 
+const devPwa = process.env.VITE_DEV_PWA === "true";
+
 export default defineConfig({
+  envDir: "../",
   plugins: [
     react(),
     tailwindcss(),
@@ -32,23 +35,24 @@ export default defineConfig({
       workbox: {
         skipWaiting: true,
         clientsClaim: true,
-        runtimeCaching: [
-          {
-            urlPattern: /\/api\/.*/,
-            handler: "NetworkFirst",
-          },
-          {
-            urlPattern: /\.(js|css|png|jpg|svg)$/,
-            handler: "CacheFirst",
-          },
-        ],
+        runtimeCaching: devPwa
+          ? [{ urlPattern: /.*/, handler: "NetworkOnly" }]
+          : [
+              { urlPattern: /\/api\/.*/, handler: "NetworkFirst" },
+              { urlPattern: /\.(js|css|png|jpg|svg)$/, handler: "CacheFirst" },
+            ],
+        navigateFallback: devPwa ? null : undefined,
       },
     }),
   ],
   server: {
-    hmr: true,
+    hmr: { clientPort: devPwa ? 5443 : undefined },
     host: "0.0.0.0",
     port: 5173,
+    proxy: {
+      "/api": { target: "http://127.0.0.1:8000", changeOrigin: true },
+      "/health": { target: "http://127.0.0.1:8000", changeOrigin: true },
+    },
   },
   resolve: {
     alias: {

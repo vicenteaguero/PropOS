@@ -1,3 +1,4 @@
+// TODO: producción — refactor genérico OK pero tipado/contrato del payload requiere validación cuando se use en feature real.
 import { useState, useEffect, useCallback } from "react";
 import { subscribeToTable, unsubscribeFromChannel } from "@core/supabase/realtime";
 import { createLogger } from "@core/logging/logger";

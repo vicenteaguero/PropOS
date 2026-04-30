@@ -1,3 +1,4 @@
+// TODO: producción — refactor cuando se conecte a feature real (revisar VAPID flow, error handling, retry, suscripción dedup).
 import { useState, useCallback, useEffect } from "react";
 
 type PermissionState = NotificationPermission | "unsupported";
