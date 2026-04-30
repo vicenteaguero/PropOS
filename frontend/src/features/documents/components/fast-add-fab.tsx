@@ -23,7 +23,7 @@ import {
 import { CameraCaptureDocument } from "./camera-capture-document";
 import { UploadDropzone } from "./upload-dropzone";
 
-export function FastAddFab() {
+function useFastAdd() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const role = user?.role.toLowerCase() ?? "agent";
@@ -31,7 +31,6 @@ export function FastAddFab() {
   const [open, setOpen] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
-  const [cameraOrigin, setCameraOrigin] = useState(false);
   const [displayName, setDisplayName] = useState("");
   const [propertyTitle, setPropertyTitle] = useState("");
   const [contactName, setContactName] = useState("");
@@ -45,7 +44,6 @@ export function FastAddFab() {
 
   const reset = () => {
     setPendingFile(null);
-    setCameraOrigin(false);
     setDisplayName("");
     setPropertyTitle("");
     setContactName("");
@@ -53,17 +51,27 @@ export function FastAddFab() {
 
   const handleSelectFile = (file: File) => {
     setPendingFile(file);
-    setCameraOrigin(false);
     setDisplayName(file.name.replace(/\.[^/.]+$/, ""));
   };
 
-  const handleCameraPdf = (bytes: Uint8Array) => {
+  // Camera flow: skip "Documento rápido" modal — submit directly.
+  const handleCameraPdf = async (bytes: Uint8Array) => {
     const file = new File([bytes], `escaneo-${Date.now()}.pdf`, {
       type: "application/pdf",
     });
-    setPendingFile(file);
-    setCameraOrigin(true);
-    setDisplayName(`Escaneo ${new Date().toLocaleDateString("es-CL")}`);
+    const name = `Escaneo ${new Date().toLocaleDateString("es-CL")}`;
+    setOpen(false);
+    reset();
+    setBusy(true);
+    try {
+      const doc = await create.mutateAsync({ file, displayName: name, origin: "CAMERA" });
+      toast.success("Documento agregado");
+      navigate(`/${role}/documents/${doc.id}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error");
+    } finally {
+      setBusy(false);
+    }
   };
 
   const submit = async () => {
@@ -77,11 +85,10 @@ export function FastAddFab() {
       const doc = await create.mutateAsync({
         file: pendingFile,
         displayName,
-        origin: cameraOrigin ? "CAMERA" : "UPLOAD",
+        origin: "UPLOAD",
       });
       createdDocId = doc.id;
 
-      // Assignments en paralelo. Si alguno falla, soft-delete del doc para no orphanar.
       const assignments: Promise<unknown>[] = [];
       if (propertyTitle.trim()) {
         const matchingProp = properties.find(
@@ -106,7 +113,6 @@ export function FastAddFab() {
       setOpen(false);
       navigate(`/${role}/documents/${doc.id}`);
     } catch (e) {
-      // Rollback: si doc creado pero assignment falló, soft-delete
       if (createdDocId) {
         documentsApi.remove(createdDocId).catch(() => undefined);
       }
@@ -116,21 +122,59 @@ export function FastAddFab() {
     }
   };
 
+  return {
+    open,
+    setOpen: (o: boolean) => {
+      setOpen(o);
+      if (!o) reset();
+    },
+    cameraOpen,
+    setCameraOpen,
+    pendingFile,
+    setPendingFile,
+    displayName,
+    setDisplayName,
+    propertyTitle,
+    setPropertyTitle,
+    contactName,
+    setContactName,
+    properties,
+    contacts,
+    busy,
+    submit,
+    handleSelectFile,
+    handleCameraPdf,
+  };
+}
+
+function FastAddDialogBody(state: ReturnType<typeof useFastAdd>) {
+  const {
+    open,
+    setOpen,
+    cameraOpen,
+    setCameraOpen,
+    pendingFile,
+    setPendingFile,
+    displayName,
+    setDisplayName,
+    propertyTitle,
+    setPropertyTitle,
+    contactName,
+    setContactName,
+    properties,
+    contacts,
+    busy,
+    submit,
+    handleSelectFile,
+    handleCameraPdf,
+  } = state;
+
   return (
     <>
-      <Button
-        size="icon"
-        onClick={() => setOpen(true)}
-        className="fixed bottom-6 right-6 z-30 h-14 w-14 rounded-full shadow-lg shadow-primary/30 md:bottom-8 md:right-8"
-        aria-label="Agregar rápido"
-      >
-        <Plus className="size-6" />
-      </Button>
-
-      <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) reset(); }}>
+      <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Documento rápido</DialogTitle>
+            <DialogTitle>Nuevo documento</DialogTitle>
           </DialogHeader>
 
           {!pendingFile && (
@@ -138,7 +182,10 @@ export function FastAddFab() {
               <Button
                 variant="secondary"
                 className="w-full"
-                onClick={() => setCameraOpen(true)}
+                onClick={() => {
+                  setOpen(false);
+                  setCameraOpen(true);
+                }}
               >
                 <Camera className="size-4" /> Escanear con cámara
               </Button>
@@ -209,6 +256,47 @@ export function FastAddFab() {
           handleCameraPdf(bytes);
         }}
       />
+    </>
+  );
+}
+
+export function FastAddFab() {
+  const state = useFastAdd();
+  return (
+    <>
+      <Button
+        size="icon"
+        onClick={() => state.setOpen(true)}
+        className="fixed bottom-6 right-6 z-30 h-14 w-14 rounded-full shadow-lg shadow-primary/30 md:bottom-8 md:right-8"
+        aria-label="Agregar documento"
+      >
+        <Plus className="size-6" />
+      </Button>
+      <FastAddDialogBody {...state} />
+    </>
+  );
+}
+
+export function AddDocumentCard() {
+  const state = useFastAdd();
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => state.setOpen(true)}
+        className="group flex w-full items-center gap-4 rounded-xl border border-border bg-card p-5 text-left transition hover:border-primary/50 hover:bg-card/80"
+      >
+        <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary transition group-hover:bg-primary/20">
+          <Plus className="size-6" />
+        </span>
+        <span className="flex-1">
+          <span className="block text-base font-semibold text-foreground">Añadir documento</span>
+          <span className="block text-sm text-muted-foreground">
+            Sube un archivo o escanea con la cámara
+          </span>
+        </span>
+      </button>
+      <FastAddDialogBody {...state} />
     </>
   );
 }
