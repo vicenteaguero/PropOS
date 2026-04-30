@@ -1,13 +1,15 @@
-import { Hammer } from "lucide-react";
+import { AddDocumentCard } from "@features/documents/components/fast-add-fab";
 
 export function EmptyDashboard() {
   return (
-    <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 px-4 text-center">
-      <Hammer className="size-14 text-primary/40" strokeWidth={1.25} />
-      <h2 className="text-lg font-semibold text-foreground">Construyendo</h2>
-      <p className="max-w-sm text-sm text-muted-foreground">
-        Las features reales se conectarán aquí pronto.
-      </p>
+    <div className="container mx-auto max-w-3xl px-4 py-8">
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold text-foreground">Inicio</h1>
+        <p className="text-sm text-muted-foreground">Empieza por aquí.</p>
+      </div>
+      <div className="grid gap-3">
+        <AddDocumentCard />
+      </div>
     </div>
   );
 }
