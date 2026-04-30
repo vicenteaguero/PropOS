@@ -71,7 +71,7 @@ async def test_agent_can_create_property(mock_client):
     client = await _client_for_role("AGENT")
     async with client:
         response = await client.post(
-            "/api/properties", json={"title": "Agent Property"}
+            "/api/v1/properties", json={"title": "Agent Property"}
         )
         assert response.status_code == 201
 
@@ -84,7 +84,7 @@ async def test_agent_can_list_properties(mock_client):
 
     client = await _client_for_role("AGENT")
     async with client:
-        response = await client.get("/api/properties")
+        response = await client.get("/api/v1/properties")
         assert response.status_code == 200
 
 
@@ -96,7 +96,7 @@ async def test_agent_can_list_contacts(mock_client):
 
     client = await _client_for_role("AGENT")
     async with client:
-        response = await client.get("/api/contacts")
+        response = await client.get("/api/v1/contacts")
         assert response.status_code == 200
 
 
@@ -112,7 +112,7 @@ async def test_admin_can_delete_property(mock_client):
     client = await _client_for_role("ADMIN")
     async with client:
         response = await client.delete(
-            "/api/properties/00000000-0000-0000-0000-000000000001"
+            "/api/v1/properties/00000000-0000-0000-0000-000000000001"
         )
         assert response.status_code == 204
 
@@ -124,7 +124,7 @@ async def test_admin_can_delete_property(mock_client):
 async def test_agent_cannot_list_users():
     client = await _client_for_role("AGENT")
     async with client:
-        response = await client.get("/api/users")
+        response = await client.get("/api/v1/users")
         assert response.status_code == 403
 
 
@@ -132,7 +132,7 @@ async def test_agent_cannot_list_users():
 async def test_buyer_cannot_list_users():
     client = await _client_for_role("BUYER")
     async with client:
-        response = await client.get("/api/users")
+        response = await client.get("/api/v1/users")
         assert response.status_code == 403
 
 
@@ -141,7 +141,7 @@ async def test_landowner_cannot_create_user():
     client = await _client_for_role("LANDOWNER")
     async with client:
         response = await client.post(
-            "/api/users", json={"full_name": "Nope", "role": "AGENT"}
+            "/api/v1/users", json={"full_name": "Nope", "role": "AGENT"}
         )
         assert response.status_code == 403
 
@@ -151,7 +151,7 @@ async def test_content_cannot_delete_user():
     client = await _client_for_role("CONTENT")
     async with client:
         response = await client.delete(
-            "/api/users/00000000-0000-0000-0000-000000000001"
+            "/api/v1/users/00000000-0000-0000-0000-000000000001"
         )
         assert response.status_code == 403
 
@@ -164,7 +164,7 @@ async def test_buyer_cannot_send_notification():
     client = await _client_for_role("BUYER")
     async with client:
         response = await client.post(
-            "/api/notifications/send", json={"body": "test"}
+            "/api/v1/notifications/send", json={"body": "test"}
         )
         assert response.status_code == 403
 
@@ -174,6 +174,6 @@ async def test_agent_cannot_send_notification():
     client = await _client_for_role("AGENT")
     async with client:
         response = await client.post(
-            "/api/notifications/send", json={"body": "test"}
+            "/api/v1/notifications/send", json={"body": "test"}
         )
         assert response.status_code == 403
