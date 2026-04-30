@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import {
   ArrowLeft,
   Download,
+  FileQuestion,
   History,
   Pencil,
   Share2,
@@ -61,9 +62,33 @@ export function DocumentDetailPage() {
     );
   }
   if (error || !doc) {
+    const isNotFound =
+      !error ||
+      (error instanceof Error &&
+        /404|not found|no encontrado/i.test(error.message));
     return (
-      <div className="container mx-auto max-w-4xl px-4 py-6 text-sm text-destructive">
-        Error: {error instanceof Error ? error.message : "Documento no encontrado"}
+      <div className="container mx-auto flex max-w-2xl flex-col items-center justify-center gap-4 px-4 py-16 text-center">
+        <FileQuestion className="size-14 text-muted-foreground/50" strokeWidth={1.25} />
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">
+            {isNotFound ? "Documento no encontrado" : "No se pudo cargar"}
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {isNotFound
+              ? "Es posible que se haya eliminado o que el enlace sea incorrecto."
+              : error instanceof Error
+                ? error.message
+                : "Error al cargar el documento."}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
+            <ArrowLeft className="size-4" /> Volver
+          </Button>
+          <Button size="sm" onClick={() => navigate(`/${role}/documents`)}>
+            Ir a documentos
+          </Button>
+        </div>
       </div>
     );
   }
