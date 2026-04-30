@@ -77,7 +77,7 @@ export function PortalPublicPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-4">
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-6 text-sm text-destructive">
-          {error ?? "Portal no disponible"}
+          {error ?? "Enlace no disponible"}
         </div>
       </div>
     );
@@ -87,7 +87,7 @@ export function PortalPublicPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-4">
         <div className="w-full max-w-md space-y-4 rounded-lg border border-border bg-card p-6 text-center">
-          <Check className="mx-auto size-12 text-emerald-400" />
+          <Check className="mx-auto size-12 text-success" />
           <h2 className="text-lg font-semibold">Documento recibido</h2>
           <p className="text-sm text-muted-foreground">
             El equipo lo revisará y procesará. Gracias.
