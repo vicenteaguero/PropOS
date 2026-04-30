@@ -29,9 +29,29 @@ class TestDetectMime:
         # RIFF without WEBP marker → falls through to next match (DOCX/zip would not match RIFF)
         assert detect_mime(b"RIFF\x00\x00\x00\x00WAVE") is None
 
-    def test_docx(self):
-        # PK\x03\x04 zip header — treated as DOCX in this whitelist
-        assert detect_mime(b"PK\x03\x04rest") == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    def test_docx_valid(self):
+        import io
+        import zipfile
+
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as zf:
+            zf.writestr("[Content_Types].xml", "<xml/>")
+            zf.writestr("word/document.xml", "<doc/>")
+        assert (
+            detect_mime(buf.getvalue())
+            == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
+
+    def test_zip_jar_rejected_as_not_docx(self):
+        # ZIP arbitrario (e.g. JAR) sin estructura DOCX → no debe ser aceptado
+        import io
+        import zipfile
+
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as zf:
+            zf.writestr("META-INF/MANIFEST.MF", "Manifest-Version: 1.0\n")
+            zf.writestr("Main.class", b"\xca\xfe\xba\xbe")
+        assert detect_mime(buf.getvalue()) is None
 
     def test_unknown(self):
         assert detect_mime(b"random garbage bytes here") is None
