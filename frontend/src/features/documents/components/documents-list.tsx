@@ -29,6 +29,7 @@ export function DocumentsList({ documents, onOpen }: Props) {
       >
         {virtualizer.getVirtualItems().map((vrow) => {
           const doc = documents[vrow.index];
+          if (!doc) return null;
           return (
             <button
               type="button"
