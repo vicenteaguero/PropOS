@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { FileText, Folder, LogOut } from "lucide-react";
+import { FileText, Folder, Home, LogOut } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
   Sidebar,
@@ -22,24 +22,31 @@ export interface SidebarNavItem {
   label: string;
   path: string;
   icon: LucideIcon;
+  end?: boolean;
 }
 
 const NAV_ITEMS_BY_ROLE: Record<UserRole, SidebarNavItem[]> = {
   ADMIN: [
+    { label: "Inicio", path: "/admin", icon: Home, end: true },
     { label: "Documentos", path: "/admin/documents", icon: FileText },
-    { label: "Portales", path: "/admin/documents/portals", icon: Folder },
+    { label: "Enlaces de subida", path: "/admin/documents/portals", icon: Folder },
   ],
   AGENT: [
+    { label: "Inicio", path: "/agent", icon: Home, end: true },
     { label: "Documentos", path: "/agent/documents", icon: FileText },
-    { label: "Portales", path: "/agent/documents/portals", icon: Folder },
+    { label: "Enlaces de subida", path: "/agent/documents/portals", icon: Folder },
   ],
   LANDOWNER: [
+    { label: "Inicio", path: "/landowner", icon: Home, end: true },
     { label: "Documentos", path: "/landowner/documents", icon: FileText },
   ],
   BUYER: [
+    { label: "Inicio", path: "/buyer", icon: Home, end: true },
     { label: "Documentos", path: "/buyer/documents", icon: FileText },
   ],
-  CONTENT: [],
+  CONTENT: [
+    { label: "Inicio", path: "/content", icon: Home, end: true },
+  ],
 };
 
 export function getNavItemsForRole(role: UserRole): SidebarNavItem[] {
@@ -51,7 +58,7 @@ export function AppSidebar() {
   const { state, setOpenMobile, isMobile } = useSidebar();
   const { data: health } = useHealthCheck();
   const healthStatus = health?.status ?? "down";
-  const healthColor = healthStatus === "healthy" ? "bg-emerald-500" : healthStatus === "degraded" ? "bg-yellow-500" : "bg-red-500";
+  const healthColor = healthStatus === "healthy" ? "bg-success" : healthStatus === "degraded" ? "bg-warning" : "bg-destructive";
   const healthLabel = healthStatus === "healthy" ? "API conectada" : healthStatus === "degraded" ? "API lenta" : "API sin conexión";
 
   if (!user) return null;
@@ -83,6 +90,7 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild tooltip={item.label}>
                     <NavLink
                       to={item.path}
+                      end={item.end}
                       onClick={() => {
                         if (isMobile) setOpenMobile(false);
                       }}
