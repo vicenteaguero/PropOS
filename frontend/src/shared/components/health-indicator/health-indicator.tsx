@@ -6,9 +6,9 @@ import {
 } from "@/components/ui/tooltip";
 
 const STATUS_CONFIG = {
-  healthy: { color: "bg-emerald-500", label: "API conectada" },
-  degraded: { color: "bg-yellow-500", label: "API lenta" },
-  down: { color: "bg-red-500", label: "API sin conexion" },
+  healthy: { color: "bg-success", label: "API conectada" },
+  degraded: { color: "bg-warning", label: "API lenta" },
+  down: { color: "bg-destructive", label: "API sin conexion" },
 } as const;
 
 export function HealthIndicator() {
