@@ -30,7 +30,6 @@ export function CameraCapture({ onSaved }: CameraCaptureProps) {
       stopCamera();
       clearPhoto();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   function handleFlip() {
