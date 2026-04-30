@@ -35,10 +35,19 @@ export default defineConfig({
       workbox: {
         skipWaiting: true,
         clientsClaim: true,
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         runtimeCaching: devPwa
           ? [{ urlPattern: /.*/, handler: "NetworkOnly" }]
           : [
               { urlPattern: /\/api\/.*/, handler: "NetworkFirst" },
+              {
+                urlPattern: /\/storage\/v1\/object\/sign\/documents\//,
+                handler: "NetworkFirst",
+                options: {
+                  cacheName: "documents-signed",
+                  expiration: { maxEntries: 200, maxAgeSeconds: 3600 },
+                },
+              },
               { urlPattern: /\.(js|css|png|jpg|svg)$/, handler: "CacheFirst" },
             ],
         navigateFallback: devPwa ? null : undefined,
