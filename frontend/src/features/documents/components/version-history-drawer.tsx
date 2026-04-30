@@ -43,7 +43,7 @@ export function VersionHistoryDrawer({
                   <div className="flex items-center justify-between">
                     <div className="font-semibold">v{v.version_number}</div>
                     {isCurrent && (
-                      <span className="flex items-center gap-1 text-xs text-emerald-400">
+                      <span className="flex items-center gap-1 text-xs text-success">
                         <Check className="size-3" /> Actual
                       </span>
                     )}
