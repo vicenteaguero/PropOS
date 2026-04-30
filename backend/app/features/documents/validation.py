@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import io
+import zipfile
+
 from fastapi import HTTPException, status
 
 MAX_FILE_BYTES = 50 * 1024 * 1024  # 50 MB hard cap
@@ -12,15 +15,27 @@ ALLOWED_MIME = {
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 }
 
+DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+
 # (signature_bytes, offset, mime_type) — primer match gana
 MAGIC_SIGNATURES: list[tuple[bytes, int, str]] = [
     (b"%PDF-", 0, "application/pdf"),
     (b"\xff\xd8\xff", 0, "image/jpeg"),
     (b"\x89PNG\r\n\x1a\n", 0, "image/png"),
     (b"RIFF", 0, "image/webp"),  # WebP empieza con RIFF; verificamos WEBP en offset 8
-    # DOCX = ZIP container, signature PK\x03\x04. Verificación adicional via mimetype interno
-    (b"PK\x03\x04", 0, "application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
+    # DOCX = ZIP container PK\x03\x04. Verificamos contenido [Content_Types].xml + word/document.xml
+    (b"PK\x03\x04", 0, DOCX_MIME),
 ]
+
+
+def _looks_like_docx(content: bytes) -> bool:
+    """Verifica que un ZIP es realmente DOCX (no JAR/APK/ZIP arbitrario)."""
+    try:
+        with zipfile.ZipFile(io.BytesIO(content)) as zf:
+            names = set(zf.namelist())
+            return "[Content_Types].xml" in names and "word/document.xml" in names
+    except (zipfile.BadZipFile, KeyError, OSError):
+        return False
 
 
 def detect_mime(content: bytes) -> str | None:
@@ -29,6 +44,8 @@ def detect_mime(content: bytes) -> str | None:
             if mime == "image/webp":
                 if content[8:12] != b"WEBP":
                     continue
+            if mime == DOCX_MIME and not _looks_like_docx(content):
+                continue
             return mime
     return None
 
