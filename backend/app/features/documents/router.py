@@ -224,8 +224,11 @@ async def update_share_link(
     link_id: UUID,
     payload: ShareLinkUpdate,
     tenant_id: UUID = Depends(get_tenant_id),
+    current_user: dict[str, Any] = Depends(get_current_user),
 ) -> dict:
-    return await ShareService.update_share_link(link_id, tenant_id, payload)
+    return await ShareService.update_share_link(
+        link_id, tenant_id, UUID(current_user["id"]), payload
+    )
 
 
 @router.delete("/share-links/{link_id}", status_code=204)
