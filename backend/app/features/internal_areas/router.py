@@ -68,5 +68,5 @@ async def update_area(
 async def delete_area(
     area_id: UUID,
     tenant_id: UUID = Depends(get_tenant_id),
-) -> None:
+):
     await InternalAreaService.delete_area(area_id, tenant_id)
