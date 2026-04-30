@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { AppSidebar } from "@layouts/app-sidebar";
 import { useAuth } from "@shared/hooks/use-auth";
-import { FastAddFab } from "@features/documents/components/fast-add-fab";
 
 function getInitials(name: string): string {
   return name
@@ -65,7 +64,6 @@ export function AppLayout() {
         <main className="flex-1">
           <Outlet />
         </main>
-        {user && <FastAddFab />}
       </SidebarInset>
     </SidebarProvider>
   );
