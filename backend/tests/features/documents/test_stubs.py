@@ -7,8 +7,9 @@ from app.features.documents.stubs.sign import sign_document
 from app.features.documents.stubs.translate import translate_pdf
 
 
-def test_scan_returns_clean_v1():
-    assert scan_file(b"any") == "clean"
+def test_scan_returns_skipped_v1():
+    # V1 stub no hace scan real → marca skipped (no clean) para no falsificar seguridad
+    assert scan_file(b"any") == "skipped"
 
 
 def test_ocr_stub():
