@@ -4,7 +4,7 @@ from collections.abc import AsyncGenerator
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.core.config.constants import API_PREFIX, HEALTH_PATH
+from app.core.config.constants import API_PREFIX, API_VERSION, HEALTH_PATH
 from app.core.config.settings import settings
 from app.core.logging.logger import configure_logging, get_logger
 from app.core.middleware.tenant import TenantMiddleware
@@ -51,12 +51,13 @@ def create_app() -> FastAPI:
     application.add_middleware(TimingMiddleware)
     application.add_middleware(TenantMiddleware)
 
-    application.include_router(users_router, prefix=API_PREFIX)
-    application.include_router(notifications_router, prefix=API_PREFIX)
-    application.include_router(properties_router, prefix=API_PREFIX)
-    application.include_router(contacts_router, prefix=API_PREFIX)
-    application.include_router(internal_areas_router, prefix=API_PREFIX)
-    application.include_router(documents_router, prefix=API_PREFIX)
+    versioned_prefix = f"{API_PREFIX}/{API_VERSION}"
+    application.include_router(users_router, prefix=versioned_prefix)
+    application.include_router(notifications_router, prefix=versioned_prefix)
+    application.include_router(properties_router, prefix=versioned_prefix)
+    application.include_router(contacts_router, prefix=versioned_prefix)
+    application.include_router(internal_areas_router, prefix=versioned_prefix)
+    application.include_router(documents_router, prefix=versioned_prefix)
     application.include_router(documents_public_router)
 
     @application.get(HEALTH_PATH)
