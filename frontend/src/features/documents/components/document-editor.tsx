@@ -290,7 +290,7 @@ function SortablePage({
           e.stopPropagation();
           onRemove();
         }}
-        className="absolute right-1 top-1 z-10 rounded-full bg-destructive p-1 text-white opacity-0 transition-opacity group-hover:opacity-100"
+        className="absolute right-1 top-1 z-10 rounded-full bg-destructive p-1 text-destructive-foreground opacity-0 transition-opacity group-hover:opacity-100"
         aria-label="Eliminar página"
       >
         <Trash2 className="size-3" />
