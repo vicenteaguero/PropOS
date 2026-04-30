@@ -58,5 +58,5 @@ async def update_user(
 async def delete_user(
     user_id: UUID,
     tenant_id: UUID = Depends(get_tenant_id),
-) -> None:
+):
     await UserService.delete_user(user_id, tenant_id)
