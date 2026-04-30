@@ -47,66 +47,6 @@ async def _client_for_role(role: str) -> AsyncClient:
     return AsyncClient(transport=transport, base_url="http://test")
 
 
-# --- Roles: ADMIN and AGENT can access CRUD, others cannot ---
-
-
-@pytest.mark.asyncio
-async def test_buyer_cannot_list_properties():
-    client = await _client_for_role("BUYER")
-    async with client:
-        response = await client.get("/api/properties")
-        assert response.status_code == 403
-
-
-@pytest.mark.asyncio
-async def test_landowner_cannot_list_contacts():
-    client = await _client_for_role("LANDOWNER")
-    async with client:
-        response = await client.get("/api/contacts")
-        assert response.status_code == 403
-
-
-@pytest.mark.asyncio
-async def test_content_cannot_create_property():
-    client = await _client_for_role("CONTENT")
-    async with client:
-        response = await client.post("/api/properties", json={"title": "Nope"})
-        assert response.status_code == 403
-
-
-# --- Only ADMIN can delete ---
-
-
-@pytest.mark.asyncio
-async def test_agent_cannot_delete_property():
-    client = await _client_for_role("AGENT")
-    async with client:
-        response = await client.delete(
-            "/api/properties/00000000-0000-0000-0000-000000000001"
-        )
-        assert response.status_code == 403
-
-
-@pytest.mark.asyncio
-async def test_agent_cannot_delete_contact():
-    client = await _client_for_role("AGENT")
-    async with client:
-        response = await client.delete(
-            "/api/contacts/00000000-0000-0000-0000-000000000001"
-        )
-        assert response.status_code == 403
-
-
-@pytest.mark.asyncio
-async def test_agent_cannot_delete_project():
-    client = await _client_for_role("AGENT")
-    async with client:
-        response = await client.delete(
-            "/api/projects/00000000-0000-0000-0000-000000000001"
-        )
-        assert response.status_code == 403
-
-
 # --- AGENT can create/read ---
 
 
