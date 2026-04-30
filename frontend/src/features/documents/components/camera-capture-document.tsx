@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Camera, Check, RotateCcw, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -11,12 +11,23 @@ interface Props {
   onPdfReady: (pdfBytes: Uint8Array) => void;
 }
 
+interface Shot {
+  id: string;
+  blob: Blob;
+}
+
 export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const [shots, setShots] = useState<Blob[]>([]);
+  const [shots, setShots] = useState<Shot[]>([]);
   const [busy, setBusy] = useState(false);
   const [fallback, setFallback] = useState(false);
+
+  // Genera URLs solo cuando shots cambia, revoca anteriores → no leak.
+  const shotUrls = useMemo(() => shots.map((s) => URL.createObjectURL(s.blob)), [shots]);
+  useEffect(() => {
+    return () => shotUrls.forEach((u) => URL.revokeObjectURL(u));
+  }, [shotUrls]);
 
   const stopStream = useCallback(() => {
     if (streamRef.current) {
@@ -72,21 +83,28 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props)
       canvas.toBlob(resolve, "image/jpeg", 0.92),
     );
     if (!blob) return;
-    const compressed = await compressBlob(blob, `shot-${shots.length + 1}.jpg`);
-    setShots((prev) => [...prev, compressed]);
+    const compressed = await compressBlob(blob, `shot-${Date.now()}.jpg`);
+    setShots((prev) => [...prev, { id: crypto.randomUUID(), blob: compressed }]);
   };
 
   const handleFileFallback = async (files: FileList | null) => {
     if (!files) return;
-    const arr: Blob[] = [];
+    const arr: Shot[] = [];
     for (const file of Array.from(files)) {
-      arr.push(await compressBlob(file, file.name));
+      arr.push({ id: crypto.randomUUID(), blob: await compressBlob(file, file.name) });
     }
     setShots((prev) => [...prev, ...arr]);
   };
 
-  const removeShot = (idx: number) =>
-    setShots((prev) => prev.filter((_, i) => i !== idx));
+  const removeShot = (id: string) =>
+    setShots((prev) => prev.filter((s) => s.id !== id));
+
+  const closeWithGuard = () => {
+    if (shots.length > 0 && !confirm(`Descartar ${shots.length} captura(s) sin guardar?`)) {
+      return;
+    }
+    onOpenChange(false);
+  };
 
   const finalize = async () => {
     if (shots.length === 0) {
@@ -95,7 +113,7 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props)
     }
     setBusy(true);
     try {
-      const pdf = await imagesToPdf(shots);
+      const pdf = await imagesToPdf(shots.map((s) => s.blob));
       onPdfReady(pdf);
       onOpenChange(false);
     } catch (e) {
@@ -114,7 +132,7 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props)
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => onOpenChange(false)}
+          onClick={closeWithGuard}
           className="text-white hover:bg-white/10"
         >
           <X className="size-5" />
@@ -145,15 +163,15 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props)
       {shots.length > 0 && (
         <div className="flex gap-2 overflow-x-auto border-t border-border/50 px-4 py-3">
           {shots.map((shot, i) => (
-            <div key={i} className="relative shrink-0">
+            <div key={shot.id} className="relative shrink-0">
               <img
-                src={URL.createObjectURL(shot)}
+                src={shotUrls[i]}
                 alt={`shot ${i + 1}`}
                 className="h-20 w-16 rounded object-cover"
               />
               <button
                 type="button"
-                onClick={() => removeShot(i)}
+                onClick={() => removeShot(shot.id)}
                 className="absolute -right-1 -top-1 rounded-full bg-destructive p-0.5 text-white"
                 aria-label="Eliminar"
               >
