@@ -56,7 +56,7 @@ async def test_valid_token_returns_user(mock_verify, mock_profile, mock_svc_clie
     mock_svc_client.return_value.table.return_value = table_mock
 
     response = await raw_client.get(
-        "/api/users/me",
+        "/api/v1/users/me",
         headers={"Authorization": "Bearer fake-valid-token"},
     )
 
@@ -72,7 +72,7 @@ async def test_invalid_token_returns_401(mock_verify, raw_client):
     mock_verify.side_effect = Exception("Invalid token")
 
     response = await raw_client.get(
-        "/api/users/me",
+        "/api/v1/users/me",
         headers={"Authorization": "Bearer bad-token"},
     )
 
@@ -90,7 +90,7 @@ async def test_no_profile_returns_401(mock_verify, mock_profile, raw_client):
     mock_profile.return_value = None
 
     response = await raw_client.get(
-        "/api/users/me",
+        "/api/v1/users/me",
         headers={"Authorization": "Bearer valid-but-no-profile"},
     )
 
@@ -100,6 +100,6 @@ async def test_no_profile_returns_401(mock_verify, mock_profile, raw_client):
 
 @pytest.mark.asyncio
 async def test_missing_token_returns_403(raw_client):
-    response = await raw_client.get("/api/users/me")
+    response = await raw_client.get("/api/v1/users/me")
 
     assert response.status_code == 403
