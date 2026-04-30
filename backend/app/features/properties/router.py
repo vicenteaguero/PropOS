@@ -57,5 +57,5 @@ async def update_property(
 async def delete_property(
     property_id: UUID,
     tenant_id: UUID = Depends(get_tenant_id),
-) -> None:
+):
     await PropertyService.delete_property(property_id, tenant_id)
