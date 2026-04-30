@@ -250,6 +250,10 @@ class PortalService:
         )
         if not upload:
             raise HTTPException(status_code=404, detail="Upload not found")
+        if upload["status"] != "pending_review":
+            raise HTTPException(
+                status_code=400, detail="Upload already processed"
+            )
         try:
             storage.delete_object(upload["storage_path"])
         except Exception:  # pragma: no cover
@@ -264,6 +268,7 @@ class PortalService:
                 }
             )
             .eq("id", str(upload_id))
+            .eq("tenant_id", str(tenant_id))
             .execute()
         )
 
