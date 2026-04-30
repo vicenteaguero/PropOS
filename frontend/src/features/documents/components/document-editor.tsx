@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   DndContext,
   KeyboardSensor,
@@ -19,7 +19,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { Camera, FilePlus2, Save, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Document } from "react-pdf";
+import { Document, Page } from "react-pdf";
 import {
   buildReorderedPdf,
   loadPdf,
@@ -29,14 +29,12 @@ import {
 import { imagesToPdf } from "../services/pdf-from-images";
 import { compressBlob } from "../services/image-compression";
 import { CameraCaptureDocument } from "./camera-capture-document";
-import { PageThumbnail } from "./page-thumbnail";
 
 interface SourceDoc {
   id: string;
   bytes: Uint8Array;
   pages: number;
   blobUrl: string;
-  blob: Blob;
 }
 
 interface PageRef {
@@ -58,6 +56,12 @@ export function DocumentEditor({ initialBytes, onCancel, onSave }: Props) {
   const [busy, setBusy] = useState(false);
   const [notes, setNotes] = useState("");
 
+  // Ref siempre apunta a sources actual → cleanup correcto on unmount.
+  const sourcesRef = useRef<SourceDoc[]>([]);
+  useEffect(() => {
+    sourcesRef.current = sources;
+  }, [sources]);
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -66,7 +70,7 @@ export function DocumentEditor({ initialBytes, onCancel, onSave }: Props) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const pages = await pageCount(initialBytes);
+      const pageCt = await pageCount(initialBytes);
       const blob = new Blob([initialBytes], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
       if (cancelled) {
@@ -74,9 +78,9 @@ export function DocumentEditor({ initialBytes, onCancel, onSave }: Props) {
         return;
       }
       const id = crypto.randomUUID();
-      setSources([{ id, bytes: initialBytes, pages, blobUrl: url, blob }]);
+      setSources([{ id, bytes: initialBytes, pages: pageCt, blobUrl: url }]);
       setPages(
-        Array.from({ length: pages }).map((_, i) => ({
+        Array.from({ length: pageCt }).map((_, i) => ({
           id: `${id}:${i}`,
           sourceDocIndex: 0,
           pageIndex: i,
@@ -86,10 +90,13 @@ export function DocumentEditor({ initialBytes, onCancel, onSave }: Props) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [initialBytes]);
 
+  // Cleanup blob URLs on unmount usando ref para capturar estado actual.
   useEffect(() => {
-    return () => sources.forEach((s) => URL.revokeObjectURL(s.blobUrl));
+    return () => {
+      sourcesRef.current.forEach((s) => URL.revokeObjectURL(s.blobUrl));
+    };
   }, []);
 
   const addPdf = async (file: File) => {
@@ -99,17 +106,18 @@ export function DocumentEditor({ initialBytes, onCancel, onSave }: Props) {
     const blob = new Blob([bytes], { type: "application/pdf" });
     const url = URL.createObjectURL(blob);
     const id = crypto.randomUUID();
+    // Updater funcional + acceso a length actual evita race en addPdf concurrente.
     setSources((prev) => {
       const idx = prev.length;
-      setPages((p) => [
-        ...p,
-        ...Array.from({ length: count }).map((_, i) => ({
-          id: `${id}:${i}`,
-          sourceDocIndex: idx,
-          pageIndex: i,
-        })),
-      ]);
-      return [...prev, { id, bytes, pages: count, blobUrl: url, blob }];
+      const newSource: SourceDoc = { id, bytes, pages: count, blobUrl: url };
+      const newPageRefs = Array.from({ length: count }).map((_, i) => ({
+        id: `${id}:${i}`,
+        sourceDocIndex: idx,
+        pageIndex: i,
+      }));
+      // Schedule pages update con queueMicrotask para garantizar consistency
+      queueMicrotask(() => setPages((p) => [...p, ...newPageRefs]));
+      return [...prev, newSource];
     });
   };
 
@@ -203,24 +211,43 @@ export function DocumentEditor({ initialBytes, onCancel, onSave }: Props) {
           <Save className="size-4" /> Guardar versión
         </Button>
       </div>
+
+      {/* Un Document por SOURCE (no por página) — agrupa thumbnails para evitar OOM. */}
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={pages.map((p) => p.id)} strategy={rectSortingStrategy}>
-          <div className="grid grid-cols-2 gap-3 overflow-auto rounded-md border border-border bg-card p-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-            {pages.map((page) => {
-              const src = sources[page.sourceDocIndex];
+          <div className="overflow-auto rounded-md border border-border bg-card p-3">
+            {sources.map((src, srcIdx) => {
+              const srcPages = pages.filter((p) => p.sourceDocIndex === srcIdx);
+              if (srcPages.length === 0) return null;
               return (
-                <SortablePage key={page.id} id={page.id} onRemove={() => removePage(page.id)}>
-                  {src && (
-                    <Document file={src.blobUrl}>
-                      <PageThumbnail blob={src.blob} pageIndex={page.pageIndex} width={120} />
-                    </Document>
-                  )}
-                </SortablePage>
+                <Document
+                  key={src.id}
+                  file={src.blobUrl}
+                  loading={null}
+                >
+                  <div className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                    {srcPages.map((page) => (
+                      <SortablePage
+                        key={page.id}
+                        id={page.id}
+                        onRemove={() => removePage(page.id)}
+                      >
+                        <Page
+                          pageNumber={page.pageIndex + 1}
+                          width={120}
+                          renderAnnotationLayer={false}
+                          renderTextLayer={false}
+                        />
+                      </SortablePage>
+                    ))}
+                  </div>
+                </Document>
               );
             })}
           </div>
         </SortableContext>
       </DndContext>
+
       <CameraCaptureDocument
         open={cameraOpen}
         onOpenChange={setCameraOpen}
@@ -249,22 +276,25 @@ function SortablePage({
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }}
-      className="group relative flex flex-col items-center gap-1 rounded-md border border-border bg-background p-2"
+      className="group relative rounded-md border border-border bg-background p-2"
       {...attributes}
-      {...listeners}
     >
+      {/* Drag handle = wrapper interior; X button queda fuera del listener */}
+      <div className="cursor-grab" {...listeners}>
+        {children}
+      </div>
       <button
         type="button"
+        onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => {
           e.stopPropagation();
           onRemove();
         }}
-        className="absolute right-1 top-1 rounded-full bg-destructive p-1 text-white opacity-0 transition-opacity group-hover:opacity-100"
+        className="absolute right-1 top-1 z-10 rounded-full bg-destructive p-1 text-white opacity-0 transition-opacity group-hover:opacity-100"
         aria-label="Eliminar página"
       >
         <Trash2 className="size-3" />
       </button>
-      {children}
     </div>
   );
 }
