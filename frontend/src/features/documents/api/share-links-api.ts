@@ -43,8 +43,19 @@ export const shareLinksApi = {
   resolvePublic: async (slug: string): Promise<ShareLinkPublicView> => {
     const res = await fetch(publicUrl(`/r/${slug}`));
     if (res.status === 401) {
-      const view = (await res.json()) as ShareLinkPublicView;
-      return { ...view, requires_password: true };
+      // Backend retorna 401 sin body cuando requiere password; no parsear JSON.
+      return {
+        slug,
+        document_display_name: "",
+        version_number: 0,
+        sha256_short: "",
+        mime_type: "",
+        page_count: null,
+        download_filename: "",
+        download_url: "",
+        requires_password: true,
+        expires_at: null,
+      };
     }
     if (!res.ok) throw new Error(`shortlink ${res.status}`);
     return res.json() as Promise<ShareLinkPublicView>;
