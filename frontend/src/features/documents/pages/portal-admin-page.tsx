@@ -26,9 +26,9 @@ export function PortalAdminPage() {
         <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
           <ArrowLeft className="size-4" />
         </Button>
-        <h1 className="flex-1 text-lg font-semibold">Portales de subida anónima</h1>
+        <h1 className="flex-1 text-lg font-semibold">Enlaces de subida anónima</h1>
         <Button size="sm" onClick={() => setCreateOpen(true)}>
-          <Plus className="size-4" /> Nuevo portal
+          <Plus className="size-4" /> Nuevo enlace
         </Button>
       </div>
 
@@ -40,9 +40,9 @@ export function PortalAdminPage() {
 
       {!isLoading && portals && portals.length === 0 && (
         <EmptyState
-          title="Sin portales"
-          description="Crea un portal para recibir documentos desde fuera del equipo."
-          actionLabel="Crear portal"
+          title="Sin enlaces"
+          description="Crea un enlace para recibir documentos desde fuera del equipo."
+          actionLabel="Crear enlace"
           onAction={() => setCreateOpen(true)}
         />
       )}
@@ -92,10 +92,10 @@ export function PortalAdminPage() {
                     variant="ghost"
                     className="text-destructive"
                     onClick={async () => {
-                      if (!confirm(`Eliminar portal "${p.title}"?`)) return;
+                      if (!confirm(`Eliminar enlace "${p.title}"?`)) return;
                       try {
                         await deletePortal.mutateAsync(p.id);
-                        toast.success("Portal eliminado");
+                        toast.success("Enlace eliminado");
                       } catch (e) {
                         toast.error(e instanceof Error ? e.message : "Error");
                       }
