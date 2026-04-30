@@ -57,5 +57,5 @@ async def update_contact(
 async def delete_contact(
     contact_id: UUID,
     tenant_id: UUID = Depends(get_tenant_id),
-) -> None:
+):
     await ContactService.delete_contact(contact_id, tenant_id)
