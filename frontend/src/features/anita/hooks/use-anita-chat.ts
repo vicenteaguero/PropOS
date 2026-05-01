@@ -1,10 +1,12 @@
 import { useCallback, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { anitaApi, streamChat } from "../api/anita-api";
+import { streamChat } from "../api/anita-api";
 import type { ChatStreamEvent } from "../types";
 
 interface AnitaChatState {
   isStreaming: boolean;
+  isThinking: boolean;
+  pendingUserText: string | null;
   liveText: string;
   toolEvents: { name: string; args: Record<string, unknown> }[];
   proposalsCreated: string[];
@@ -13,6 +15,8 @@ interface AnitaChatState {
 
 const INITIAL: AnitaChatState = {
   isStreaming: false,
+  isThinking: false,
+  pendingUserText: null,
   liveText: "",
   toolEvents: [],
   proposalsCreated: [],
@@ -20,8 +24,10 @@ const INITIAL: AnitaChatState = {
 };
 
 /**
- * Drives one chat turn: optionally calls /transcribe-text to persist the
- * Web Speech text, then streams /chat SSE.
+ * Drives one chat turn over SSE.
+ * The composer is responsible for persisting transcripts (audio path);
+ * this hook does NOT touch /transcribe-text — keeps anita_transcripts
+ * clean (only real audio sources land there).
  */
 export function useAnitaChat(sessionId: string | undefined) {
   const [state, setState] = useState<AnitaChatState>(INITIAL);
@@ -32,15 +38,15 @@ export function useAnitaChat(sessionId: string | undefined) {
     async (userText: string) => {
       if (!sessionId || !userText.trim()) return;
 
-      setState({ ...INITIAL, isStreaming: true });
+      // Show user's message + "thinking" indicator immediately.
+      setState({
+        ...INITIAL,
+        isStreaming: true,
+        isThinking: true,
+        pendingUserText: userText,
+      });
       const controller = new AbortController();
       abortRef.current = controller;
-
-      try {
-        await anitaApi.transcribeText(userText, sessionId);
-      } catch {
-        // Non-fatal — chat can still proceed without persisted transcript
-      }
 
       try {
         await streamChat(
@@ -48,16 +54,25 @@ export function useAnitaChat(sessionId: string | undefined) {
           userText,
           (event: ChatStreamEvent) => {
             if (event.type === "text") {
-              setState((s) => ({ ...s, liveText: s.liveText + event.text }));
+              setState((s) => ({
+                ...s,
+                isThinking: false,
+                liveText: s.liveText + event.text,
+              }));
             } else if (event.type === "tool_use") {
               setState((s) => ({
                 ...s,
-                toolEvents: [...s.toolEvents, { name: event.name, args: event.args }],
+                isThinking: false,
+                toolEvents: [
+                  ...s.toolEvents,
+                  { name: event.name, args: event.args },
+                ],
               }));
             } else if (event.type === "done") {
               setState((s) => ({
                 ...s,
                 isStreaming: false,
+                isThinking: false,
                 proposalsCreated: event.proposals_created,
               }));
             }
@@ -66,20 +81,31 @@ export function useAnitaChat(sessionId: string | undefined) {
         );
       } catch (err) {
         const message = err instanceof Error ? err.message : "error de chat";
-        setState((s) => ({ ...s, isStreaming: false, error: message }));
+        setState((s) => ({
+          ...s,
+          isStreaming: false,
+          isThinking: false,
+          error: message,
+        }));
         return;
       }
 
-      // Refresh server-side message log + pending list
-      queryClient.invalidateQueries({ queryKey: ["anita", "messages", sessionId] });
+      // Refresh server-side message log + pending list, but keep
+      // pendingUserText / liveText visible until the refetch lands so
+      // the UI doesn't flash blank.
+      await queryClient.invalidateQueries({
+        queryKey: ["anita", "messages", sessionId],
+      });
       queryClient.invalidateQueries({ queryKey: ["pending"] });
+
+      setState((s) => ({ ...s, pendingUserText: null, liveText: "" }));
     },
     [sessionId, queryClient],
   );
 
   const cancel = useCallback(() => {
     abortRef.current?.abort();
-    setState((s) => ({ ...s, isStreaming: false }));
+    setState((s) => ({ ...s, isStreaming: false, isThinking: false }));
   }, []);
 
   const reset = useCallback(() => setState(INITIAL), []);
