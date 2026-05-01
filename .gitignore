@@ -213,6 +213,5 @@ node_modules/
 .vscode/
 .claude/
 backend/data/
-config/docker/cloudrun-env.yaml
 supabase/.temp/
 frontend/.certs/
