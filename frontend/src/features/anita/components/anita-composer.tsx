@@ -14,12 +14,8 @@ interface Props {
 }
 
 /**
- * Composer chains two transcription strategies:
- *   1. Web Speech API browser-native (es-CL). Free, in-browser. Default.
- *   2. MediaRecorder → /anita/transcribe (Groq Whisper). Fallback when
- *      Web Speech unsupported (Firefox, Safari desktop) or user opted out.
- *
- * The user sees a single mic button; the composer picks the path.
+ * Audio paths persist transcripts to anita_transcripts (forensic record).
+ * Plain typing does NOT — keeps the transcripts table clean.
  */
 export function AnitaComposer({
   onSend,
@@ -42,22 +38,36 @@ export function AnitaComposer({
     }
   }, [speech.finalText, speech.interim, useFallback]);
 
-  // AutoSend (browser path)
+  // Persist transcript + autoSend (browser Web Speech path)
   useEffect(() => {
     if (!autoSend || useFallback) return;
     if (speech.isListening) return;
     if (!speech.finalText.trim()) return;
-    const id = setTimeout(() => {
+    const id = setTimeout(async () => {
       const final = speech.finalText.trim();
       if (!final) return;
+      // Forensic: persist the audio-derived transcript.
+      try {
+        await anitaApi.transcribeText(final, sessionId);
+      } catch {
+        /* non-fatal */
+      }
       onSend(final);
       setText("");
       speech.reset();
     }, 2000);
     return () => clearTimeout(id);
-  }, [speech.isListening, speech.finalText, autoSend, onSend, speech, useFallback]);
+  }, [
+    speech.isListening,
+    speech.finalText,
+    autoSend,
+    onSend,
+    speech,
+    useFallback,
+    sessionId,
+  ]);
 
-  // Fallback path: when MediaRecorder produces a blob, transcribe server-side
+  // Fallback path: MediaRecorder → server STT → autoSend
   useEffect(() => {
     if (!useFallback) return;
     const blob = recorder.audioBlob;
@@ -70,7 +80,6 @@ export function AnitaComposer({
         if (cancelled) return;
         setText(result.text);
         if (autoSend && result.text.trim()) {
-          // 2s undo window
           setTimeout(() => {
             if (!cancelled && result.text.trim()) {
               onSend(result.text.trim());
@@ -79,9 +88,7 @@ export function AnitaComposer({
           }, 2000);
         }
       } catch (err) {
-        if (!cancelled) {
-          console.error("transcribe failed", err);
-        }
+        if (!cancelled) console.error("transcribe failed", err);
       } finally {
         if (!cancelled) setTranscribing(false);
         recorder.clearRecording();
