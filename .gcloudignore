@@ -1,0 +1,38 @@
+# Files NOT uploaded to Cloud Build.
+# Patterns are gitignore-style — anchor with leading / to match only repo root,
+# otherwise they match recursively (e.g. "supabase/" would also exclude
+# backend/app/core/supabase/).
+
+/.git/
+.gitignore
+.env
+.env.*
+/.claude/
+/.vscode/
+
+# Frontend (deployed by Vercel, not Cloud Run)
+/frontend/
+
+# Repo-root only — backend/* with same names must NOT be excluded
+/_archive/
+/docs/
+/assets/
+/bin/
+/scripts/
+/supabase/
+/etc/
+
+# Python local — recursive OK
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+**/.ruff_cache/
+backend/.venv/
+backend/data/
+
+# Compose / mac
+docker-compose.yml
+.DS_Store
+LICENSE
+README.md
+vercel.json
