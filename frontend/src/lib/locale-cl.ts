@@ -28,8 +28,8 @@ export function formatCLP(amount: number, fractionDigits = 0): string {
 export function parseChileanAmount(text: string): number | null {
   const m = text.toLowerCase().match(/(\d+(?:[.,]\d+)?)\s*(lucas?|palos?|pesos?|cucas?|kpe?)?/);
   if (!m) return null;
-  const value = parseFloat(m[1].replace(",", "."));
-  const unit = m[2] || "";
+  const value = parseFloat((m[1] ?? "").replace(",", "."));
+  const unit = m[2] ?? "";
   if (unit.startsWith("luca")) return Math.round(value * 1_000);
   if (unit.startsWith("palo")) return Math.round(value * 1_000_000);
   return Math.round(value);
@@ -59,7 +59,7 @@ export function parseRelativeDate(text: string, now = new Date()): string | null
   ];
   const m = t.match(/^el\s+(\w+)\s+pasad[oa]$/);
   if (m) {
-    const idx = weekdays.indexOf(m[1]);
+    const idx = weekdays.indexOf(m[1] ?? "");
     if (idx >= 0) {
       const todayIdx = d.getDay();
       const diff = ((todayIdx - idx + 7) % 7) || 7;

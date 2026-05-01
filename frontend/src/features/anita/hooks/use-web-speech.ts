@@ -72,7 +72,8 @@ export function useWebSpeech(lang = "es-CL"): UseWebSpeechReturn {
       let finalAcc = "";
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const result = event.results[i];
-        const text = result[0].transcript;
+        if (!result) continue;
+        const text = result[0]?.transcript ?? "";
         if (result.isFinal) {
           finalAcc += text;
         } else {

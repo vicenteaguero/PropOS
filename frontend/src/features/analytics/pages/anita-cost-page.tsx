@@ -121,7 +121,7 @@ export function AnitaCostPage() {
                 <XAxis dataKey="day" tick={{ fontSize: 10 }} />
                 <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => fmtUSD(v)} />
                 <Tooltip
-                  formatter={(v: number) => fmtUSD(v)}
+                  formatter={(v) => fmtUSD(Number(v))}
                   contentStyle={{ fontSize: 12 }}
                 />
                 <Bar dataKey="cost_cents" fill="#a78bfa" />

@@ -157,7 +157,7 @@ export function AnalyticsPage() {
                     tickFormatter={(v) => formatCLP(v / 100)}
                   />
                   <Tooltip
-                    formatter={(v: number) => formatCLP(v / 100)}
+                    formatter={(v) => formatCLP(Number(v) / 100)}
                     contentStyle={{ fontSize: 12 }}
                   />
                   <Legend wrapperStyle={{ fontSize: 12 }} />
