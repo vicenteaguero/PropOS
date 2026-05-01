@@ -14,7 +14,7 @@ class Settings(BaseSettings):
 
     # Anita AI assistant
     anita_provider: str = "cerebras"  # cerebras | anthropic | openai | groq
-    anita_model: str = "llama-3.3-70b"
+    anita_model: str = "llama3.1-8b"  # Cerebras production (universal access)
     anita_fallback_provider: str = "groq"
     cerebras_api_key: str = ""
     anthropic_api_key: str = ""
