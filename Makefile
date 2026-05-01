@@ -1,7 +1,7 @@
 include .env
 export
 
-.PHONY: setup dev dev-frontend dev-pwa dev-pwa-hmr stop build migrate seed lint test clean logs backend-shell db-studio gcloud-auth deploy-backend-setup deploy-backend deploy-backend-verify deploy-frontend
+.PHONY: setup dev dev-frontend dev-pwa dev-pwa-hmr stop build migrate seed lint test clean logs backend-shell db-studio gcloud-auth deploy-setup deploy-secrets-sync deploy-trigger-setup deploy-trigger-list deploy-backend deploy-verify deploy-frontend
 
 setup:
 	@bash scripts/setup.sh
@@ -76,6 +76,14 @@ backend-shell:
 db-studio:
 	supabase studio
 
+# ============ DEPLOY ============
+# Flow primera vez:
+#   make deploy-setup           # APIs + Artifact Registry + IAM
+#   make deploy-secrets-sync    # .env -> Secret Manager + cloudrun-env.yaml
+#   make deploy-trigger-setup   # imprime URL pa crear trigger en UI (browser)
+#   make deploy-backend         # primer deploy manual (sanity check)
+# Día a día: git push origin main (auto-deploy si tocó backend/** o config/docker/**)
+
 gcloud-auth:
 	@ACTIVE=$$(gcloud auth list --filter=status:ACTIVE --format="value(account)" 2>/dev/null); \
 	if [ -z "$$ACTIVE" ]; then \
@@ -84,31 +92,52 @@ gcloud-auth:
 	fi
 	@gcloud config set project $(GCP_PROJECT_ID) 2>/dev/null
 
-deploy-backend-setup: gcloud-auth
-	@bash scripts/log.sh DEPLOY "🔧" "Enabling GCP APIs and creating Artifact Registry repo"
-	gcloud services enable run.googleapis.com artifactregistry.googleapis.com cloudbuild.googleapis.com
-	gcloud artifacts repositories create propos \
-		--repository-format=docker \
-		--location=$(GCP_REGION) || true
+deploy-setup: gcloud-auth
+	@bash scripts/log.sh DEPLOY "🔧" "Enabling APIs"
+	gcloud services enable run.googleapis.com artifactregistry.googleapis.com cloudbuild.googleapis.com secretmanager.googleapis.com
+	@bash scripts/log.sh DEPLOY "📦" "Creating Artifact Registry repo (idempotente)"
+	gcloud artifacts repositories create propos --repository-format=docker --location=$(GCP_REGION) || true
+	@bash scripts/log.sh DEPLOY "🔑" "Granting Cloud Build SA roles"
+	@PROJECT_NUM=$$(gcloud projects describe $(GCP_PROJECT_ID) --format='value(projectNumber)'); \
+		SA="$$PROJECT_NUM-compute@developer.gserviceaccount.com"; \
+		for role in run.admin iam.serviceAccountUser artifactregistry.writer secretmanager.secretAccessor; do \
+			gcloud projects add-iam-policy-binding $(GCP_PROJECT_ID) \
+				--member="serviceAccount:$$SA" \
+				--role="roles/$$role" \
+				--condition=None >/dev/null; \
+		done
+	@bash scripts/log.sh DEPLOY "✅" "GCP project bootstrap done"
+
+deploy-secrets-sync: gcloud-auth
+	@bash scripts/log.sh DEPLOY "🔐" "Syncing .env -> Secret Manager + cloudrun-env.yaml"
+	@bash scripts/sync_cloud_env.sh
+
+deploy-trigger-setup: gcloud-auth
+	@bash scripts/log.sh DEPLOY "🔗" "Crea trigger en UI (legacy GitHub app no soporta CLI sin installation_id):"
+	@echo "  https://console.cloud.google.com/cloud-build/triggers/add?project=$(GCP_PROJECT_ID)"
+	@echo ""
+	@echo "  Config:"
+	@echo "    Name:          propos-api-deploy"
+	@echo "    Event:         Push to a branch"
+	@echo "    Repository:    vicenteaguero/PropOS"
+	@echo "    Branch:        ^main\$$"
+	@echo "    Config file:   config/docker/cloudbuild.yaml"
+	@echo "    Included:      backend/**, config/docker/**"
+
+deploy-trigger-list: gcloud-auth
+	@gcloud builds triggers list --region=$(GCP_REGION) --format='table(name,github.owner,github.name,github.push.branch)'
 
 deploy-backend: gcloud-auth
-	@bash scripts/log.sh DEPLOY "🚀" "Building and deploying backend to Cloud Run"
-	gcloud builds submit \
-		--config config/docker/cloudbuild.yaml \
-		--substitutions _IMAGE=$(GCP_REGION)-docker.pkg.dev/$(GCP_PROJECT_ID)/propos/api:latest .
-	gcloud run deploy propos-api \
-		--image $(GCP_REGION)-docker.pkg.dev/$(GCP_PROJECT_ID)/propos/api:latest \
-		--region $(GCP_REGION) --platform managed \
-		--allow-unauthenticated --port 8000 \
-		--min-instances 0 --max-instances 1 \
-		--memory 512Mi --cpu 1 \
-		--env-vars-file config/docker/cloudrun-env.yaml
-	@bash scripts/log.sh DEPLOY "✅" "Backend deployed. URL:"
+	@bash scripts/log.sh DEPLOY "🚀" "Manual build + deploy (bypass trigger)"
+	gcloud builds submit --config config/docker/cloudbuild.yaml .
+	@bash scripts/log.sh DEPLOY "✅" "Deployed. URL:"
 	@gcloud run services describe propos-api --region $(GCP_REGION) --format='value(status.url)'
 
-deploy-backend-verify:
-	@bash scripts/log.sh DEPLOY "🔍" "Verifying backend health"
-	@curl -sf $$(gcloud run services describe propos-api --region $(GCP_REGION) --format='value(status.url)')/health && echo "" || echo "Health check failed"
+deploy-verify:
+	@bash scripts/log.sh DEPLOY "🔍" "Health check"
+	@URL=$$(gcloud run services describe propos-api --region $(GCP_REGION) --format='value(status.url)' 2>/dev/null); \
+		if [ -z "$$URL" ]; then echo "service not deployed yet" && exit 1; fi; \
+		curl -sf "$$URL/health" && echo "" || echo "FAIL"
 
 deploy-frontend:
 	@bash scripts/log.sh DEPLOY "🚀" "Deploying frontend to Vercel"
