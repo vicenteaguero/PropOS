@@ -2,20 +2,11 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
 import { Copy, Download, Link as LinkIcon } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  useCreateShareLink,
-  useShareLinks,
-  useUpdateShareLink,
-} from "../hooks/use-share-links";
+import { useCreateShareLink, useShareLinks, useUpdateShareLink } from "../hooks/use-share-links";
 import { shareLinksApi } from "../api/share-links-api";
 import type { DocumentVersion } from "../types";
 
@@ -133,7 +124,13 @@ export function ShareLinkDialog({
             onChange={(e) => setPinned(e.target.value)}
             className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm"
           >
-            <option value="CURRENT">Siempre la versión actual ({currentVersionId ? versions.find(v => v.id === currentVersionId)?.version_number : "?"})</option>
+            <option value="CURRENT">
+              Siempre la versión actual (
+              {currentVersionId
+                ? versions.find((v) => v.id === currentVersionId)?.version_number
+                : "?"}
+              )
+            </option>
             {versions.map((v) => (
               <option key={v.id} value={v.id}>
                 Fijar v{v.version_number} ({v.sha256.slice(0, 8)})
