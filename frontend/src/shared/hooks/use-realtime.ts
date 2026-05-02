@@ -21,14 +21,16 @@ export function useRealtime<T extends Record<string, unknown>>(
             return [...current, payload.new];
           case "UPDATE":
             return current.map((item) =>
-              (item as Record<string, unknown>)["id"] === (payload.new as Record<string, unknown>)["id"]
+              (item as Record<string, unknown>)["id"] ===
+              (payload.new as Record<string, unknown>)["id"]
                 ? payload.new
                 : item,
             );
           case "DELETE":
             return current.filter(
               (item) =>
-                (item as Record<string, unknown>)["id"] !== (payload.old as Record<string, unknown>)["id"],
+                (item as Record<string, unknown>)["id"] !==
+                (payload.old as Record<string, unknown>)["id"],
             );
           default:
             return current;
