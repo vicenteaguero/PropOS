@@ -3,7 +3,10 @@
 export interface AIVisionProvider {
   readonly name: string;
   available(): boolean;
-  analyze(blob: Blob, prompt?: string): Promise<{ summary: string; entities: Record<string, string> }>;
+  analyze(
+    blob: Blob,
+    prompt?: string,
+  ): Promise<{ summary: string; entities: Record<string, string> }>;
 }
 
 export const noopAIVision: AIVisionProvider = {
