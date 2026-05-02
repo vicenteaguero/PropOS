@@ -1,11 +1,6 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { useAnitaSession, useAnitaMessages } from "../hooks/use-anita-session";
 import { useAnitaChat } from "../hooks/use-anita-chat";
@@ -32,7 +27,7 @@ export function AnitaDrawer({ open, onOpenChange }: Props) {
     if (!sessionId || closing) return;
     setClosing(true);
     try {
-      await anitaApi.closeSession(sessionId);
+      await anitaApi.updateSession(sessionId, { status: "CLOSED" });
     } catch {
       /* even if close fails, force-resume */
     }
@@ -44,10 +39,7 @@ export function AnitaDrawer({ open, onOpenChange }: Props) {
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="right"
-        className="w-full sm:max-w-md h-dvh flex flex-col p-0 gap-0"
-      >
+      <SheetContent side="right" className="w-full sm:max-w-md h-dvh flex flex-col p-0 gap-0">
         <SheetHeader className="px-4 py-3 border-b border-border space-y-1 shrink-0">
           <div className="flex items-center justify-between gap-2">
             <SheetTitle className="flex items-center gap-2">
@@ -96,9 +88,7 @@ export function AnitaDrawer({ open, onOpenChange }: Props) {
                 liveProposals={chat.proposalsCreated}
               />
             </div>
-            {chat.error && (
-              <p className="px-4 text-xs text-destructive">{chat.error}</p>
-            )}
+            {chat.error && <p className="px-4 text-xs text-destructive">{chat.error}</p>}
             <div className="p-4 border-t border-border shrink-0">
               <AnitaComposer
                 onSend={chat.send}
