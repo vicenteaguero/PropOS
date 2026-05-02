@@ -88,25 +88,21 @@ class CampaignService:
     @staticmethod
     async def delete_campaign(campaign_id: UUID, tenant_id: UUID) -> None:
         client = get_supabase_client()
-        client.table(CAMPAIGNS_TABLE).update(
-            {"deleted_at": datetime.now(UTC).isoformat()}
-        ).eq("id", str(campaign_id)).eq("tenant_id", str(tenant_id)).execute()
+        client.table(CAMPAIGNS_TABLE).update({"deleted_at": datetime.now(UTC).isoformat()}).eq(
+            "id", str(campaign_id)
+        ).eq("tenant_id", str(tenant_id)).execute()
 
 
 class AdService:
     @staticmethod
-    async def list_ads(campaign_id: UUID, tenant_id: UUID) -> list[dict]:
+    async def list_ads(campaign_id: UUID | None, tenant_id: UUID) -> list[dict]:
         client = get_supabase_client()
-        return (
-            client.table(ADS_TABLE)
-            .select("*")
-            .eq("campaign_id", str(campaign_id))
-            .eq("tenant_id", str(tenant_id))
-            .is_("deleted_at", "null")
-            .order("name")
-            .execute()
-            .data
+        builder = (
+            client.table(ADS_TABLE).select("*").eq("tenant_id", str(tenant_id)).is_("deleted_at", "null").order("name")
         )
+        if campaign_id is not None:
+            builder = builder.eq("campaign_id", str(campaign_id))
+        return builder.execute().data
 
     @staticmethod
     async def create_ad(payload, tenant_id: UUID) -> dict:
@@ -120,17 +116,12 @@ class AdService:
         client = get_supabase_client()
         data = _norm(payload.model_dump(exclude_unset=True))
         return (
-            client.table(ADS_TABLE)
-            .update(data)
-            .eq("id", str(ad_id))
-            .eq("tenant_id", str(tenant_id))
-            .execute()
-            .data[0]
+            client.table(ADS_TABLE).update(data).eq("id", str(ad_id)).eq("tenant_id", str(tenant_id)).execute().data[0]
         )
 
     @staticmethod
     async def delete_ad(ad_id: UUID, tenant_id: UUID) -> None:
         client = get_supabase_client()
-        client.table(ADS_TABLE).update(
-            {"deleted_at": datetime.now(UTC).isoformat()}
-        ).eq("id", str(ad_id)).eq("tenant_id", str(tenant_id)).execute()
+        client.table(ADS_TABLE).update({"deleted_at": datetime.now(UTC).isoformat()}).eq("id", str(ad_id)).eq(
+            "tenant_id", str(tenant_id)
+        ).execute()
