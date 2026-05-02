@@ -138,8 +138,7 @@ export function DocumentEditor({ initialBytes, onCancel, onSave }: Props) {
     });
   };
 
-  const removePage = (id: string) =>
-    setPages((prev) => prev.filter((p) => p.id !== id));
+  const removePage = (id: string) => setPages((prev) => prev.filter((p) => p.id !== id));
 
   const save = async () => {
     if (pages.length === 0) {
@@ -220,18 +219,10 @@ export function DocumentEditor({ initialBytes, onCancel, onSave }: Props) {
               const srcPages = pages.filter((p) => p.sourceDocIndex === srcIdx);
               if (srcPages.length === 0) return null;
               return (
-                <Document
-                  key={src.id}
-                  file={src.blobUrl}
-                  loading={null}
-                >
+                <Document key={src.id} file={src.blobUrl} loading={null}>
                   <div className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
                     {srcPages.map((page) => (
-                      <SortablePage
-                        key={page.id}
-                        id={page.id}
-                        onRemove={() => removePage(page.id)}
-                      >
+                      <SortablePage key={page.id} id={page.id} onRemove={() => removePage(page.id)}>
                         <Page
                           pageNumber={page.pageIndex + 1}
                           width={120}
@@ -275,7 +266,11 @@ function SortablePage({
   return (
     <div
       ref={setNodeRef}
-      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+      }}
       className="group relative rounded-md border border-border bg-background p-2"
       {...attributes}
     >
