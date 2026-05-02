@@ -3,9 +3,7 @@ import { apiRequest } from "./http";
 
 export const entitiesApi = {
   listProperties: (q?: string) =>
-    apiRequest<PropertyLite[]>(
-      `/v1/properties${q ? `?q=${encodeURIComponent(q)}` : ""}`,
-    ),
+    apiRequest<PropertyLite[]>(`/v1/properties${q ? `?q=${encodeURIComponent(q)}` : ""}`),
   createProperty: (title: string, isDraft = true) =>
     apiRequest<PropertyLite>("/v1/properties", {
       method: "POST",
@@ -13,9 +11,7 @@ export const entitiesApi = {
     }),
 
   listContacts: (q?: string) =>
-    apiRequest<ContactLite[]>(
-      `/v1/contacts${q ? `?q=${encodeURIComponent(q)}` : ""}`,
-    ),
+    apiRequest<ContactLite[]>(`/v1/contacts${q ? `?q=${encodeURIComponent(q)}` : ""}`),
   createContact: (fullName: string, isDraft = true) =>
     apiRequest<ContactLite>("/v1/contacts", {
       method: "POST",
