@@ -21,19 +21,14 @@ router = APIRouter(prefix="/contacts", tags=["contacts"])
 async def list_contacts(
     tenant_id: UUID = Depends(get_tenant_id),
     q: str | None = Query(default=None),
+    fuzzy: bool = Query(default=False),
+    limit: int = Query(default=100, ge=1, le=500),
     include_drafts: bool = Query(default=True),
     include_deleted: bool = Query(default=False),
 ) -> list[dict]:
+    if q and fuzzy:
+        return await ContactService.search_fuzzy(tenant_id, q, limit)
     return await ContactService.list_contacts(tenant_id, q, include_drafts, include_deleted)
-
-
-@router.get("/search", response_model=list[ContactResponse])
-async def search_contacts(
-    q: str = Query(...),
-    limit: int = Query(default=10, ge=1, le=50),
-    tenant_id: UUID = Depends(get_tenant_id),
-) -> list[dict]:
-    return await ContactService.search_fuzzy(tenant_id, q, limit)
 
 
 @router.get("/{contact_id}", response_model=ContactResponse)
@@ -50,9 +45,7 @@ async def create_contact(
     tenant_id: UUID = Depends(get_tenant_id),
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> dict:
-    return await ContactService.create_contact(
-        payload, tenant_id, UUID(current_user["id"])
-    )
+    return await ContactService.create_contact(payload, tenant_id, UUID(current_user["id"]))
 
 
 @router.patch("/{contact_id}", response_model=ContactResponse)
