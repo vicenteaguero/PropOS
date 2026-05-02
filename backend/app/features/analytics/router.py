@@ -88,25 +88,13 @@ async def person_activity(tenant_id: UUID = Depends(get_tenant_id)) -> list[dict
 @router.get("/pipeline")
 async def pipeline(tenant_id: UUID = Depends(get_tenant_id)) -> list[dict]:
     client = get_supabase_client()
-    return (
-        client.table("v_pipeline_status")
-        .select("*")
-        .eq("tenant_id", str(tenant_id))
-        .execute()
-        .data
-    )
+    return client.table("v_pipeline_status").select("*").eq("tenant_id", str(tenant_id)).execute().data
 
 
 @router.get("/pending-count")
 async def pending_count(tenant_id: UUID = Depends(get_tenant_id)) -> dict[str, Any]:
     client = get_supabase_client()
-    rows = (
-        client.table("v_open_pending_review")
-        .select("*")
-        .eq("tenant_id", str(tenant_id))
-        .execute()
-        .data
-    )
+    rows = client.table("v_open_pending_review").select("*").eq("tenant_id", str(tenant_id)).execute().data
     if not rows:
         return {"pending_count": 0, "most_recent": None}
     return rows[0]
@@ -196,9 +184,7 @@ async def anita_cost(tenant_id: UUID = Depends(get_tenant_id)) -> dict[str, Any]
             "cost_cents": total_cents,
             "message_count": len(rows),
         },
-        "by_session": sorted(
-            by_session.values(), key=lambda s: s["last_at"] or "", reverse=True
-        )[:50],
+        "by_session": sorted(by_session.values(), key=lambda s: s["last_at"] or "", reverse=True)[:50],
         "by_day": sorted(
             [{"day": d, "cost_cents": c} for d, c in by_day.items()],
             key=lambda x: x["day"],
