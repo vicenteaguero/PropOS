@@ -17,12 +17,7 @@ class UserService:
             event_type="query",
             tenant_id=str(tenant_id),
         )
-        response = (
-            client.table(PROFILES_TABLE)
-            .select("*")
-            .eq("tenant_id", str(tenant_id))
-            .execute()
-        )
+        response = client.table(PROFILES_TABLE).select("*").eq("tenant_id", str(tenant_id)).execute()
         return response.data
 
     @staticmethod
@@ -51,13 +46,7 @@ class UserService:
             event_type="query",
             user_id=str(user_id),
         )
-        response = (
-            client.table(PROFILES_TABLE)
-            .select("*")
-            .eq("id", str(user_id))
-            .single()
-            .execute()
-        )
+        response = client.table(PROFILES_TABLE).select("*").eq("id", str(user_id)).single().execute()
         return response.data
 
     @staticmethod
@@ -86,11 +75,7 @@ class UserService:
             user_id=str(user_id),
         )
         response = (
-            client.table(PROFILES_TABLE)
-            .update(data)
-            .eq("id", str(user_id))
-            .eq("tenant_id", str(tenant_id))
-            .execute()
+            client.table(PROFILES_TABLE).update(data).eq("id", str(user_id)).eq("tenant_id", str(tenant_id)).execute()
         )
         return response.data[0]
 
@@ -102,10 +87,4 @@ class UserService:
             event_type="delete",
             user_id=str(user_id),
         )
-        (
-            client.table(PROFILES_TABLE)
-            .delete()
-            .eq("id", str(user_id))
-            .eq("tenant_id", str(tenant_id))
-            .execute()
-        )
+        (client.table(PROFILES_TABLE).delete().eq("id", str(user_id)).eq("tenant_id", str(tenant_id)).execute())
