@@ -3,10 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Check, X, Pencil, Loader2 } from "lucide-react";
-import {
-  useAcceptProposal,
-  useRejectProposal,
-} from "@features/pending/hooks/use-pending";
+import { useAcceptProposal, useRejectProposal } from "@features/pending/hooks/use-pending";
 import { useQuery } from "@tanstack/react-query";
 import { pendingApi } from "@features/pending/api/pending-api";
 import { ProposalDisambiguationPicker } from "@features/pending/components/proposal-disambiguation-picker";
@@ -48,9 +45,7 @@ export function AnitaInlineProposalCard({ proposalId }: Props) {
   }
 
   const summary =
-    (proposal.payload?.summary_es as string) ||
-    KIND_LABELS[proposal.kind] ||
-    proposal.kind;
+    (proposal.payload?.summary_es as string) || KIND_LABELS[proposal.kind] || proposal.kind;
   const isPending = proposal.status === "pending";
   const accepted = proposal.status === "accepted";
   const rejected = proposal.status === "rejected";
@@ -77,8 +72,8 @@ export function AnitaInlineProposalCard({ proposalId }: Props) {
         accepted
           ? "border-emerald-500/30 bg-emerald-500/5"
           : rejected
-          ? "border-destructive/30 bg-destructive/5"
-          : "border-primary/20"
+            ? "border-destructive/30 bg-destructive/5"
+            : "border-primary/20"
       }
     >
       <CardHeader className="py-3">
@@ -124,12 +119,7 @@ export function AnitaInlineProposalCard({ proposalId }: Props) {
 
         {isPending && (
           <div className="flex gap-2 pt-1">
-            <Button
-              size="sm"
-              onClick={handleAccept}
-              disabled={accept.isPending}
-              className="gap-1"
-            >
+            <Button size="sm" onClick={handleAccept} disabled={accept.isPending} className="gap-1">
               {accept.isPending ? (
                 <Loader2 className="size-3 animate-spin" />
               ) : (
