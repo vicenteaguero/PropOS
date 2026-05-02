@@ -9,6 +9,7 @@ from app.core.config.settings import settings
 from app.core.logging.logger import configure_logging, get_logger
 from app.core.middleware.tenant import TenantMiddleware
 from app.core.middleware.timing import TimingMiddleware
+from app.features.ads.router import router as ads_router
 from app.features.analytics.router import router as analytics_router
 from app.features.anita.router import router as anita_router
 from app.features.anita.tools.executors import register_all_dispatchers
@@ -27,6 +28,7 @@ from app.features.places.router import router as places_router
 from app.features.projects.router import router as projects_router
 from app.features.properties.router import router as properties_router
 from app.features.publications.router import router as publications_router
+from app.features.taggings.router import router as taggings_router
 from app.features.tags.router import router as tags_router
 from app.features.tasks.router import router as tasks_router
 from app.features.transactions.router import router as transactions_router
@@ -83,9 +85,11 @@ def create_app() -> FastAPI:
     application.include_router(projects_router, prefix=versioned_prefix)
     application.include_router(opportunities_router, prefix=versioned_prefix)
     application.include_router(campaigns_router, prefix=versioned_prefix)
+    application.include_router(ads_router, prefix=versioned_prefix)
     application.include_router(publications_router, prefix=versioned_prefix)
     application.include_router(notes_router, prefix=versioned_prefix)
     application.include_router(tags_router, prefix=versioned_prefix)
+    application.include_router(taggings_router, prefix=versioned_prefix)
     application.include_router(workflows_router, prefix=versioned_prefix)
     application.include_router(anita_router, prefix=versioned_prefix)
     application.include_router(analytics_router, prefix=versioned_prefix)
