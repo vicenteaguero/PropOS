@@ -113,9 +113,7 @@ async def test_update_user(mock_client, client):
 
     payload = {"role": "BUYER"}
 
-    response = await client.patch(
-        f"{USERS_PATH}/{MOCK_OTHER_USER_ID}", json=payload
-    )
+    response = await client.patch(f"{USERS_PATH}/{MOCK_OTHER_USER_ID}", json=payload)
 
     assert response.status_code == 200
     assert response.json()["role"] == "BUYER"
