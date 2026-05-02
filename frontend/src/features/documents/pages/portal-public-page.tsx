@@ -56,7 +56,13 @@ export function PortalPublicPage() {
     }
     setBusy(true);
     try {
-      await portalsApi.publicUpload(slug, file, uploaderLabel || undefined, consent, password || undefined);
+      await portalsApi.publicUpload(
+        slug,
+        file,
+        uploaderLabel || undefined,
+        consent,
+        password || undefined,
+      );
       setDone(true);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error al subir");
@@ -114,9 +120,7 @@ export function PortalPublicPage() {
       <div className="w-full max-w-md space-y-4 rounded-lg border border-border bg-card p-6">
         <div>
           <h1 className="text-lg font-semibold">{view.title}</h1>
-          {view.description && (
-            <p className="text-sm text-muted-foreground">{view.description}</p>
-          )}
+          {view.description && <p className="text-sm text-muted-foreground">{view.description}</p>}
         </div>
 
         {view.requires_password && (
@@ -124,11 +128,7 @@ export function PortalPublicPage() {
             <Label className="flex items-center gap-1 text-xs">
               <Lock className="size-3" /> Password
             </Label>
-            <Input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
+            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
           </div>
         )}
 
@@ -158,7 +158,8 @@ export function PortalPublicPage() {
             className="mt-0.5"
           />
           <span>
-            Acepto que el archivo subido sea procesado por PropOS conforme a su política de privacidad y la Ley 21.719 de Chile.
+            Acepto que el archivo subido sea procesado por PropOS conforme a su política de
+            privacidad y la Ley 21.719 de Chile.
           </span>
         </label>
 
