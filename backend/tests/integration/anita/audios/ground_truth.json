@@ -1,0 +1,317 @@
+{
+  "_instructions": "Recorder: read each \\`transcript\\` in es-CL natural — do not over-articulate punctuation. Each \\`scenario\\` has multiple \\`variants\\` exercising the same intent across different registers (formal=cordial complete sentences; colloquial=Chilean informal with fillers and self-corrections). Naming: \\`<scenario_id>__<register>.wav\\`. While audio is missing, tests fall back to using \\`transcript\\` as a direct prompt (still validates Anita's tool selection on each register).",
+  "scenarios": [
+    {
+      "id": "log_visit",
+      "category": "clean_log_interaction",
+      "expected_actions": [
+        {
+          "tool": "find_person",
+          "args_contains": {
+            "query": "juan"
+          }
+        },
+        {
+          "tool": "propose_log_interaction",
+          "args_contains": {
+            "kind": "VISIT"
+          }
+        }
+      ],
+      "variants": [
+        {
+          "file": "log_visit_formal.mp3",
+          "transcript": "Hola Anita, quería pedirte por favor que registres una visita que hicimos con Juan Pérez a la casa de Apoquindo, estuvimos cerca de media hora recorriendo, le interesó mucho la cocina aunque encontró pequeña la pieza principal. Muchas gracias.",
+          "similarity_min": 0.78,
+          "register": "formal"
+        },
+        {
+          "file": "log_visit_colloquial.mp3",
+          "transcript": "Oye anótate algo... fui a ver la casa esa con el Juan, el Juan Pérez weón, este... la de Apoquindo po, estuvimos como media hora, le tincó la cocina pero el dormitorio principal lo encontró chico, eso, anótalo como visita ya.",
+          "similarity_min": 0.65,
+          "register": "colloquial"
+        }
+      ]
+    },
+    {
+      "id": "create_person",
+      "category": "create_person_with_data",
+      "expected_actions": [
+        {
+          "tool": "propose_create_person",
+          "args_contains": {
+            "kind": "BUYER"
+          },
+          "args_text_contains": [
+            "pedro"
+          ]
+        }
+      ],
+      "variants": [
+        {
+          "file": "create_person_formal.mp3",
+          "transcript": "Anita, por favor agrega un nuevo comprador a la base de datos, se llama Pedro Soto Rivera, su RUT es 12.345.678-9 y el teléfono es +56 9 1234 5678. Muchas gracias.",
+          "similarity_min": 0.8,
+          "register": "formal"
+        },
+        {
+          "file": "create_person_colloquial.mp3",
+          "transcript": "Oye agrégate el contacto del Pedro, el Pedro Soto, este weón trabaja en las motos, en Lo Trail no sé cuánto, y... el RUT es doce trescientos cuarenta y cinco seis setenta y ocho nueve, comprador, gracias.",
+          "similarity_min": 0.6,
+          "register": "colloquial"
+        }
+      ]
+    },
+    {
+      "id": "ambiguity_maria",
+      "category": "ambiguity_clarify",
+      "expected_actions": [
+        {
+          "tool": "clarify",
+          "reason": "two seeded Marías"
+        }
+      ],
+      "expected_no_proposals": true,
+      "variants": [
+        {
+          "file": "ambiguity_maria_formal.mp3",
+          "transcript": "Anita, ¿podrías agendarme una reunión con María para mañana a las cuatro de la tarde en la oficina? Gracias.",
+          "similarity_min": 0.8,
+          "register": "formal"
+        },
+        {
+          "file": "ambiguity_maria_colloquial.mp3",
+          "transcript": "Oye agéndame algo con la María po, mañana en la tarde, como a las cuatro, en la oficina, eso.",
+          "similarity_min": 0.7,
+          "register": "colloquial"
+        }
+      ]
+    },
+    {
+      "id": "vague_no_action",
+      "category": "vague_must_clarify",
+      "expected_actions": [
+        {
+          "tool": "clarify",
+          "reason": "intent insuficiente"
+        }
+      ],
+      "expected_no_proposals": true,
+      "variants": [
+        {
+          "file": "vague_no_action_formal.mp3",
+          "transcript": "Anita, podrías anotar algo sobre la conversación que tuve recién, fue importante pero después te cuento mejor los detalles. Gracias.",
+          "similarity_min": 0.75,
+          "register": "formal"
+        },
+        {
+          "file": "vague_no_action_colloquial.mp3",
+          "transcript": "Eh oye anótate algo importante de... este... bueno weón déjalo así nomás, después te cuento bien, ya, chao.",
+          "similarity_min": 0.55,
+          "register": "colloquial"
+        }
+      ]
+    },
+    {
+      "id": "log_expense",
+      "category": "transaction_with_slang",
+      "expected_actions": [
+        {
+          "tool": "propose_log_transaction",
+          "args_contains": {
+            "direction": "OUT",
+            "amount": 50000
+          }
+        }
+      ],
+      "variants": [
+        {
+          "file": "log_expense_formal.mp3",
+          "transcript": "Anita, registra por favor un gasto de cincuenta mil pesos en publicidad de Meta para el proyecto de Chicureo, fue ayer en la tarde. Gracias.",
+          "similarity_min": 0.8,
+          "register": "formal"
+        },
+        {
+          "file": "log_expense_colloquial.mp3",
+          "transcript": "Anota un gasto po, cincuenta lucas en pubertad de... no, en publicidad de Meta, para Chicureo, ayer, gracias.",
+          "similarity_min": 0.65,
+          "register": "colloquial"
+        }
+      ]
+    },
+    {
+      "id": "multi_action",
+      "category": "multi_action",
+      "expected_actions": [
+        {
+          "tool": "propose_log_interaction",
+          "args_contains": {
+            "kind": "CALL"
+          }
+        },
+        {
+          "tool": "propose_create_task"
+        }
+      ],
+      "variants": [
+        {
+          "file": "multi_action_formal.mp3",
+          "transcript": "Anita, llamé recién a Juan Pérez por unos cinco minutos, quedamos en que el viernes le envío la propuesta firmada. Por favor agéndame esa tarea pendiente para el jueves. Gracias.",
+          "similarity_min": 0.78,
+          "register": "formal"
+        },
+        {
+          "file": "multi_action_colloquial.mp3",
+          "transcript": "Oye llamé al Juan recién, como cinco minutos hablamos, le tengo que mandar la propuesta firmada el viernes, anótate eso pa el jueves como tarea, gracias weón.",
+          "similarity_min": 0.62,
+          "register": "colloquial"
+        }
+      ]
+    },
+    {
+      "id": "query_simple",
+      "category": "query_views",
+      "expected_actions": [
+        {
+          "tool": "query_views",
+          "args_contains": {
+            "view": "tasks_open_count"
+          }
+        }
+      ],
+      "expected_text_contains": [
+        "3"
+      ],
+      "variants": [
+        {
+          "file": "query_simple_formal.mp3",
+          "transcript": "Anita, ¿podrías decirme cuántas tareas tengo abiertas en este momento? Gracias.",
+          "similarity_min": 0.8,
+          "register": "formal"
+        },
+        {
+          "file": "query_simple_colloquial.mp3",
+          "transcript": "Oye qué tareas tengo abiertas po, dime cuántas son nomás.",
+          "similarity_min": 0.7,
+          "register": "colloquial"
+        }
+      ]
+    },
+    {
+      "id": "query_sql",
+      "category": "query_sql_freeform",
+      "expected_actions": [
+        {
+          "tool": "query_sql"
+        }
+      ],
+      "variants": [
+        {
+          "file": "query_sql_formal.mp3",
+          "transcript": "Anita, ¿qué propiedades no han tenido ninguna interacción en los últimos siete días? Quiero revisar las que están sin movimiento. Gracias.",
+          "similarity_min": 0.78,
+          "register": "formal"
+        },
+        {
+          "file": "query_sql_colloquial.mp3",
+          "transcript": "A ver dime las propiedades que están medias dormidas po, las que no han tenido nada de movimiento en la última semana, gracias.",
+          "similarity_min": 0.65,
+          "register": "colloquial"
+        }
+      ]
+    },
+    {
+      "id": "whatsapp_log_with_task",
+      "category": "interaction_whatsapp",
+      "expected_actions": [
+        {
+          "tool": "find_person",
+          "args_contains": {
+            "query": "maría"
+          }
+        },
+        {
+          "tool": "propose_log_interaction",
+          "args_contains": {
+            "kind": "WHATSAPP_LOG"
+          }
+        },
+        {
+          "tool": "propose_create_task",
+          "args_text_contains": [
+            "confirmar"
+          ]
+        }
+      ],
+      "variants": [
+        {
+          "file": "whatsapp_log_with_task_formal.mp3",
+          "transcript": "Anita, María Soto del Loteo Chicureo me escribió por WhatsApp para decirme que quiere visitar el sábado. Por favor anota la conversación y déjame una tarea pendiente para confirmarle. Gracias.",
+          "similarity_min": 0.78,
+          "register": "formal"
+        },
+        {
+          "file": "whatsapp_log_with_task_colloquial.mp3",
+          "transcript": "Oye la María Soto, la del Chicureo, me wasapeó que quiere ir el sábado a ver, anótate eso como conversación y déjame pendiente confirmarle po, gracias.",
+          "similarity_min": 0.62,
+          "register": "colloquial"
+        }
+      ]
+    },
+    {
+      "id": "self_correction",
+      "category": "robust_self_correction",
+      "expected_actions": [
+        {
+          "tool": "find_person",
+          "args_contains": {
+            "query": "pedro"
+          }
+        },
+        {
+          "tool": "propose_log_interaction",
+          "args_contains": {
+            "kind": "CALL"
+          }
+        }
+      ],
+      "variants": [
+        {
+          "file": "self_correction_formal.mp3",
+          "transcript": "Anita, anota una visita con... perdón, no fue visita, fue una llamada con Pedro Kast, el inversionista, conversamos cerca de veinte minutos sobre el departamento de Providencia. Gracias.",
+          "similarity_min": 0.78,
+          "register": "formal"
+        },
+        {
+          "file": "self_correction_colloquial.mp3",
+          "transcript": "Pucha anota una visita con... no espera weón, era una llamada con el Pedro Kast, el inversionista po, hablamos como veinte minutos del depto de Providencia, eso.",
+          "similarity_min": 0.62,
+          "register": "colloquial"
+        }
+      ]
+    },
+    {
+      "id": "ambiguous_property",
+      "category": "create_person_with_self_disambiguation",
+      "expected_actions": [
+        {
+          "tool": "propose_create_person"
+        }
+      ],
+      "variants": [
+        {
+          "file": "ambiguous_property_formal.mp3",
+          "register": "formal",
+          "transcript": "Anita, por favor agrega un nuevo contacto, se llama Juan Pablo, trabaja en una tienda de motos en Lo Trail. Es el dueño del terreno de Corrales, no confundir con el de Curicó. Gracias.",
+          "similarity_min": 0.78
+        },
+        {
+          "file": "ambiguous_property_colloquial.mp3",
+          "transcript": "Oye agrégate el contacto del Juan Pablo, este weón trabaja en las motos, en Lo Trail no sé cuánto, y... este... weón es el del terreno de Corrales, no del de Curicó, porfa anótate eso... gracias.",
+          "similarity_min": 0.55,
+          "register": "colloquial"
+        }
+      ]
+    }
+  ]
+}
