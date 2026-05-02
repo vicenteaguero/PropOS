@@ -12,14 +12,7 @@ class TagService:
     @staticmethod
     async def list_tags(tenant_id: UUID) -> list[dict]:
         client = get_supabase_client()
-        return (
-            client.table(TAGS_TABLE)
-            .select("*")
-            .eq("tenant_id", str(tenant_id))
-            .order("name")
-            .execute()
-            .data
-        )
+        return client.table(TAGS_TABLE).select("*").eq("tenant_id", str(tenant_id)).order("name").execute().data
 
     @staticmethod
     async def create_tag(payload, tenant_id: UUID) -> dict:
@@ -44,15 +37,11 @@ class TagService:
     @staticmethod
     async def delete_tag(tag_id: UUID, tenant_id: UUID) -> None:
         client = get_supabase_client()
-        client.table(TAGS_TABLE).delete().eq("id", str(tag_id)).eq(
-            "tenant_id", str(tenant_id)
-        ).execute()
+        client.table(TAGS_TABLE).delete().eq("id", str(tag_id)).eq("tenant_id", str(tenant_id)).execute()
 
     # Taggings
     @staticmethod
-    async def list_taggings(
-        tenant_id: UUID, target_table: str, target_row_id: UUID
-    ) -> list[dict]:
+    async def list_taggings(tenant_id: UUID, target_table: str, target_row_id: UUID) -> list[dict]:
         client = get_supabase_client()
         return (
             client.table(TAGGINGS_TABLE)
@@ -73,15 +62,10 @@ class TagService:
         data["tag_id"] = str(data["tag_id"])
         data["target_row_id"] = str(data["target_row_id"])
         return (
-            client.table(TAGGINGS_TABLE)
-            .upsert(data, on_conflict="tag_id,target_table,target_row_id")
-            .execute()
-            .data[0]
+            client.table(TAGGINGS_TABLE).upsert(data, on_conflict="tag_id,target_table,target_row_id").execute().data[0]
         )
 
     @staticmethod
     async def remove_tagging(tagging_id: UUID, tenant_id: UUID) -> None:
         client = get_supabase_client()
-        client.table(TAGGINGS_TABLE).delete().eq("id", str(tagging_id)).eq(
-            "tenant_id", str(tenant_id)
-        ).execute()
+        client.table(TAGGINGS_TABLE).delete().eq("id", str(tagging_id)).eq("tenant_id", str(tenant_id)).execute()
