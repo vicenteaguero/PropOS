@@ -1,0 +1,43 @@
+output-format = "concise"
+line-length = 120
+target-version = "py312"
+
+lint.select = [
+  "Q",   # flake8-quotes
+  "N",   # pep8-naming
+  "UP",  # python upgrade
+  "B",   # flake8-bugbear
+  "ISC", # isort
+  "F",   # pyflakes
+  "E",   # pycodestyle
+  "W",   # pycodestyle warnings
+  "C4",  # flake8-comprehensions
+  "ERA", # eradicate
+]
+lint.ignore = [
+  "E225",
+  "E226",
+  "UP018",
+  "C408",
+  "B008",
+]
+
+[lint.flake8-quotes]
+avoid-escape = true
+docstring-quotes = "double"
+inline-quotes = "double"
+
+[lint.isort]
+section-order = ["future", "standard-library", "third-party", "first-party", "local-folder"]
+order-by-type = true
+
+[lint.per-file-ignores]
+"tests/**/*.py" = ["E501"]
+"app/migrations/**/*.py" = ["E501"]
+"scripts/**/*.py" = ["ERA001"]
+"app/features/anita/tools/definitions.py" = ["E501"]
+"app/features/anita/system_prompt.py" = ["E501"]
+
+[format]
+quote-style = "double"
+indent-style = "space"
