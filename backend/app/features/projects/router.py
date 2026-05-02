@@ -28,9 +28,7 @@ async def list_projects(
 
 
 @router.get("/{project_id}", response_model=ProjectResponse)
-async def get_project(
-    project_id: UUID, tenant_id: UUID = Depends(get_tenant_id)
-) -> dict:
+async def get_project(project_id: UUID, tenant_id: UUID = Depends(get_tenant_id)) -> dict:
     return await ProjectService.get_project(project_id, tenant_id)
 
 
@@ -40,9 +38,7 @@ async def create_project(
     tenant_id: UUID = Depends(get_tenant_id),
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> dict:
-    return await ProjectService.create_project(
-        payload, tenant_id, UUID(current_user["id"])
-    )
+    return await ProjectService.create_project(payload, tenant_id, UUID(current_user["id"]))
 
 
 @router.patch("/{project_id}", response_model=ProjectResponse)
@@ -55,7 +51,5 @@ async def update_project(
 
 
 @router.delete("/{project_id}", status_code=204)
-async def delete_project(
-    project_id: UUID, tenant_id: UUID = Depends(get_tenant_id)
-):
+async def delete_project(project_id: UUID, tenant_id: UUID = Depends(get_tenant_id)):
     await ProjectService.delete_project(project_id, tenant_id)
