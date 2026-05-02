@@ -7,9 +7,7 @@ from fastapi import APIRouter, Depends, Query
 
 from app.core.dependencies import get_current_user, get_tenant_id
 from app.features.campaigns.schemas import (
-    AdCreate,
     AdResponse,
-    AdUpdate,
     CampaignCreate,
     CampaignResponse,
     CampaignUpdate,
@@ -31,9 +29,7 @@ async def list_campaigns(
 
 
 @router.get("/{campaign_id}", response_model=CampaignResponse)
-async def get_campaign(
-    campaign_id: UUID, tenant_id: UUID = Depends(get_tenant_id)
-) -> dict:
+async def get_campaign(campaign_id: UUID, tenant_id: UUID = Depends(get_tenant_id)) -> dict:
     return await CampaignService.get_campaign(campaign_id, tenant_id)
 
 
@@ -43,9 +39,7 @@ async def create_campaign(
     tenant_id: UUID = Depends(get_tenant_id),
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> dict:
-    return await CampaignService.create_campaign(
-        payload, tenant_id, UUID(current_user["id"])
-    )
+    return await CampaignService.create_campaign(payload, tenant_id, UUID(current_user["id"]))
 
 
 @router.patch("/{campaign_id}", response_model=CampaignResponse)
@@ -58,33 +52,10 @@ async def update_campaign(
 
 
 @router.delete("/{campaign_id}", status_code=204)
-async def delete_campaign(
-    campaign_id: UUID, tenant_id: UUID = Depends(get_tenant_id)
-):
+async def delete_campaign(campaign_id: UUID, tenant_id: UUID = Depends(get_tenant_id)):
     await CampaignService.delete_campaign(campaign_id, tenant_id)
 
 
 @router.get("/{campaign_id}/ads", response_model=list[AdResponse])
-async def list_ads(
-    campaign_id: UUID, tenant_id: UUID = Depends(get_tenant_id)
-) -> list[dict]:
+async def list_campaign_ads(campaign_id: UUID, tenant_id: UUID = Depends(get_tenant_id)) -> list[dict]:
     return await AdService.list_ads(campaign_id, tenant_id)
-
-
-@router.post("/ads", response_model=AdResponse, status_code=201)
-async def create_ad(
-    payload: AdCreate, tenant_id: UUID = Depends(get_tenant_id)
-) -> dict:
-    return await AdService.create_ad(payload, tenant_id)
-
-
-@router.patch("/ads/{ad_id}", response_model=AdResponse)
-async def update_ad(
-    ad_id: UUID, payload: AdUpdate, tenant_id: UUID = Depends(get_tenant_id)
-) -> dict:
-    return await AdService.update_ad(ad_id, payload, tenant_id)
-
-
-@router.delete("/ads/{ad_id}", status_code=204)
-async def delete_ad(ad_id: UUID, tenant_id: UUID = Depends(get_tenant_id)):
-    await AdService.delete_ad(ad_id, tenant_id)
