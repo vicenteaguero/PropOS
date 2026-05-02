@@ -30,9 +30,7 @@ def load_snapshot(tenant_id: UUID) -> TenantSnapshot:
     client = get_supabase_client()
     tid = str(tenant_id)
 
-    tenant = (
-        client.table("tenants").select("name").eq("id", tid).single().execute().data
-    )
+    tenant = client.table("tenants").select("name").eq("id", tid).single().execute().data
 
     return TenantSnapshot(
         tenant_id=tenant_id,
@@ -69,12 +67,7 @@ def load_snapshot(tenant_id: UUID) -> TenantSnapshot:
         .limit(30)
         .execute()
         .data,
-        pipelines=client.table("pipelines")
-        .select("name,stages")
-        .eq("tenant_id", tid)
-        .limit(5)
-        .execute()
-        .data,
+        pipelines=client.table("pipelines").select("name,stages").eq("tenant_id", tid).limit(5).execute().data,
         tags=client.table("tags").select("name").eq("tenant_id", tid).limit(30).execute().data,
         recent_interactions=client.table("interactions")
         .select("occurred_at,kind,summary")
