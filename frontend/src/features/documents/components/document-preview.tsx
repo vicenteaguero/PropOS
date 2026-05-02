@@ -41,11 +41,7 @@ export function DocumentPreview({ blob, loading, maxPages = 25 }: Props) {
 
   if (blob.type.startsWith("image/")) {
     return (
-      <img
-        src={src}
-        alt="preview"
-        className="mx-auto max-h-[80dvh] rounded-md object-contain"
-      />
+      <img src={src} alt="preview" className="mx-auto max-h-[80dvh] rounded-md object-contain" />
     );
   }
 
