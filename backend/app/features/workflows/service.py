@@ -84,16 +84,22 @@ class WorkflowService:
         )
 
     @staticmethod
-    async def update_step(step_id: UUID, payload, tenant_id: UUID) -> dict:
+    async def update_step(workflow_id: UUID, step_id: UUID, payload, tenant_id: UUID) -> dict:
         client = get_supabase_client()
         data = _norm(payload.model_dump(exclude_unset=True))
         if data.get("status") == "COMPLETED" and "completed_at" not in data:
             data["completed_at"] = datetime.now(UTC).isoformat()
-        return (
+        rows = (
             client.table(STEPS_TABLE)
             .update(data)
             .eq("id", str(step_id))
+            .eq("workflow_id", str(workflow_id))
             .eq("tenant_id", str(tenant_id))
             .execute()
-            .data[0]
+            .data
         )
+        if not rows:
+            from fastapi import HTTPException
+
+            raise HTTPException(status_code=404, detail="step not found in workflow")
+        return rows[0]
