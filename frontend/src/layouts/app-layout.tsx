@@ -38,9 +38,7 @@ export function AppLayout() {
               <DropdownMenuTrigger asChild>
                 <button className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring">
                   <Avatar size="sm">
-                    <AvatarFallback>
-                      {user ? getInitials(user.fullName) : "?"}
-                    </AvatarFallback>
+                    <AvatarFallback>{user ? getInitials(user.fullName) : "?"}</AvatarFallback>
                   </Avatar>
                 </button>
               </DropdownMenuTrigger>
@@ -49,7 +47,9 @@ export function AppLayout() {
                   <>
                     <DropdownMenuLabel className="font-normal">
                       <p className="text-sm font-medium">{user.fullName}</p>
-                      <p className="text-xs text-muted-foreground capitalize">{user.role.toLowerCase()}</p>
+                      <p className="text-xs text-muted-foreground capitalize">
+                        {user.role.toLowerCase()}
+                      </p>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
                   </>
