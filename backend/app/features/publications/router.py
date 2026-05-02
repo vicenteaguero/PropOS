@@ -24,9 +24,7 @@ async def list_publications(
     status: str | None = Query(default=None),
     limit: int = Query(default=200, le=500),
 ) -> list[dict]:
-    return await PublicationService.list_publications(
-        tenant_id, property_id, portal_org_id, status, limit
-    )
+    return await PublicationService.list_publications(tenant_id, property_id, portal_org_id, status, limit)
 
 
 @router.post("", response_model=PublicationResponse, status_code=201)
@@ -35,9 +33,7 @@ async def create_publication(
     tenant_id: UUID = Depends(get_tenant_id),
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> dict:
-    return await PublicationService.create_publication(
-        payload, tenant_id, UUID(current_user["id"])
-    )
+    return await PublicationService.create_publication(payload, tenant_id, UUID(current_user["id"]))
 
 
 @router.patch("/{pub_id}", response_model=PublicationResponse)
@@ -50,7 +46,5 @@ async def update_publication(
 
 
 @router.delete("/{pub_id}", status_code=204)
-async def delete_publication(
-    pub_id: UUID, tenant_id: UUID = Depends(get_tenant_id)
-):
+async def delete_publication(pub_id: UUID, tenant_id: UUID = Depends(get_tenant_id)):
     await PublicationService.delete_publication(pub_id, tenant_id)
