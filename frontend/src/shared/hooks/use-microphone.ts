@@ -31,9 +31,7 @@ export function useMicrophone(): UseMicrophoneReturn {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
 
-      const mimeType = MediaRecorder.isTypeSupported("audio/webm")
-        ? "audio/webm"
-        : "audio/mp4";
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "audio/mp4";
 
       const recorder = new MediaRecorder(stream, { mimeType });
       recorderRef.current = recorder;
@@ -84,5 +82,14 @@ export function useMicrophone(): UseMicrophoneReturn {
     setDuration(0);
   }, [audioUrl]);
 
-  return { isRecording, audioBlob, audioUrl, duration, error, startRecording, stopRecording, clearRecording };
+  return {
+    isRecording,
+    audioBlob,
+    audioUrl,
+    duration,
+    error,
+    startRecording,
+    stopRecording,
+    clearRecording,
+  };
 }
