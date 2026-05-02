@@ -22,12 +22,7 @@ interface Props {
   onPick: (candidateId: string) => void;
 }
 
-export function ProposalDisambiguationPicker({
-  field,
-  candidates,
-  selected,
-  onPick,
-}: Props) {
+export function ProposalDisambiguationPicker({ field, candidates, selected, onPick }: Props) {
   if (!candidates || candidates.length === 0) return null;
   return (
     <div className="space-y-2">
@@ -52,9 +47,7 @@ export function ProposalDisambiguationPicker({
             >
               <div className="flex-1">
                 <p className="text-sm font-medium">{label}</p>
-                {meta && (
-                  <p className="text-xs text-muted-foreground">{meta}</p>
-                )}
+                {meta && <p className="text-xs text-muted-foreground">{meta}</p>}
               </div>
               {isSelected ? (
                 <Badge>Elegido</Badge>
