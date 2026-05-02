@@ -23,9 +23,7 @@ def _norm(data: dict[str, Any]) -> dict[str, Any]:
 
 class PlaceService:
     @staticmethod
-    async def list_places(
-        tenant_id: UUID, q: str | None = None, limit: int = 100
-    ) -> list[dict]:
+    async def list_places(tenant_id: UUID, q: str | None = None, limit: int = 100) -> list[dict]:
         client = get_supabase_client()
         builder = (
             client.table(PLACES_TABLE)
@@ -76,6 +74,6 @@ class PlaceService:
     @staticmethod
     async def delete_place(place_id: UUID, tenant_id: UUID) -> None:
         client = get_supabase_client()
-        client.table(PLACES_TABLE).update(
-            {"deleted_at": datetime.now(UTC).isoformat()}
-        ).eq("id", str(place_id)).eq("tenant_id", str(tenant_id)).execute()
+        client.table(PLACES_TABLE).update({"deleted_at": datetime.now(UTC).isoformat()}).eq("id", str(place_id)).eq(
+            "tenant_id", str(tenant_id)
+        ).execute()
