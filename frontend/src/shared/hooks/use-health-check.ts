@@ -21,7 +21,8 @@ export function useHealthCheck() {
           return { status: "down" as const, latency };
         }
 
-        const status: HealthStatus = latency < 1000 ? "healthy" : latency < 3000 ? "degraded" : "down";
+        const status: HealthStatus =
+          latency < 1000 ? "healthy" : latency < 3000 ? "degraded" : "down";
         return { status, latency };
       } catch {
         return { status: "down" as const, latency: Date.now() - start };
