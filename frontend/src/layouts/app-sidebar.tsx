@@ -97,8 +97,18 @@ export function AppSidebar() {
   const { state, setOpenMobile, isMobile } = useSidebar();
   const { data: health } = useHealthCheck();
   const healthStatus = health?.status ?? "down";
-  const healthColor = healthStatus === "healthy" ? "bg-success" : healthStatus === "degraded" ? "bg-warning" : "bg-destructive";
-  const healthLabel = healthStatus === "healthy" ? "API conectada" : healthStatus === "degraded" ? "API lenta" : "API sin conexión";
+  const healthColor =
+    healthStatus === "healthy"
+      ? "bg-success"
+      : healthStatus === "degraded"
+        ? "bg-warning"
+        : "bg-destructive";
+  const healthLabel =
+    healthStatus === "healthy"
+      ? "API conectada"
+      : healthStatus === "degraded"
+        ? "API lenta"
+        : "API sin conexión";
 
   if (!user) return null;
 
@@ -114,9 +124,7 @@ export function AppSidebar() {
         />
         <div className="grid flex-1 text-left text-sm leading-tight">
           <span className="truncate font-semibold">PropOS</span>
-          <span className="truncate text-xs text-muted-foreground">
-            {user.fullName}
-          </span>
+          <span className="truncate text-xs text-muted-foreground">{user.fullName}</span>
         </div>
       </SidebarHeader>
 
@@ -154,11 +162,20 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton tooltip={healthLabel} className="pointer-events-none">
               <span className={`size-2 shrink-0 rounded-full ${healthColor}`} />
-              <span className="text-xs text-muted-foreground">{healthLabel}{health?.latency != null ? ` (${health.latency}ms)` : ""}</span>
+              <span className="text-xs text-muted-foreground">
+                {healthLabel}
+                {health?.latency != null ? ` (${health.latency}ms)` : ""}
+              </span>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <SidebarMenuButton onClick={() => { if (isMobile) setOpenMobile(false); signOut(); }} tooltip="Cerrar sesión">
+            <SidebarMenuButton
+              onClick={() => {
+                if (isMobile) setOpenMobile(false);
+                signOut();
+              }}
+              tooltip="Cerrar sesión"
+            >
               <LogOut />
               <span>Cerrar sesión</span>
             </SidebarMenuButton>
