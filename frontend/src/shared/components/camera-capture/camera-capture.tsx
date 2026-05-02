@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Camera, SwitchCamera, RotateCcw, Save } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useCamera } from "@shared/hooks/use-camera";
 import { useMediaUpload } from "@shared/hooks/use-media-upload";
@@ -13,7 +19,17 @@ interface CameraCaptureProps {
 export function CameraCapture({ onSaved }: CameraCaptureProps) {
   const [open, setOpen] = useState(false);
   const [facingMode, setFacingMode] = useState<"user" | "environment">("environment");
-  const { stream, photo, photoUrl, isActive, error, startCamera, stopCamera, takePhoto, clearPhoto } = useCamera();
+  const {
+    stream,
+    photo,
+    photoUrl,
+    isActive,
+    error,
+    startCamera,
+    stopCamera,
+    takePhoto,
+    clearPhoto,
+  } = useCamera();
   const { upload, uploading } = useMediaUpload();
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -64,9 +80,7 @@ export function CameraCapture({ onSaved }: CameraCaptureProps) {
           <DialogTitle>Cámara</DialogTitle>
         </DialogHeader>
 
-        {error && (
-          <p className="text-sm text-destructive">{error}</p>
-        )}
+        {error && <p className="text-sm text-destructive">{error}</p>}
 
         {!photoUrl ? (
           <div className="space-y-3">
