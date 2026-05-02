@@ -38,8 +38,10 @@ export function useCreatePortal() {
 export function useUpdatePortal() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { id: string; body: Partial<CreatePortalInput> & { is_active?: boolean; clear_password?: boolean } }) =>
-      portalsApi.update(input.id, input.body),
+    mutationFn: (input: {
+      id: string;
+      body: Partial<CreatePortalInput> & { is_active?: boolean; clear_password?: boolean };
+    }) => portalsApi.update(input.id, input.body),
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: portalsKeys.all });
       qc.invalidateQueries({ queryKey: portalsKeys.detail(vars.id) });
