@@ -16,7 +16,11 @@ export async function compressImage(file: File, opts: CompressOptions = {}): Pro
   });
 }
 
-export async function compressBlob(blob: Blob, filename = "image.jpg", opts: CompressOptions = {}): Promise<File> {
+export async function compressBlob(
+  blob: Blob,
+  filename = "image.jpg",
+  opts: CompressOptions = {},
+): Promise<File> {
   const file = new File([blob], filename, { type: blob.type || "image/jpeg" });
   return compressImage(file, opts);
 }
