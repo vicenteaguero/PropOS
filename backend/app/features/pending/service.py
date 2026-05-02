@@ -11,7 +11,6 @@ PENDING_TABLE = "pending_proposals"
 
 logger = get_logger("PENDING")
 
-
 # Registry: tool kind → executor that performs the actual mutation.
 # Populated in Phase E by app.features.anita.tools.executors when each
 # propose_* executor is implemented. Signature:
@@ -36,12 +35,7 @@ class PendingService:
         kind: str | None = None,
     ) -> list[dict]:
         client = get_supabase_client()
-        builder = (
-            client.table(PENDING_TABLE)
-            .select("*")
-            .eq("tenant_id", str(tenant_id))
-            .order("created_at", desc=True)
-        )
+        builder = client.table(PENDING_TABLE).select("*").eq("tenant_id", str(tenant_id)).order("created_at", desc=True)
         if status:
             builder = builder.eq("status", status)
         if kind:
@@ -105,9 +99,7 @@ class PendingService:
         proposal = await PendingService.get_proposal(proposal_id, tenant_id)
 
         if proposal["status"] != "pending":
-            raise ValueError(
-                f"Proposal {proposal_id} not pending (status={proposal['status']})"
-            )
+            raise ValueError(f"Proposal {proposal_id} not pending (status={proposal['status']})")
 
         kind = proposal["kind"]
         dispatcher = ACCEPT_DISPATCHERS.get(kind)
@@ -115,8 +107,7 @@ class PendingService:
             # Phase A: dispatcher registry empty until Phase E executors land.
             # Returning 501 honestly beats faking success.
             raise NotImplementedError(
-                f"Accept dispatcher for kind '{kind}' not registered yet "
-                "(Phase E wires propose_* executors)."
+                f"Accept dispatcher for kind '{kind}' not registered yet (Phase E wires propose_* executors)."
             )
 
         payload: dict[str, Any] = dict(proposal["resolved_payload"] or proposal["payload"])
