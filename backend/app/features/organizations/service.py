@@ -85,6 +85,6 @@ class OrganizationService:
     @staticmethod
     async def delete_organization(org_id: UUID, tenant_id: UUID) -> None:
         client = get_supabase_client()
-        client.table(ORGS_TABLE).update(
-            {"deleted_at": datetime.now(UTC).isoformat()}
-        ).eq("id", str(org_id)).eq("tenant_id", str(tenant_id)).execute()
+        client.table(ORGS_TABLE).update({"deleted_at": datetime.now(UTC).isoformat()}).eq("id", str(org_id)).eq(
+            "tenant_id", str(tenant_id)
+        ).execute()
