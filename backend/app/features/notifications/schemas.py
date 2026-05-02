@@ -10,4 +10,4 @@ class PushSubscriptionCreate(BaseModel):
 class SendNotificationRequest(BaseModel):
     title: str = "PropOS"
     body: str
-    user_id: str | None = None  # None = broadcast to all in tenant
+    user_id: str | None = None
