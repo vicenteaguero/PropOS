@@ -15,7 +15,7 @@ logger = get_logger("TRANSACTIONS")
 def _serialize(data: dict[str, Any]) -> dict[str, Any]:
     out: dict[str, Any] = {}
     for k, v in data.items():
-        if isinstance(v, (datetime, date)):
+        if isinstance(v, datetime | date):
             out[k] = v.isoformat()
         elif isinstance(v, UUID):
             out[k] = str(v)
@@ -98,18 +98,12 @@ class TransactionService:
             if data.get(k) and hasattr(data[k], "value"):
                 data[k] = data[k].value
         data = _serialize(data)
-        response = (
-            client.table(TX_TABLE)
-            .update(data)
-            .eq("id", str(tx_id))
-            .eq("tenant_id", str(tenant_id))
-            .execute()
-        )
+        response = client.table(TX_TABLE).update(data).eq("id", str(tx_id)).eq("tenant_id", str(tenant_id)).execute()
         return response.data[0]
 
     @staticmethod
     async def delete_transaction(tx_id: UUID, tenant_id: UUID) -> None:
         client = get_supabase_client()
-        client.table(TX_TABLE).update(
-            {"deleted_at": datetime.now(UTC).isoformat()}
-        ).eq("id", str(tx_id)).eq("tenant_id", str(tenant_id)).execute()
+        client.table(TX_TABLE).update({"deleted_at": datetime.now(UTC).isoformat()}).eq("id", str(tx_id)).eq(
+            "tenant_id", str(tenant_id)
+        ).execute()
