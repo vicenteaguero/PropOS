@@ -1,9 +1,9 @@
-"""Tool executors invoked by the Anita chat loop.
+"""Anita proposal writers + accept-side dispatchers.
 
-- find_*: read live data, return candidates
-- propose_*: write to pending_proposals (NEVER touch domain tables)
-- clarify: no-op (the model uses it to defer to user)
-- query_data: see query_data.py
+The v2 pipeline (``classifier`` → ``resolver`` → ``dispatcher``) calls
+``_create_proposal`` directly. The pending-review feature (when a human
+clicks "Accept") fans out to the per-kind ``_accept_*`` functions
+registered via ``register_all_dispatchers``.
 """
 
 from __future__ import annotations
@@ -20,102 +20,8 @@ logger = get_logger("ANITA_TOOLS")
 PENDING_TABLE = "pending_proposals"
 
 
-# ---------- Read tools ----------
+# ---------- Propose: write to pending_proposals ----------
 
-def find_person(args: dict[str, Any], tenant_id: UUID) -> dict[str, Any]:
-    q = args.get("query", "").strip()
-    limit = min(int(args.get("limit", 5)), 20)
-    if not q:
-        return {"candidates": []}
-    client = get_supabase_client()
-    rows = (
-        client.table("contacts")
-        .select("id,full_name,type,phone,email,rut")
-        .eq("tenant_id", str(tenant_id))
-        .is_("deleted_at", "null")
-        .ilike("full_name", f"%{q}%")
-        .limit(limit)
-        .execute()
-        .data
-    )
-    return {"candidates": rows, "count": len(rows)}
-
-
-def find_property(args: dict[str, Any], tenant_id: UUID) -> dict[str, Any]:
-    q = args.get("query", "").strip()
-    limit = min(int(args.get("limit", 5)), 20)
-    client = get_supabase_client()
-    builder = (
-        client.table("properties")
-        .select("id,title,status,address")
-        .eq("tenant_id", str(tenant_id))
-        .is_("deleted_at", "null")
-        .limit(limit)
-    )
-    if q:
-        builder = builder.or_(f"title.ilike.%{q}%,address.ilike.%{q}%")
-    if args.get("status"):
-        builder = builder.eq("status", args["status"])
-    return {"candidates": builder.execute().data}
-
-
-def find_organization(args: dict[str, Any], tenant_id: UUID) -> dict[str, Any]:
-    q = args.get("query", "").strip()
-    limit = min(int(args.get("limit", 5)), 20)
-    client = get_supabase_client()
-    builder = (
-        client.table("organizations")
-        .select("id,name,kind")
-        .eq("tenant_id", str(tenant_id))
-        .is_("deleted_at", "null")
-        .ilike("name", f"%{q}%")
-        .limit(limit)
-    )
-    if args.get("kind"):
-        builder = builder.eq("kind", args["kind"])
-    return {"candidates": builder.execute().data}
-
-
-def find_project(args: dict[str, Any], tenant_id: UUID) -> dict[str, Any]:
-    q = args.get("query", "").strip()
-    limit = min(int(args.get("limit", 5)), 20)
-    client = get_supabase_client()
-    rows = (
-        client.table("projects")
-        .select("id,name,kind,status")
-        .eq("tenant_id", str(tenant_id))
-        .is_("deleted_at", "null")
-        .ilike("name", f"%{q}%")
-        .limit(limit)
-        .execute()
-        .data
-    )
-    return {"candidates": rows}
-
-
-def find_campaign(args: dict[str, Any], tenant_id: UUID) -> dict[str, Any]:
-    q = args.get("query", "").strip()
-    limit = min(int(args.get("limit", 5)), 20)
-    client = get_supabase_client()
-    builder = (
-        client.table("campaigns")
-        .select("id,name,channel,status")
-        .eq("tenant_id", str(tenant_id))
-        .is_("deleted_at", "null")
-        .ilike("name", f"%{q}%")
-        .limit(limit)
-    )
-    if args.get("channel"):
-        builder = builder.eq("channel", args["channel"])
-    return {"candidates": builder.execute().data}
-
-
-def clarify(args: dict[str, Any], tenant_id: UUID) -> dict[str, Any]:
-    # Pure UI signal; payload returned verbatim to the frontend.
-    return {"clarify": True, "question": args.get("question"), "candidates": args.get("candidates")}
-
-
-# ---------- Propose tools ----------
 
 def _create_proposal(
     *,
@@ -158,133 +64,8 @@ def _create_proposal(
     }
 
 
-def propose_create_person(args, tenant_id, user_id, session_id):
-    return _create_proposal(
-        kind="propose_create_person",
-        payload=args,
-        target_table="contacts",
-        tenant_id=tenant_id,
-        user_id=user_id,
-        session_id=session_id,
-    )
-
-
-def propose_log_interaction(args, tenant_id, user_id, session_id):
-    return _create_proposal(
-        kind="propose_log_interaction",
-        payload=args,
-        target_table="interactions",
-        tenant_id=tenant_id,
-        user_id=user_id,
-        session_id=session_id,
-    )
-
-
-def propose_create_task(args, tenant_id, user_id, session_id):
-    return _create_proposal(
-        kind="propose_create_task",
-        payload=args,
-        target_table="tasks",
-        tenant_id=tenant_id,
-        user_id=user_id,
-        session_id=session_id,
-    )
-
-
-def propose_log_transaction(args, tenant_id, user_id, session_id):
-    # Convert pesos→cents
-    resolved = dict(args)
-    if "amount" in resolved:
-        resolved["amount_cents"] = int(resolved.pop("amount")) * 100
-    return _create_proposal(
-        kind="propose_log_transaction",
-        payload=args,
-        resolved_payload=resolved,
-        target_table="transactions",
-        tenant_id=tenant_id,
-        user_id=user_id,
-        session_id=session_id,
-    )
-
-
-def propose_create_campaign(args, tenant_id, user_id, session_id):
-    resolved = dict(args)
-    if "budget" in resolved and resolved["budget"] is not None:
-        resolved["budget_cents"] = int(resolved.pop("budget")) * 100
-    return _create_proposal(
-        kind="propose_create_campaign",
-        payload=args,
-        resolved_payload=resolved,
-        target_table="campaigns",
-        tenant_id=tenant_id,
-        user_id=user_id,
-        session_id=session_id,
-    )
-
-
-def propose_create_organization(args, tenant_id, user_id, session_id):
-    return _create_proposal(
-        kind="propose_create_organization",
-        payload=args,
-        target_table="organizations",
-        tenant_id=tenant_id,
-        user_id=user_id,
-        session_id=session_id,
-    )
-
-
-def propose_add_note(args, tenant_id, user_id, session_id):
-    return _create_proposal(
-        kind="propose_add_note",
-        payload=args,
-        target_table="notes",
-        tenant_id=tenant_id,
-        user_id=user_id,
-        session_id=session_id,
-    )
-
-
-# ---------- Dispatch table ----------
-
-READ_DISPATCH = {
-    "find_person": find_person,
-    "find_property": find_property,
-    "find_organization": find_organization,
-    "find_project": find_project,
-    "find_campaign": find_campaign,
-    "clarify": clarify,
-}
-
-PROPOSE_DISPATCH = {
-    "propose_create_person": propose_create_person,
-    "propose_log_interaction": propose_log_interaction,
-    "propose_create_task": propose_create_task,
-    "propose_log_transaction": propose_log_transaction,
-    "propose_create_campaign": propose_create_campaign,
-    "propose_create_organization": propose_create_organization,
-    "propose_add_note": propose_add_note,
-}
-
-
-def dispatch_tool(
-    name: str,
-    args: dict[str, Any],
-    tenant_id: UUID,
-    user_id: UUID,
-    session_id: UUID,
-) -> dict[str, Any]:
-    if name in READ_DISPATCH:
-        return READ_DISPATCH[name](args, tenant_id)
-    if name == "query_data":
-        from app.features.anita.tools.query_data import run_query
-
-        return run_query(args, tenant_id)
-    if name in PROPOSE_DISPATCH:
-        return PROPOSE_DISPATCH[name](args, tenant_id, user_id, session_id)
-    return {"error": f"unknown tool {name!r}"}
-
-
 # ---------- Accept dispatchers (registered with pending/service.py) ----------
+
 
 def _accept_create_person(payload, tenant_id, user_id, anita_session_id):
     client = get_supabase_client()
