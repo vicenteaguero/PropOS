@@ -45,9 +45,7 @@ export function UploadDropzone({ onFile, disabled }: Props) {
       <Upload className="size-10 text-primary/60" strokeWidth={1.2} />
       <div>
         <p className="text-sm font-medium">Arrastra un archivo aquí</p>
-        <p className="text-xs text-muted-foreground">
-          PDF, DOCX, JPG, PNG, WebP — hasta 50 MB
-        </p>
+        <p className="text-xs text-muted-foreground">PDF, DOCX, JPG, PNG, WebP — hasta 50 MB</p>
       </div>
       <Button
         type="button"
