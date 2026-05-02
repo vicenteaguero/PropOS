@@ -102,7 +102,7 @@ function WorkflowCard({ workflow }: { workflow: Workflow }) {
   });
   const updateStep = useMutation({
     mutationFn: ({ stepId, status }: { stepId: string; status: string }) =>
-      workflowsApi.updateStep(stepId, { status }),
+      workflowsApi.updateStep(workflow.id, stepId, { status }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["workflows", workflow.id, "steps"] });
     },
@@ -128,9 +128,7 @@ function WorkflowCard({ workflow }: { workflow: Workflow }) {
         </div>
       </CardHeader>
       <CardContent className="space-y-1">
-        {steps.isLoading && (
-          <Loader2 className="size-4 animate-spin text-muted-foreground" />
-        )}
+        {steps.isLoading && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
         {all.map((s) => (
           <div
             key={s.id}
@@ -142,13 +140,7 @@ function WorkflowCard({ workflow }: { workflow: Workflow }) {
             ) : (
               <Circle className="size-4 text-muted-foreground shrink-0" />
             )}
-            <span
-              className={
-                s.status === "COMPLETED"
-                  ? "line-through text-muted-foreground"
-                  : ""
-              }
-            >
+            <span className={s.status === "COMPLETED" ? "line-through text-muted-foreground" : ""}>
               {s.name}
             </span>
           </div>
