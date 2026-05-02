@@ -5,7 +5,7 @@ import zipfile
 
 from fastapi import HTTPException, status
 
-MAX_FILE_BYTES = 50 * 1024 * 1024  # 50 MB hard cap
+MAX_FILE_BYTES = 50 * 1024 * 1024
 
 ALLOWED_MIME = {
     "application/pdf",
@@ -22,7 +22,7 @@ MAGIC_SIGNATURES: list[tuple[bytes, int, str]] = [
     (b"%PDF-", 0, "application/pdf"),
     (b"\xff\xd8\xff", 0, "image/jpeg"),
     (b"\x89PNG\r\n\x1a\n", 0, "image/png"),
-    (b"RIFF", 0, "image/webp"),  # WebP empieza con RIFF; verificamos WEBP en offset 8
+    (b"RIFF", 0, "image/webp"),
     # DOCX = ZIP container PK\x03\x04. Verificamos contenido [Content_Types].xml + word/document.xml
     (b"PK\x03\x04", 0, DOCX_MIME),
 ]
