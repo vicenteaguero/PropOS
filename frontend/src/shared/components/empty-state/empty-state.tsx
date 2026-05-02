@@ -14,9 +14,7 @@ export function EmptyState({ title, description, actionLabel, onAction }: EmptyS
       <Inbox className="mb-4 size-16 text-primary/50" strokeWidth={1} />
       <h3 className="mb-2 text-lg font-semibold">{title}</h3>
       <p className="mb-6 max-w-sm text-sm text-muted-foreground">{description}</p>
-      {actionLabel && onAction && (
-        <Button onClick={onAction}>{actionLabel}</Button>
-      )}
+      {actionLabel && onAction && <Button onClick={onAction}>{actionLabel}</Button>}
     </div>
   );
 }
