@@ -33,9 +33,7 @@ export function DocumentCard({ doc, onOpen }: Props) {
         <Icon className="size-12 text-primary/70" strokeWidth={1.2} />
       </div>
       <div className="mt-3 space-y-1">
-        <div className="line-clamp-2 text-sm font-medium leading-tight">
-          {doc.display_name}
-        </div>
+        <div className="line-clamp-2 text-sm font-medium leading-tight">{doc.display_name}</div>
         <div className="flex flex-wrap items-center gap-1.5">
           <Badge variant="outline" className="text-[10px]">
             {doc.kind}
