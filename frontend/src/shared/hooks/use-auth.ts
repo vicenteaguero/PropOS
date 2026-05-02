@@ -77,11 +77,11 @@ export function useAuthProvider(): AuthContextValue {
       handleSession(session);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event: AuthChangeEvent, session: Session | null) => {
-        handleSession(session);
-      },
-    );
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, session: Session | null) => {
+      handleSession(session);
+    });
 
     return () => {
       subscription.unsubscribe();
