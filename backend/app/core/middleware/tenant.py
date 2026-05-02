@@ -9,9 +9,7 @@ from app.core.config.constants import SKIP_MIDDLEWARE_PATHS
 
 
 class TenantMiddleware(BaseHTTPMiddleware):
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         if request.url.path in SKIP_MIDDLEWARE_PATHS:
             return await call_next(request)
 
