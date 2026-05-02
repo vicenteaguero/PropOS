@@ -31,10 +31,17 @@ export function UploadsReview({ portalId, defaults }: Props) {
   const { data: areas } = useInternalAreas();
 
   const buildAssignments = () => {
-    const items: Array<{ target_kind: AssignmentTarget; contact_id?: string; property_id?: string; internal_area_id?: string }> = [];
-    if (defaults.propertyId) items.push({ target_kind: "PROPERTY", property_id: defaults.propertyId });
+    const items: Array<{
+      target_kind: AssignmentTarget;
+      contact_id?: string;
+      property_id?: string;
+      internal_area_id?: string;
+    }> = [];
+    if (defaults.propertyId)
+      items.push({ target_kind: "PROPERTY", property_id: defaults.propertyId });
     if (defaults.contactId) items.push({ target_kind: "CONTACT", contact_id: defaults.contactId });
-    if (defaults.areaId) items.push({ target_kind: "INTERNAL_AREA", internal_area_id: defaults.areaId });
+    if (defaults.areaId)
+      items.push({ target_kind: "INTERNAL_AREA", internal_area_id: defaults.areaId });
     return items;
   };
 
@@ -60,9 +67,7 @@ export function UploadsReview({ portalId, defaults }: Props) {
 
   if (isLoading) return <p className="text-sm text-muted-foreground">Cargando...</p>;
   if (uploads.length === 0)
-    return (
-      <p className="text-sm text-muted-foreground">No hay archivos pendientes de revisión.</p>
-    );
+    return <p className="text-sm text-muted-foreground">No hay archivos pendientes de revisión.</p>;
 
   const labelDefault = (kind: "property" | "contact" | "area", id: string | null | undefined) => {
     if (!id) return null;
