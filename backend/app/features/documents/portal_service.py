@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from uuid import UUID, uuid4
 
 from fastapi import HTTPException, status
@@ -31,13 +31,7 @@ class PortalService:
         client = get_supabase_client()
         slug = generate_slug(10)
         for _ in range(5):
-            existing = (
-                client.table(PORTALS_TABLE)
-                .select("id")
-                .eq("slug", slug)
-                .execute()
-                .data
-            )
+            existing = client.table(PORTALS_TABLE).select("id").eq("slug", slug).execute().data
             if not existing:
                 break
             slug = generate_slug(10)
@@ -104,43 +98,25 @@ class PortalService:
                 data[key] = str(data[key])
         if "expires_at" in data and data["expires_at"] is not None:
             data["expires_at"] = data["expires_at"].isoformat()
-        (
-            client.table(PORTALS_TABLE)
-            .update(data)
-            .eq("id", str(portal_id))
-            .eq("tenant_id", str(tenant_id))
-            .execute()
-        )
+        (client.table(PORTALS_TABLE).update(data).eq("id", str(portal_id)).eq("tenant_id", str(tenant_id)).execute())
         return await PortalService.get_portal(portal_id, tenant_id)
 
     @staticmethod
     async def delete_portal(portal_id: UUID, tenant_id: UUID) -> None:
         client = get_supabase_client()
-        (
-            client.table(PORTALS_TABLE)
-            .delete()
-            .eq("id", str(portal_id))
-            .eq("tenant_id", str(tenant_id))
-            .execute()
-        )
+        (client.table(PORTALS_TABLE).delete().eq("id", str(portal_id)).eq("tenant_id", str(tenant_id)).execute())
 
     @staticmethod
     async def public_portal_view(slug: str) -> dict:
         client = get_supabase_client()
         row = (
-            client.table(PORTALS_TABLE)
-            .select("*")
-            .eq("slug", slug)
-            .eq("is_active", True)
-            .maybe_single()
-            .execute()
-            .data
+            client.table(PORTALS_TABLE).select("*").eq("slug", slug).eq("is_active", True).maybe_single().execute().data
         )
         if not row:
             raise HTTPException(status_code=404, detail="Portal not found")
         if row.get("expires_at"):
             expires = datetime.fromisoformat(row["expires_at"].replace("Z", "+00:00"))
-            if expires < datetime.now(timezone.utc):
+            if expires < datetime.now(UTC):
                 raise HTTPException(status_code=410, detail="Portal expired")
         return {
             "slug": row["slug"],
@@ -168,19 +144,13 @@ class PortalService:
             )
         client = get_supabase_client()
         portal = (
-            client.table(PORTALS_TABLE)
-            .select("*")
-            .eq("slug", slug)
-            .eq("is_active", True)
-            .maybe_single()
-            .execute()
-            .data
+            client.table(PORTALS_TABLE).select("*").eq("slug", slug).eq("is_active", True).maybe_single().execute().data
         )
         if not portal:
             raise HTTPException(status_code=404, detail="Portal not found")
         if portal.get("expires_at"):
             expires = datetime.fromisoformat(portal["expires_at"].replace("Z", "+00:00"))
-            if expires < datetime.now(timezone.utc):
+            if expires < datetime.now(UTC):
                 raise HTTPException(status_code=410, detail="Portal expired")
         if portal.get("password_hash"):
             if not password or not verify_password(password, portal["password_hash"]):
@@ -191,9 +161,7 @@ class PortalService:
         sha = sha256_hex(content)
         ext = storage.ext_for_mime(mime)
         upload_id = str(uuid4())
-        path = storage.anonymous_path(
-            portal["tenant_id"], portal["id"], upload_id, ext
-        )
+        path = storage.anonymous_path(portal["tenant_id"], portal["id"], upload_id, ext)
         storage.upload_object(path, content, mime)
 
         # Background-equivalent scan (sync ya que es stub)
@@ -216,7 +184,7 @@ class PortalService:
             "mime_type": mime,
             "uploader_ip": uploader_ip,
             "uploader_label": uploader_label,
-            "consent_given_at": datetime.now(timezone.utc).isoformat(),
+            "consent_given_at": datetime.now(UTC).isoformat(),
         }
         response = client.table(UPLOADS_TABLE).insert(record).execute()
         return response.data[0]
@@ -235,9 +203,7 @@ class PortalService:
         )
 
     @staticmethod
-    async def reject_upload(
-        upload_id: UUID, tenant_id: UUID, reviewed_by: UUID
-    ) -> None:
+    async def reject_upload(upload_id: UUID, tenant_id: UUID, reviewed_by: UUID) -> None:
         client = get_supabase_client()
         upload = (
             client.table(UPLOADS_TABLE)
@@ -251,9 +217,7 @@ class PortalService:
         if not upload:
             raise HTTPException(status_code=404, detail="Upload not found")
         if upload["status"] != "pending_review":
-            raise HTTPException(
-                status_code=400, detail="Upload already processed"
-            )
+            raise HTTPException(status_code=400, detail="Upload already processed")
         try:
             storage.delete_object(upload["storage_path"])
         except Exception:  # pragma: no cover
@@ -264,7 +228,7 @@ class PortalService:
                 {
                     "status": "rejected",
                     "reviewed_by": str(reviewed_by),
-                    "reviewed_at": datetime.now(timezone.utc).isoformat(),
+                    "reviewed_at": datetime.now(UTC).isoformat(),
                 }
             )
             .eq("id", str(upload_id))
@@ -293,9 +257,7 @@ class PortalService:
         if not upload:
             raise HTTPException(status_code=404, detail="Upload not found")
         if upload["status"] != "pending_review":
-            raise HTTPException(
-                status_code=400, detail="Upload already processed"
-            )
+            raise HTTPException(status_code=400, detail="Upload already processed")
 
         content = storage.download_object(upload["storage_path"])
         document = await DocumentService.create_document_with_first_version(
@@ -308,9 +270,7 @@ class PortalService:
             original_filename=upload.get("original_filename"),
         )
         for assign in assignments:
-            await DocumentService.add_assignment(
-                UUID(document["id"]), tenant_id, assign
-            )
+            await DocumentService.add_assignment(UUID(document["id"]), tenant_id, assign)
         try:
             storage.delete_object(upload["storage_path"])
         except Exception:  # pragma: no cover
@@ -322,7 +282,7 @@ class PortalService:
                     "status": "approved",
                     "promoted_document_id": document["id"],
                     "reviewed_by": str(reviewed_by),
-                    "reviewed_at": datetime.now(timezone.utc).isoformat(),
+                    "reviewed_at": datetime.now(UTC).isoformat(),
                 }
             )
             .eq("id", str(upload_id))
