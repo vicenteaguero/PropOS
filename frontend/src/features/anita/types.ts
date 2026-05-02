@@ -51,12 +51,7 @@ export type ChatStreamEvent =
       provider: string;
     };
 
-export type ProposalStatus =
-  | "pending"
-  | "accepted"
-  | "rejected"
-  | "superseded"
-  | "expired";
+export type ProposalStatus = "pending" | "accepted" | "rejected" | "superseded" | "expired";
 
 export interface PendingProposal {
   id: string;
