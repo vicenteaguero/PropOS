@@ -18,7 +18,7 @@ def _serialize(data: dict[str, Any]) -> dict[str, Any]:
 
     out: dict[str, Any] = {}
     for k, v in data.items():
-        if isinstance(v, (datetime, date)):
+        if isinstance(v, datetime | date):
             out[k] = v.isoformat()
         elif isinstance(v, UUID):
             out[k] = str(v)
@@ -37,10 +37,7 @@ class ContactService:
     ) -> list[dict]:
         client = get_supabase_client()
         builder = (
-            client.table(CONTACTS_TABLE)
-            .select("*")
-            .eq("tenant_id", str(tenant_id))
-            .order("created_at", desc=True)
+            client.table(CONTACTS_TABLE).select("*").eq("tenant_id", str(tenant_id)).order("created_at", desc=True)
         )
         if not include_drafts:
             builder = builder.eq("is_draft", False)
@@ -78,16 +75,12 @@ class ContactService:
         contact = response.data[0]
 
         if aliases:
-            ContactService._set_aliases(
-                UUID(contact["id"]), tenant_id, aliases
-            )
+            ContactService._set_aliases(UUID(contact["id"]), tenant_id, aliases)
         logger.info("created", event_type="write", contact_id=contact["id"])
         return contact
 
     @staticmethod
-    async def update_contact(
-        contact_id: UUID, payload, tenant_id: UUID
-    ) -> dict:
+    async def update_contact(contact_id: UUID, payload, tenant_id: UUID) -> dict:
         client = get_supabase_client()
         data = payload.model_dump(exclude_unset=True)
         if "type" in data and data["type"] is not None:
@@ -134,9 +127,7 @@ class ContactService:
         ]
         if not rows:
             return
-        client.table(ALIASES_TABLE).upsert(
-            rows, on_conflict="tenant_id,person_id,alias"
-        ).execute()
+        client.table(ALIASES_TABLE).upsert(rows, on_conflict="tenant_id,person_id,alias").execute()
 
     @staticmethod
     async def list_aliases(person_id: UUID, tenant_id: UUID) -> list[dict]:
