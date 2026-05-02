@@ -23,17 +23,13 @@ export function subscribeToTable<T extends Record<string, unknown>>(
 
   const channel = supabase
     .channel(`${schema}:${table}`)
-    .on(
-      "postgres_changes",
-      { event: "*", schema, table },
-      (payload) => {
-        callback({
-          eventType: payload.eventType as RealtimeEvent,
-          new: payload.new as T,
-          old: payload.old as T,
-        });
-      },
-    )
+    .on("postgres_changes", { event: "*", schema, table }, (payload) => {
+      callback({
+        eventType: payload.eventType as RealtimeEvent,
+        new: payload.new as T,
+        old: payload.old as T,
+      });
+    })
     .subscribe();
 
   return channel;
