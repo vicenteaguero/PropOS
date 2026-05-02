@@ -36,10 +36,7 @@ export function VersionHistoryDrawer({
             {versions.map((v) => {
               const isCurrent = v.id === currentVersionId;
               return (
-                <li
-                  key={v.id}
-                  className="rounded-md border border-border bg-card p-3 text-sm"
-                >
+                <li key={v.id} className="rounded-md border border-border bg-card p-3 text-sm">
                   <div className="flex items-center justify-between">
                     <div className="font-semibold">v{v.version_number}</div>
                     {isCurrent && (
@@ -54,9 +51,7 @@ export function VersionHistoryDrawer({
                   <div className="mt-1 font-mono text-xs text-muted-foreground">
                     sha {v.sha256.slice(0, 16)}
                   </div>
-                  {v.notes && (
-                    <p className="mt-1 text-xs">{v.notes}</p>
-                  )}
+                  {v.notes && <p className="mt-1 text-xs">{v.notes}</p>}
                   {!isCurrent && (
                     <Button
                       size="sm"
