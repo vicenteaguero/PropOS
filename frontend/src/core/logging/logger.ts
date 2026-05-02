@@ -28,7 +28,12 @@ function formatContext(context?: Record<string, string>): string {
 }
 
 export function createLogger(scope: string) {
-  function log(level: LogLevel, emojiKey: string, message: string, context?: Record<string, string>) {
+  function log(
+    level: LogLevel,
+    emojiKey: string,
+    message: string,
+    context?: Record<string, string>,
+  ) {
     const timestamp = formatTimestamp();
     const emoji = EMOJI_MAP[emojiKey] ?? "\uD83D\uDCCB";
     const ctx = formatContext(context);
