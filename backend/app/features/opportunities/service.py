@@ -13,7 +13,7 @@ HISTORY_TABLE = "opportunity_stage_history"
 def _norm(data: dict[str, Any]) -> dict[str, Any]:
     out: dict[str, Any] = {}
     for k, v in data.items():
-        if isinstance(v, (datetime, date)):
+        if isinstance(v, datetime | date):
             out[k] = v.isoformat()
         elif isinstance(v, UUID):
             out[k] = str(v)
@@ -94,17 +94,12 @@ class OpportunityService:
         if data.get("status") in ("WON", "LOST") and "closed_at" not in data:
             data["closed_at"] = datetime.now(UTC).isoformat()
         return (
-            client.table(OPP_TABLE)
-            .update(data)
-            .eq("id", str(opp_id))
-            .eq("tenant_id", str(tenant_id))
-            .execute()
-            .data[0]
+            client.table(OPP_TABLE).update(data).eq("id", str(opp_id)).eq("tenant_id", str(tenant_id)).execute().data[0]
         )
 
     @staticmethod
     async def delete_opportunity(opp_id: UUID, tenant_id: UUID) -> None:
         client = get_supabase_client()
-        client.table(OPP_TABLE).update(
-            {"deleted_at": datetime.now(UTC).isoformat()}
-        ).eq("id", str(opp_id)).eq("tenant_id", str(tenant_id)).execute()
+        client.table(OPP_TABLE).update({"deleted_at": datetime.now(UTC).isoformat()}).eq("id", str(opp_id)).eq(
+            "tenant_id", str(tenant_id)
+        ).execute()
