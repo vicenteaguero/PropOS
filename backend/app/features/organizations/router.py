@@ -37,9 +37,7 @@ async def create_org(
     tenant_id: UUID = Depends(get_tenant_id),
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> dict:
-    return await OrganizationService.create_organization(
-        payload, tenant_id, UUID(current_user["id"])
-    )
+    return await OrganizationService.create_organization(payload, tenant_id, UUID(current_user["id"]))
 
 
 @router.patch("/{org_id}", response_model=OrganizationResponse)
