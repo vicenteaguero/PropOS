@@ -1,9 +1,5 @@
 import { useHealthCheck } from "@shared/hooks/use-health-check";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 const STATUS_CONFIG = {
   healthy: { color: "bg-success", label: "API conectada" },
@@ -26,7 +22,10 @@ export function HealthIndicator() {
         </button>
       </TooltipTrigger>
       <TooltipContent>
-        <p>{config.label}{latency != null ? ` (${latency}ms)` : ""}</p>
+        <p>
+          {config.label}
+          {latency != null ? ` (${latency}ms)` : ""}
+        </p>
       </TooltipContent>
     </Tooltip>
   );
