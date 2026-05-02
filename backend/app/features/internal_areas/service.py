@@ -14,13 +14,7 @@ class InternalAreaService:
     @staticmethod
     async def list_areas(tenant_id: UUID) -> list[dict]:
         client = get_supabase_client()
-        response = (
-            client.table(AREAS_TABLE)
-            .select("*")
-            .eq("tenant_id", str(tenant_id))
-            .order("name")
-            .execute()
-        )
+        response = client.table(AREAS_TABLE).select("*").eq("tenant_id", str(tenant_id)).order("name").execute()
         return response.data
 
     @staticmethod
@@ -51,21 +45,11 @@ class InternalAreaService:
         client = get_supabase_client()
         data = payload.model_dump(exclude_unset=True)
         response = (
-            client.table(AREAS_TABLE)
-            .update(data)
-            .eq("id", str(area_id))
-            .eq("tenant_id", str(tenant_id))
-            .execute()
+            client.table(AREAS_TABLE).update(data).eq("id", str(area_id)).eq("tenant_id", str(tenant_id)).execute()
         )
         return response.data[0]
 
     @staticmethod
     async def delete_area(area_id: UUID, tenant_id: UUID) -> None:
         client = get_supabase_client()
-        (
-            client.table(AREAS_TABLE)
-            .delete()
-            .eq("id", str(area_id))
-            .eq("tenant_id", str(tenant_id))
-            .execute()
-        )
+        (client.table(AREAS_TABLE).delete().eq("id", str(area_id)).eq("tenant_id", str(tenant_id)).execute())
