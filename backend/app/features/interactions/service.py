@@ -17,7 +17,7 @@ logger = get_logger("INTERACTIONS")
 def _serialize(data: dict[str, Any]) -> dict[str, Any]:
     out: dict[str, Any] = {}
     for k, v in data.items():
-        if isinstance(v, (datetime, date)):
+        if isinstance(v, datetime | date):
             out[k] = v.isoformat()
         elif isinstance(v, UUID):
             out[k] = str(v)
@@ -49,12 +49,12 @@ class InteractionService:
         rows = builder.execute().data
         if person_id is not None:
             rows = [
-                r for r in rows
-                if any(p["person_id"] == str(person_id) for p in r.get("interaction_participants", []))
+                r for r in rows if any(p["person_id"] == str(person_id) for p in r.get("interaction_participants", []))
             ]
         if property_id is not None:
             rows = [
-                r for r in rows
+                r
+                for r in rows
                 if any(t.get("property_id") == str(property_id) for t in r.get("interaction_targets", []))
             ]
         return rows
@@ -123,9 +123,7 @@ class InteractionService:
         return await InteractionService.get_interaction(UUID(interaction["id"]), tenant_id)
 
     @staticmethod
-    async def update_interaction(
-        interaction_id: UUID, payload, tenant_id: UUID
-    ) -> dict:
+    async def update_interaction(interaction_id: UUID, payload, tenant_id: UUID) -> dict:
         client = get_supabase_client()
         data = payload.model_dump(exclude_unset=True)
         if data.get("kind") and hasattr(data["kind"], "value"):
@@ -141,6 +139,6 @@ class InteractionService:
     @staticmethod
     async def delete_interaction(interaction_id: UUID, tenant_id: UUID) -> None:
         client = get_supabase_client()
-        client.table(INTERACTIONS_TABLE).update(
-            {"deleted_at": datetime.now(UTC).isoformat()}
-        ).eq("id", str(interaction_id)).eq("tenant_id", str(tenant_id)).execute()
+        client.table(INTERACTIONS_TABLE).update({"deleted_at": datetime.now(UTC).isoformat()}).eq(
+            "id", str(interaction_id)
+        ).eq("tenant_id", str(tenant_id)).execute()
