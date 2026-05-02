@@ -5,7 +5,8 @@ const ROOT_DIR = "documents-cache";
 
 async function rootHandle(): Promise<FileSystemDirectoryHandle | null> {
   if (typeof navigator === "undefined" || !("storage" in navigator)) return null;
-  const storage: StorageManager & { getDirectory?: () => Promise<FileSystemDirectoryHandle> } = navigator.storage;
+  const storage: StorageManager & { getDirectory?: () => Promise<FileSystemDirectoryHandle> } =
+    navigator.storage;
   if (!storage.getDirectory) return null;
   const root = await storage.getDirectory();
   return root.getDirectoryHandle(ROOT_DIR, { create: true });
@@ -37,7 +38,11 @@ export async function writeToCache(sha256: string, blob: Blob): Promise<boolean>
     const root = await rootHandle();
     if (!root) return false;
     const fileHandle = await root.getFileHandle(sha256, { create: true });
-    const writable = await (fileHandle as FileSystemFileHandle & { createWritable: () => Promise<FileSystemWritableFileStream> }).createWritable();
+    const writable = await (
+      fileHandle as FileSystemFileHandle & {
+        createWritable: () => Promise<FileSystemWritableFileStream>;
+      }
+    ).createWritable();
     await writable.write(blob);
     await writable.close();
     return true;
@@ -60,7 +65,9 @@ export async function listCachedHashes(): Promise<string[]> {
   const root = await rootHandle();
   if (!root) return [];
   const out: string[] = [];
-  const dir = root as FileSystemDirectoryHandle & { entries: () => AsyncIterable<[string, FileSystemHandle]> };
+  const dir = root as FileSystemDirectoryHandle & {
+    entries: () => AsyncIterable<[string, FileSystemHandle]>;
+  };
   for await (const [name] of dir.entries()) {
     out.push(name);
   }
