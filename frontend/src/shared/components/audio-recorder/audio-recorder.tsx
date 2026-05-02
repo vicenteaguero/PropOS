@@ -15,7 +15,16 @@ function formatDuration(seconds: number): string {
 }
 
 export function AudioRecorder({ onSaved }: AudioRecorderProps) {
-  const { isRecording, audioBlob, audioUrl, duration, error, startRecording, stopRecording, clearRecording } = useMicrophone();
+  const {
+    isRecording,
+    audioBlob,
+    audioUrl,
+    duration,
+    error,
+    startRecording,
+    stopRecording,
+    clearRecording,
+  } = useMicrophone();
   const { upload, uploading } = useMediaUpload();
 
   async function handleSave() {
@@ -32,9 +41,7 @@ export function AudioRecorder({ onSaved }: AudioRecorderProps) {
 
   return (
     <div className="space-y-3">
-      {error && (
-        <p className="text-sm text-destructive">{error}</p>
-      )}
+      {error && <p className="text-sm text-destructive">{error}</p>}
 
       {isRecording && (
         <div className="flex items-center justify-center gap-3 rounded-lg border border-destructive/50 bg-destructive/10 p-4">
