@@ -37,7 +37,6 @@ from app.features.documents.share_service import ShareService
 
 router = APIRouter(tags=["documents"])
 
-
 # ----------------------------- Documents -----------------------------
 
 
@@ -49,9 +48,7 @@ async def list_documents(
     area_id: UUID | None = Query(default=None),
     q: str | None = Query(default=None),
 ) -> list[dict]:
-    return await DocumentService.list_documents(
-        tenant_id, contact_id, property_id, area_id, q
-    )
+    return await DocumentService.list_documents(tenant_id, contact_id, property_id, area_id, q)
 
 
 @router.get("/documents/{document_id}", response_model=DocumentResponse)
@@ -148,9 +145,7 @@ async def make_version_current(
     version_id: UUID,
     tenant_id: UUID = Depends(get_tenant_id),
 ) -> dict:
-    return await DocumentService.set_current_version(
-        document_id, version_id, tenant_id
-    )
+    return await DocumentService.set_current_version(document_id, version_id, tenant_id)
 
 
 @router.get("/documents/{document_id}/versions/{version_id}/download")
@@ -207,9 +202,7 @@ async def create_share_link(
 ) -> dict:
     if payload.document_id != document_id:
         raise HTTPException(status_code=400, detail="document_id mismatch")
-    return await ShareService.create_share_link(
-        tenant_id, UUID(current_user["id"]), payload
-    )
+    return await ShareService.create_share_link(tenant_id, UUID(current_user["id"]), payload)
 
 
 @router.get("/share-links", response_model=list[ShareLinkResponse])
@@ -226,9 +219,7 @@ async def update_share_link(
     tenant_id: UUID = Depends(get_tenant_id),
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> dict:
-    return await ShareService.update_share_link(
-        link_id, tenant_id, UUID(current_user["id"]), payload
-    )
+    return await ShareService.update_share_link(link_id, tenant_id, UUID(current_user["id"]), payload)
 
 
 @router.delete("/share-links/{link_id}", status_code=204)
@@ -240,7 +231,6 @@ async def delete_share_link(
 
 
 # ----------------------------- Public share resolver -----------------------------
-
 
 public_router = APIRouter(tags=["public-share"])
 
@@ -258,17 +248,13 @@ async def public_share_password(slug: str, password: str = Form(...)) -> dict:
 # ----------------------------- Anonymous portals -----------------------------
 
 
-@router.post(
-    "/portals", response_model=PortalResponse, status_code=201
-)
+@router.post("/portals", response_model=PortalResponse, status_code=201)
 async def create_portal(
     payload: PortalCreate,
     tenant_id: UUID = Depends(get_tenant_id),
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> dict:
-    return await PortalService.create_portal(
-        tenant_id, UUID(current_user["id"]), payload
-    )
+    return await PortalService.create_portal(tenant_id, UUID(current_user["id"]), payload)
 
 
 @router.get("/portals", response_model=list[PortalResponse])
@@ -314,9 +300,7 @@ async def list_uploads(
     return await PortalService.list_uploads(portal_id, tenant_id)
 
 
-@router.post(
-    "/uploads/{upload_id}/promote", response_model=DocumentResponse
-)
+@router.post("/uploads/{upload_id}/promote", response_model=DocumentResponse)
 async def promote_upload(
     upload_id: UUID,
     payload: PromoteUploadRequest,
@@ -338,9 +322,7 @@ async def reject_upload(
     tenant_id: UUID = Depends(get_tenant_id),
     current_user: dict[str, Any] = Depends(get_current_user),
 ):
-    await PortalService.reject_upload(
-        upload_id, tenant_id, UUID(current_user["id"])
-    )
+    await PortalService.reject_upload(upload_id, tenant_id, UUID(current_user["id"]))
 
 
 # ----------------------------- Public portal -----------------------------
