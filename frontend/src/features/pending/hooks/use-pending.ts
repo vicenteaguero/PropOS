@@ -28,8 +28,7 @@ export function useAcceptProposal() {
 export function useRejectProposal() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, reason }: { id: string; reason?: string }) =>
-      pendingApi.reject(id, reason),
+    mutationFn: ({ id, reason }: { id: string; reason?: string }) => pendingApi.reject(id, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pending"] });
     },
