@@ -83,5 +83,5 @@ class TransactionSummaryQuery(BaseModel):
     category: TransactionCategory | None = None
     project_id: UUID | None = None
     campaign_id: UUID | None = None
-    month_from: str | None = None  # YYYY-MM
+    month_from: str | None = None
     month_to: str | None = None
