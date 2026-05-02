@@ -87,15 +87,10 @@ export function AnitaMessageList({
     el.scrollTop = el.scrollHeight;
   }, [messages, liveText, liveProposals, pendingUserText, isThinking]);
 
-  const renderable = messages.filter(
-    (m) => m.role === "user" || m.role === "assistant",
-  );
+  const renderable = messages.filter((m) => m.role === "user" || m.role === "assistant");
 
   return (
-    <div
-      ref={scrollRef}
-      className="flex-1 min-h-0 overflow-y-auto pr-2 -mr-2"
-    >
+    <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto pr-2 -mr-2">
       <div className="space-y-3 py-2">
         {renderable.map((m) => {
           const text = extractText(m.content);
