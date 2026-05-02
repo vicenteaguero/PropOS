@@ -1,12 +1,7 @@
 import { apiRequest } from "@features/documents/api/http";
 import { ENV } from "@core/config/env";
 import { supabase } from "@core/supabase/client";
-import type {
-  AnitaMessage,
-  AnitaSession,
-  AnitaTranscript,
-  ChatStreamEvent,
-} from "../types";
+import type { AnitaMessage, AnitaSession, AnitaTranscript, ChatStreamEvent } from "../types";
 
 const BASE = "/v1/anita";
 
@@ -17,61 +12,47 @@ export const anitaApi = {
   listMessages: (sessionId: string) =>
     apiRequest<AnitaMessage[]>(`${BASE}/sessions/${sessionId}/messages`),
 
-  /** Persist a Web Speech API result (no server-side STT call). */
-  transcribeText: (
-    text: string,
-    sessionId?: string,
-    mediaFileId?: string,
-  ) =>
-    apiRequest<AnitaTranscript>(`${BASE}/transcribe-text`, {
-      method: "POST",
-      body: {
-        text,
-        session_id: sessionId,
-        media_file_id: mediaFileId,
-      },
-    }),
-
-  /** Server-side transcription (Groq Whisper fallback path). */
-  transcribeAudio: (blob: Blob, sessionId?: string, mediaFileId?: string) => {
+  /** Server-side transcription. Audio multipart → POST /anita/transcripts. */
+  createTranscript: (blob: Blob, sessionId?: string, mediaFileId?: string) => {
     const fd = new FormData();
     fd.append("audio", blob, "anita-audio.webm");
     if (sessionId) fd.append("session_id", sessionId);
     if (mediaFileId) fd.append("media_file_id", mediaFileId);
-    return apiRequest<AnitaTranscript>(`${BASE}/transcribe`, {
+    return apiRequest<AnitaTranscript>(`${BASE}/transcripts`, {
       method: "POST",
       formData: fd,
     });
   },
 
-  closeSession: (sessionId: string) =>
-    apiRequest<AnitaSession>(`${BASE}/sessions/${sessionId}/close`, {
-      method: "POST",
+  updateSession: (sessionId: string, body: { status?: "OPEN" | "CLOSED"; title?: string }) =>
+    apiRequest<AnitaSession>(`${BASE}/sessions/${sessionId}`, {
+      method: "PATCH",
+      body,
     }),
 };
 
-/** SSE chat consumer. Pushes parsed events to onEvent. */
-export async function streamChat(
+/** SSE message stream. POST /anita/sessions/{id}/messages. */
+export async function streamMessage(
   sessionId: string,
-  userText: string,
+  body: { user_text?: string; transcript_id?: string },
   onEvent: (event: ChatStreamEvent) => void,
   signal?: AbortSignal,
 ): Promise<void> {
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
-  const response = await fetch(`${ENV.API_URL}/api${BASE}/chat`, {
+  const response = await fetch(`${ENV.API_URL}/api${BASE}/sessions/${sessionId}/messages`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify({ session_id: sessionId, user_text: userText }),
+    body: JSON.stringify(body),
     signal,
   });
 
   if (!response.ok || !response.body) {
     const text = await response.text().catch(() => "");
-    throw new Error(`Anita chat HTTP ${response.status}: ${text}`);
+    throw new Error(`Anita message HTTP ${response.status}: ${text}`);
   }
 
   const reader = response.body.getReader();
