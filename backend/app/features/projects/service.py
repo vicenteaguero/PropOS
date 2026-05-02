@@ -12,7 +12,7 @@ PROJECTS_TABLE = "projects"
 def _norm(data: dict[str, Any]) -> dict[str, Any]:
     out: dict[str, Any] = {}
     for k, v in data.items():
-        if isinstance(v, (datetime, date)):
+        if isinstance(v, datetime | date):
             out[k] = v.isoformat()
         elif isinstance(v, UUID):
             out[k] = str(v)
@@ -87,6 +87,6 @@ class ProjectService:
     @staticmethod
     async def delete_project(project_id: UUID, tenant_id: UUID) -> None:
         client = get_supabase_client()
-        client.table(PROJECTS_TABLE).update(
-            {"deleted_at": datetime.now(UTC).isoformat()}
-        ).eq("id", str(project_id)).eq("tenant_id", str(tenant_id)).execute()
+        client.table(PROJECTS_TABLE).update({"deleted_at": datetime.now(UTC).isoformat()}).eq("id", str(project_id)).eq(
+            "tenant_id", str(tenant_id)
+        ).execute()
