@@ -32,15 +32,11 @@ async def create_place(
     tenant_id: UUID = Depends(get_tenant_id),
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> dict:
-    return await PlaceService.create_place(
-        payload, tenant_id, UUID(current_user["id"])
-    )
+    return await PlaceService.create_place(payload, tenant_id, UUID(current_user["id"]))
 
 
 @router.patch("/{place_id}", response_model=PlaceResponse)
-async def update_place(
-    place_id: UUID, payload: PlaceUpdate, tenant_id: UUID = Depends(get_tenant_id)
-) -> dict:
+async def update_place(place_id: UUID, payload: PlaceUpdate, tenant_id: UUID = Depends(get_tenant_id)) -> dict:
     return await PlaceService.update_place(place_id, payload, tenant_id)
 
 
