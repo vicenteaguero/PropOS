@@ -87,7 +87,11 @@ export function DocumentsPage() {
         description="Gestiona contratos, escrituras y archivos"
         actions={
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => navigate(`/${role}/documents/portals`)}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate(`/${role}/documents/portals`)}
+            >
               <Folder className="size-4" /> Enlaces de subida
             </Button>
             <Button size="sm" onClick={() => setUploadOpen(true)}>
@@ -140,13 +144,14 @@ export function DocumentsPage() {
         />
       )}
 
-      {!isLoading && data && data.length > 0 && (
-        viewMode === "grid" ? (
+      {!isLoading &&
+        data &&
+        data.length > 0 &&
+        (viewMode === "grid" ? (
           <DocumentsGrid documents={data} onOpen={openDocument} />
         ) : (
           <DocumentsList documents={data} onOpen={openDocument} />
-        )
-      )}
+        ))}
 
       <FastAddFab />
 
