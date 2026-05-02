@@ -81,8 +81,7 @@ export function AnalyticsPage() {
   });
 
   const refresh = useMutation({
-    mutationFn: () =>
-      apiRequest<{ ok: boolean }>("/v1/analytics/refresh", { method: "POST" }),
+    mutationFn: () => apiRequest<{ ok: boolean }>("/v1/analytics/refresh", { method: "POST" }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["analytics"] }),
   });
 
@@ -102,8 +101,8 @@ export function AnalyticsPage() {
         <div>
           <h1 className="text-2xl font-semibold">Analítica</h1>
           <p className="text-sm text-muted-foreground">
-            Métricas internas (solo ADMIN). Refresca las materialized views si
-            cambian datos recientes.
+            Métricas internas (solo ADMIN). Refresca las materialized views si cambian datos
+            recientes.
           </p>
         </div>
         <Button
@@ -124,15 +123,8 @@ export function AnalyticsPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <KpiCard label="Ingresos totales" value={formatCLP(totalIn / 100)} />
-        <KpiCard
-          label="Gastos totales"
-          value={formatCLP(totalOut / 100)}
-          tone="destructive"
-        />
-        <KpiCard
-          label="Pendientes Anita"
-          value={String(pending.data?.pending_count ?? 0)}
-        />
+        <KpiCard label="Gastos totales" value={formatCLP(totalOut / 100)} tone="destructive" />
+        <KpiCard label="Pendientes Anita" value={String(pending.data?.pending_count ?? 0)} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
@@ -152,10 +144,7 @@ export function AnalyticsPage() {
                 <LineChart data={revenueByMonth}>
                   <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
                   <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                  <YAxis
-                    tick={{ fontSize: 11 }}
-                    tickFormatter={(v) => formatCLP(v / 100)}
-                  />
+                  <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => formatCLP(v / 100)} />
                   <Tooltip
                     formatter={(v) => formatCLP(Number(v) / 100)}
                     contentStyle={{ fontSize: 12 }}
@@ -201,10 +190,7 @@ export function AnalyticsPage() {
                   <Tooltip contentStyle={{ fontSize: 12 }} />
                   <Bar dataKey="count" name="Oportunidades">
                     {funnelLatest.map((_, i) => (
-                      <Cell
-                        key={i}
-                        fill={STAGE_COLORS[i % STAGE_COLORS.length]}
-                      />
+                      <Cell key={i} fill={STAGE_COLORS[i % STAGE_COLORS.length]} />
                     ))}
                   </Bar>
                 </BarChart>
@@ -238,33 +224,24 @@ export function AnalyticsPage() {
                 {adRoi.data?.map((r) => {
                   const roi =
                     r.spend_cents > 0
-                      ? ((r.won_value_cents - r.spend_cents) / r.spend_cents) *
-                        100
+                      ? ((r.won_value_cents - r.spend_cents) / r.spend_cents) * 100
                       : null;
                   return (
                     <tr key={r.campaign_id} className="border-b last:border-0">
                       <td className="py-2 pr-4">{r.campaign_name}</td>
                       <td className="py-2 pr-4">{r.channel}</td>
                       <td className="py-2 pr-4">
-                        {r.budget_cents != null
-                          ? formatCLP(r.budget_cents / 100)
-                          : "—"}
+                        {r.budget_cents != null ? formatCLP(r.budget_cents / 100) : "—"}
                       </td>
-                      <td className="py-2 pr-4">
-                        {formatCLP(r.spend_cents / 100)}
-                      </td>
+                      <td className="py-2 pr-4">{formatCLP(r.spend_cents / 100)}</td>
                       <td className="py-2 pr-4">{r.won_count}</td>
-                      <td className="py-2 pr-4">
-                        {formatCLP(r.won_value_cents / 100)}
-                      </td>
-                      <td className={
-                        "py-2 pr-4 " +
-                        (roi == null
-                          ? ""
-                          : roi >= 0
-                          ? "text-emerald-500"
-                          : "text-destructive")
-                      }>
+                      <td className="py-2 pr-4">{formatCLP(r.won_value_cents / 100)}</td>
+                      <td
+                        className={
+                          "py-2 pr-4 " +
+                          (roi == null ? "" : roi >= 0 ? "text-emerald-500" : "text-destructive")
+                        }
+                      >
                         {roi == null ? "—" : `${roi.toFixed(0)}%`}
                       </td>
                     </tr>
@@ -288,8 +265,7 @@ export function AnalyticsPage() {
               {[...(pipeline.data ?? [])]
                 .sort(
                   (a, b) =>
-                    STAGE_ORDER.indexOf(a.pipeline_stage) -
-                    STAGE_ORDER.indexOf(b.pipeline_stage),
+                    STAGE_ORDER.indexOf(a.pipeline_stage) - STAGE_ORDER.indexOf(b.pipeline_stage),
                 )
                 .map((p) => (
                   <div
@@ -298,8 +274,7 @@ export function AnalyticsPage() {
                   >
                     <span>{p.pipeline_stage}</span>
                     <span className="text-muted-foreground">
-                      {p.opp_count} •{" "}
-                      {formatCLP(p.expected_value_cents / 100)}
+                      {p.opp_count} • {formatCLP(p.expected_value_cents / 100)}
                     </span>
                   </div>
                 ))}
@@ -311,15 +286,7 @@ export function AnalyticsPage() {
   );
 }
 
-function KpiCard({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: string;
-  tone?: "destructive";
-}) {
+function KpiCard({ label, value, tone }: { label: string; value: string; tone?: "destructive" }) {
   return (
     <Card>
       <CardHeader>
@@ -327,10 +294,7 @@ function KpiCard({
       </CardHeader>
       <CardContent>
         <p
-          className={
-            "text-2xl font-semibold " +
-            (tone === "destructive" ? "text-destructive" : "")
-          }
+          className={"text-2xl font-semibold " + (tone === "destructive" ? "text-destructive" : "")}
         >
           {value}
         </p>
@@ -356,7 +320,10 @@ function aggregateRevenueByMonth(rows: RevenueRow[]) {
 
 function aggregateFunnelLatestMonth(rows: FunnelRow[]) {
   if (rows.length === 0) return [];
-  const latestMonth = [...rows].map((r) => r.month).sort().pop()!;
+  const latestMonth = [...rows]
+    .map((r) => r.month)
+    .sort()
+    .pop()!;
   const filtered = rows.filter((r) => r.month === latestMonth);
   const byStage = new Map<string, number>();
   for (const r of filtered) {
