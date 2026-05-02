@@ -60,12 +60,16 @@ export function useCamera(): UseCameraReturn {
     if (!ctx) return;
 
     ctx.drawImage(video, 0, 0);
-    canvas.toBlob((blob) => {
-      if (blob) {
-        setPhoto(blob);
-        setPhotoUrl(URL.createObjectURL(blob));
-      }
-    }, "image/jpeg", 0.85);
+    canvas.toBlob(
+      (blob) => {
+        if (blob) {
+          setPhoto(blob);
+          setPhotoUrl(URL.createObjectURL(blob));
+        }
+      },
+      "image/jpeg",
+      0.85,
+    );
   }, [stream]);
 
   const clearPhoto = useCallback(() => {
@@ -76,5 +80,15 @@ export function useCamera(): UseCameraReturn {
     setPhotoUrl(null);
   }, [photoUrl]);
 
-  return { stream, photo, photoUrl, isActive, error, startCamera, stopCamera, takePhoto, clearPhoto };
+  return {
+    stream,
+    photo,
+    photoUrl,
+    isActive,
+    error,
+    startCamera,
+    stopCamera,
+    takePhoto,
+    clearPhoto,
+  };
 }
