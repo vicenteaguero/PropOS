@@ -32,9 +32,7 @@ async def create_note(
 
 
 @router.patch("/{note_id}", response_model=NoteResponse)
-async def update_note(
-    note_id: UUID, payload: NoteUpdate, tenant_id: UUID = Depends(get_tenant_id)
-) -> dict:
+async def update_note(note_id: UUID, payload: NoteUpdate, tenant_id: UUID = Depends(get_tenant_id)) -> dict:
     return await NoteService.update_note(note_id, payload, tenant_id)
 
 
