@@ -15,9 +15,7 @@ _DKLEN = 32
 
 def hash_password(password: str) -> str:
     salt = secrets.token_bytes(16)
-    digest = hashlib.scrypt(
-        password.encode("utf-8"), salt=salt, n=_N, r=_R, p=_P, dklen=_DKLEN
-    )
+    digest = hashlib.scrypt(password.encode("utf-8"), salt=salt, n=_N, r=_R, p=_P, dklen=_DKLEN)
     return f"scrypt${salt.hex()}${digest.hex()}"
 
 
@@ -30,7 +28,5 @@ def verify_password(password: str, stored: str) -> bool:
         return False
     salt = bytes.fromhex(salt_hex)
     expected = bytes.fromhex(digest_hex)
-    actual = hashlib.scrypt(
-        password.encode("utf-8"), salt=salt, n=_N, r=_R, p=_P, dklen=_DKLEN
-    )
+    actual = hashlib.scrypt(password.encode("utf-8"), salt=salt, n=_N, r=_R, p=_P, dklen=_DKLEN)
     return hmac.compare_digest(expected, actual)
