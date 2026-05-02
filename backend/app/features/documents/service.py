@@ -14,6 +14,7 @@ from app.features.documents.validation import (
     kind_from_mime,
     validate_upload,
 )
+from datetime import UTC
 
 DOCUMENTS_TABLE = "documents"
 VERSIONS_TABLE = "document_versions"
@@ -33,9 +34,7 @@ class DocumentService:
     ) -> list[dict]:
         client = get_supabase_client()
         if contact_id or property_id or area_id:
-            assign_q = client.table(ASSIGNMENTS_TABLE).select("document_id").eq(
-                "tenant_id", str(tenant_id)
-            )
+            assign_q = client.table(ASSIGNMENTS_TABLE).select("document_id").eq("tenant_id", str(tenant_id))
             if contact_id:
                 assign_q = assign_q.eq("contact_id", str(contact_id))
             if property_id:
@@ -54,10 +53,7 @@ class DocumentService:
             )
         else:
             builder = (
-                client.table(DOCUMENTS_TABLE)
-                .select("*")
-                .eq("tenant_id", str(tenant_id))
-                .is_("deleted_at", "null")
+                client.table(DOCUMENTS_TABLE).select("*").eq("tenant_id", str(tenant_id)).is_("deleted_at", "null")
             )
         if query:
             builder = builder.ilike("display_name", f"%{query}%")
@@ -169,12 +165,10 @@ class DocumentService:
 
         try:
             client.table(DOCUMENTS_TABLE).insert(doc_payload).execute()
-            version_row = (
-                client.table(VERSIONS_TABLE).insert(version_payload).execute().data[0]
-            )
-            client.table(DOCUMENTS_TABLE).update(
-                {"current_version_id": version_row["id"]}
-            ).eq("id", document_id).execute()
+            version_row = client.table(VERSIONS_TABLE).insert(version_payload).execute().data[0]
+            client.table(DOCUMENTS_TABLE).update({"current_version_id": version_row["id"]}).eq(
+                "id", document_id
+            ).execute()
         except Exception:
             # Cleanup orphaned blobs si falla DB insert
             for path in (raw, norm):
@@ -235,9 +229,9 @@ class DocumentService:
         )
         if existing:
             existing_v = existing[0]
-            client.table(DOCUMENTS_TABLE).update(
-                {"current_version_id": existing_v["id"]}
-            ).eq("id", str(document_id)).execute()
+            client.table(DOCUMENTS_TABLE).update({"current_version_id": existing_v["id"]}).eq(
+                "id", str(document_id)
+            ).execute()
             return await DocumentService.get_document(document_id, tenant_id)
 
         last = (
@@ -278,12 +272,10 @@ class DocumentService:
             "created_by": str(created_by),
         }
         try:
-            version_row = (
-                client.table(VERSIONS_TABLE).insert(version_payload).execute().data[0]
-            )
-            client.table(DOCUMENTS_TABLE).update(
-                {"current_version_id": version_row["id"]}
-            ).eq("id", str(document_id)).execute()
+            version_row = client.table(VERSIONS_TABLE).insert(version_payload).execute().data[0]
+            client.table(DOCUMENTS_TABLE).update({"current_version_id": version_row["id"]}).eq(
+                "id", str(document_id)
+            ).execute()
         except Exception:
             for path in (raw, norm):
                 try:
@@ -295,9 +287,7 @@ class DocumentService:
         return await DocumentService.get_document(document_id, tenant_id)
 
     @staticmethod
-    async def update_document(
-        document_id: UUID, tenant_id: UUID, payload
-    ) -> dict:
+    async def update_document(document_id: UUID, tenant_id: UUID, payload) -> dict:
         client = get_supabase_client()
         data = payload.model_dump(exclude_unset=True)
         if not data:
@@ -312,9 +302,7 @@ class DocumentService:
         return await DocumentService.get_document(document_id, tenant_id)
 
     @staticmethod
-    async def set_current_version(
-        document_id: UUID, version_id: UUID, tenant_id: UUID
-    ) -> dict:
+    async def set_current_version(document_id: UUID, version_id: UUID, tenant_id: UUID) -> dict:
         client = get_supabase_client()
         version = (
             client.table(VERSIONS_TABLE)
@@ -328,28 +316,26 @@ class DocumentService:
         )
         if not version:
             raise HTTPException(status_code=404, detail="Version not found")
-        client.table(DOCUMENTS_TABLE).update(
-            {"current_version_id": str(version_id)}
-        ).eq("id", str(document_id)).eq("tenant_id", str(tenant_id)).execute()
+        client.table(DOCUMENTS_TABLE).update({"current_version_id": str(version_id)}).eq("id", str(document_id)).eq(
+            "tenant_id", str(tenant_id)
+        ).execute()
         return await DocumentService.get_document(document_id, tenant_id)
 
     @staticmethod
     async def soft_delete_document(document_id: UUID, tenant_id: UUID) -> None:
         client = get_supabase_client()
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         (
             client.table(DOCUMENTS_TABLE)
-            .update({"deleted_at": datetime.now(timezone.utc).isoformat()})
+            .update({"deleted_at": datetime.now(UTC).isoformat()})
             .eq("id", str(document_id))
             .eq("tenant_id", str(tenant_id))
             .execute()
         )
 
     @staticmethod
-    async def add_assignment(
-        document_id: UUID, tenant_id: UUID, payload
-    ) -> dict:
+    async def add_assignment(document_id: UUID, tenant_id: UUID, payload) -> dict:
         client = get_supabase_client()
         data = payload.model_dump()
         data["target_kind"] = data["target_kind"].value
@@ -373,9 +359,7 @@ class DocumentService:
         )
 
     @staticmethod
-    async def get_version_signed_url(
-        version_id: UUID, tenant_id: UUID, expires_in: int = 3600
-    ) -> tuple[str, dict]:
+    async def get_version_signed_url(version_id: UUID, tenant_id: UUID, expires_in: int = 3600) -> tuple[str, dict]:
         client = get_supabase_client()
         version = (
             client.table(VERSIONS_TABLE)
