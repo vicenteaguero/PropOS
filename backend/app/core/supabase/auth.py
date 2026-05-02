@@ -16,7 +16,5 @@ def verify_token(token: str) -> dict:
 def get_user_profile(user_id: str, client: Client | None = None) -> dict:
     if client is None:
         client = get_supabase_client()
-    response = (
-        client.table(PROFILES_TABLE).select("*").eq("id", user_id).single().execute()
-    )
+    response = client.table(PROFILES_TABLE).select("*").eq("id", user_id).single().execute()
     return response.data
