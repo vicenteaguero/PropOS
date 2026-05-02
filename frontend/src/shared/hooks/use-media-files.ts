@@ -55,7 +55,8 @@ export function useMediaFiles() {
   );
 
   const photos = query.data?.filter((m) => m.type === "photo" && m.source === "camera") ?? [];
-  const galleryPhotos = query.data?.filter((m) => m.type === "photo" && m.source === "gallery") ?? [];
+  const galleryPhotos =
+    query.data?.filter((m) => m.type === "photo" && m.source === "gallery") ?? [];
   const audios = query.data?.filter((m) => m.type === "audio") ?? [];
 
   return { ...query, photos, galleryPhotos, audios, saveMediaFile };
