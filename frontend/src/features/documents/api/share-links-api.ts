@@ -34,8 +34,7 @@ export const shareLinksApi = {
       body: input,
     }),
 
-  remove: (linkId: string) =>
-    apiRequest<void>(`/v1/share-links/${linkId}`, { method: "DELETE" }),
+  remove: (linkId: string) => apiRequest<void>(`/v1/share-links/${linkId}`, { method: "DELETE" }),
 
   publicShortLinkUrl: (slug: string) => publicUrl(`/r/${slug}`),
 
