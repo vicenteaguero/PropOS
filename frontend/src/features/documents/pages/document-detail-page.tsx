@@ -63,9 +63,7 @@ export function DocumentDetailPage() {
   }
   if (error || !doc) {
     const isNotFound =
-      !error ||
-      (error instanceof Error &&
-        /404|not found|no encontrado/i.test(error.message));
+      !error || (error instanceof Error && /404|not found|no encontrado/i.test(error.message));
     return (
       <div className="container mx-auto flex max-w-2xl flex-col items-center justify-center gap-4 px-4 py-16 text-center">
         <FileQuestion className="size-14 text-muted-foreground/50" strokeWidth={1.25} />
@@ -114,7 +112,9 @@ export function DocumentDetailPage() {
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-lg font-semibold">{doc.display_name}</h1>
           <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-            <Badge variant="outline" className="text-[10px]">{doc.kind}</Badge>
+            <Badge variant="outline" className="text-[10px]">
+              {doc.kind}
+            </Badge>
             {currentVersion && (
               <>
                 <Badge variant="outline" className="text-[10px]">
@@ -151,12 +151,7 @@ export function DocumentDetailPage() {
         <Button size="sm" variant="secondary" onClick={() => setHistoryOpen(true)}>
           <History className="size-4" /> Versiones
         </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          disabled
-          title="Próximamente"
-        >
+        <Button size="sm" variant="ghost" disabled title="Próximamente">
           <ScanText className="size-4" /> OCR
         </Button>
         <Button size="sm" variant="ghost" disabled title="Próximamente">
@@ -236,11 +231,7 @@ export function DocumentDetailPage() {
         </aside>
       </div>
 
-      <AssignmentPicker
-        documentId={doc.id}
-        open={pickerOpen}
-        onOpenChange={setPickerOpen}
-      />
+      <AssignmentPicker documentId={doc.id} open={pickerOpen} onOpenChange={setPickerOpen} />
       <VersionHistoryDrawer
         documentId={doc.id}
         currentVersionId={doc.current_version_id}
