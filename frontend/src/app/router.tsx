@@ -69,8 +69,7 @@ const TX_COLS = [
   {
     key: "amount_cents",
     label: "Monto",
-    format: (v: unknown) =>
-      typeof v === "number" ? formatCLP(v / 100) : "—",
+    format: (v: unknown) => (typeof v === "number" ? formatCLP(v / 100) : "—"),
   },
   { key: "description", label: "Descripción" },
 ];
@@ -81,8 +80,7 @@ const PROPERTY_COLS = [
   {
     key: "list_price_cents",
     label: "Precio",
-    format: (v: unknown) =>
-      typeof v === "number" ? formatCLP(v / 100) : "—",
+    format: (v: unknown) => (typeof v === "number" ? formatCLP(v / 100) : "—"),
   },
 ];
 const PROJECT_COLS = [
@@ -96,8 +94,7 @@ const OPP_COLS = [
   {
     key: "expected_value_cents",
     label: "Valor esperado",
-    format: (v: unknown) =>
-      typeof v === "number" ? formatCLP(v / 100) : "—",
+    format: (v: unknown) => (typeof v === "number" ? formatCLP(v / 100) : "—"),
   },
   { key: "expected_close_at", label: "Cierre esperado" },
 ];
@@ -114,8 +111,7 @@ const CAMPAIGN_COLS = [
   {
     key: "budget_cents",
     label: "Presupuesto",
-    format: (v: unknown) =>
-      typeof v === "number" ? formatCLP(v / 100) : "—",
+    format: (v: unknown) => (typeof v === "number" ? formatCLP(v / 100) : "—"),
   },
 ];
 const ORG_COLS = [
@@ -264,20 +260,11 @@ export function AppRouter() {
           />
           <Route
             path="tags"
-            element={
-              <GenericApiTablePage
-                title="Tags"
-                endpoint="/v1/tags"
-                columns={TAG_COLS}
-              />
-            }
+            element={<GenericApiTablePage title="Tags" endpoint="/v1/tags" columns={TAG_COLS} />}
           />
 
           <Route path="workflows" element={<WorkflowsPage />} />
-          <Route
-            path="timeline/:table/:id"
-            element={<EntityTimelinePage />}
-          />
+          <Route path="timeline/:table/:id" element={<EntityTimelinePage />} />
 
           {role === "ADMIN" && (
             <>
