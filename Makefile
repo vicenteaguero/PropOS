@@ -1,7 +1,7 @@
 include .env
 export
 
-.PHONY: setup dev dev-frontend dev-pwa dev-pwa-hmr stop build migrate seed lint test clean logs backend-shell db-studio gcloud-auth deploy-setup deploy-secrets-sync deploy-trigger-setup deploy-trigger-list deploy-backend deploy-verify deploy-frontend
+.PHONY: setup dev dev-frontend dev-pwa dev-pwa-hmr stop build migrate seed format lint test clean logs backend-shell db-studio gcloud-auth deploy-setup deploy-secrets-sync deploy-trigger-setup deploy-trigger-list deploy-backend deploy-verify deploy-frontend
 
 setup:
 	@bash scripts/setup.sh
@@ -51,15 +51,53 @@ seed:
 	@bash scripts/log.sh MAKE "📝" "Seeding dev data"
 	supabase db reset
 
+define python-preformat
+	cd backend && poetry run python scripts/format/remove_inline_comments.py
+	cd backend && poetry run python scripts/format/remove_double_blanks.py
+endef
+
+format:
+	@bash scripts/log.sh MAKE "✨" "Auto-fix formatting (Python + JS/TS)"
+	$(python-preformat)
+	cd backend && poetry run ruff check --fix .
+	cd backend && poetry run ruff format .
+	cd frontend && npx eslint src --fix --report-unused-disable-directives --max-warnings 0
+	cd frontend && npm run format
+
 lint:
-	@bash scripts/log.sh MAKE "🔍" "Running linters"
+	@bash scripts/log.sh MAKE "🔍" "Check formatting (read-only)"
 	cd backend && poetry run ruff check .
+	cd backend && poetry run ruff format --check .
 	cd frontend && npm run lint
+	cd frontend && npx prettier --check "src/**/*.{ts,tsx}"
 
 test:
 	@bash scripts/log.sh MAKE "🧪" "Running test suites"
 	cd backend && poetry run pytest
 	cd frontend && npm run test
+
+.ANITA_ENV := set -a && . ./.env && set +a && export ALLOWED_ORIGINS='["http://localhost:5173"]'
+
+test-anita:
+	@bash scripts/log.sh MAKE "🤖" "Anita LLM matrix (cerebras + groq, cached transcripts)"
+	cd backend && rm -f tests/integration/anita/results.jsonl
+	$(.ANITA_ENV) && cd backend && poetry run pytest tests/integration/anita -m 'integration and not whisper' --no-cov -v
+
+test-anita-whisper:
+	@bash scripts/log.sh MAKE "🎙" "Anita Whisper quality (rate-limited)"
+	$(.ANITA_ENV) && cd backend && poetry run pytest tests/integration/anita -m 'integration and whisper' --no-cov -v
+
+test-anita-full:
+	@bash scripts/log.sh MAKE "🤖" "Anita full matrix (LLM + Whisper, all 4 providers)"
+	cd backend && rm -f tests/integration/anita/results.jsonl
+	$(.ANITA_ENV) && ANITA_TEST_FULL=1 cd backend && poetry run pytest tests/integration/anita -m integration --no-cov -v
+
+test-anita-cache-refresh:
+	@bash scripts/log.sh MAKE "🔄" "Re-transcribe all audios (Whisper, ~80s)"
+	$(.ANITA_ENV) && cd backend && poetry run python scripts/anita_refresh_cache.py
+
+test-anita-report:
+	cd backend && poetry run python scripts/anita_results_report.py
 
 clean:
 	docker-compose down -v
