@@ -1,5 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { shareLinksApi, type CreateShareInput, type UpdateShareInput } from "../api/share-links-api";
+import {
+  shareLinksApi,
+  type CreateShareInput,
+  type UpdateShareInput,
+} from "../api/share-links-api";
 
 export const shareKeys = {
   all: ["share-links"] as const,
