@@ -20,10 +20,7 @@ class PropertyService:
         client = get_supabase_client()
         logger.info("listing", event_type="query", tenant_id=str(tenant_id))
         builder = (
-            client.table(PROPERTIES_TABLE)
-            .select("*")
-            .eq("tenant_id", str(tenant_id))
-            .order("created_at", desc=True)
+            client.table(PROPERTIES_TABLE).select("*").eq("tenant_id", str(tenant_id)).order("created_at", desc=True)
         )
         if not include_drafts:
             builder = builder.eq("is_draft", False)
@@ -56,9 +53,7 @@ class PropertyService:
         return response.data[0]
 
     @staticmethod
-    async def update_property(
-        property_id: UUID, payload, tenant_id: UUID
-    ) -> dict:
+    async def update_property(property_id: UUID, payload, tenant_id: UUID) -> dict:
         client = get_supabase_client()
         data = payload.model_dump(exclude_unset=True)
         if "status" in data and data["status"] is not None:
@@ -75,10 +70,4 @@ class PropertyService:
     @staticmethod
     async def delete_property(property_id: UUID, tenant_id: UUID) -> None:
         client = get_supabase_client()
-        (
-            client.table(PROPERTIES_TABLE)
-            .delete()
-            .eq("id", str(property_id))
-            .eq("tenant_id", str(tenant_id))
-            .execute()
-        )
+        (client.table(PROPERTIES_TABLE).delete().eq("id", str(property_id)).eq("tenant_id", str(tenant_id)).execute())
