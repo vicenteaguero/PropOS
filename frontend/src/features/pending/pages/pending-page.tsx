@@ -43,15 +43,16 @@ export function PendingPage() {
           <Loader2 className="size-5 animate-spin text-muted-foreground" />
         </div>
       )}
-      {isError && (
-        <Card className="p-4 text-destructive">No pude cargar la lista.</Card>
-      )}
+      {isError && <Card className="p-4 text-destructive">No pude cargar la lista.</Card>}
       {!isLoading && !isError && (data?.length ?? 0) === 0 && (
         <Card className="p-8 text-center text-muted-foreground">
           <Badge variant="outline" className="mb-2">
             Vacío
           </Badge>
-          <p>No hay propuestas {tab === "pending" ? "pendientes" : tab === "accepted" ? "aceptadas" : "rechazadas"}.</p>
+          <p>
+            No hay propuestas{" "}
+            {tab === "pending" ? "pendientes" : tab === "accepted" ? "aceptadas" : "rechazadas"}.
+          </p>
         </Card>
       )}
 
