@@ -9,6 +9,7 @@ from app.core.supabase.client import get_supabase_client
 from app.features.documents import storage
 from app.features.documents.passwords import hash_password, verify_password
 from app.features.documents.slugs import generate_slug
+from datetime import UTC
 
 SHARE_LINKS_TABLE = "share_links"
 SHARE_HISTORY_TABLE = "share_link_history"
@@ -53,20 +54,12 @@ def _audit(
 
 class ShareService:
     @staticmethod
-    async def create_share_link(
-        tenant_id: UUID, created_by: UUID, payload
-    ) -> dict:
+    async def create_share_link(tenant_id: UUID, created_by: UUID, payload) -> dict:
         client = get_supabase_client()
         slug = generate_slug()
         # Garantizar unicidad (loop probabilísticamente raro)
         for _ in range(5):
-            existing = (
-                client.table(SHARE_LINKS_TABLE)
-                .select("id")
-                .eq("slug", slug)
-                .execute()
-                .data
-            )
+            existing = client.table(SHARE_LINKS_TABLE).select("id").eq("slug", slug).execute().data
             if not existing:
                 break
             slug = generate_slug()
@@ -75,9 +68,7 @@ class ShareService:
             "tenant_id": str(tenant_id),
             "slug": slug,
             "document_id": str(payload.document_id),
-            "pinned_version_id": str(payload.pinned_version_id)
-            if payload.pinned_version_id
-            else None,
+            "pinned_version_id": str(payload.pinned_version_id) if payload.pinned_version_id else None,
             "password_hash": hash_password(payload.password) if payload.password else None,
             "expires_at": payload.expires_at.isoformat() if payload.expires_at else None,
             "download_filename_override": payload.download_filename_override,
@@ -112,9 +103,7 @@ class ShareService:
         return [_to_response(r) for r in rows]
 
     @staticmethod
-    async def update_share_link(
-        link_id: UUID, tenant_id: UUID, changed_by: UUID, payload
-    ) -> dict:
+    async def update_share_link(link_id: UUID, tenant_id: UUID, changed_by: UUID, payload) -> dict:
         client = get_supabase_client()
         prev = await ShareService.get_share_link(link_id, tenant_id)
         data = payload.model_dump(exclude_unset=True)
@@ -132,17 +121,10 @@ class ShareService:
             data["expires_at"] = data["expires_at"].isoformat()
         if not data:
             return prev
-        (
-            client.table(SHARE_LINKS_TABLE)
-            .update(data)
-            .eq("id", str(link_id))
-            .eq("tenant_id", str(tenant_id))
-            .execute()
-        )
+        (client.table(SHARE_LINKS_TABLE).update(data).eq("id", str(link_id)).eq("tenant_id", str(tenant_id)).execute())
         new_state = await ShareService.get_share_link(link_id, tenant_id)
-        if (
-            prev["document_id"] != new_state["document_id"]
-            or prev.get("pinned_version_id") != new_state.get("pinned_version_id")
+        if prev["document_id"] != new_state["document_id"] or prev.get("pinned_version_id") != new_state.get(
+            "pinned_version_id"
         ):
             _audit(
                 client,
@@ -175,13 +157,7 @@ class ShareService:
     @staticmethod
     async def delete_share_link(link_id: UUID, tenant_id: UUID) -> None:
         client = get_supabase_client()
-        (
-            client.table(SHARE_LINKS_TABLE)
-            .delete()
-            .eq("id", str(link_id))
-            .eq("tenant_id", str(tenant_id))
-            .execute()
-        )
+        (client.table(SHARE_LINKS_TABLE).delete().eq("id", str(link_id)).eq("tenant_id", str(tenant_id)).execute())
 
     @staticmethod
     async def resolve_public(slug: str, password: str | None = None) -> dict:
@@ -202,10 +178,10 @@ class ShareService:
         if not row:
             raise HTTPException(status_code=404, detail="Share link not found")
         if row.get("expires_at"):
-            from datetime import datetime, timezone
+            from datetime import datetime
 
             expires = datetime.fromisoformat(row["expires_at"].replace("Z", "+00:00"))
-            if expires < datetime.now(timezone.utc):
+            if expires < datetime.now(UTC):
                 raise HTTPException(status_code=410, detail="Share link expired")
         if row.get("password_hash"):
             if not password or not verify_password(password, row["password_hash"]):
@@ -215,43 +191,25 @@ class ShareService:
                     headers={"X-Requires-Password": "1"},
                 )
 
-        document = (
-            client.table(DOCUMENTS_TABLE)
-            .select("*")
-            .eq("id", row["document_id"])
-            .single()
-            .execute()
-            .data
-        )
+        document = client.table(DOCUMENTS_TABLE).select("*").eq("id", row["document_id"]).single().execute().data
         if not document or document.get("deleted_at"):
             raise HTTPException(status_code=404, detail="Document unavailable")
 
         version_id = row.get("pinned_version_id") or document["current_version_id"]
         if not version_id:
             raise HTTPException(status_code=404, detail="No version available")
-        version = (
-            client.table(VERSIONS_TABLE)
-            .select("*")
-            .eq("id", version_id)
-            .single()
-            .execute()
-            .data
-        )
+        version = client.table(VERSIONS_TABLE).select("*").eq("id", version_id).single().execute().data
         if not version:
             raise HTTPException(status_code=404, detail="Version unavailable")
 
         download_filename = (
-            row.get("download_filename_override")
-            or version.get("download_filename")
-            or document["display_name"]
+            row.get("download_filename_override") or version.get("download_filename") or document["display_name"]
         )
         url = storage.signed_url(version["normalized_path"], 3600)
 
         # Increment view_count atómicamente vía RPC (best-effort, evita races)
         try:
-            client.rpc(
-                "increment_share_link_views", {"p_id": row["id"]}
-            ).execute()
+            client.rpc("increment_share_link_views", {"p_id": row["id"]}).execute()
         except Exception:  # pragma: no cover
             logger.warning("view_count increment failed", link_id=row["id"])
 
