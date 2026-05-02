@@ -13,14 +13,14 @@ class Settings(BaseSettings):
     vapid_contact_email: str = "admin@propos.app"
 
     # Anita AI assistant
-    anita_provider: str = "cerebras"  # cerebras | anthropic | openai | groq
-    anita_model: str = "llama3.1-8b"  # Cerebras production (universal access)
+    anita_provider: str = "groq"
+    anita_model: str = "meta-llama/llama-4-scout-17b-16e-instruct"
     anita_fallback_provider: str = "groq"
     cerebras_api_key: str = ""
     anthropic_api_key: str = ""
     groq_api_key: str = ""
     openai_api_key: str = ""
-    anita_transcribe_provider: str = "groq"  # groq | openai
+    anita_transcribe_provider: str = "groq"
     anita_daily_budget_usd: float = 0.50
     anita_max_tool_calls_per_turn: int = 8
     anita_turn_timeout_seconds: int = 45
