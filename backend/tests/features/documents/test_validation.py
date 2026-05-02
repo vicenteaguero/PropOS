@@ -37,10 +37,7 @@ class TestDetectMime:
         with zipfile.ZipFile(buf, "w") as zf:
             zf.writestr("[Content_Types].xml", "<xml/>")
             zf.writestr("word/document.xml", "<doc/>")
-        assert (
-            detect_mime(buf.getvalue())
-            == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        )
+        assert detect_mime(buf.getvalue()) == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 
     def test_zip_jar_rejected_as_not_docx(self):
         # ZIP arbitrario (e.g. JAR) sin estructura DOCX → no debe ser aceptado
@@ -98,12 +95,7 @@ class TestKindFromMime:
         assert kind_from_mime("application/pdf") == "PDF"
 
     def test_docx(self):
-        assert (
-            kind_from_mime(
-                "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-            )
-            == "DOCX"
-        )
+        assert kind_from_mime("application/vnd.openxmlformats-officedocument.wordprocessingml.document") == "DOCX"
 
     def test_image(self):
         assert kind_from_mime("image/jpeg") == "IMAGE_PDF"
