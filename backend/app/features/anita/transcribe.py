@@ -41,9 +41,7 @@ def transcribe_audio(file: IO[bytes], filename: str = "audio.webm") -> dict:
     if provider != "groq" and settings.groq_api_key:
         return _transcribe_groq(file, filename)
 
-    raise TranscriptionError(
-        "No transcription provider available. Set GROQ_API_KEY or OPENAI_API_KEY."
-    )
+    raise TranscriptionError("No transcription provider available. Set GROQ_API_KEY or OPENAI_API_KEY.")
 
 
 def _transcribe_groq(file: IO[bytes], filename: str) -> dict:
@@ -53,6 +51,10 @@ def _transcribe_groq(file: IO[bytes], filename: str) -> dict:
         from openai import OpenAI
     except ImportError as exc:
         raise TranscriptionError("openai package not installed") from exc
+
+    from app.features.anita.rate_limiter import get_rate_limiter
+
+    get_rate_limiter().acquire_sync("groq", "whisper-large-v3", est_tokens=0)
 
     client = OpenAI(
         api_key=settings.groq_api_key,
