@@ -24,7 +24,12 @@ export const documentsApi = {
 
   get: (id: string) => apiRequest<DocumentItem>(`/v1/documents/${id}`),
 
-  create: (file: File, displayName: string, origin: string = "UPLOAD", downloadFilename?: string) => {
+  create: (
+    file: File,
+    displayName: string,
+    origin: string = "UPLOAD",
+    downloadFilename?: string,
+  ) => {
     const fd = new FormData();
     fd.append("file", file);
     fd.append("display_name", displayName);
@@ -36,8 +41,7 @@ export const documentsApi = {
   update: (id: string, body: { display_name?: string; sort_order?: number }) =>
     apiRequest<DocumentItem>(`/v1/documents/${id}`, { method: "PATCH", body }),
 
-  remove: (id: string) =>
-    apiRequest<void>(`/v1/documents/${id}`, { method: "DELETE" }),
+  remove: (id: string) => apiRequest<void>(`/v1/documents/${id}`, { method: "DELETE" }),
 
   addVersion: (id: string, file: File, notes?: string, downloadFilename?: string) => {
     const fd = new FormData();
@@ -51,15 +55,12 @@ export const documentsApi = {
   },
 
   makeVersionCurrent: (documentId: string, versionId: string) =>
-    apiRequest<DocumentItem>(
-      `/v1/documents/${documentId}/versions/${versionId}/make-current`,
-      { method: "POST" },
-    ),
+    apiRequest<DocumentItem>(`/v1/documents/${documentId}/versions/${versionId}/make-current`, {
+      method: "POST",
+    }),
 
   versionDownloadUrl: (documentId: string, versionId: string) =>
-    apiRequest<{ url: string }>(
-      `/v1/documents/${documentId}/versions/${versionId}/download`,
-    ),
+    apiRequest<{ url: string }>(`/v1/documents/${documentId}/versions/${versionId}/download`),
 
   addAssignment: (
     documentId: string,
@@ -76,8 +77,7 @@ export const documentsApi = {
     }),
 
   removeAssignment: (documentId: string, assignmentId: string) =>
-    apiRequest<void>(
-      `/v1/documents/${documentId}/assignments/${assignmentId}`,
-      { method: "DELETE" },
-    ),
+    apiRequest<void>(`/v1/documents/${documentId}/assignments/${assignmentId}`, {
+      method: "DELETE",
+    }),
 };
