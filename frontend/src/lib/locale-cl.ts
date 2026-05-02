@@ -48,21 +48,13 @@ export function parseRelativeDate(text: string, now = new Date()): string | null
     d.setDate(d.getDate() + 1);
     return d.toISOString().slice(0, 10);
   }
-  const weekdays = [
-    "domingo",
-    "lunes",
-    "martes",
-    "miércoles",
-    "jueves",
-    "viernes",
-    "sábado",
-  ];
+  const weekdays = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
   const m = t.match(/^el\s+(\w+)\s+pasad[oa]$/);
   if (m) {
     const idx = weekdays.indexOf(m[1] ?? "");
     if (idx >= 0) {
       const todayIdx = d.getDay();
-      const diff = ((todayIdx - idx + 7) % 7) || 7;
+      const diff = (todayIdx - idx + 7) % 7 || 7;
       d.setDate(d.getDate() - diff);
       return d.toISOString().slice(0, 10);
     }
