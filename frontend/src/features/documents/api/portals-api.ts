@@ -1,4 +1,10 @@
-import type { AnonymousUpload, AssignmentTarget, DocumentItem, Portal, PortalAccess } from "../types";
+import type {
+  AnonymousUpload,
+  AssignmentTarget,
+  DocumentItem,
+  Portal,
+  PortalAccess,
+} from "../types";
 import { apiRequest, publicUrl } from "./http";
 
 export interface CreatePortalInput {
@@ -39,14 +45,14 @@ export const portalsApi = {
   create: (input: CreatePortalInput) =>
     apiRequest<Portal>("/v1/portals", { method: "POST", body: input }),
 
-  update: (id: string, input: Partial<CreatePortalInput> & { is_active?: boolean; clear_password?: boolean }) =>
-    apiRequest<Portal>(`/v1/portals/${id}`, { method: "PATCH", body: input }),
+  update: (
+    id: string,
+    input: Partial<CreatePortalInput> & { is_active?: boolean; clear_password?: boolean },
+  ) => apiRequest<Portal>(`/v1/portals/${id}`, { method: "PATCH", body: input }),
 
-  remove: (id: string) =>
-    apiRequest<void>(`/v1/portals/${id}`, { method: "DELETE" }),
+  remove: (id: string) => apiRequest<void>(`/v1/portals/${id}`, { method: "DELETE" }),
 
-  uploads: (portalId: string) =>
-    apiRequest<AnonymousUpload[]>(`/v1/portals/${portalId}/uploads`),
+  uploads: (portalId: string) => apiRequest<AnonymousUpload[]>(`/v1/portals/${portalId}/uploads`),
 
   promote: (uploadId: string, input: PromoteUploadInput) =>
     apiRequest<DocumentItem>(`/v1/uploads/${uploadId}/promote`, {
