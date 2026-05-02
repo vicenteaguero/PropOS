@@ -1,12 +1,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { Building2, User, Folder, Plus } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -166,9 +161,7 @@ export function AssignmentPicker({ documentId, open, onOpenChange }: Props) {
                 <button
                   type="button"
                   key={a.id}
-                  onClick={() =>
-                    assign({ target_kind: "INTERNAL_AREA", internal_area_id: a.id })
-                  }
+                  onClick={() => assign({ target_kind: "INTERNAL_AREA", internal_area_id: a.id })}
                   className="flex w-full items-center gap-2 border-b border-border px-3 py-2 text-left text-sm hover:bg-accent"
                 >
                   <Folder className="size-4 text-primary/70" />
@@ -183,7 +176,9 @@ export function AssignmentPicker({ documentId, open, onOpenChange }: Props) {
             variant="secondary"
             className="w-full"
             onClick={createDraftAndAssign}
-            disabled={createProperty.isPending || createContact.isPending || addAssignment.isPending}
+            disabled={
+              createProperty.isPending || createContact.isPending || addAssignment.isPending
+            }
           >
             <Plus className="size-4" />
             Crear borrador y vincular: {query}
