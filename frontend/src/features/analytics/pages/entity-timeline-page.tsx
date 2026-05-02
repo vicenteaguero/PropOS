@@ -25,9 +25,7 @@ export function EntityTimelinePage() {
   const { data, isLoading, isError } = useQuery({
     queryKey: ["timeline", table, id],
     queryFn: () =>
-      apiRequest<TimelineEvent[]>(
-        `/v1/analytics/entity-timeline?table_name=${table}&row_id=${id}`,
-      ),
+      apiRequest<TimelineEvent[]>(`/v1/analytics/entity-timeline?table_name=${table}&row_id=${id}`),
     enabled: !!table && !!id,
   });
 
@@ -64,13 +62,9 @@ export function EntityTimelinePage() {
             <CardHeader className="py-3">
               <div className="flex items-center gap-2 justify-between">
                 <CardTitle className="text-sm flex items-center gap-2">
-                  <Badge variant="outline">
-                    {TYPE_BADGE[e.event_type] || e.event_type}
-                  </Badge>
+                  <Badge variant="outline">{TYPE_BADGE[e.event_type] || e.event_type}</Badge>
                   {e.event_subtype && (
-                    <span className="text-muted-foreground text-xs">
-                      {e.event_subtype}
-                    </span>
+                    <span className="text-muted-foreground text-xs">{e.event_subtype}</span>
                   )}
                 </CardTitle>
                 <span className="text-xs text-muted-foreground">
