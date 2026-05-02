@@ -2,15 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 import { apiRequest } from "@features/documents/api/http";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 interface AnitaCost {
   totals: {
@@ -78,9 +70,7 @@ export function AnitaCostPage() {
             <CardTitle className="text-sm text-muted-foreground">Tokens entrada</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-semibold">
-              {data.totals.tokens_in.toLocaleString()}
-            </p>
+            <p className="text-2xl font-semibold">{data.totals.tokens_in.toLocaleString()}</p>
           </CardContent>
         </Card>
         <Card>
@@ -88,9 +78,7 @@ export function AnitaCostPage() {
             <CardTitle className="text-sm text-muted-foreground">Tokens salida</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-semibold">
-              {data.totals.tokens_out.toLocaleString()}
-            </p>
+            <p className="text-2xl font-semibold">{data.totals.tokens_out.toLocaleString()}</p>
           </CardContent>
         </Card>
         <Card>
@@ -98,9 +86,7 @@ export function AnitaCostPage() {
             <CardTitle className="text-sm text-muted-foreground">Costo total</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-semibold">
-              {fmtUSD(data.totals.cost_cents)}
-            </p>
+            <p className="text-2xl font-semibold">{fmtUSD(data.totals.cost_cents)}</p>
           </CardContent>
         </Card>
       </div>
@@ -111,19 +97,14 @@ export function AnitaCostPage() {
         </CardHeader>
         <CardContent>
           {data.by_day.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">
-              Sin actividad aún.
-            </p>
+            <p className="text-sm text-muted-foreground py-8 text-center">Sin actividad aún.</p>
           ) : (
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={data.by_day}>
                 <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
                 <XAxis dataKey="day" tick={{ fontSize: 10 }} />
                 <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => fmtUSD(v)} />
-                <Tooltip
-                  formatter={(v) => fmtUSD(Number(v))}
-                  contentStyle={{ fontSize: 12 }}
-                />
+                <Tooltip formatter={(v) => fmtUSD(Number(v))} contentStyle={{ fontSize: 12 }} />
                 <Bar dataKey="cost_cents" fill="#a78bfa" />
               </BarChart>
             </ResponsiveContainer>
@@ -151,9 +132,7 @@ export function AnitaCostPage() {
             <tbody>
               {data.by_session.map((s) => (
                 <tr key={s.session_id} className="border-b last:border-0">
-                  <td className="py-2 pr-4 font-mono">
-                    {s.session_id.slice(0, 8)}…
-                  </td>
+                  <td className="py-2 pr-4 font-mono">{s.session_id.slice(0, 8)}…</td>
                   <td className="py-2 pr-4">
                     {s.last_at ? s.last_at.slice(0, 16).replace("T", " ") : "—"}
                   </td>
