@@ -2,8 +2,7 @@ import { fileTypeFromBuffer } from "file-type";
 
 export const MAX_FILE_BYTES = 50 * 1024 * 1024;
 
-const DOCX_MIME =
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
 export const ALLOWED_MIME = new Set<string>([
   "application/pdf",
@@ -23,9 +22,7 @@ export interface ValidationResult {
 // Lee EOCD + central directory para extraer nombres sin descomprimir.
 async function looksLikeDocx(file: File): Promise<boolean> {
   try {
-    const tail = new Uint8Array(
-      await file.slice(Math.max(0, file.size - 65536)).arrayBuffer(),
-    );
+    const tail = new Uint8Array(await file.slice(Math.max(0, file.size - 65536)).arrayBuffer());
     // Buscar EOCD signature 0x06054b50
     let eocd = -1;
     for (let i = tail.length - 22; i >= 0; i--) {
@@ -57,18 +54,19 @@ async function looksLikeDocx(file: File): Promise<boolean> {
       names.push(decoder.decode(tail.subarray(p + 46, p + 46 + nameLen)));
       p += 46 + nameLen + extraLen + commentLen;
     }
-    return (
-      names.includes("[Content_Types].xml") &&
-      names.includes("word/document.xml")
-    );
+    return names.includes("[Content_Types].xml") && names.includes("word/document.xml");
   } catch {
     return false;
   }
 }
 
-export async function validateFile(file: File, maxBytes = MAX_FILE_BYTES): Promise<ValidationResult> {
+export async function validateFile(
+  file: File,
+  maxBytes = MAX_FILE_BYTES,
+): Promise<ValidationResult> {
   if (file.size === 0) return { ok: false, reason: "Archivo vacío" };
-  if (file.size > maxBytes) return { ok: false, reason: `Excede ${(maxBytes / 1024 / 1024).toFixed(0)} MB` };
+  if (file.size > maxBytes)
+    return { ok: false, reason: `Excede ${(maxBytes / 1024 / 1024).toFixed(0)} MB` };
   const head = new Uint8Array(await file.slice(0, 4100).arrayBuffer());
   const detected = await fileTypeFromBuffer(head);
   const mime = detected?.mime;
