@@ -4,7 +4,7 @@ from app.core.logging.logger import get_logger
 from app.core.supabase.client import get_supabase_client
 
 BUCKET = "documents"
-DEFAULT_SIGNED_URL_TTL = 3600  # 1 hora
+DEFAULT_SIGNED_URL_TTL = 3600
 
 logger = get_logger("DOCS_STORAGE")
 
