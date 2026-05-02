@@ -39,9 +39,7 @@ async def create_property(
     tenant_id: UUID = Depends(get_tenant_id),
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> dict:
-    return await PropertyService.create_property(
-        payload, tenant_id, UUID(current_user["id"])
-    )
+    return await PropertyService.create_property(payload, tenant_id, UUID(current_user["id"]))
 
 
 @router.patch("/{property_id}", response_model=PropertyResponse)
