@@ -21,9 +21,7 @@ async def list_tasks(
     only_open: bool = Query(default=False),
     limit: int = Query(default=200, le=500),
 ) -> list[dict]:
-    return await TaskService.list_tasks(
-        tenant_id, kind, status, owner_user, only_open, limit
-    )
+    return await TaskService.list_tasks(tenant_id, kind, status, owner_user, only_open, limit)
 
 
 @router.get("/{task_id}", response_model=TaskResponse)
