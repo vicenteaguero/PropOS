@@ -42,9 +42,7 @@ async def create_area(
     tenant_id: UUID = Depends(get_tenant_id),
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> dict:
-    return await InternalAreaService.create_area(
-        payload, tenant_id, UUID(current_user["id"])
-    )
+    return await InternalAreaService.create_area(payload, tenant_id, UUID(current_user["id"]))
 
 
 @router.patch(
