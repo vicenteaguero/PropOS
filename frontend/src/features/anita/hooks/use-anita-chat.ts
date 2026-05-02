@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { streamChat } from "../api/anita-api";
+import { streamMessage } from "../api/anita-api";
 import type { ChatStreamEvent } from "../types";
 
 interface AnitaChatState {
@@ -49,9 +49,9 @@ export function useAnitaChat(sessionId: string | undefined) {
       abortRef.current = controller;
 
       try {
-        await streamChat(
+        await streamMessage(
           sessionId,
-          userText,
+          { user_text: userText },
           (event: ChatStreamEvent) => {
             if (event.type === "text") {
               setState((s) => ({
@@ -63,10 +63,7 @@ export function useAnitaChat(sessionId: string | undefined) {
               setState((s) => ({
                 ...s,
                 isThinking: false,
-                toolEvents: [
-                  ...s.toolEvents,
-                  { name: event.name, args: event.args },
-                ],
+                toolEvents: [...s.toolEvents, { name: event.name, args: event.args }],
               }));
             } else if (event.type === "done") {
               setState((s) => ({
