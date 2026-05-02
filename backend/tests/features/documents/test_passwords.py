@@ -6,8 +6,8 @@ def test_hash_format():
     parts = h.split("$")
     assert len(parts) == 3
     assert parts[0] == "scrypt"
-    assert len(parts[1]) == 32  # 16 bytes salt hex
-    assert len(parts[2]) == 64  # 32 bytes digest hex
+    assert len(parts[1]) == 32
+    assert len(parts[2]) == 64
 
 
 def test_verify_correct():
