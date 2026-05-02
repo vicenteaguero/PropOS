@@ -26,8 +26,12 @@ export function useDocument(id: string | undefined) {
 export function useCreateDocument() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { file: File; displayName: string; origin?: string; downloadFilename?: string }) =>
-      documentsApi.create(input.file, input.displayName, input.origin, input.downloadFilename),
+    mutationFn: (input: {
+      file: File;
+      displayName: string;
+      origin?: string;
+      downloadFilename?: string;
+    }) => documentsApi.create(input.file, input.displayName, input.origin, input.downloadFilename),
     onSuccess: () => qc.invalidateQueries({ queryKey: documentsKeys.all }),
   });
 }
@@ -67,8 +71,7 @@ export function useAddVersion(documentId: string) {
 export function useMakeVersionCurrent(documentId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (versionId: string) =>
-      documentsApi.makeVersionCurrent(documentId, versionId),
+    mutationFn: (versionId: string) => documentsApi.makeVersionCurrent(documentId, versionId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: documentsKeys.detail(documentId) });
     },
@@ -94,8 +97,7 @@ export function useAddAssignment(documentId: string) {
 export function useRemoveAssignment(documentId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (assignmentId: string) =>
-      documentsApi.removeAssignment(documentId, assignmentId),
+    mutationFn: (assignmentId: string) => documentsApi.removeAssignment(documentId, assignmentId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: documentsKeys.detail(documentId) });
     },
