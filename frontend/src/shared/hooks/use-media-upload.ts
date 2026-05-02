@@ -26,7 +26,7 @@ export function useMediaUpload(): UseMediaUploadReturn {
       setError(null);
 
       try {
-        const ext = type === "photo" ? "jpg" : (blob.type.includes("webm") ? "webm" : "mp4");
+        const ext = type === "photo" ? "jpg" : blob.type.includes("webm") ? "webm" : "mp4";
         const timestamp = Date.now();
         const path = `${user.tenantId}/${type}/${timestamp}.${ext}`;
 
@@ -39,9 +39,9 @@ export function useMediaUpload(): UseMediaUploadReturn {
           return null;
         }
 
-        const { data: { publicUrl } } = supabase.storage
-          .from("media")
-          .getPublicUrl(path);
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from("media").getPublicUrl(path);
 
         setUrl(publicUrl);
         return publicUrl;
