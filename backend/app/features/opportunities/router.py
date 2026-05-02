@@ -26,22 +26,16 @@ async def list_opportunities(
     property_id: UUID | None = Query(default=None),
     limit: int = Query(default=200, le=500),
 ) -> list[dict]:
-    return await OpportunityService.list_opportunities(
-        tenant_id, status, stage, person_id, property_id, limit
-    )
+    return await OpportunityService.list_opportunities(tenant_id, status, stage, person_id, property_id, limit)
 
 
 @router.get("/{opp_id}", response_model=OpportunityResponse)
-async def get_opportunity(
-    opp_id: UUID, tenant_id: UUID = Depends(get_tenant_id)
-) -> dict:
+async def get_opportunity(opp_id: UUID, tenant_id: UUID = Depends(get_tenant_id)) -> dict:
     return await OpportunityService.get_opportunity(opp_id, tenant_id)
 
 
 @router.get("/{opp_id}/history", response_model=list[StageHistoryResponse])
-async def get_history(
-    opp_id: UUID, tenant_id: UUID = Depends(get_tenant_id)
-) -> list[dict]:
+async def get_history(opp_id: UUID, tenant_id: UUID = Depends(get_tenant_id)) -> list[dict]:
     return await OpportunityService.get_history(opp_id, tenant_id)
 
 
@@ -51,9 +45,7 @@ async def create_opportunity(
     tenant_id: UUID = Depends(get_tenant_id),
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> dict:
-    return await OpportunityService.create_opportunity(
-        payload, tenant_id, UUID(current_user["id"])
-    )
+    return await OpportunityService.create_opportunity(payload, tenant_id, UUID(current_user["id"]))
 
 
 @router.patch("/{opp_id}", response_model=OpportunityResponse)
@@ -66,7 +58,5 @@ async def update_opportunity(
 
 
 @router.delete("/{opp_id}", status_code=204)
-async def delete_opportunity(
-    opp_id: UUID, tenant_id: UUID = Depends(get_tenant_id)
-):
+async def delete_opportunity(opp_id: UUID, tenant_id: UUID = Depends(get_tenant_id)):
     await OpportunityService.delete_opportunity(opp_id, tenant_id)
