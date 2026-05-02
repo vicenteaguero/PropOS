@@ -62,17 +62,12 @@ class PublicationService:
         client = get_supabase_client()
         data = _norm(payload.model_dump(exclude_unset=True))
         return (
-            client.table(PUB_TABLE)
-            .update(data)
-            .eq("id", str(pub_id))
-            .eq("tenant_id", str(tenant_id))
-            .execute()
-            .data[0]
+            client.table(PUB_TABLE).update(data).eq("id", str(pub_id)).eq("tenant_id", str(tenant_id)).execute().data[0]
         )
 
     @staticmethod
     async def delete_publication(pub_id: UUID, tenant_id: UUID) -> None:
         client = get_supabase_client()
-        client.table(PUB_TABLE).update(
-            {"deleted_at": datetime.now(UTC).isoformat()}
-        ).eq("id", str(pub_id)).eq("tenant_id", str(tenant_id)).execute()
+        client.table(PUB_TABLE).update({"deleted_at": datetime.now(UTC).isoformat()}).eq("id", str(pub_id)).eq(
+            "tenant_id", str(tenant_id)
+        ).execute()
