@@ -29,8 +29,12 @@ export const workflowsApi = {
     apiRequest<Workflow>("/v1/workflows", { method: "POST", body }),
   listSteps: (workflowId: string) =>
     apiRequest<WorkflowStep[]>(`/v1/workflows/${workflowId}/steps`),
-  updateStep: (stepId: string, body: { status?: string; notes?: string; completed_at?: string }) =>
-    apiRequest<WorkflowStep>(`/v1/workflows/steps/${stepId}`, {
+  updateStep: (
+    workflowId: string,
+    stepId: string,
+    body: { status?: string; notes?: string; completed_at?: string },
+  ) =>
+    apiRequest<WorkflowStep>(`/v1/workflows/${workflowId}/steps/${stepId}`, {
       method: "PATCH",
       body,
     }),
