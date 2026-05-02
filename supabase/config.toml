@@ -1,7 +1,7 @@
 [api]
 enabled = true
 port = 54321
-schemas = ["public"]
+schemas = ["public", "propos_test"]
 
 [db]
 port = 54322
