@@ -178,21 +178,12 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props)
                 aria-pressed={isSelected}
                 aria-label={`Página ${i + 1}`}
               >
-                <img
-                  src={shotUrls[i]}
-                  alt={`shot ${i + 1}`}
-                  className="h-20 w-16 object-cover"
-                />
+                <img src={shotUrls[i]} alt={`shot ${i + 1}`} className="h-20 w-16 object-cover" />
               </button>
             );
           })}
           {selectedId && (
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={removeSelected}
-              className="shrink-0"
-            >
+            <Button variant="destructive" size="sm" onClick={removeSelected} className="shrink-0">
               <Trash2 className="size-4" /> Eliminar página
             </Button>
           )}
