@@ -36,6 +36,7 @@ export default defineConfig({
         skipWaiting: true,
         clientsClaim: true,
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+        globIgnores: ["**/opencv/**"],
         runtimeCaching: devPwa
           ? [{ urlPattern: /.*/, handler: "NetworkOnly" }]
           : [
