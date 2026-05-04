@@ -23,6 +23,8 @@ export interface DocumentVersion {
   ocr_status: OCRStatus;
   ai_analysis_status: AIStatus;
   notes: string | null;
+  edit_metadata: Record<string, unknown> | null;
+  source_raw_path: string | null;
   created_by: string | null;
   created_at: string;
 }
