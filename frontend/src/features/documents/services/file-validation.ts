@@ -9,7 +9,17 @@ export const ALLOWED_MIME = new Set<string>([
   "image/jpeg",
   "image/png",
   "image/webp",
+  "image/heic",
+  "image/heif",
   DOCX_MIME,
+]);
+
+export const IMAGE_MIME = new Set<string>([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif",
 ]);
 
 export interface ValidationResult {
