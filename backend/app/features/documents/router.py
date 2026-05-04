@@ -69,6 +69,7 @@ async def create_document(
     display_name: str = Form(...),
     origin: str = Form(default="UPLOAD"),
     download_filename: str | None = Form(default=None),
+    edit_metadata: str | None = Form(default=None),
     tenant_id: UUID = Depends(get_tenant_id),
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> dict:
@@ -78,6 +79,14 @@ async def create_document(
             detail="Invalid origin for direct upload",
         )
     content = await file.read()
+    parsed_meta: dict | None = None
+    if edit_metadata:
+        import json
+
+        try:
+            parsed_meta = json.loads(edit_metadata)
+        except json.JSONDecodeError as exc:
+            raise HTTPException(status_code=400, detail="edit_metadata invalid JSON") from exc
     return await DocumentService.create_document_with_first_version(
         tenant_id=tenant_id,
         created_by=UUID(current_user["id"]),
@@ -87,6 +96,7 @@ async def create_document(
         declared_mime=file.content_type,
         original_filename=file.filename,
         download_filename=download_filename,
+        edit_metadata=parsed_meta,
     )
 
 
@@ -120,10 +130,20 @@ async def add_version(
     file: UploadFile = File(...),
     notes: str | None = Form(default=None),
     download_filename: str | None = Form(default=None),
+    edit_metadata: str | None = Form(default=None),
+    source_version_id: UUID | None = Form(default=None),
     tenant_id: UUID = Depends(get_tenant_id),
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> dict:
     content = await file.read()
+    parsed_meta: dict | None = None
+    if edit_metadata:
+        import json
+
+        try:
+            parsed_meta = json.loads(edit_metadata)
+        except json.JSONDecodeError as exc:
+            raise HTTPException(status_code=400, detail="edit_metadata invalid JSON") from exc
     return await DocumentService.add_version(
         document_id=document_id,
         tenant_id=tenant_id,
@@ -133,6 +153,8 @@ async def add_version(
         original_filename=file.filename,
         notes=notes,
         download_filename=download_filename,
+        edit_metadata=parsed_meta,
+        source_version_id=source_version_id,
     )
 
 
@@ -146,6 +168,21 @@ async def make_version_current(
     tenant_id: UUID = Depends(get_tenant_id),
 ) -> dict:
     return await DocumentService.set_current_version(document_id, version_id, tenant_id)
+
+
+@router.post(
+    "/documents/{document_id}/versions/{version_id}/restore-original",
+    response_model=DocumentResponse,
+)
+async def restore_original(
+    document_id: UUID,
+    version_id: UUID,
+    tenant_id: UUID = Depends(get_tenant_id),
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> dict:
+    return await DocumentService.restore_original_from_version(
+        document_id, version_id, tenant_id, UUID(current_user["id"])
+    )
 
 
 @router.get("/documents/{document_id}/versions/{version_id}/download")
