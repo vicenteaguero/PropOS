@@ -53,6 +53,8 @@ class DocumentVersionResponse(BaseModel):
     ocr_status: str
     ai_analysis_status: str
     notes: str | None = None
+    edit_metadata: dict | None = None
+    source_raw_path: str | None = None
     created_by: UUID | None = None
     created_at: datetime
 
