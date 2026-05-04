@@ -73,3 +73,25 @@ async def send_push(
                 error=str(e),
             )
     return sent
+
+
+async def notify_contact_whatsapp(
+    tenant_id: str,
+    contact_id: str,
+    phone_e164: str,
+    template_name: str,
+    vars_map: dict[str, str],
+    *,
+    sender_user_id: str | None = None,
+) -> dict:
+    """Fan-out helper: push WhatsApp HSM template to a contact.
+
+    Hard-blocks if no opt-in. Caller catches ConsentError to fall back
+    to email/PWA push.
+    """
+    from app.features.notifications.whatsapp.dispatcher import send_template_to_contact
+
+    return await send_template_to_contact(
+        tenant_id, contact_id, phone_e164, template_name, vars_map,
+        sender_user_id=sender_user_id,
+    )
