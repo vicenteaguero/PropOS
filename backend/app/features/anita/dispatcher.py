@@ -15,46 +15,38 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
+from app.features.anita.intent_registry import _is_falsy
+from app.features.anita.intent_registry import get as get_intent_spec
+from app.features.anita.intent_registry import missing_required
 from app.features.anita.resolver import ResolvedFields
 from app.features.anita.tools.executors import _create_proposal
 
 
-def _intent_to_proposal_kind(intent: str) -> tuple[str, str] | None:
-    """Map intent → (proposal_kind, target_table)."""
-    return {
-        "log_interaction":     ("propose_log_interaction",     "interactions"),
-        "create_person":       ("propose_create_person",       "contacts"),
-        "create_task":         ("propose_create_task",         "tasks"),
-        "log_transaction":     ("propose_log_transaction",     "transactions"),
-        "create_organization": ("propose_create_organization", "organizations"),
-        "add_note":            ("propose_add_note",            "notes"),
-    }.get(intent)
-
-
 def _build_payload(intent: str, resolved: ResolvedFields) -> dict[str, Any]:
-    """Translate the classifier extras + resolved IDs into a proposal payload
-    matching ``tools/inputs.py`` Pydantic models."""
+    """Translate classifier extras + resolved IDs into a proposal payload.
+
+    Generic body driven by the registry: every required/optional/detailed
+    field declared for the intent flows through verbatim. The per-intent
+    branches below add resolved entity IDs and intent-specific fallbacks.
+    """
     extras = dict(resolved.extras)
     payload: dict[str, Any] = {}
 
-    # Common fields that flow through verbatim.
-    for k in ("kind", "summary", "summary_es", "task_title", "title", "due_at",
-              "duration_min", "duration_minutes", "direction", "category",
-              "amount_clp", "amount", "channel", "currency", "rut", "email",
-              "phone", "notes", "body", "name", "full_name", "reason",
-              "view", "sql", "intent_text"):
-        if k in extras:
-            payload[k] = extras.pop(k)
+    spec = get_intent_spec(intent)
+    if spec is not None:
+        whitelist = set(spec.required) | set(spec.optional) | {n for n, _ in spec.detailed}
+        whitelist |= {"summary", "summary_es"}  # always allowed
+        for k in list(extras):
+            if k in whitelist and not _is_falsy(extras[k]):
+                payload[k] = extras.pop(k)
 
-    # Compatibility shims for our Pydantic input shapes.
-    if "duration_min" in payload:
-        payload["duration_minutes"] = payload.pop("duration_min")
-    if "amount_clp" in payload:
-        payload["amount"] = payload.pop("amount_clp")
+    # Lower-case the keys we expect downstream (model sometimes capitalizes).
+    payload = {k.lower() if k[:1].isupper() else k: v for k, v in payload.items()}
+
     if "summary_es" not in payload and "summary" in payload:
         payload["summary_es"] = payload["summary"]
 
-    # Per-intent required fields.
+    # Per-intent fallbacks + resolved IDs.
     if intent == "log_interaction":
         if resolved.person and resolved.person.resolved_id:
             payload["participant_person_ids"] = [str(resolved.person.resolved_id)]
@@ -95,6 +87,16 @@ def _build_payload(intent: str, resolved: ResolvedFields) -> dict[str, Any]:
         payload.setdefault("body", payload.pop("body", None) or extras.get("summary") or "nota")
         payload.setdefault("summary_es", payload["body"][:80])
 
+    elif intent == "create_property":
+        if "title" not in payload and resolved.property:
+            payload["title"] = resolved.property.raw
+        payload.setdefault("status", "AVAILABLE")
+        payload.setdefault("summary_es", f"crear propiedad {payload.get('title', '?')}")
+
+    elif intent == "create_campaign":
+        payload.setdefault("currency", "CLP")
+        payload.setdefault("summary_es", f"crear campaña {payload.get('name', '?')}")
+
     return payload
 
 
@@ -131,12 +133,24 @@ def dispatch(
             "candidates": resolved.ambiguity_summary,
         }
 
-    spec = _intent_to_proposal_kind(intent)
-    if spec is None:
+    intent_spec = get_intent_spec(intent)
+    if intent_spec is None:
         return {"kind": "out_of_scope", "message": f"intent desconocido: {intent}"}
 
-    proposal_kind, target_table = spec
+    proposal_kind = intent_spec.proposal_kind
+    target_table = intent_spec.target_table
     payload = _build_payload(intent, resolved)
+
+    # Required-field guard: if any required key is still missing after the
+    # 2-pass + defaults, ask the user instead of writing a broken proposal.
+    missing = missing_required(intent, payload)
+    if missing:
+        return {
+            "kind": "clarify",
+            "reason": f"Para {intent} faltan: {', '.join(missing)}.",
+            "candidates": [],
+            "missing_fields": missing,
+        }
 
     result = _create_proposal(
         kind=proposal_kind,
