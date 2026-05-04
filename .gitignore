@@ -215,3 +215,6 @@ node_modules/
 backend/data/
 supabase/.temp/
 frontend/.certs/
+
+# Scanner harness output
+backend/tests/integration/scanner/output/*.pdf
