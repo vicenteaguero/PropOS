@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Sparkles } from "lucide-react";
 import { AnitaDrawer } from "./anita-drawer";
@@ -7,6 +8,9 @@ import { usePendingCount } from "@features/pending/hooks/use-pending";
 export function AnitaFAB() {
   const [open, setOpen] = useState(false);
   const pendingCount = usePendingCount();
+  const location = useLocation();
+
+  if (location.pathname.startsWith("/admin/anita")) return null;
 
   return (
     <>
