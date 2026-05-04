@@ -168,6 +168,21 @@ def _accept_create_organization(payload, tenant_id, user_id, anita_session_id):
     return ("organizations", UUID(row["id"]))
 
 
+def _accept_create_property(payload, tenant_id, user_id, anita_session_id):
+    client = get_supabase_client()
+    payload = {k: v for k, v in payload.items() if k not in ("summary_es",)}
+    payload["tenant_id"] = str(tenant_id)
+    payload["created_by"] = str(user_id)
+    # public.properties only stores title/address/status/is_draft; the rest
+    # of the registry's `detailed` fields are stashed on the proposal payload
+    # for now and can be migrated to a `property_attributes` JSONB column.
+    keep = {"tenant_id", "created_by", "title", "address", "status", "is_draft"}
+    row = {k: v for k, v in payload.items() if k in keep}
+    row.setdefault("is_draft", False)
+    inserted = client.table("properties").insert(row).execute().data[0]
+    return ("properties", UUID(inserted["id"]))
+
+
 def _accept_add_note(payload, tenant_id, user_id, anita_session_id):
     client = get_supabase_client()
     payload = {k: v for k, v in payload.items() if k not in ("summary_es",)}
@@ -188,4 +203,5 @@ def register_all_dispatchers() -> None:
     register_accept_dispatcher("propose_log_transaction", _accept_log_transaction)
     register_accept_dispatcher("propose_create_campaign", _accept_create_campaign)
     register_accept_dispatcher("propose_create_organization", _accept_create_organization)
+    register_accept_dispatcher("propose_create_property", _accept_create_property)
     register_accept_dispatcher("propose_add_note", _accept_add_note)
