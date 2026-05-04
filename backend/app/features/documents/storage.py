@@ -60,5 +60,7 @@ def ext_for_mime(mime: str) -> str:
         "image/jpeg": "jpg",
         "image/png": "png",
         "image/webp": "webp",
+        "image/heic": "heic",
+        "image/heif": "heif",
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
     }.get(mime, "bin")
