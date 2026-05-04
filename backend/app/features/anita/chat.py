@@ -22,9 +22,12 @@ from uuid import UUID
 
 from app.core.logging.logger import get_logger
 from app.core.supabase.client import get_supabase_client
-from app.features.anita.classifier import classify
+from app.features.anita.classifier import classify, extract_details
 from app.features.anita.context import load_snapshot
 from app.features.anita.dispatcher import dispatch
+from app.features.anita.intent_registry import get as get_intent_spec
+from app.features.anita.intent_registry import needs_pass_two, normalize_fields, real_captures
+from app.features.anita.postprocess import dedupe_actions, expand_money_units, normalize_rut
 from app.features.anita.resolver import resolve
 
 logger = get_logger("ANITA_CHAT")
@@ -43,47 +46,93 @@ async def run_chat_turn(
     _save_message(client, tenant_id, session_id, "user", user_text)
 
     classification = await classify(user_text)
+
+    # Cheap deterministic cleanups before resolve+dispatch.
+    classification.actions = dedupe_actions(classification.actions, user_text=user_text)
+    for a in classification.actions:
+        normalize_rut(a)
+        expand_money_units(a, user_text)
+
     logger.info(
         "classifier_done",
         event_type="llm",
-        intent=classification.intent,
+        n_actions=len(classification.actions),
+        intents=[a.intent for a in classification.actions],
         tokens_in=classification.tokens_in,
         tokens_out=classification.tokens_out,
     )
 
     snapshot = load_snapshot(tenant_id)
-    resolved = resolve(classification.fields, snapshot, intent=classification.intent)
-
-    outcome = dispatch(
-        classification.intent,
-        resolved,
-        tenant_id=tenant_id,
-        user_id=user_id,
-        session_id=session_id,
-    )
-
     proposals_created: list[str] = []
-    assistant_text = _format_response(classification.intent, outcome, resolved)
+    response_chunks: list[str] = []
+    blocks: list[dict[str, Any]] = []
+    pass2_in = pass2_out = 0
 
-    # Mirror the old SSE shape so the frontend keeps working.
-    yield {"type": "tool_use", "name": _tool_name_for(classification.intent, outcome),
-           "args": {**classification.fields, **{k: str(v) for k, v in _entity_ids(resolved).items()}}}
+    for action in classification.actions:
+        # Pass 2: targeted detail extraction for complex intents only.
+        spec = get_intent_spec(action.intent)
+        if spec and spec.complex and needs_pass_two(action.intent, action.fields):
+            new_fields, tin, tout = await extract_details(
+                intent=action.intent,
+                user_text=user_text,
+                captured=real_captures(action.fields),
+                detailed=list(spec.detailed),
+            )
+            pass2_in += tin
+            pass2_out += tout
+            # Pass-2 wins over pass-1 (it saw the field list explicitly).
+            for k, v in new_fields.items():
+                if v not in (None, "", 0):
+                    action.fields[k] = v
+            # Re-apply unit-expansion now that more numeric fields landed.
+            expand_money_units(action, user_text)
+            logger.info(
+                "pass2_done",
+                event_type="llm",
+                intent=action.intent,
+                added_keys=list(new_fields.keys()),
+                tokens_in=tin,
+                tokens_out=tout,
+            )
 
-    if outcome.get("kind") == "proposal" and (pid := outcome.get("proposal_id")):
-        proposals_created.append(pid)
+        # Apply registry aliases + defaults BEFORE resolver/dispatcher.
+        action.fields.update(normalize_fields(action.intent, action.fields))
 
+        resolved = resolve(action.fields, snapshot, intent=action.intent)
+        outcome = dispatch(
+            action.intent,
+            resolved,
+            tenant_id=tenant_id,
+            user_id=user_id,
+            session_id=session_id,
+        )
+
+        # Frontend SSE: one tool_use per action.
+        yield {
+            "type": "tool_use",
+            "name": _tool_name_for(action.intent, outcome),
+            "args": {
+                **action.fields,
+                **{k: str(v) for k, v in _entity_ids(resolved).items()},
+            },
+        }
+
+        if outcome.get("kind") == "proposal" and (pid := outcome.get("proposal_id")):
+            proposals_created.append(pid)
+            blocks.append({
+                "type": "tool_use",
+                "id": pid,
+                "name": outcome.get("proposal_kind", ""),
+                "input": action.fields,
+            })
+
+        response_chunks.append(_format_response(action.intent, outcome, resolved))
+
+    assistant_text = " ".join(response_chunks) or "Listo."
     yield {"type": "text", "text": assistant_text}
 
     # Persist assistant turn.
-    blocks: list[dict[str, Any]] = [{"type": "text", "text": assistant_text}]
-    if outcome.get("kind") == "proposal":
-        blocks.append({
-            "type": "tool_use",
-            "id": outcome.get("proposal_id", ""),
-            "name": outcome.get("kind", ""),
-            "input": classification.fields,
-        })
-
+    blocks.insert(0, {"type": "text", "text": assistant_text})
     _save_message(
         client, tenant_id, session_id, "assistant", blocks,
         tokens_in=classification.tokens_in,
@@ -98,9 +147,15 @@ async def run_chat_turn(
     yield {
         "type": "done",
         "proposals_created": proposals_created,
-        "tokens": {"in": classification.tokens_in, "out": classification.tokens_out},
-        "intent": classification.intent,
-        "outcome_kind": outcome.get("kind"),
+        "tokens": {
+            "in": classification.tokens_in + pass2_in,
+            "out": classification.tokens_out + pass2_out,
+            "pass1_in": classification.tokens_in,
+            "pass1_out": classification.tokens_out,
+            "pass2_in": pass2_in,
+            "pass2_out": pass2_out,
+        },
+        "intents": [a.intent for a in classification.actions],
         "latency_ms": int((time.perf_counter() - t0) * 1000),
     }
 
