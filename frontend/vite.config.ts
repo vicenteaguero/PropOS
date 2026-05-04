@@ -13,7 +13,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: "prompt",
-      devOptions: { enabled: false },
+      devOptions: { enabled: devPwa },
       manifest: {
         name: "PropOS",
         short_name: "PropOS",
@@ -48,6 +48,15 @@ export default defineConfig({
                   expiration: { maxEntries: 200, maxAgeSeconds: 3600 },
                 },
               },
+              {
+                urlPattern: /\/opencv\/opencv\.js$/,
+                handler: "CacheFirst",
+                options: {
+                  cacheName: "opencv-runtime",
+                  expiration: { maxEntries: 1, maxAgeSeconds: 60 * 60 * 24 * 365 },
+                  cacheableResponse: { statuses: [0, 200] },
+                },
+              },
               { urlPattern: /\.(js|css|png|jpg|svg)$/, handler: "CacheFirst" },
             ],
         navigateFallback: devPwa ? null : undefined,
@@ -55,12 +64,12 @@ export default defineConfig({
     }),
   ],
   server: {
-    hmr: { clientPort: devPwa ? 5443 : undefined },
+    hmr: { clientPort: 5443 },
     host: "0.0.0.0",
     port: 5173,
     proxy: {
-      "/api": { target: "http://127.0.0.1:8000", changeOrigin: true },
-      "/health": { target: "http://127.0.0.1:8000", changeOrigin: true },
+      "/api": { target: process.env.VITE_DEV_API_TARGET ?? "http://127.0.0.1:8000", changeOrigin: true },
+      "/health": { target: process.env.VITE_DEV_API_TARGET ?? "http://127.0.0.1:8000", changeOrigin: true },
     },
   },
   resolve: {
