@@ -1,9 +1,9 @@
-import { Check, Clock } from "lucide-react";
+import { Check, Clock, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useMakeVersionCurrent } from "../hooks/use-documents";
+import { useMakeVersionCurrent, useRestoreOriginal } from "../hooks/use-documents";
 import type { DocumentVersion } from "../types";
 
 interface Props {
@@ -22,6 +22,7 @@ export function VersionHistoryDrawer({
   onOpenChange,
 }: Props) {
   const makeCurrent = useMakeVersionCurrent(documentId);
+  const restoreOriginal = useRestoreOriginal(documentId);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -52,23 +53,40 @@ export function VersionHistoryDrawer({
                     sha {v.sha256.slice(0, 16)}
                   </div>
                   {v.notes && <p className="mt-1 text-xs">{v.notes}</p>}
-                  {!isCurrent && (
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      className="mt-2"
-                      onClick={async () => {
-                        try {
-                          await makeCurrent.mutateAsync(v.id);
-                          toast.success(`Versión ${v.version_number} es ahora la actual`);
-                        } catch (e) {
-                          toast.error(e instanceof Error ? e.message : "Error");
-                        }
-                      }}
-                    >
-                      Hacer actual
-                    </Button>
-                  )}
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {!isCurrent && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={async () => {
+                          try {
+                            await makeCurrent.mutateAsync(v.id);
+                            toast.success(`Versión ${v.version_number} es ahora la actual`);
+                          } catch (e) {
+                            toast.error(e instanceof Error ? e.message : "Error");
+                          }
+                        }}
+                      >
+                        Hacer actual
+                      </Button>
+                    )}
+                    {v.source_raw_path && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={async () => {
+                          try {
+                            await restoreOriginal.mutateAsync(v.id);
+                            toast.success("Original restaurado como nueva versión");
+                          } catch (e) {
+                            toast.error(e instanceof Error ? e.message : "Error");
+                          }
+                        }}
+                      >
+                        <Undo2 className="size-3" /> Restaurar original
+                      </Button>
+                    )}
+                  </div>
                 </li>
               );
             })}
