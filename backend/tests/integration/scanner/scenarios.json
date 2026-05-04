@@ -1,0 +1,7 @@
+[
+  { "folder": "01-id-ideal",          "filters": ["none", "bw", "enhance"] },
+  { "folder": "02-contract-wrinkled", "filters": ["bw", "enhance"] },
+  { "folder": "03-id-low-light",      "filters": ["enhance"] },
+  { "folder": "04-multipage-mixed",   "filters": ["bw"] },
+  { "folder": "05-busy-background",   "filters": ["none", "bw"] }
+]
