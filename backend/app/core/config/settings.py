@@ -26,6 +26,19 @@ class Settings(BaseSettings):
     anita_turn_timeout_seconds: int = 45
     anita_strict_json_retry: int = 2
 
+    # Kapso (WhatsApp BSP)
+    kapso_api_key: str = ""
+    kapso_webhook_secret: str = ""
+    kapso_phone_number_id: str = ""
+    kapso_base_url: str = "https://api.kapso.ai/meta/whatsapp/v18.0"
+    kapso_default_template_lang: str = "es"
+
+    # Client Agent (B2C AI for inbound WhatsApp from external contacts)
+    client_agent_provider: str = "groq"
+    client_agent_model: str = "meta-llama/llama-4-scout-17b-16e-instruct"
+    client_agent_max_history: int = 12
+    client_agent_business_name: str = "PropOS"
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 
