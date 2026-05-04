@@ -174,7 +174,11 @@ async def create_transcript(
 ) -> dict:
     """Upload audio → server STT (Whisper) → persist transcript."""
     try:
-        result = transcribe_audio(audio.file, audio.filename or "audio.webm")
+        result = transcribe_audio(
+            audio.file,
+            audio.filename or "audio.webm",
+            tenant_id=tenant_id,
+        )
     except TranscriptionError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
