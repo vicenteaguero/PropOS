@@ -12,8 +12,12 @@ ALLOWED_MIME = {
     "image/jpeg",
     "image/png",
     "image/webp",
+    "image/heic",
+    "image/heif",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 }
+
+HEIC_BRANDS = {b"heic", b"heix", b"mif1", b"msf1", b"hevc", b"heim", b"heis", b"hevm", b"hevs"}
 
 DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 
@@ -39,6 +43,9 @@ def _looks_like_docx(content: bytes) -> bool:
 
 
 def detect_mime(content: bytes) -> str | None:
+    # HEIC/HEIF: bytes 4..8 == "ftyp", brand at 8..12 in HEIC_BRANDS
+    if len(content) >= 12 and content[4:8] == b"ftyp" and content[8:12] in HEIC_BRANDS:
+        return "image/heic"
     for sig, offset, mime in MAGIC_SIGNATURES:
         if content[offset : offset + len(sig)] == sig:
             if mime == "image/webp":
@@ -93,6 +100,6 @@ def kind_from_mime(mime: str) -> str:
         return "PDF"
     if mime == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
         return "DOCX"
-    if mime in {"image/jpeg", "image/png", "image/webp"}:
+    if mime in {"image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"}:
         return "IMAGE_PDF"
     return "OTHER"
