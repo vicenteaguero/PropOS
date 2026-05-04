@@ -1,7 +1,7 @@
 include .env
 export
 
-.PHONY: setup dev dev-frontend dev-pwa dev-pwa-hmr stop build migrate seed format lint test clean logs backend-shell db-studio gcloud-auth deploy-setup deploy-secrets-sync deploy-trigger-setup deploy-trigger-list deploy-backend deploy-verify deploy-frontend
+.PHONY: setup dev dev-frontend dev-hmr dev-pwa dev-pwa-hmr dev-docker-hmr dev-docker-pwa-hmr dev-docker-pwa-hmr-kapso stop build migrate seed format lint test clean logs backend-shell db-studio gcloud-auth deploy-setup deploy-secrets-sync deploy-trigger-setup deploy-trigger-list deploy-backend deploy-verify deploy-frontend kapso-templates-sync kapso-webhook-tunnel query query-write
 
 setup:
 	@bash scripts/setup.sh
@@ -24,24 +24,32 @@ dev-pwa:
 		bash scripts/log.sh MAKE "📱" "iPhone same Wi-Fi: http://$$LAN_IP:4173 (installable PWA)"
 	cd frontend && npm run preview -- --host 0.0.0.0 --port 4173
 
+dev-hmr:
+	@bash scripts/dev_hmr.sh
+
 dev-pwa-hmr:
-	@bash scripts/log.sh MAKE "⚡" "Backend (:8000) + Vite (:5173) + HTTPS proxy (:5443) — PWA + HMR"
-	@LAN_IP=$$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || echo "<your-mac-ip>"); \
-		bash scripts/log.sh MAKE "💻" "Mac:    https://localhost:5443"; \
-		bash scripts/log.sh MAKE "📱" "iPhone: https://$$LAN_IP:5443 (same Wi-Fi, root cert trusted)"
-	@cd backend && poetry install --quiet 2>/dev/null || true
-	cd frontend && VITE_DEV_PWA=true npx concurrently -k -n api,vite,https -c blue,green,magenta \
-		"cd ../backend && poetry run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload" \
-		"npm run dev -- --host 0.0.0.0 --port 5173" \
-		"npx local-ssl-proxy --source 5443 --target 5173 --hostname 0.0.0.0 --cert .certs/dev-cert.pem --key .certs/dev-key.pem"
+	@PWA=1 bash scripts/dev_hmr.sh
+
+# Docker variant: runs api+frontend in containers (avoids Tahoe Node bug),
+# host runs only the HTTPS proxy on :5443 for HMR + iPhone LAN access.
+dev-docker-hmr:
+	@bash scripts/dev_docker_hmr.sh
+
+dev-docker-pwa-hmr:
+	@PWA=1 bash scripts/dev_docker_hmr.sh
+
+# Same as dev-docker-pwa-hmr plus cloudflared tunnel for Kapso WhatsApp webhook.
+dev-docker-pwa-hmr-kapso:
+	@PWA=1 KAPSO=1 bash scripts/dev_docker_hmr.sh
 
 stop:
 	docker-compose down
 
 migrate:
 	@bash scripts/log.sh MAKE "🔄" "Running Supabase migrations (pooler URL)"
-	@if [ -z "$$SUPABASE_DB_PASSWORD" ]; then echo "ERROR: SUPABASE_DB_PASSWORD not in .env" && exit 1; fi
-	@POOLER_URL=$$(cat supabase/.temp/pooler-url 2>/dev/null); \
+	@set -a; . ./.env; set +a; \
+		if [ -z "$$SUPABASE_DB_PASSWORD" ]; then echo "ERROR: SUPABASE_DB_PASSWORD not in .env" && exit 1; fi; \
+		POOLER_URL=$$(cat supabase/.temp/pooler-url 2>/dev/null); \
 		if [ -z "$$POOLER_URL" ]; then echo "ERROR: supabase/.temp/pooler-url missing — run 'supabase link' first" && exit 1; fi; \
 		ENC_PASS=$$(python3 -c "import urllib.parse,os;print(urllib.parse.quote(os.environ['SUPABASE_DB_PASSWORD'], safe=''))"); \
 		DB_URL=$$(echo "$$POOLER_URL" | sed "s|@|:$$ENC_PASS@|"); \
@@ -96,8 +104,35 @@ test-anita-cache-refresh:
 	@bash scripts/log.sh MAKE "🔄" "Re-transcribe all audios (Whisper, ~80s)"
 	$(.ANITA_ENV) && cd backend && poetry run python scripts/anita_refresh_cache.py
 
+# Try Anita on an arbitrary audio path or typed prompt.
+#   make anita-try AUDIO=/abs/path/to.mp3
+#   make anita-try TEXT="anota visita con Juan en Apoquindo, 30 min"
+#   make anita-try AUDIO=foo.mp3 TENANT=<uuid>   # use existing tenant
+#   make anita-try TEXT=... KEEP=1                # leave seed in DB
+anita-try:
+	@bash scripts/log.sh MAKE "🎯" "Anita one-shot try"
+	@if [ -z "$(AUDIO)" ] && [ -z "$(TEXT)" ]; then echo "ERROR: pass AUDIO=<path> or TEXT=\"<prompt>\"" && exit 1; fi
+	@AUDIO_ABS=""; if [ -n "$(AUDIO)" ]; then AUDIO_ABS=$$(python3 -c "import os,sys;print(os.path.abspath(sys.argv[1]))" "$(AUDIO)"); fi; \
+	$(.ANITA_ENV); export SUPABASE_DB_SCHEMA=propos_test; cd backend; \
+	args=""; \
+	if [ -n "$$AUDIO_ABS" ]; then set -- "$$@" --audio "$$AUDIO_ABS"; fi; \
+	if [ -n "$(TEXT)" ]; then set -- "$$@" --text "$(TEXT)"; fi; \
+	if [ -n "$(TENANT)" ]; then set -- "$$@" --tenant "$(TENANT)"; fi; \
+	if [ -n "$(KEEP)" ]; then set -- "$$@" --keep; fi; \
+	poetry run python -m scripts.anita_try "$$@"
+
 test-anita-report:
 	cd backend && poetry run python scripts/anita_results_report.py
+
+# Scanner pipeline visual harness.
+# Drop photos into backend/tests/integration/scanner/fixtures/<doc-name>/0.jpg, 1.jpg, ...
+# (HEIC, JPG, PNG, WebP all accepted). Run this; PDFs land in output/ (overwritten).
+test-scanner:
+	@bash scripts/log.sh MAKE "📄" "Scanner pipeline (folders → PDFs)"
+	@cd backend && poetry run python -c "import cv2, pillow_heif, reportlab" 2>/dev/null || \
+		(echo "Installing scanner-harness deps..." && cd backend && \
+		 poetry run pip install opencv-python pillow pillow-heif reportlab numpy)
+	cd backend && poetry run python tests/integration/scanner/run_scanner.py
 
 clean:
 	docker-compose down -v
@@ -180,3 +215,23 @@ deploy-verify:
 deploy-frontend:
 	@bash scripts/log.sh DEPLOY "🚀" "Deploying frontend to Vercel"
 	cd frontend && npx vercel --prod
+
+kapso-templates-sync:
+	@bash scripts/log.sh KAPSO "📨" "Syncing WhatsApp HSM templates to Kapso"
+	cd backend && poetry run python -m scripts.kapso_templates_sync
+
+kapso-webhook-tunnel:
+	@bash scripts/log.sh KAPSO "🌐" "cloudflared → http://localhost:8000 (set Kapso webhook to printed URL + /api/v1/integrations/kapso/webhook)"
+	cloudflared tunnel --url http://localhost:8000
+
+# Run SQL against Supabase pooler (read-only by default).
+#   make query SQL="select * from kapso_webhook_events order by received_at desc limit 5"
+#   make query SQL=path/to/query.sql
+#   make query-write SQL="update client_conversations set status='closed' where id='...'"
+query:
+	@if [ -z "$(SQL)" ]; then echo "usage: make query SQL=\"<sql>\" | path/to.sql" && exit 1; fi
+	cd backend && poetry run python -m scripts.db_query "$(SQL)"
+
+query-write:
+	@if [ -z "$(SQL)" ]; then echo "usage: make query-write SQL=\"<sql>\"" && exit 1; fi
+	cd backend && poetry run python -m scripts.db_query --write "$(SQL)"
