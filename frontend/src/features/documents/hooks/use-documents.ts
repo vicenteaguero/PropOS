@@ -59,8 +59,30 @@ export function useDeleteDocument() {
 export function useAddVersion(documentId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { file: File; notes?: string; downloadFilename?: string }) =>
-      documentsApi.addVersion(documentId, input.file, input.notes, input.downloadFilename),
+    mutationFn: (input: {
+      file: File;
+      notes?: string;
+      downloadFilename?: string;
+      editMetadata?: Record<string, unknown>;
+      sourceVersionId?: string;
+    }) =>
+      documentsApi.addVersion(documentId, input.file, {
+        notes: input.notes,
+        downloadFilename: input.downloadFilename,
+        editMetadata: input.editMetadata,
+        sourceVersionId: input.sourceVersionId,
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: documentsKeys.detail(documentId) });
+      qc.invalidateQueries({ queryKey: documentsKeys.all });
+    },
+  });
+}
+
+export function useRestoreOriginal(documentId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (versionId: string) => documentsApi.restoreOriginal(documentId, versionId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: documentsKeys.detail(documentId) });
       qc.invalidateQueries({ queryKey: documentsKeys.all });
