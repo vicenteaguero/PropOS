@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { compressBlob } from "../services/image-compression";
 import { imagesToPdf } from "../services/pdf-from-images";
+import type { EditState } from "../services/scanner/types";
+import { DocumentScannerEditor } from "./document-scanner-editor";
 
 interface Props {
   open: boolean;
@@ -15,6 +17,8 @@ interface Props {
 interface Shot {
   id: string;
   blob: Blob;
+  raw: Blob;
+  state?: EditState;
 }
 
 export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props) {
@@ -24,6 +28,9 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props)
   const [busy, setBusy] = useState(false);
   const [fallback, setFallback] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [editing, setEditing] = useState<{ id?: string; sourceBlob: Blob; state?: EditState } | null>(
+    null,
+  );
 
   const shotUrls = useMemo(() => shots.map((s) => URL.createObjectURL(s.blob)), [shots]);
   useEffect(() => {
@@ -43,6 +50,7 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props)
       setShots([]);
       setSelectedId(null);
       setFallback(false);
+      setEditing(null);
       return;
     }
     let cancelled = false;
@@ -85,23 +93,49 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props)
       canvas.toBlob(resolve, "image/jpeg", 0.92),
     );
     if (!blob) return;
-    const compressed = await compressBlob(blob, `shot-${Date.now()}.jpg`);
-    setShots((prev) => [...prev, { id: crypto.randomUUID(), blob: compressed }]);
+    setEditing({ sourceBlob: blob });
   };
 
   const handleFileFallback = async (files: FileList | null) => {
     if (!files) return;
-    const arr: Shot[] = [];
     for (const file of Array.from(files)) {
-      arr.push({ id: crypto.randomUUID(), blob: await compressBlob(file, file.name) });
+      setEditing({ sourceBlob: file });
+      // open editor for one at a time; user clicks Aplicar to proceed
+      break;
     }
-    setShots((prev) => [...prev, ...arr]);
+  };
+
+  const onEditorSave = async ({
+    processed,
+    state,
+    raw,
+  }: {
+    processed: Blob;
+    state: EditState;
+    raw: Blob;
+  }) => {
+    const compressed = await compressBlob(processed, `shot-${Date.now()}.jpg`);
+    if (editing?.id) {
+      const id = editing.id;
+      setShots((prev) =>
+        prev.map((s) => (s.id === id ? { ...s, blob: compressed, state, raw } : s)),
+      );
+    } else {
+      setShots((prev) => [...prev, { id: crypto.randomUUID(), blob: compressed, raw, state }]);
+    }
+    setEditing(null);
   };
 
   const removeSelected = () => {
     if (!selectedId) return;
     setShots((prev) => prev.filter((s) => s.id !== selectedId));
     setSelectedId(null);
+  };
+
+  const editSelected = (id: string) => {
+    const shot = shots.find((s) => s.id === id);
+    if (!shot) return;
+    setEditing({ id, sourceBlob: shot.raw, state: shot.state });
   };
 
   const closeWithGuard = () => {
@@ -145,8 +179,7 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props)
             <span className="text-sm">Cámara no disponible. Selecciona fotos.</span>
             <input
               type="file"
-              accept="image/*"
-              multiple
+              accept="image/*,.heic,.heif"
               onChange={(e) => handleFileFallback(e.target.files)}
               className="text-xs"
             />
@@ -168,7 +201,10 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props)
               <button
                 type="button"
                 key={shot.id}
-                onClick={() => setSelectedId(isSelected ? null : shot.id)}
+                onClick={() => {
+                  if (isSelected) editSelected(shot.id);
+                  else setSelectedId(shot.id);
+                }}
                 className={cn(
                   "shrink-0 overflow-hidden rounded transition",
                   isSelected
@@ -214,6 +250,18 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props)
           <Check className="size-5" /> Listo
         </Button>
       </div>
+
+      {editing && (
+        <DocumentScannerEditor
+          open
+          sourceBlob={editing.sourceBlob}
+          initialState={editing.state}
+          onOpenChange={(o) => {
+            if (!o) setEditing(null);
+          }}
+          onSave={onEditorSave}
+        />
+      )}
     </div>
   );
 }
