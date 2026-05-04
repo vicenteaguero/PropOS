@@ -23,3 +23,5 @@ services:
       - VITE_SUPABASE_URL=${SUPABASE_URL}
       - VITE_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
       - VITE_API_URL=${API_URL}
+      - VITE_DEV_PWA=${VITE_DEV_PWA:-false}
+      - VITE_DEV_API_TARGET=http://api:8000
