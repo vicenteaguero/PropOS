@@ -13,6 +13,9 @@ from app.features.ads.router import router as ads_router
 from app.features.analytics.router import router as analytics_router
 from app.features.anita.router import router as anita_router
 from app.features.anita.tools.executors import register_all_dispatchers
+from app.features.channels.phones_api import router as user_phones_router
+from app.features.channels.router_api import router as client_chat_router
+from app.features.integrations.kapso.webhook import router as kapso_webhook_router
 from app.features.campaigns.router import router as campaigns_router
 from app.features.contacts.router import router as contacts_router
 from app.features.documents.router import public_router as documents_public_router
@@ -93,7 +96,11 @@ def create_app() -> FastAPI:
     application.include_router(workflows_router, prefix=versioned_prefix)
     application.include_router(anita_router, prefix=versioned_prefix)
     application.include_router(analytics_router, prefix=versioned_prefix)
+    application.include_router(client_chat_router, prefix=versioned_prefix)
+    application.include_router(user_phones_router, prefix=versioned_prefix)
     application.include_router(documents_public_router)
+    # Public webhook (no JWT). Mounted under versioned prefix; HMAC-verified.
+    application.include_router(kapso_webhook_router, prefix=versioned_prefix)
 
     # Wire pending acceptance dispatchers (Anita propose_* → domain inserts)
     register_all_dispatchers()
