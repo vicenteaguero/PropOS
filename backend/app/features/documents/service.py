@@ -109,6 +109,8 @@ class DocumentService:
         declared_mime: str | None,
         original_filename: str | None,
         download_filename: str | None = None,
+        edit_metadata: dict | None = None,
+        source_raw_path: str | None = None,
     ) -> dict:
         mime = validate_upload(content, declared_mime)
         kind = kind_from_mime(mime)
@@ -162,6 +164,10 @@ class DocumentService:
             "ocr_status": ocr_status,
             "created_by": str(created_by),
         }
+        if edit_metadata is not None:
+            version_payload["edit_metadata"] = edit_metadata
+        if source_raw_path is not None:
+            version_payload["source_raw_path"] = source_raw_path
 
         try:
             client.table(DOCUMENTS_TABLE).insert(doc_payload).execute()
@@ -190,6 +196,8 @@ class DocumentService:
         original_filename: str | None,
         notes: str | None = None,
         download_filename: str | None = None,
+        edit_metadata: dict | None = None,
+        source_version_id: UUID | None = None,
     ) -> dict:
         client = get_supabase_client()
         doc_resp = (
@@ -271,6 +279,20 @@ class DocumentService:
             "notes": notes,
             "created_by": str(created_by),
         }
+        if edit_metadata is not None:
+            version_payload["edit_metadata"] = edit_metadata
+        if source_version_id is not None:
+            source = (
+                client.table(VERSIONS_TABLE)
+                .select("raw_path")
+                .eq("id", str(source_version_id))
+                .eq("tenant_id", str(tenant_id))
+                .single()
+                .execute()
+                .data
+            )
+            if source:
+                version_payload["source_raw_path"] = source["raw_path"]
         try:
             version_row = client.table(VERSIONS_TABLE).insert(version_payload).execute().data[0]
             client.table(DOCUMENTS_TABLE).update({"current_version_id": version_row["id"]}).eq(
@@ -320,6 +342,40 @@ class DocumentService:
             "tenant_id", str(tenant_id)
         ).execute()
         return await DocumentService.get_document(document_id, tenant_id)
+
+    @staticmethod
+    async def restore_original_from_version(
+        document_id: UUID,
+        version_id: UUID,
+        tenant_id: UUID,
+        created_by: UUID,
+    ) -> dict:
+        client = get_supabase_client()
+        version = (
+            client.table(VERSIONS_TABLE)
+            .select("source_raw_path, mime_type")
+            .eq("id", str(version_id))
+            .eq("document_id", str(document_id))
+            .eq("tenant_id", str(tenant_id))
+            .single()
+            .execute()
+            .data
+        )
+        if not version or not version.get("source_raw_path"):
+            raise HTTPException(
+                status_code=400,
+                detail="Version has no source_raw_path; nothing to restore",
+            )
+        content = storage.download_object(version["source_raw_path"])
+        return await DocumentService.add_version(
+            document_id=document_id,
+            tenant_id=tenant_id,
+            created_by=created_by,
+            content=content,
+            declared_mime=None,
+            original_filename=None,
+            notes="Restored original",
+        )
 
     @staticmethod
     async def soft_delete_document(document_id: UUID, tenant_id: UUID) -> None:
