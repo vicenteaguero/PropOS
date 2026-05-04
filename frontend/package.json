@@ -22,6 +22,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "file-type": "^22.0.1",
+    "heic2any": "^0.0.4",
     "idb": "^8.0.3",
     "lucide-react": "^0.577.0",
     "mammoth": "^1.12.0",
