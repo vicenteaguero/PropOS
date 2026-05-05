@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LoadingSpinner } from "@shared/components/loading-spinner/loading-spinner";
+import { PageLayout } from "@shared/components/page-layout";
 import { shareLinksApi } from "../api/share-links-api";
 import type { ShareLinkPublicView } from "../types";
 import { DocumentPreview } from "../components/document-preview";
@@ -100,16 +101,18 @@ export function SharePublicPage() {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        <LoadingSpinner size="lg" />
-      </div>
+      <PageLayout width="sm" centered>
+        <div className="flex justify-center">
+          <LoadingSpinner size="lg" />
+        </div>
+      </PageLayout>
     );
   }
 
   if (needsPassword) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-4">
-        <div className="w-full max-w-sm space-y-4 rounded-lg border border-border bg-card p-6">
+      <PageLayout width="sm" centered>
+        <div className="mx-auto w-full max-w-sm space-y-4 rounded-lg border border-border bg-card p-6">
           <div className="flex items-center gap-2">
             <Lock className="size-5 text-primary" />
             <h2 className="text-base font-semibold">Documento protegido</h2>
@@ -128,24 +131,24 @@ export function SharePublicPage() {
             Continuar
           </Button>
         </div>
-      </div>
+      </PageLayout>
     );
   }
 
   if (error || !view) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-4">
-        <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-6 text-sm text-destructive">
+      <PageLayout width="sm" centered>
+        <div className="mx-auto max-w-md rounded-lg border border-destructive/40 bg-destructive/10 p-6 text-sm text-destructive">
           {error ?? "Documento no disponible"}
         </div>
-      </div>
+      </PageLayout>
     );
   }
 
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-10 border-b border-border bg-background/95 px-4 py-3 backdrop-blur">
-        <div className="mx-auto flex max-w-4xl items-center gap-3">
+        <PageLayout width="md" noPadding className="flex items-center gap-3">
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-sm font-semibold">{view.document_display_name}</h1>
             <p className="text-xs text-muted-foreground">
@@ -158,14 +161,14 @@ export function SharePublicPage() {
           <Button size="sm" variant="secondary" onClick={share}>
             <Share2 className="size-4" /> Compartir
           </Button>
-        </div>
+        </PageLayout>
       </header>
-      <main className="mx-auto max-w-4xl px-4 py-4">
+      <PageLayout width="md">
         <DocumentPreview blob={blob} loading={!blob} />
-      </main>
-      <footer className="mx-auto max-w-4xl px-4 py-6 text-center text-xs text-muted-foreground">
+      </PageLayout>
+      <PageLayout width="md" className="text-center text-xs text-muted-foreground">
         PropOS — Documento compartido
-      </footer>
+      </PageLayout>
     </div>
   );
 }
