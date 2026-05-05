@@ -26,8 +26,10 @@ if [ -f "$ROOT/.env" ]; then
 fi
 
 PWA="${PWA:-0}"
+KAPSO="${KAPSO:-0}"
 LABEL="HMR (no PWA)"
 [ "$PWA" = "1" ] && LABEL="HMR + PWA"
+[ "$KAPSO" = "1" ] && LABEL="$LABEL + Kapso tunnel"
 
 VENV="$(cd backend && poetry env info --path 2>/dev/null)"
 if [ -z "$VENV" ] || [ ! -x "$VENV/bin/uvicorn" ]; then
@@ -45,6 +47,8 @@ lsof -ti:5173,5443,8000 2>/dev/null | xargs kill -9 2>/dev/null || true
 pkill -9 -f "uvicorn app.main" 2>/dev/null || true
 pkill -9 -f "vite --host" 2>/dev/null || true
 pkill -9 -f "local-ssl-proxy" 2>/dev/null || true
+[ "$KAPSO" = "1" ] && pkill -9 -f "cloudflared tunnel --url http://localhost:8000" 2>/dev/null || true
+[ "$KAPSO" = "1" ] && pkill -9 -f "ngrok http" 2>/dev/null || true
 sleep 0.3
 
 PIDS=()
@@ -58,6 +62,8 @@ cleanup() {
   pkill -9 -f "uvicorn app.main" 2>/dev/null || true
   pkill -9 -f "vite --host" 2>/dev/null || true
   pkill -9 -f "https_proxy.mjs" 2>/dev/null || true
+  pkill -9 -f "cloudflared tunnel --url http://localhost:8000" 2>/dev/null || true
+  pkill -9 -f "ngrok http" 2>/dev/null || true
   lsof -ti:5173,5443,8000 2>/dev/null | xargs kill -9 2>/dev/null || true
   exit 0
 }
@@ -91,5 +97,27 @@ PIDS+=($!)
     --cert .certs/dev-cert.pem --key .certs/dev-key.pem
 ) 2>&1 | sed -u 's/^/[https] /' &
 PIDS+=($!)
+
+# Ngrok tunnel for Kapso webhook (stable domain -> host:8000)
+if [ "$KAPSO" = "1" ]; then
+  NGROK_DOMAIN="moonlight-deviator-moonlit.ngrok-free.dev"
+  if ! command -v ngrok >/dev/null 2>&1; then
+    echo "[kapso] WARN: ngrok not installed (brew install ngrok); skipping tunnel" >&2
+  else
+    # ngrok reads NGROK_AUTHTOKEN natively; map our NGROK_AUTH_TOKEN to it.
+    if [ -n "${NGROK_AUTH_TOKEN:-}" ]; then
+      export NGROK_AUTHTOKEN="$NGROK_AUTH_TOKEN"
+    fi
+    if [ -z "${NGROK_AUTHTOKEN:-}" ]; then
+      echo "[kapso] WARN: NGROK_AUTH_TOKEN not set in .env; tunnel may fail" >&2
+    fi
+    echo "[kapso] ngrok https://$NGROK_DOMAIN -> http://localhost:8000"
+    echo "[kapso] Kapso webhook URL: https://$NGROK_DOMAIN/api/v1/integrations/kapso/webhook"
+    (
+      exec ngrok http --url="https://$NGROK_DOMAIN" 8000 --log stdout
+    ) 2>&1 | sed -u 's/^/[kapso] /' &
+    PIDS+=($!)
+  fi
+fi
 
 wait
