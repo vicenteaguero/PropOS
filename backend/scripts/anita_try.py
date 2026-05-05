@@ -32,28 +32,41 @@ async def _bootstrap_tenant() -> tuple[UUID, UUID, list[str]]:
     tid = uuid4()
     uid = uuid4()
     c.table("tenants").insert({"id": str(tid), "name": "anita-try", "slug": "anaida"}).execute()
-    c.table("contacts").insert([
-        {"id": str(uuid4()), "tenant_id": str(tid), "full_name": "Juan Pérez",  "type": "BUYER",     "is_draft": False},
-        {"id": str(uuid4()), "tenant_id": str(tid), "full_name": "María Soto",  "type": "SELLER",    "is_draft": False},
-        {"id": str(uuid4()), "tenant_id": str(tid), "full_name": "María López", "type": "BUYER",     "is_draft": False},
-        {"id": str(uuid4()), "tenant_id": str(tid), "full_name": "Pedro Kast",  "type": "INVESTOR",  "is_draft": False},
-    ]).execute()
-    c.table("properties").insert([
-        {
-            "id": str(uuid4()), "tenant_id": str(tid),
-            "title": "Casa Apoquindo 1234",
-            "address": "Av. Apoquindo 1234, Las Condes",
-            "status": "AVAILABLE", "is_draft": False,
-        },
-        {
-            "id": str(uuid4()), "tenant_id": str(tid),
-            "title": "Depto Providencia 567",
-            "address": "Av. Providencia 567",
-            "status": "RESERVED", "is_draft": False,
-        },
-    ]).execute()
-    return tid, uid, ["pending_proposals", "anita_messages", "anita_sessions",
-                      "contacts", "properties", "tenants"]
+    c.table("contacts").insert(
+        [
+            {"id": str(uuid4()), "tenant_id": str(tid), "full_name": "Juan Pérez", "type": "BUYER", "is_draft": False},
+            {"id": str(uuid4()), "tenant_id": str(tid), "full_name": "María Soto", "type": "SELLER", "is_draft": False},
+            {"id": str(uuid4()), "tenant_id": str(tid), "full_name": "María López", "type": "BUYER", "is_draft": False},
+            {
+                "id": str(uuid4()),
+                "tenant_id": str(tid),
+                "full_name": "Pedro Kast",
+                "type": "INVESTOR",
+                "is_draft": False,
+            },
+        ]
+    ).execute()
+    c.table("properties").insert(
+        [
+            {
+                "id": str(uuid4()),
+                "tenant_id": str(tid),
+                "title": "Casa Apoquindo 1234",
+                "address": "Av. Apoquindo 1234, Las Condes",
+                "status": "AVAILABLE",
+                "is_draft": False,
+            },
+            {
+                "id": str(uuid4()),
+                "tenant_id": str(tid),
+                "title": "Depto Providencia 567",
+                "address": "Av. Providencia 567",
+                "status": "RESERVED",
+                "is_draft": False,
+            },
+        ]
+    ).execute()
+    return tid, uid, ["pending_proposals", "anita_messages", "anita_sessions", "contacts", "properties", "tenants"]
 
 
 def _cleanup(tid: UUID, tables: list[str]) -> None:
@@ -108,10 +121,14 @@ async def main() -> None:
     # 3. Run Anita pipeline.
     c = get_supabase_client()
     sid = uuid4()
-    c.table("anita_sessions").insert({
-        "id": str(sid), "tenant_id": str(tid),
-        "user_id": str(uid), "status": "OPEN",
-    }).execute()
+    c.table("anita_sessions").insert(
+        {
+            "id": str(sid),
+            "tenant_id": str(tid),
+            "user_id": str(uid),
+            "status": "OPEN",
+        }
+    ).execute()
 
     print("\n── Anita pipeline ──")
     print(f"  prompt: {prompt}\n")
