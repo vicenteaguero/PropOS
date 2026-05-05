@@ -25,6 +25,9 @@ export interface DocumentVersion {
   notes: string | null;
   edit_metadata: Record<string, unknown> | null;
   source_raw_path: string | null;
+  source_image_paths?: string[];
+  source_edit_states?: Record<string, unknown>[];
+  source_image_urls?: string[];
   created_by: string | null;
   created_at: string;
 }
