@@ -1,5 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, RefreshCw, RotateCcw, Sparkles, Type, X } from "lucide-react";
+import {
+  Check,
+  FlipHorizontal,
+  RefreshCw,
+  RotateCcw,
+  RotateCw,
+  Sparkles,
+  Type,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -75,26 +84,10 @@ export function DocumentScannerEditor({
         bitmapRef.current = decoded.bitmap;
         jpegRef.current = decoded.asJpegBlob;
         if (!initialState) {
-          // Show editable fallback rect immediately so the user can crop right
-          // away. Auto-detect runs in the background and replaces the quad if
-          // it succeeds within the timeout.
+          // No auto-detect on mount. User taps "Auto" to opt in, which loads
+          // OpenCV on demand. Default is a manual editable rect.
           setQuad(insetRect(decoded.bitmap.width, decoded.bitmap.height));
           setAutoDetected(false);
-          if (!cancelled) setLoading(false);
-          try {
-            const detected = await Promise.race([
-              detectCorners(decoded.bitmap),
-              new Promise<never>((_, reject) =>
-                setTimeout(() => reject(new Error("detect timeout")), 8000),
-              ),
-            ]);
-            if (cancelled) return;
-            setQuad(detected.quad);
-            setAutoDetected(detected.autoDetected);
-          } catch (e) {
-            console.warn("auto-detect skipped", e);
-          }
-          return;
         }
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "Error decodificando imagen");
@@ -321,6 +314,67 @@ export function DocumentScannerEditor({
     setAutoDetected(false);
   };
 
+  const replaceBitmap = async (
+    draw: (ctx: CanvasRenderingContext2D, w: number, h: number) => void,
+    outW: number,
+    outH: number,
+  ) => {
+    const bitmap = bitmapRef.current;
+    if (!bitmap) return;
+    setBusy(true);
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = outW;
+      canvas.height = outH;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      draw(ctx, bitmap.width, bitmap.height);
+      const next = await createImageBitmap(canvas);
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob((b) => resolve(b), "image/jpeg", 0.92),
+      );
+      bitmap.close?.();
+      bitmapRef.current = next;
+      if (blob) jpegRef.current = blob;
+      setQuad(insetRect(next.width, next.height));
+      setAutoDetected(false);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const rotate = (deg: 90 | -90 | 180) => {
+    const bitmap = bitmapRef.current;
+    if (!bitmap) return;
+    const w = bitmap.width;
+    const h = bitmap.height;
+    const outW = deg === 180 ? w : h;
+    const outH = deg === 180 ? h : w;
+    void replaceBitmap(
+      (ctx) => {
+        ctx.translate(outW / 2, outH / 2);
+        ctx.rotate((deg * Math.PI) / 180);
+        ctx.drawImage(bitmap, -w / 2, -h / 2);
+      },
+      outW,
+      outH,
+    );
+  };
+
+  const flipH = () => {
+    const bitmap = bitmapRef.current;
+    if (!bitmap) return;
+    void replaceBitmap(
+      (ctx, w) => {
+        ctx.translate(w, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(bitmap, 0, 0);
+      },
+      bitmap.width,
+      bitmap.height,
+    );
+  };
+
   const cycleFilter = () => {
     setFilter((prev) => (prev === "none" ? "bw" : prev === "bw" ? "enhance" : "none"));
   };
@@ -411,6 +465,36 @@ export function DocumentScannerEditor({
         <Button
           variant="ghost"
           size="sm"
+          onClick={() => rotate(-90)}
+          disabled={busy || loading}
+          className="flex flex-col gap-0.5 text-white hover:bg-white/10"
+        >
+          <RotateCcw className="size-5" />
+          <span className="text-[10px]">Izq</span>
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => rotate(90)}
+          disabled={busy || loading}
+          className="flex flex-col gap-0.5 text-white hover:bg-white/10"
+        >
+          <RotateCw className="size-5" />
+          <span className="text-[10px]">Der</span>
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={flipH}
+          disabled={busy || loading}
+          className="flex flex-col gap-0.5 text-white hover:bg-white/10"
+        >
+          <FlipHorizontal className="size-5" />
+          <span className="text-[10px]">Voltear</span>
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={reDetect}
           disabled={busy || loading}
           className="flex flex-col gap-0.5 text-white hover:bg-white/10"
@@ -425,7 +509,7 @@ export function DocumentScannerEditor({
           disabled={busy || loading}
           className="flex flex-col gap-0.5 text-white hover:bg-white/10"
         >
-          <RotateCcw className="size-5" />
+          <span className="text-xs">↺</span>
           <span className="text-[10px]">Reset</span>
         </Button>
         <Button
