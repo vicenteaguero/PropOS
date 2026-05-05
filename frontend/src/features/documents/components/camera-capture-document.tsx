@@ -223,7 +223,7 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props)
                     alt={`Página ${i + 1}`}
                     className="h-16 w-12 rounded object-cover ring-1 ring-border/40"
                   />
-                  <span className="absolute -top-1 -right-1 grid size-5 place-items-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
+                  <span className="absolute bottom-1 right-1 rounded bg-foreground/80 px-1 text-[9px] font-semibold text-background">
                     {i + 1}
                   </span>
                 </div>
@@ -253,10 +253,13 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props)
             <Button
               size="sm"
               variant={shots.length === 0 ? "ghost" : "default"}
-              onClick={() => setMode("review")}
+              onClick={() => {
+                if (!activeId && shots.length > 0) setActiveId(shots[0]!.id);
+                setMode("review");
+              }}
               disabled={shots.length === 0}
             >
-              Revisar ({shots.length})
+              Continuar ({shots.length})
             </Button>
           </div>
         </>
@@ -283,7 +286,10 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props)
                 <button
                   key={shot.id}
                   type="button"
-                  onClick={() => setActiveId(shot.id)}
+                  onClick={() => {
+                    if (isActive) editShot(shot.id);
+                    else setActiveId(shot.id);
+                  }}
                   className={cn(
                     "relative aspect-[3/4] overflow-hidden rounded-md ring-1 transition",
                     isActive ? "ring-2 ring-primary" : "ring-border/40 hover:ring-border",
@@ -295,7 +301,7 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props)
                     alt={`Página ${i + 1}`}
                     className="h-full w-full object-cover"
                   />
-                  <span className="absolute top-1 left-1 grid size-5 place-items-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
+                  <span className="absolute top-1 left-1 grid size-5 place-items-center rounded-full bg-foreground/85 text-[10px] font-semibold text-background">
                     {i + 1}
                   </span>
                 </button>
