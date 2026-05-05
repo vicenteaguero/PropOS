@@ -5,7 +5,7 @@ export type Quad = [Point, Point, Point, Point];
 export type Corner = "TL" | "TR" | "BR" | "BL";
 export type Side = "T" | "R" | "B" | "L";
 
-export type FilterMode = "none" | "bw" | "enhance";
+export type FilterMode = "none" | "magic" | "color" | "bw" | "ink" | "enhance";
 
 export interface EditState {
   quad: Quad;
