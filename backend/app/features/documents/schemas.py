@@ -59,6 +59,8 @@ class DocumentVersionResponse(BaseModel):
     source_edit_states: list[dict] = Field(default_factory=list)
     # Transient signed URLs hydrated on GET; not persisted.
     source_image_urls: list[str] | None = None
+    thumbnail_path: str | None = None
+    thumbnail_url: str | None = None
     created_by: UUID | None = None
     created_at: datetime
 
@@ -84,11 +86,13 @@ class DocumentBase(BaseModel):
     display_name: str = Field(min_length=1, max_length=255)
     kind: DocumentKind = DocumentKind.PDF
     origin: DocumentOrigin = DocumentOrigin.UPLOAD
+    tag: str | None = None
 
 
 class DocumentUpdate(BaseModel):
     display_name: str | None = None
     sort_order: int | None = None
+    tag: str | None = None
 
 
 class DocumentResponse(DocumentBase):
