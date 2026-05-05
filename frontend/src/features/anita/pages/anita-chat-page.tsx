@@ -1,38 +1,80 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2, PlusCircle, Sparkles } from "lucide-react";
+import { History, Loader2, PlusCircle, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useAnitaSession, useAnitaMessages } from "../hooks/use-anita-session";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import {
+  useAnitaMessages,
+  useAnitaSessionList,
+  useStartFreshSession,
+} from "../hooks/use-anita-session";
 import { useAnitaChat } from "../hooks/use-anita-chat";
 import { anitaApi } from "../api/anita-api";
 import { AnitaComposer } from "../components/anita-composer";
 import { AnitaMessageList } from "../components/anita-message-list";
 
+function relativeTime(iso: string): string {
+  const t = new Date(iso).getTime();
+  const diffMin = Math.round((Date.now() - t) / 60_000);
+  if (diffMin < 1) return "ahora";
+  if (diffMin < 60) return `hace ${diffMin}m`;
+  const h = Math.round(diffMin / 60);
+  if (h < 24) return `hace ${h}h`;
+  return new Date(iso).toLocaleDateString("es-CL", { day: "numeric", month: "short" });
+}
+
 export function AnitaChatPage() {
-  const sessionQuery = useAnitaSession();
-  const sessionId = sessionQuery.data?.id;
+  const [sessionId, setSessionId] = useState<string | undefined>();
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const startFresh = useStartFreshSession();
+  const sessionsQuery = useAnitaSessionList();
   const messagesQuery = useAnitaMessages(sessionId);
   const chat = useAnitaChat(sessionId);
   const [autoSend] = useState(true);
-  const [closing, setClosing] = useState(false);
+  const [bootError, setBootError] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
+  // Fresh session every visit. The dependency-free effect is intentional:
+  // we only want this to run on mount.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const s = await anitaApi.createOrResumeSession({ forceNew: true });
+        if (!cancelled) {
+          setSessionId(s.id);
+          queryClient.invalidateQueries({ queryKey: ["anita", "sessions"] });
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setBootError(err instanceof Error ? err.message : "no se pudo abrir Anita");
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const handleNewConversation = async () => {
-    if (!sessionId || closing) return;
-    setClosing(true);
-    try {
-      await anitaApi.updateSession(sessionId, { status: "CLOSED" });
-    } catch {
-      /* even if close fails, force-resume */
-    }
+    if (chat.isStreaming) return;
     chat.reset();
-    await queryClient.invalidateQueries({ queryKey: ["anita", "session"] });
-    queryClient.removeQueries({ queryKey: ["anita", "messages"] });
-    setClosing(false);
+    try {
+      const s = await startFresh.mutateAsync();
+      setSessionId(s.id);
+    } catch {
+      /* leave previous session if it fails */
+    }
+  };
+
+  const handleOpenHistorySession = (id: string) => {
+    chat.reset();
+    setSessionId(id);
+    setHistoryOpen(false);
   };
 
   return (
-    <div className="flex h-[calc(100dvh-3.5rem)] flex-col">
+    <div className="flex h-[calc(100dvh-var(--app-header-h))] flex-col">
       <header className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-4 py-3">
         <div className="flex items-center gap-2">
           <Sparkles className="size-5 text-primary" />
@@ -43,32 +85,79 @@ export function AnitaChatPage() {
             </p>
           </div>
         </div>
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          onClick={handleNewConversation}
-          disabled={!sessionId || closing || chat.isStreaming}
-          className="gap-1 text-xs"
-          title="Nueva conversación"
-        >
-          {closing ? (
-            <Loader2 className="size-3 animate-spin" />
-          ) : (
-            <PlusCircle className="size-3" />
-          )}
-          Nueva
-        </Button>
+        <div className="flex items-center gap-1">
+          <Sheet open={historyOpen} onOpenChange={setHistoryOpen}>
+            <SheetTrigger asChild>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="gap-1 text-xs"
+                title="Historial"
+              >
+                <History className="size-3" />
+                <span className="hidden sm:inline">Historial</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-full max-w-sm sm:max-w-sm">
+              <SheetHeader>
+                <SheetTitle>Conversaciones</SheetTitle>
+              </SheetHeader>
+              <div className="mt-4 space-y-1 overflow-y-auto pr-1">
+                {sessionsQuery.isLoading && (
+                  <Loader2 className="size-4 animate-spin text-muted-foreground" />
+                )}
+                {sessionsQuery.data?.length === 0 && (
+                  <p className="text-xs text-muted-foreground">Aún no hay conversaciones.</p>
+                )}
+                {sessionsQuery.data?.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => handleOpenHistorySession(s.id)}
+                    className={`w-full rounded-md border border-transparent px-2 py-2 text-left text-xs transition hover:bg-muted ${
+                      s.id === sessionId ? "border-border bg-muted" : ""
+                    }`}
+                  >
+                    <p className="line-clamp-2 font-medium text-foreground">
+                      {s.preview || (
+                        <span className="italic text-muted-foreground">(sin mensajes)</span>
+                      )}
+                    </p>
+                    <p className="mt-1 text-[10px] text-muted-foreground">
+                      {relativeTime(s.last_activity_at)} ·{" "}
+                      {s.status === "OPEN" ? "abierta" : "cerrada"}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            </SheetContent>
+          </Sheet>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={handleNewConversation}
+            disabled={!sessionId || startFresh.isPending || chat.isStreaming}
+            className="gap-1 text-xs"
+            title="Nueva conversación"
+          >
+            {startFresh.isPending ? (
+              <Loader2 className="size-3 animate-spin" />
+            ) : (
+              <PlusCircle className="size-3" />
+            )}
+            <span className="hidden sm:inline">Nueva</span>
+          </Button>
+        </div>
       </header>
 
-      {sessionQuery.isLoading ? (
+      {bootError ? (
+        <p className="p-4 text-sm text-destructive">No pude abrir Anita: {bootError}</p>
+      ) : !sessionId ? (
         <div className="flex flex-1 items-center justify-center">
           <Loader2 className="size-5 animate-spin text-muted-foreground" />
         </div>
-      ) : sessionQuery.isError ? (
-        <p className="p-4 text-sm text-destructive">
-          No pude abrir tu sesión. Recarga e intenta de nuevo.
-        </p>
       ) : (
         <>
           <div className="min-h-0 flex-1 overflow-hidden px-4">
