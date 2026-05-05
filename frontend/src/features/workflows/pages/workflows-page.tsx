@@ -3,8 +3,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Check, Circle, Loader2, Plus } from "lucide-react";
+import { PageLayout } from "@shared/components/page-layout";
+import { PageHeader } from "@shared/components/page-header";
 import { workflowsApi, type Workflow, type WorkflowStep } from "../api/workflows-api";
 
 export function WorkflowsPage() {
@@ -34,63 +37,61 @@ export function WorkflowsPage() {
   });
 
   return (
-    <div className="container max-w-3xl py-6 space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold">Workflows / Checklists</h1>
-        <p className="text-sm text-muted-foreground">
-          Procesos reutilizables (closing de venta, onboarding propietario, etc).
-        </p>
-      </div>
+    <PageLayout width="md">
+      <PageHeader
+        title="Workflows / Checklists"
+        description="Procesos reutilizables (closing de venta, onboarding propietario, etc)."
+      />
+      <div className="space-y-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Nuevo workflow</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <Input
+              placeholder="Nombre (ej: Closing venta casa)"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+            />
+            <Textarea
+              placeholder="Pasos, uno por línea..."
+              value={newSteps}
+              onChange={(e) => setNewSteps(e.target.value)}
+            />
+            <Button
+              size="sm"
+              onClick={() => create.mutate()}
+              disabled={!newName.trim() || create.isPending}
+              className="gap-1"
+            >
+              {create.isPending ? (
+                <Loader2 className="size-3 animate-spin" />
+              ) : (
+                <Plus className="size-3" />
+              )}
+              Crear
+            </Button>
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Nuevo workflow</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <Input
-            placeholder="Nombre (ej: Closing venta casa)"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-          />
-          <textarea
-            className="w-full text-sm p-2 rounded-md bg-background border border-input min-h-24"
-            placeholder="Pasos, uno por línea..."
-            value={newSteps}
-            onChange={(e) => setNewSteps(e.target.value)}
-          />
-          <Button
-            size="sm"
-            onClick={() => create.mutate()}
-            disabled={!newName.trim() || create.isPending}
-            className="gap-1"
-          >
-            {create.isPending ? (
-              <Loader2 className="size-3 animate-spin" />
-            ) : (
-              <Plus className="size-3" />
+        {list.isLoading ? (
+          <div className="flex justify-center py-8">
+            <Loader2 className="size-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {list.data?.map((w) => (
+              <WorkflowCard key={w.id} workflow={w} />
+            ))}
+            {list.data?.length === 0 && (
+              <Card className="p-8 text-center text-muted-foreground text-sm">
+                Sin workflows. Crea uno arriba.
+              </Card>
             )}
-            Crear
-          </Button>
-        </CardContent>
-      </Card>
-
-      {list.isLoading ? (
-        <div className="flex justify-center py-8">
-          <Loader2 className="size-5 animate-spin text-muted-foreground" />
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {list.data?.map((w) => (
-            <WorkflowCard key={w.id} workflow={w} />
-          ))}
-          {list.data?.length === 0 && (
-            <Card className="p-8 text-center text-muted-foreground text-sm">
-              Sin workflows. Crea uno arriba.
-            </Card>
-          )}
-        </div>
-      )}
-    </div>
+          </div>
+        )}
+      </div>
+    </PageLayout>
   );
 }
 
@@ -136,7 +137,7 @@ function WorkflowCard({ workflow }: { workflow: Workflow }) {
             onClick={() => toggle(s)}
           >
             {s.status === "COMPLETED" ? (
-              <Check className="size-4 text-emerald-500 shrink-0" />
+              <Check className="size-4 text-success shrink-0" />
             ) : (
               <Circle className="size-4 text-muted-foreground shrink-0" />
             )}
