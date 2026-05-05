@@ -3,6 +3,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AnitaInlineProposalCard } from "@features/anita/components/anita-inline-proposal-card";
+import { PageLayout } from "@shared/components/page-layout";
+import { PageHeader } from "@shared/components/page-header";
 import { usePendingProposals } from "../hooks/use-pending";
 import { Loader2 } from "lucide-react";
 
@@ -17,15 +19,13 @@ export function PendingPage() {
   const { data, isLoading, isError } = usePendingProposals(tab);
 
   return (
-    <div className="container max-w-3xl py-6 space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold">Pendientes de Anita</h1>
-        <p className="text-sm text-muted-foreground">
-          Revisa y acepta las propuestas que Anita generó desde audio o chat.
-        </p>
-      </div>
-
-      <div className="flex gap-2">
+    <PageLayout width="md">
+      <PageHeader
+        title="Pendientes de Anita"
+        description="Revisa y acepta las propuestas que Anita generó desde audio o chat."
+      />
+      <div className="space-y-4">
+      <div className="flex flex-wrap gap-2">
         {TABS.map((t) => (
           <Button
             key={t.value}
@@ -61,6 +61,7 @@ export function PendingPage() {
           <AnitaInlineProposalCard key={p.id} proposalId={p.id} />
         ))}
       </div>
-    </div>
+      </div>
+    </PageLayout>
   );
 }
