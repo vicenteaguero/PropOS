@@ -30,6 +30,8 @@ export const documentsApi = {
     origin: string = "UPLOAD",
     downloadFilename?: string,
     editMetadata?: Record<string, unknown>,
+    sourceImages?: Blob[],
+    sourceEditStates?: Record<string, unknown>[],
   ) => {
     const fd = new FormData();
     fd.append("file", file);
@@ -37,6 +39,10 @@ export const documentsApi = {
     fd.append("origin", origin);
     if (downloadFilename) fd.append("download_filename", downloadFilename);
     if (editMetadata) fd.append("edit_metadata", JSON.stringify(editMetadata));
+    if (sourceImages && sourceImages.length > 0) {
+      sourceImages.forEach((img, i) => fd.append("source_images", img, `source-${i}.jpg`));
+      if (sourceEditStates) fd.append("source_edit_states", JSON.stringify(sourceEditStates));
+    }
     return apiRequest<DocumentItem>("/v1/documents", { method: "POST", formData: fd });
   },
 
@@ -53,6 +59,8 @@ export const documentsApi = {
       downloadFilename?: string;
       editMetadata?: Record<string, unknown>;
       sourceVersionId?: string;
+      sourceImages?: Blob[];
+      sourceEditStates?: Record<string, unknown>[];
     } = {},
   ) => {
     const fd = new FormData();
@@ -61,11 +69,21 @@ export const documentsApi = {
     if (opts.downloadFilename) fd.append("download_filename", opts.downloadFilename);
     if (opts.editMetadata) fd.append("edit_metadata", JSON.stringify(opts.editMetadata));
     if (opts.sourceVersionId) fd.append("source_version_id", opts.sourceVersionId);
+    if (opts.sourceImages && opts.sourceImages.length > 0) {
+      opts.sourceImages.forEach((img, i) => fd.append("source_images", img, `source-${i}.jpg`));
+      if (opts.sourceEditStates)
+        fd.append("source_edit_states", JSON.stringify(opts.sourceEditStates));
+    }
     return apiRequest<DocumentItem>(`/v1/documents/${id}/versions`, {
       method: "POST",
       formData: fd,
     });
   },
+
+  getSourceImages: (documentId: string, versionId: string) =>
+    apiRequest<{ urls: string[]; edit_states: Record<string, unknown>[] }>(
+      `/v1/documents/${documentId}/versions/${versionId}/source-images`,
+    ),
 
   makeVersionCurrent: (documentId: string, versionId: string) =>
     apiRequest<DocumentItem>(`/v1/documents/${documentId}/versions/${versionId}/make-current`, {
