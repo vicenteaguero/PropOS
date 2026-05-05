@@ -5,11 +5,27 @@
 #
 # Env:
 #   PWA=1     enable Vite PWA service worker in dev (VITE_DEV_PWA=true)
-#   KAPSO=1   also spawn cloudflared tunnel -> http://localhost:8000 for Kapso webhook
+#   KAPSO=1   also spawn ngrok tunnel (stable domain) -> http://localhost:8000 for Kapso webhook
 
 set -u
 cd "$(dirname "$0")/.."
 ROOT="$PWD"
+
+# Load .env so NGROK_AUTH_TOKEN is visible to the ngrok subprocess.
+if [ -f "$ROOT/.env" ]; then
+  while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in
+      ''|'#'*) continue ;;
+      *=*)
+        key="${line%%=*}"
+        val="${line#*=}"
+        case "$key" in
+          [A-Za-z_]*) export "$key=$val" ;;
+        esac
+        ;;
+    esac
+  done < "$ROOT/.env"
+fi
 
 PWA="${PWA:-0}"
 KAPSO="${KAPSO:-0}"
@@ -26,6 +42,7 @@ fi
 lsof -ti:5443 2>/dev/null | xargs kill -9 2>/dev/null || true
 pkill -9 -f "https_proxy.mjs" 2>/dev/null || true
 [ "$KAPSO" = "1" ] && pkill -9 -f "cloudflared tunnel --url http://localhost:8000" 2>/dev/null || true
+[ "$KAPSO" = "1" ] && pkill -9 -f "ngrok http" 2>/dev/null || true
 
 PIDS=()
 cleanup() {
@@ -36,6 +53,7 @@ cleanup() {
   pkill -9 -P $$ 2>/dev/null || true
   pkill -9 -f "https_proxy.mjs" 2>/dev/null || true
   [ "$KAPSO" = "1" ] && pkill -9 -f "cloudflared tunnel --url http://localhost:8000" 2>/dev/null || true
+[ "$KAPSO" = "1" ] && pkill -9 -f "ngrok http" 2>/dev/null || true
   echo ""
   echo "[boot] stopping docker stack"
   docker compose stop >/dev/null 2>&1 || true
@@ -74,13 +92,23 @@ PIDS+=($!)
 ) 2>&1 | sed -u 's/^/[https] /' &
 PIDS+=($!)
 
-# Optional Kapso webhook tunnel (cloudflared -> host:8000 -> docker api)
+# Kapso webhook tunnel (ngrok stable domain -> host:8000 -> docker api)
 if [ "$KAPSO" = "1" ]; then
-  if ! command -v cloudflared >/dev/null 2>&1; then
-    echo "[kapso] WARN: cloudflared not installed; skipping tunnel" >&2
+  NGROK_DOMAIN="moonlight-deviator-moonlit.ngrok-free.dev"
+  if ! command -v ngrok >/dev/null 2>&1; then
+    echo "[kapso] WARN: ngrok not installed (brew install ngrok); skipping tunnel" >&2
   else
-    echo "[kapso] cloudflared tunnel -> http://localhost:8000 (set Kapso webhook to printed URL + /api/v1/integrations/kapso/webhook)"
-    cloudflared tunnel --url http://localhost:8000 2>&1 | sed -u 's/^/[kapso] /' &
+    if [ -n "${NGROK_AUTH_TOKEN:-}" ]; then
+      export NGROK_AUTHTOKEN="$NGROK_AUTH_TOKEN"
+    fi
+    if [ -z "${NGROK_AUTHTOKEN:-}" ]; then
+      echo "[kapso] WARN: NGROK_AUTH_TOKEN not set in .env; tunnel may fail" >&2
+    fi
+    echo "[kapso] ngrok https://$NGROK_DOMAIN -> http://localhost:8000"
+    echo "[kapso] Kapso webhook URL: https://$NGROK_DOMAIN/api/v1/integrations/kapso/webhook"
+    (
+      exec ngrok http --url="https://$NGROK_DOMAIN" 8000 --log stdout
+    ) 2>&1 | sed -u 's/^/[kapso] /' &
     PIDS+=($!)
   fi
 fi
