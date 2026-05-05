@@ -115,13 +115,7 @@ class DocumentService:
         # Hydrate current_version + thumbnail_url for grid cards in a single round-trip.
         version_ids = [d.get("current_version_id") for d in docs if d.get("current_version_id")]
         if version_ids:
-            versions = (
-                client.table(VERSIONS_TABLE)
-                .select("id, version_number, thumbnail_path, mime_type, page_count")
-                .in_("id", version_ids)
-                .execute()
-                .data
-            )
+            versions = client.table(VERSIONS_TABLE).select("*").in_("id", version_ids).execute().data
             by_id = {v["id"]: v for v in versions}
             for d in docs:
                 v = by_id.get(d.get("current_version_id"))
