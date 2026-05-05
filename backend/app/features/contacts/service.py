@@ -48,6 +48,37 @@ class ContactService:
         return builder.execute().data
 
     @staticmethod
+    async def list_contacts_by_property(
+        tenant_id: UUID,
+        property_id: UUID,
+        query: str | None = None,
+        include_drafts: bool = True,
+        include_deleted: bool = False,
+        limit: int = 100,
+    ) -> list[dict]:
+        """Contacts that participate in any interaction targeting the property.
+
+        Backed by the `contacts_by_property` SQL function which performs the
+        contacts → interaction_participants → interaction_targets join. The
+        function enforces tenant isolation via `get_my_tenant_id()`; the
+        explicit `tenant_id` parameter is kept for symmetry / future RLS
+        bypass paths but is not forwarded to the RPC.
+        """
+        del tenant_id
+        client = get_supabase_client()
+        response = client.rpc(
+            "contacts_by_property",
+            {
+                "p_property_id": str(property_id),
+                "p_query": query,
+                "p_include_drafts": include_drafts,
+                "p_include_deleted": include_deleted,
+                "p_limit": limit,
+            },
+        ).execute()
+        return response.data or []
+
+    @staticmethod
     async def get_contact(contact_id: UUID, tenant_id: UUID) -> dict:
         client = get_supabase_client()
         return (
