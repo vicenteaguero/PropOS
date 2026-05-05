@@ -966,7 +966,11 @@ export function CameraCaptureDocument({
                 className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
                 style={{
                   aspectRatio: "1.586 / 1",
-                  width: "min(80%, calc(60% * 1.586))",
+                  // Width capped by both viewport axes so the rect always fits
+                  // inside the camera frame regardless of orientation: 80vw on
+                  // narrow phones, 95vh × 1.586 (i.e. 60vh of height) on wide
+                  // desktops with letterboxed video.
+                  width: "min(80vw, calc(60vh * 1.586))",
                 }}
               >
                 <div className="h-full w-full rounded-xl border-[3px] border-dashed border-primary/80 shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]" />
