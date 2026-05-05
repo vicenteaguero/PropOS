@@ -3,12 +3,17 @@ import { entitiesApi } from "../api/entities-api";
 
 export const entitiesKeys = {
   properties: (q?: string) => ["entities", "properties", q ?? ""] as const,
-  contacts: (q?: string) => ["entities", "contacts", q ?? ""] as const,
+  contacts: (q?: string, propertyId?: string) =>
+    ["entities", "contacts", q ?? "", propertyId ?? ""] as const,
   areas: ["entities", "areas"] as const,
 };
 
 interface EntityQueryOpts {
   enabled?: boolean;
+}
+
+interface ContactsQueryOpts extends EntityQueryOpts {
+  propertyId?: string;
 }
 
 export function useProperties(q?: string, opts: EntityQueryOpts = {}) {
@@ -20,10 +25,10 @@ export function useProperties(q?: string, opts: EntityQueryOpts = {}) {
   });
 }
 
-export function useContacts(q?: string, opts: EntityQueryOpts = {}) {
+export function useContacts(q?: string, opts: ContactsQueryOpts = {}) {
   return useQuery({
-    queryKey: entitiesKeys.contacts(q),
-    queryFn: () => entitiesApi.listContacts(q),
+    queryKey: entitiesKeys.contacts(q, opts.propertyId),
+    queryFn: () => entitiesApi.listContacts(q, opts.propertyId),
     enabled: opts.enabled ?? true,
     staleTime: 60_000,
   });
