@@ -59,7 +59,9 @@ export function AdminHomePage() {
         <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
           Hola{firstName ? `, ${firstName}` : ""}
         </h1>
-        <p className="mt-1 text-sm text-muted-foreground">¿Qué hacemos hoy?</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          ¿Qué hacemos hoy?
+        </p>
       </header>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -69,13 +71,13 @@ export function AdminHomePage() {
             to={a.to}
             className="group flex items-center gap-4 rounded-xl border border-border bg-card p-4 shadow-sm transition hover:border-primary/40 hover:shadow-md"
           >
-            <div
-              className={`flex size-12 shrink-0 items-center justify-center rounded-lg ${a.accent}`}
-            >
+            <div className={`flex size-12 shrink-0 items-center justify-center rounded-lg ${a.accent}`}>
               <a.icon className="size-6" />
             </div>
             <div className="min-w-0">
-              <p className="font-medium text-foreground group-hover:text-primary">{a.label}</p>
+              <p className="font-medium text-foreground group-hover:text-primary">
+                {a.label}
+              </p>
               <p className="text-xs text-muted-foreground">{a.caption}</p>
             </div>
           </Link>
