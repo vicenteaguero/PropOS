@@ -17,6 +17,7 @@ Kapso v2 webhook body:
 
 Status events use the same envelope but with status fields on the message.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -64,25 +65,24 @@ def _apply_status(item: dict[str, Any], event_type: str) -> None:
     external_id = msg.get("id")
     if not external_id:
         return
-    new_status = event_type.rsplit(".", 1)[-1]  # delivered|read|sent|failed
+    new_status = event_type.rsplit(".", 1)[-1]
     payload: dict[str, Any] = {"delivery_status": new_status}
     if new_status == "failed":
         err = msg.get("kapso", {}).get("status_error") or msg.get("errors")
         if err:
             payload["failure_reason"] = str(err)[:500]
-    db.table("client_messages").update(payload).eq(
-        "external_message_id", external_id
-    ).execute()
-    db.table("anita_messages").update(payload).eq(
-        "external_message_id", external_id
-    ).execute()
+    db.table("client_messages").update(payload).eq("external_message_id", external_id).execute()
+    db.table("anita_messages").update(payload).eq("external_message_id", external_id).execute()
 
 
 async def _handle_message_batch(items: list[dict[str, Any]]) -> None:
     """Handle a batch of inbound messages grouped by conversation.
 
-    Concatenates text content into a single user turn so the AI agent
-    replies once instead of N times.
+    Hands the raw items list to the right adapter (Anita vs Client Agent).
+    Per-message multimodal handling (text/audio/image, transcription,
+    media buffer) lives inside the adapters since the resolution depends
+    on whether the sender is an internal user (Anita session + media buffer)
+    or an external contact (client_messages).
     """
     if not items:
         return
@@ -95,36 +95,37 @@ async def _handle_message_batch(items: list[dict[str, Any]]) -> None:
         return
     phone_e164 = raw_phone if raw_phone.startswith("+") else f"+{raw_phone}"
 
-    # Concatenate all text bodies in the batch
+    external_thread_id = conv.get("id")
+    user_match = _match_internal_user(phone_e164)
+
+    if user_match:
+        from app.features.channels.anita_adapter import handle_inbound_anita_batch
+
+        await handle_inbound_anita_batch(
+            user_match=user_match,
+            items=items,
+            phone_e164=phone_e164,
+            external_thread_id=external_thread_id,
+        )
+        return
+
+    # External contact → Client Agent. For now still text-only path: use the
+    # original concatenation behaviour. Media for B2C is out of scope for this
+    # ship (covered by client_messages.media_url already).
     parts: list[str] = []
     external_ids: list[str] = []
     for it in items:
         m = it.get("message") or {}
-        t = _extract_text(m)
+        t = extract_text(m)
         if t:
             parts.append(t)
         if m.get("id"):
             external_ids.append(m["id"])
     user_text = "\n".join(parts).strip()
-    if not user_text:
-        logger.info("kapso_skip_no_text", event_type="kapso", count=len(items))
-        return
-
     primary_external_id = external_ids[0] if external_ids else None
-    external_thread_id = conv.get("id")
 
-    user_match = _match_internal_user(phone_e164)
-
-    if user_match:
-        from app.features.channels.anita_adapter import handle_inbound_anita
-
-        await handle_inbound_anita(
-            user_match=user_match,
-            user_text=user_text,
-            phone_e164=phone_e164,
-            external_message_id=primary_external_id,
-            external_thread_id=external_thread_id,
-        )
+    if not user_text:
+        logger.info("kapso_skip_no_text_external", event_type="kapso", count=len(items))
         return
 
     from app.features.channels.client_agent import handle_inbound_client
@@ -138,11 +139,39 @@ async def _handle_message_batch(items: list[dict[str, Any]]) -> None:
     )
 
 
-def _extract_text(msg: dict[str, Any]) -> str | None:
-    if msg.get("type") == "text":
-        return (msg.get("text") or {}).get("body")
-    # Fallback: Kapso also exposes content at message.kapso.content
-    return msg.get("kapso", {}).get("content") or (msg.get("text") or {}).get("body")
+def classify_message(msg: dict[str, Any]) -> str:
+    """Return one of: 'text' | 'audio' | 'image' | 'unknown'."""
+    t = (msg.get("type") or "").lower()
+    if t in {"text", "audio", "image"}:
+        return t
+    # Kapso sometimes wraps under .kapso.content_type or omits type when only
+    # audio/image is sent. Best-effort fallback.
+    if msg.get("audio") or msg.get("voice"):
+        return "audio"
+    if msg.get("image"):
+        return "image"
+    if (msg.get("text") or {}).get("body") or msg.get("kapso", {}).get("content"):
+        return "text"
+    return "unknown"
+
+
+def extract_text(msg: dict[str, Any]) -> str | None:
+    if classify_message(msg) == "text":
+        return (msg.get("text") or {}).get("body") or msg.get("kapso", {}).get("content")
+    return None
+
+
+def extract_media_id(msg: dict[str, Any], kind: str) -> str | None:
+    if kind == "audio":
+        return (msg.get("audio") or msg.get("voice") or {}).get("id")
+    if kind == "image":
+        return (msg.get("image") or {}).get("id")
+    return None
+
+
+def is_forwarded(msg: dict[str, Any]) -> bool:
+    ctx = msg.get("context") or {}
+    return bool(ctx.get("forwarded") or ctx.get("frequently_forwarded"))
 
 
 def _match_internal_user(phone_e164: str) -> dict[str, Any] | None:
