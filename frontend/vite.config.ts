@@ -36,6 +36,7 @@ export default defineConfig({
         skipWaiting: true,
         clientsClaim: true,
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,webp,woff,woff2,mjs}"],
         globIgnores: ["**/opencv/**"],
         runtimeCaching: devPwa
           ? [{ urlPattern: /.*/, handler: "NetworkOnly" }]
@@ -58,7 +59,16 @@ export default defineConfig({
                   cacheableResponse: { statuses: [0, 200] },
                 },
               },
-              { urlPattern: /\.(js|css|png|jpg|svg)$/, handler: "CacheFirst" },
+              {
+                urlPattern: /\/pdfjs\/.*/,
+                handler: "CacheFirst",
+                options: {
+                  cacheName: "pdfjs-runtime",
+                  expiration: { maxEntries: 5, maxAgeSeconds: 60 * 60 * 24 * 365 },
+                  cacheableResponse: { statuses: [0, 200] },
+                },
+              },
+              { urlPattern: /\.(js|css|png|jpg|svg|mjs)$/, handler: "CacheFirst" },
             ],
         navigateFallback: devPwa ? null : undefined,
       },
@@ -69,8 +79,14 @@ export default defineConfig({
     host: "0.0.0.0",
     port: 5173,
     proxy: {
-      "/api": { target: process.env.VITE_DEV_API_TARGET ?? "http://127.0.0.1:8000", changeOrigin: true },
-      "/health": { target: process.env.VITE_DEV_API_TARGET ?? "http://127.0.0.1:8000", changeOrigin: true },
+      "/api": {
+        target: process.env.VITE_DEV_API_TARGET ?? "http://127.0.0.1:8000",
+        changeOrigin: true,
+      },
+      "/health": {
+        target: process.env.VITE_DEV_API_TARGET ?? "http://127.0.0.1:8000",
+        changeOrigin: true,
+      },
     },
   },
   resolve: {
