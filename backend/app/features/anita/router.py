@@ -34,25 +34,40 @@ async def create_or_resume_session(
     tenant_id: UUID = Depends(get_tenant_id),
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> dict:
-    """Open a session. With ``force_new=true``, closes any OPEN session
-    for the user and starts a fresh one — used when the chat page mounts
-    so each visit is a clean slate."""
-    from datetime import UTC, datetime
+    """Open a session.
+
+    With ``force_new=true`` the most recent OPEN session is closed and a
+    fresh one starts — used by the "Nueva" button.
+
+    Otherwise we resume the most recent OPEN session (any ``source``,
+    including ``whatsapp``) whose ``last_activity_at`` is within
+    ``ANITA_SESSION_INACTIVITY_HOURS``. This lets a broker continue on web
+    a thread they started on WhatsApp, and vice versa. If nothing recent
+    exists we open a new session.
+    """
+    from datetime import UTC, datetime, timedelta
+
+    from app.core.config.settings import settings
 
     client = get_supabase_client()
     user_id = current_user["id"]
 
     if force_new:
-        client.table("anita_sessions").update({"status": "CLOSED", "closed_at": datetime.now(UTC).isoformat()}).eq(
-            "user_id", user_id
-        ).eq("tenant_id", str(tenant_id)).eq("status", "OPEN").execute()
+        client.table("anita_sessions").update(
+            {"status": "CLOSED", "closed_at": datetime.now(UTC).isoformat()}
+        ).eq("user_id", user_id).eq("tenant_id", str(tenant_id)).eq("status", "OPEN").execute()
     else:
+        cutoff = (
+            datetime.now(UTC)
+            - timedelta(hours=settings.anita_session_inactivity_hours)
+        ).isoformat()
         existing = (
             client.table("anita_sessions")
             .select("*")
             .eq("user_id", user_id)
             .eq("tenant_id", str(tenant_id))
             .eq("status", "OPEN")
+            .gte("last_activity_at", cutoff)
             .order("last_activity_at", desc=True)
             .limit(1)
             .execute()
