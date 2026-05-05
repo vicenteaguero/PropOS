@@ -20,7 +20,9 @@ export async function applyFilter(
   if (!ctx) throw new Error("2d context unavailable");
 
   if (effectiveMode === "color") {
-    ctx.filter = "contrast(1.1) saturate(1.05)";
+    // Stronger pop than before — IDs and laminated cards looked flat with the
+    // earlier 1.10/1.05. Still preserves photos.
+    ctx.filter = "contrast(1.18) saturate(1.12) brightness(1.03)";
     ctx.drawImage(canvas, 0, 0);
     ctx.filter = "none";
     return out;
@@ -45,8 +47,10 @@ export async function applyFilter(
   }
 
   if (effectiveMode === "bw") {
-    const blur = boxBlur(gray, w, h, 12);
-    const C = 10;
+    // Less aggressive C → preserves mid-tones on photos and IDs while still
+    // binarizing crisp text. C=18 keeps faces/photos legible.
+    const blur = boxBlur(gray, w, h, 14);
+    const C = 18;
     for (let p = 0, i = 0; p < gray.length; p++, i += 4) {
       const v = gray[p]! < blur[p]! - C ? 0 : 255;
       data[i] = v;
@@ -83,28 +87,15 @@ export async function applyFilter(
 }
 
 function runMagic(data: Uint8ClampedArray, w: number, h: number) {
-  // Step 1: grayscale luminance for background estimation.
-  const gray = new Uint8ClampedArray(w * h);
-  for (let i = 0, p = 0; i < data.length; i += 4, p++) {
-    gray[p] = (data[i]! * 0.299 + data[i + 1]! * 0.587 + data[i + 2]! * 0.114) | 0;
-  }
-  // Step 2: large radius box-blur for background estimation.
-  const background = boxBlur(gray, w, h, 40);
+  // ID-friendly enhancement: gentle gray-world WB + S-curve contrast +
+  // light unsharp. No shadow-division (caused color casts on plastic IDs)
+  // and no saturation push (kept colours faithful).
+  const n = w * h;
 
-  // Step 3: divide by background -> shadows-out, paper goes white.
-  for (let p = 0, i = 0; p < gray.length; p++, i += 4) {
-    const bg = Math.max(1, background[p]!);
-    const scale = 255 / bg;
-    data[i] = clamp255(data[i]! * scale);
-    data[i + 1] = clamp255(data[i + 1]! * scale);
-    data[i + 2] = clamp255(data[i + 2]! * scale);
-  }
-
-  // Step 4: gray-world WB.
+  // Step 1: gray-world WB. Equalize per-channel means toward overall luma.
   let sumR = 0,
     sumG = 0,
     sumB = 0;
-  const n = w * h;
   for (let i = 0; i < data.length; i += 4) {
     sumR += data[i]!;
     sumG += data[i + 1]!;
@@ -114,23 +105,35 @@ function runMagic(data: Uint8ClampedArray, w: number, h: number) {
   const meanG = sumG / n;
   const meanB = sumB / n;
   const meanLuma = (meanR + meanG + meanB) / 3;
-  const gainR = meanR > 0 ? meanLuma / meanR : 1;
-  const gainG = meanG > 0 ? meanLuma / meanG : 1;
-  const gainB = meanB > 0 ? meanLuma / meanB : 1;
+  // Cap correction so a heavily tinted image doesn't go neon.
+  const limit = (g: number) => Math.max(0.85, Math.min(1.18, g));
+  const gainR = limit(meanR > 0 ? meanLuma / meanR : 1);
+  const gainG = limit(meanG > 0 ? meanLuma / meanG : 1);
+  const gainB = limit(meanB > 0 ? meanLuma / meanB : 1);
+
+  // Step 2: contrast S-curve around mid-grey using a fast quintic.
+  // y = 255 * smoothstep(0, 1, x/255) blended 70/30 with identity.
+  const lut = new Uint8ClampedArray(256);
+  for (let v = 0; v < 256; v++) {
+    const t = v / 255;
+    const s = t * t * (3 - 2 * t); // smoothstep
+    const out = 0.7 * (s * 255) + 0.3 * v;
+    lut[v] = out < 0 ? 0 : out > 255 ? 255 : out | 0;
+  }
   for (let i = 0; i < data.length; i += 4) {
-    data[i] = clamp255(data[i]! * gainR);
-    data[i + 1] = clamp255(data[i + 1]! * gainG);
-    data[i + 2] = clamp255(data[i + 2]! * gainB);
+    data[i] = lut[clamp255(data[i]! * gainR) | 0]!;
+    data[i + 1] = lut[clamp255(data[i + 1]! * gainG) | 0]!;
+    data[i + 2] = lut[clamp255(data[i + 2]! * gainB) | 0]!;
   }
 
-  // Step 5: unsharp mask with radius=2. Build per-channel blurred buffers.
+  // Step 3: per-channel unsharp mask radius 2. Subtle, just enough to crisp.
   const r = 2;
   const ch = new Uint8ClampedArray(w * h);
   for (let c = 0; c < 3; c++) {
     for (let p = 0, i = c; p < n; p++, i += 4) ch[p] = data[i]!;
     const blurC = boxBlur(ch, w, h, r);
     for (let p = 0, i = c; p < n; p++, i += 4) {
-      data[i] = clamp255(1.4 * ch[p]! - 0.4 * blurC[p]!);
+      data[i] = clamp255(1.25 * ch[p]! - 0.25 * blurC[p]!);
     }
   }
 }
