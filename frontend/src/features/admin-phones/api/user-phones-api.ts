@@ -12,8 +12,17 @@ export interface UserPhone {
 
 export interface AppUser {
   id: string;
+  email: string | null;
+  full_name: string | null;
+  role: string;
+  rut?: string | null;
+}
+
+export interface CreateUserPayload {
   email: string;
+  password?: string;
   full_name: string;
+  rut?: string;
   role: string;
 }
 
@@ -24,7 +33,8 @@ export const userPhonesApi = {
       method: "POST",
       body: { user_id, phone_e164, verified: true },
     }),
-  unassign: (id: string) =>
-    apiRequest<void>(`${BASE}/${id}`, { method: "DELETE" }),
+  unassign: (id: string) => apiRequest<void>(`${BASE}/${id}`, { method: "DELETE" }),
   listUsers: () => apiRequest<AppUser[]>("/v1/users"),
+  createUser: (payload: CreateUserPayload) =>
+    apiRequest<AppUser>("/v1/users", { method: "POST", body: payload }),
 };
