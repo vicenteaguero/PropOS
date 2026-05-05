@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { LoadingSpinner } from "@shared/components/loading-spinner/loading-spinner";
+import { PageLayout } from "@shared/components/page-layout";
 import { useAuth } from "@shared/hooks/use-auth";
 import { useDeleteDocument, useDocument } from "../hooks/use-documents";
 import { useDocumentBlob } from "../hooks/use-document-blob";
@@ -56,38 +57,42 @@ export function DocumentDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center py-12">
-        <LoadingSpinner size="lg" />
-      </div>
+      <PageLayout width="lg">
+        <div className="flex min-h-[40vh] justify-center">
+          <LoadingSpinner size="lg" />
+        </div>
+      </PageLayout>
     );
   }
   if (error || !doc) {
     const isNotFound =
       !error || (error instanceof Error && /404|not found|no encontrado/i.test(error.message));
     return (
-      <div className="container mx-auto flex max-w-2xl flex-col items-center justify-center gap-4 px-4 py-16 text-center">
-        <FileQuestion className="size-14 text-muted-foreground/50" strokeWidth={1.25} />
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">
-            {isNotFound ? "Documento no encontrado" : "No se pudo cargar"}
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {isNotFound
-              ? "Es posible que se haya eliminado o que el enlace sea incorrecto."
-              : error instanceof Error
-                ? error.message
-                : "Error al cargar el documento."}
-          </p>
+      <PageLayout width="sm">
+        <div className="flex flex-col items-center justify-center gap-4 text-center">
+          <FileQuestion className="size-14 text-muted-foreground/50" strokeWidth={1.25} />
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">
+              {isNotFound ? "Documento no encontrado" : "No se pudo cargar"}
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {isNotFound
+                ? "Es posible que se haya eliminado o que el enlace sea incorrecto."
+                : error instanceof Error
+                  ? error.message
+                  : "Error al cargar el documento."}
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
+              <ArrowLeft className="size-4" /> Volver
+            </Button>
+            <Button size="sm" onClick={() => navigate(`/${role}/documents`)}>
+              Ir a documentos
+            </Button>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
-            <ArrowLeft className="size-4" /> Volver
-          </Button>
-          <Button size="sm" onClick={() => navigate(`/${role}/documents`)}>
-            Ir a documentos
-          </Button>
-        </div>
-      </div>
+      </PageLayout>
     );
   }
 
@@ -104,7 +109,7 @@ export function DocumentDetailPage() {
   const goEditor = () => navigate(`/${role}/documents/${doc.id}/edit`);
 
   return (
-    <div className="container mx-auto max-w-5xl px-4 py-6">
+    <PageLayout width="lg">
       <div className="mb-4 flex items-center gap-2">
         <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
           <ArrowLeft className="size-4" />
@@ -112,12 +117,12 @@ export function DocumentDetailPage() {
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-lg font-semibold">{doc.display_name}</h1>
           <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-            <Badge variant="outline" className="text-[10px]">
+            <Badge variant="outline" className="text-xs">
               {doc.kind}
             </Badge>
             {currentVersion && (
               <>
-                <Badge variant="outline" className="text-[10px]">
+                <Badge variant="outline" className="text-xs">
                   v{currentVersion.version_number}
                 </Badge>
                 <span className="font-mono">{currentVersion.sha256.slice(0, 12)}</span>
@@ -271,6 +276,6 @@ export function DocumentDetailPage() {
           }
         }}
       />
-    </div>
+    </PageLayout>
   );
 }
