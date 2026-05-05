@@ -1,6 +1,18 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import type { ClientConversation } from "../types";
+import type { ClientConversation, ConversationStatus } from "../types";
+
+const STATUS_LABEL: Record<ConversationStatus, string> = {
+  open: "Abierta",
+  assigned: "Asignada",
+  closed: "Cerrada",
+};
+
+const STATUS_CLASS: Record<ConversationStatus, string> = {
+  open: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30",
+  assigned: "bg-sky-500/15 text-sky-300 border border-sky-500/30",
+  closed: "bg-muted text-muted-foreground border border-border",
+};
 
 interface Props {
   conversations: ClientConversation[];
@@ -33,8 +45,8 @@ export function ConversationList({ conversations, selectedId, onSelect }: Props)
             <span className="text-sm font-medium">
               {c.external_phone_e164 ?? "(sin número)"}
             </span>
-            <Badge variant={c.status === "open" ? "default" : "outline"}>
-              {c.status}
+            <Badge variant="outline" className={STATUS_CLASS[c.status]}>
+              {STATUS_LABEL[c.status]}
             </Badge>
           </div>
           <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
