@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { loadOpenCV } from "./opencv-loader";
 import { outputSize } from "./geometry";
 import type { Quad } from "./types";
@@ -34,10 +33,20 @@ export async function warpQuad(bitmap: ImageBitmap, quad: Quad): Promise<HTMLCan
 
   try {
     cv.warpPerspective(src, dst, M, dsize, cv.INTER_LINEAR, cv.BORDER_REPLICATE, new cv.Scalar());
+    // Always-portrait policy: rotate 90° CCW if landscape, so PDF pages
+    // stay consistent (Letter portrait everywhere).
+    let finalMat = dst;
+    let rotated: any = null;
+    if (width > height) {
+      rotated = new cv.Mat();
+      cv.rotate(dst, rotated, cv.ROTATE_90_COUNTERCLOCKWISE);
+      finalMat = rotated;
+    }
     const out = document.createElement("canvas");
-    out.width = width;
-    out.height = height;
-    cv.imshow(out, dst);
+    out.width = finalMat.cols;
+    out.height = finalMat.rows;
+    cv.imshow(out, finalMat);
+    if (rotated) rotated.delete();
     return out;
   } finally {
     src.delete();
