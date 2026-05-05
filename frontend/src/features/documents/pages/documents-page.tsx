@@ -3,7 +3,8 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Plus, Folder, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { PageHeader } from "@shared/components/page-header/page-header";
+import { PageLayout } from "@shared/components/page-layout";
+import { PageHeader } from "@shared/components/page-header";
 import { SearchInput } from "@shared/components/search-input/search-input";
 import { LoadingSpinner } from "@shared/components/loading-spinner/loading-spinner";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
@@ -81,7 +82,7 @@ export function DocumentsPage() {
   };
 
   return (
-    <div className="container mx-auto max-w-7xl px-4 py-6">
+    <PageLayout width="xl">
       <PageHeader
         title="Documentos"
         description="Gestiona contratos, escrituras y archivos"
@@ -175,6 +176,6 @@ export function DocumentsPage() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageLayout>
   );
 }
