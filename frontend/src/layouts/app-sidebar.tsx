@@ -30,7 +30,6 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@shared/hooks/use-auth";
-import { useHealthCheck } from "@shared/hooks/use-health-check";
 import type { UserRole } from "@shared/types/auth";
 
 export interface SidebarNavItem {
@@ -42,6 +41,7 @@ export interface SidebarNavItem {
 
 const NAV_ITEMS_BY_ROLE: Record<UserRole, SidebarNavItem[]> = {
   ADMIN: [
+    { label: "Inicio", path: "/admin", icon: Home, end: true },
     { label: "Anita", path: "/admin/anita", icon: Sparkles },
     { label: "Pendientes de Anita", path: "/admin/pendientes", icon: Inbox },
     { label: "Inbox clientes (WA)", path: "/admin/client-inbox", icon: MessageCircle },
@@ -83,20 +83,6 @@ export function getNavItemsForRole(role: UserRole): SidebarNavItem[] {
 export function AppSidebar() {
   const { user, signOut } = useAuth();
   const { state, setOpenMobile, isMobile } = useSidebar();
-  const { data: health } = useHealthCheck();
-  const healthStatus = health?.status ?? "down";
-  const healthColor =
-    healthStatus === "healthy"
-      ? "bg-success"
-      : healthStatus === "degraded"
-        ? "bg-warning"
-        : "bg-destructive";
-  const healthLabel =
-    healthStatus === "healthy"
-      ? "API conectada"
-      : healthStatus === "degraded"
-        ? "API lenta"
-        : "API sin conexión";
 
   if (!user) return null;
 
@@ -147,15 +133,6 @@ export function AppSidebar() {
       <SidebarSeparator />
       <SidebarFooter className="pb-4">
         <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton tooltip={healthLabel} className="pointer-events-none">
-              <span className={`size-2 shrink-0 rounded-full ${healthColor}`} />
-              <span className="text-xs text-muted-foreground">
-                {healthLabel}
-                {health?.latency != null ? ` (${health.latency}ms)` : ""}
-              </span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton
               onClick={() => {
