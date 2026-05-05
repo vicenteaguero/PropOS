@@ -30,6 +30,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@shared/hooks/use-auth";
+import { PaletteSwitcher } from "@shared/components/palette-switcher/palette-switcher";
 import type { UserRole } from "@shared/types/auth";
 
 export interface SidebarNavItem {
@@ -82,7 +83,7 @@ export function getNavItemsForRole(role: UserRole): SidebarNavItem[] {
 
 export function AppSidebar() {
   const { user, signOut } = useAuth();
-  const { state, setOpenMobile, isMobile } = useSidebar();
+  const { setOpenMobile, isMobile } = useSidebar();
 
   if (!user) return null;
 
@@ -92,7 +93,7 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarHeader className="flex-row items-center gap-3 px-4 py-4">
         <img
-          src={state === "expanded" ? "/logo.png" : "/icon.svg"}
+          src="/icon.svg"
           alt="PropOS"
           className="size-8 md:size-10 shrink-0 rounded-lg ring-2 ring-primary/20 shadow-lg shadow-primary/10"
         />
@@ -133,6 +134,9 @@ export function AppSidebar() {
       <SidebarSeparator />
       <SidebarFooter className="pb-4">
         <SidebarMenu>
+          <SidebarMenuItem>
+            <PaletteSwitcher />
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton
               onClick={() => {
