@@ -61,6 +61,7 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onPdfReady: (pdfBytes: Uint8Array, sources: SourceShot[]) => void;
+  initialShots?: SourceShot[];
 }
 
 interface Shot {
@@ -80,17 +81,29 @@ type Drag =
   | { kind: "corner"; corner: Corner }
   | { kind: "side"; side: Side; last: { x: number; y: number } };
 
-export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props) {
+export function CameraCaptureDocument({ open, onOpenChange, onPdfReady, initialShots }: Props) {
   // ---------- camera stream ----------
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [fallback, setFallback] = useState(false);
 
   // ---------- shots ----------
-  const [shots, setShots] = useState<Shot[]>([]);
-  const [activeId, setActiveId] = useState<string | null>(null);
+  const initialShotState = useMemo(
+    () =>
+      (initialShots ?? []).map((s) => ({
+        id: crypto.randomUUID(),
+        raw: s.raw,
+        bitmap: null as ImageBitmap | null,
+        edit: s.edit,
+      })),
+    [initialShots],
+  );
+  const [shots, setShots] = useState<Shot[]>(initialShotState);
+  const [activeId, setActiveId] = useState<string | null>(
+    initialShotState.length > 0 ? initialShotState[0]!.id : null,
+  );
   const [busy, setBusy] = useState(false);
-  const [mode, setMode] = useState<Mode>("capture");
+  const [mode, setMode] = useState<Mode>(initialShotState.length > 0 ? "edit" : "capture");
 
   // ---------- canvas / drag ----------
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -799,6 +812,7 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props)
               value={activeShot?.edit?.filter ?? "none"}
               onChange={setFilter}
               disabled={busy || !activeShot?.bitmap}
+              bitmap={activeShot?.bitmap ?? null}
             />
           </div>
           <div>
@@ -1018,14 +1032,58 @@ interface FilterCardsProps {
   value: FilterMode;
   onChange: (m: FilterMode) => void;
   disabled?: boolean;
+  bitmap?: ImageBitmap | null;
 }
 
-function FilterCards({ value, onChange, disabled }: FilterCardsProps) {
+function FilterCards({ value, onChange, disabled, bitmap }: FilterCardsProps) {
   const items: { mode: FilterMode; label: string; Icon: typeof Ban }[] = [
     { mode: "none", label: "Sin filtro", Icon: Ban },
     { mode: "bw", label: "B&N", Icon: Type },
     { mode: "enhance", label: "Mejorar", Icon: Sparkles },
   ];
+  const [previews, setPreviews] = useState<Record<FilterMode, string | null>>({
+    none: null,
+    bw: null,
+    enhance: null,
+  });
+
+  useEffect(() => {
+    if (!bitmap) {
+      setPreviews({ none: null, bw: null, enhance: null });
+      return;
+    }
+    let cancelled = false;
+    const urls: string[] = [];
+    (async () => {
+      const max = 96;
+      const scale = Math.min(1, max / Math.max(bitmap.width, bitmap.height));
+      const w = Math.max(1, Math.round(bitmap.width * scale));
+      const h = Math.max(1, Math.round(bitmap.height * scale));
+      const next: Record<FilterMode, string | null> = { none: null, bw: null, enhance: null };
+      for (const m of ["none", "bw", "enhance"] as FilterMode[]) {
+        const base = document.createElement("canvas");
+        base.width = w;
+        base.height = h;
+        const bctx = base.getContext("2d");
+        if (!bctx) continue;
+        bctx.drawImage(bitmap, 0, 0, w, h);
+        const out = await applyFilter(base, m);
+        const blob = await new Promise<Blob | null>((res) =>
+          out.toBlob((b) => res(b), "image/jpeg", 0.7),
+        );
+        if (!blob) continue;
+        const url = URL.createObjectURL(blob);
+        urls.push(url);
+        next[m] = url;
+      }
+      if (!cancelled) setPreviews(next);
+    })();
+    return () => {
+      cancelled = true;
+      urls.forEach((u) => URL.revokeObjectURL(u));
+    };
+  }, [bitmap]);
+
   return (
     <div className="flex gap-2">
       {items.map(({ mode, label, Icon }) => (
@@ -1035,14 +1093,18 @@ function FilterCards({ value, onChange, disabled }: FilterCardsProps) {
           disabled={disabled}
           onClick={() => onChange(mode)}
           className={cn(
-            "flex flex-1 flex-col items-center gap-1 rounded-md border bg-background p-3 text-xs transition",
+            "flex flex-1 flex-col items-center gap-1 rounded-md border bg-background p-2 text-xs transition",
             value === mode
               ? "border-primary ring-2 ring-primary/40"
               : "border-border text-muted-foreground hover:text-foreground",
             disabled && "pointer-events-none opacity-50",
           )}
         >
-          <Icon className="size-5" />
+          {previews[mode] ? (
+            <img src={previews[mode]!} alt={label} className="h-12 w-12 rounded object-cover" />
+          ) : (
+            <Icon className="size-5" />
+          )}
           <span>{label}</span>
         </button>
       ))}
