@@ -31,7 +31,11 @@ import { PageLayout } from "@shared/components/page-layout";
 import { useAuth } from "@shared/hooks/use-auth";
 import { useAddVersion, useDeleteDocument, useDocument } from "../hooks/use-documents";
 import { documentsApi } from "../api/documents-api";
-import { CameraCaptureDocument, type SourceShot } from "../components/camera-capture-document";
+import {
+  CameraCaptureDocument,
+  type BezierControls,
+  type SourceShot,
+} from "../components/camera-capture-document";
 import type { Quad, FilterMode } from "../services/scanner/types";
 import { useDocumentBlob } from "../hooks/use-document-blob";
 import { DocumentPreview } from "../components/document-preview";
@@ -78,7 +82,11 @@ export function DocumentDetailPage() {
         const res = await fetch(urls[i]!);
         if (!res.ok) throw new Error(`No se pudo descargar la imagen ${i + 1}`);
         const raw = await res.blob();
-        const state = (edit_states[i] ?? {}) as { quad?: Quad; filter?: FilterMode };
+        const state = (edit_states[i] ?? {}) as {
+          quad?: Quad;
+          filter?: FilterMode;
+          bezierControls?: BezierControls;
+        };
         shots.push({
           raw,
           edit: {
@@ -89,6 +97,7 @@ export function DocumentDetailPage() {
               { x: 0, y: 1 },
             ],
             filter: state.filter ?? "none",
+            bezierControls: state.bezierControls,
           },
         });
       }
@@ -108,7 +117,11 @@ export function DocumentDetailPage() {
       await addVersion.mutateAsync({
         file,
         sourceImages: sources.map((s) => s.raw),
-        sourceEditStates: sources.map((s) => ({ quad: s.edit.quad, filter: s.edit.filter })),
+        sourceEditStates: sources.map((s) => ({
+          quad: s.edit.quad,
+          filter: s.edit.filter,
+          bezierControls: s.edit.bezierControls,
+        })),
       });
       toast.success("Nueva versión guardada");
     } catch (e) {
