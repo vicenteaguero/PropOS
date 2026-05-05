@@ -1,23 +1,18 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { toast } from "sonner";
-import { Plus, Folder, Settings } from "lucide-react";
+import { Folder, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageLayout } from "@shared/components/page-layout";
 import { PageHeader } from "@shared/components/page-header";
 import { SearchInput } from "@shared/components/search-input/search-input";
-import { LoadingSpinner } from "@shared/components/loading-spinner/loading-spinner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useAuth } from "@shared/hooks/use-auth";
 import { ViewModeToggle } from "../components/view-mode-toggle";
 import { DocumentsGrid } from "../components/documents-grid";
 import { DocumentsList } from "../components/documents-list";
-import { UploadDropzone } from "../components/upload-dropzone";
 import { FastAddFab } from "../components/fast-add-fab";
-import { useCreateDocument, useDocuments } from "../hooks/use-documents";
+import { useDocuments } from "../hooks/use-documents";
 import type { DocumentItem, ViewMode } from "../types";
 
 const VIEW_MODE_KEY = "documents:view-mode";
@@ -34,8 +29,6 @@ export function DocumentsPage() {
   const role = user?.role.toLowerCase() ?? "agent";
 
   const [viewMode, setViewMode] = useState<ViewMode>(loadViewMode);
-  const [uploadOpen, setUploadOpen] = useState(false);
-  const [uploading, setUploading] = useState(false);
 
   const q = params.get("q") ?? "";
   const contactId = params.get("contact_id") ?? undefined;
@@ -48,7 +41,6 @@ export function DocumentsPage() {
     areaId,
     q: q || undefined,
   });
-  const createMutation = useCreateDocument();
 
   const setViewModePersist = (mode: ViewMode) => {
     setViewMode(mode);
@@ -66,21 +58,6 @@ export function DocumentsPage() {
     navigate(`/${role}/documents/${doc.id}`);
   };
 
-  const handleUpload = async (file: File) => {
-    setUploading(true);
-    try {
-      const displayName = file.name.replace(/\.[^/.]+$/, "");
-      const doc = await createMutation.mutateAsync({ file, displayName });
-      toast.success("Documento subido");
-      setUploadOpen(false);
-      navigate(`/${role}/documents/${doc.id}`);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Error al subir");
-    } finally {
-      setUploading(false);
-    }
-  };
-
   return (
     <PageLayout width="xl">
       <PageHeader
@@ -94,9 +71,6 @@ export function DocumentsPage() {
               onClick={() => navigate(`/${role}/documents/portals`)}
             >
               <Folder className="size-4" /> Enlaces de subida
-            </Button>
-            <Button size="sm" onClick={() => setUploadOpen(true)}>
-              <Plus className="size-4" /> Nuevo
             </Button>
           </div>
         }
@@ -125,8 +99,14 @@ export function DocumentsPage() {
       )}
 
       {isLoading && (
-        <div className="flex justify-center py-12">
-          <LoadingSpinner size="lg" />
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+          {Array.from({ length: 12 }).map((_, i) => (
+            <div key={i} className="space-y-3">
+              <Skeleton className="aspect-[3/4] w-full rounded-md" />
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-3 w-1/2" />
+            </div>
+          ))}
         </div>
       )}
 
@@ -139,9 +119,7 @@ export function DocumentsPage() {
       {!isLoading && !error && data && data.length === 0 && (
         <EmptyState
           title="Sin documentos"
-          description="Sube tu primer documento PDF, DOCX o imagen para empezar."
-          actionLabel="Nuevo documento"
-          onAction={() => setUploadOpen(true)}
+          description="Usá el botón flotante para escanear con la cámara o subir un archivo."
         />
       )}
 
@@ -155,27 +133,6 @@ export function DocumentsPage() {
         ))}
 
       <FastAddFab />
-
-      <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Subir documento</DialogTitle>
-          </DialogHeader>
-          <UploadDropzone onFile={handleUpload} disabled={uploading} />
-          {uploading && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <LoadingSpinner /> Subiendo...
-            </div>
-          )}
-          <div className="space-y-2 text-xs text-muted-foreground">
-            <Label>Nota</Label>
-            <Input
-              readOnly
-              value="El nombre del archivo se usará como título inicial. Puedes editarlo después."
-            />
-          </div>
-        </DialogContent>
-      </Dialog>
     </PageLayout>
   );
 }
