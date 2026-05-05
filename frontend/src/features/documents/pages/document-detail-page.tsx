@@ -20,7 +20,10 @@ import { Badge } from "@/components/ui/badge";
 import { LoadingSpinner } from "@shared/components/loading-spinner/loading-spinner";
 import { PageLayout } from "@shared/components/page-layout";
 import { useAuth } from "@shared/hooks/use-auth";
-import { useDeleteDocument, useDocument } from "../hooks/use-documents";
+import { useAddVersion, useDeleteDocument, useDocument } from "../hooks/use-documents";
+import { documentsApi } from "../api/documents-api";
+import { CameraCaptureDocument, type SourceShot } from "../components/camera-capture-document";
+import type { Quad, FilterMode } from "../services/scanner/types";
 import { useDocumentBlob } from "../hooks/use-document-blob";
 import { DocumentPreview } from "../components/document-preview";
 import { IntegrityWarning } from "../components/integrity-warning";
@@ -49,6 +52,56 @@ export function DocumentDetailPage() {
   const [shareViaOpen, setShareViaOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [scannerShots, setScannerShots] = useState<SourceShot[] | null>(null);
+  const addVersion = useAddVersion(id ?? "");
+
+  const hasSourceImages = !!currentVersion?.source_image_paths?.length;
+
+  const openScannerReedit = async () => {
+    if (!doc || !currentVersion?.id) return;
+    try {
+      const { urls, edit_states } = await documentsApi.getSourceImages(doc.id, currentVersion.id);
+      const shots: SourceShot[] = [];
+      for (let i = 0; i < urls.length; i++) {
+        const res = await fetch(urls[i]!);
+        if (!res.ok) throw new Error(`No se pudo descargar la imagen ${i + 1}`);
+        const raw = await res.blob();
+        const state = (edit_states[i] ?? {}) as { quad?: Quad; filter?: FilterMode };
+        shots.push({
+          raw,
+          edit: {
+            quad: state.quad ?? [
+              { x: 0, y: 0 },
+              { x: 1, y: 0 },
+              { x: 1, y: 1 },
+              { x: 0, y: 1 },
+            ],
+            filter: state.filter ?? "none",
+          },
+        });
+      }
+      setScannerShots(shots);
+      setScannerOpen(true);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error cargando páginas");
+    }
+  };
+
+  const handleScannerPdf = async (bytes: Uint8Array, sources: SourceShot[]) => {
+    if (!doc) return;
+    try {
+      const file = new File([bytes], `escaneo-${Date.now()}.pdf`, { type: "application/pdf" });
+      await addVersion.mutateAsync({
+        file,
+        sourceImages: sources.map((s) => s.raw),
+        sourceEditStates: sources.map((s) => ({ quad: s.edit.quad, filter: s.edit.filter })),
+      });
+      toast.success("Nueva versión guardada");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error guardando versión");
+    }
+  };
 
   const downloadName = useMemo(() => {
     const base = currentVersion?.download_filename || doc?.display_name || "documento";
@@ -185,8 +238,14 @@ export function DocumentDetailPage() {
         <Button size="sm" variant="ghost" disabled title="Próximamente">
           <PenSquare className="size-4" /> Firmar
         </Button>
-        <Button size="sm" variant="ghost" disabled title="Próximamente">
-          <Camera className="size-4" /> Escanear
+        <Button
+          size="sm"
+          variant={hasSourceImages ? "secondary" : "ghost"}
+          disabled={!hasSourceImages}
+          onClick={openScannerReedit}
+          title={hasSourceImages ? "Recortar páginas originales" : "Sin escaneo original"}
+        >
+          <Camera className="size-4" /> Recortar
         </Button>
         <Button
           size="sm"
@@ -300,6 +359,21 @@ export function DocumentDetailPage() {
           }
         }}
       />
+      {scannerOpen && scannerShots && (
+        <CameraCaptureDocument
+          open={scannerOpen}
+          onOpenChange={(o) => {
+            setScannerOpen(o);
+            if (!o) setScannerShots(null);
+          }}
+          initialShots={scannerShots}
+          onPdfReady={(bytes, sources) => {
+            setScannerOpen(false);
+            setScannerShots(null);
+            void handleScannerPdf(bytes, sources);
+          }}
+        />
+      )}
     </PageLayout>
   );
 }
