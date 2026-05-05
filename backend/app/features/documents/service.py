@@ -91,6 +91,12 @@ class DocumentService:
             .execute()
             .data
         )
+        # Hydrate signed URLs for any version that has source images, so the
+        # FE can re-open the scanner editor without a follow-up round-trip.
+        for v in versions:
+            paths = v.get("source_image_paths") or []
+            if paths:
+                v["source_image_urls"] = [storage.signed_url(p) for p in paths]
         doc["versions"] = versions
         doc["assignments"] = assignments
         doc["current_version"] = next(
@@ -111,6 +117,8 @@ class DocumentService:
         download_filename: str | None = None,
         edit_metadata: dict | None = None,
         source_raw_path: str | None = None,
+        source_images: list[tuple[bytes, str | None]] | None = None,
+        source_edit_states: list[dict] | None = None,
     ) -> dict:
         mime = validate_upload(content, declared_mime)
         kind = kind_from_mime(mime)
@@ -169,6 +177,29 @@ class DocumentService:
         if source_raw_path is not None:
             version_payload["source_raw_path"] = source_raw_path
 
+        # Upload original camera shots (one per page) if provided.
+        source_paths: list[str] = []
+        if source_images:
+            for i, (img_content, img_mime) in enumerate(source_images):
+                effective_mime = img_mime or "image/jpeg"
+                ext_i = storage.ext_for_mime(effective_mime)
+                path_i = storage.source_image_path(str(tenant_id), document_id, 1, i, ext_i)
+                try:
+                    storage.upload_object(path_i, img_content, effective_mime)
+                    source_paths.append(path_i)
+                except Exception:
+                    # Cleanup any uploaded so far + main blobs, then bubble up.
+                    for p in source_paths + [raw, norm]:
+                        try:
+                            storage.delete_object(p)
+                        except Exception:
+                            logger.error("orphan cleanup failed", path=p)
+                    raise
+        if source_paths:
+            version_payload["source_image_paths"] = source_paths
+        if source_edit_states is not None:
+            version_payload["source_edit_states"] = source_edit_states
+
         try:
             client.table(DOCUMENTS_TABLE).insert(doc_payload).execute()
             version_row = client.table(VERSIONS_TABLE).insert(version_payload).execute().data[0]
@@ -177,7 +208,7 @@ class DocumentService:
             ).execute()
         except Exception:
             # Cleanup orphaned blobs si falla DB insert
-            for path in (raw, norm):
+            for path in (raw, norm, *source_paths):
                 try:
                     storage.delete_object(path)
                 except Exception:
@@ -198,6 +229,8 @@ class DocumentService:
         download_filename: str | None = None,
         edit_metadata: dict | None = None,
         source_version_id: UUID | None = None,
+        source_images: list[tuple[bytes, str | None]] | None = None,
+        source_edit_states: list[dict] | None = None,
     ) -> dict:
         client = get_supabase_client()
         doc_resp = (
@@ -293,13 +326,36 @@ class DocumentService:
             )
             if source:
                 version_payload["source_raw_path"] = source["raw_path"]
+
+        # Upload original camera shots if provided.
+        source_paths: list[str] = []
+        if source_images:
+            for i, (img_content, img_mime) in enumerate(source_images):
+                effective_mime = img_mime or "image/jpeg"
+                ext_i = storage.ext_for_mime(effective_mime)
+                path_i = storage.source_image_path(str(tenant_id), str(document_id), next_number, i, ext_i)
+                try:
+                    storage.upload_object(path_i, img_content, effective_mime)
+                    source_paths.append(path_i)
+                except Exception:
+                    for p in source_paths + [raw, norm]:
+                        try:
+                            storage.delete_object(p)
+                        except Exception:
+                            logger.error("orphan cleanup failed", path=p)
+                    raise
+        if source_paths:
+            version_payload["source_image_paths"] = source_paths
+        if source_edit_states is not None:
+            version_payload["source_edit_states"] = source_edit_states
+
         try:
             version_row = client.table(VERSIONS_TABLE).insert(version_payload).execute().data[0]
             client.table(DOCUMENTS_TABLE).update({"current_version_id": version_row["id"]}).eq(
                 "id", str(document_id)
             ).execute()
         except Exception:
-            for path in (raw, norm):
+            for path in (raw, norm, *source_paths):
                 try:
                     storage.delete_object(path)
                 except Exception:
@@ -413,6 +469,28 @@ class DocumentService:
             .eq("tenant_id", str(tenant_id))
             .execute()
         )
+
+    @staticmethod
+    async def get_source_images(
+        version_id: UUID,
+        tenant_id: UUID,
+        expires_in: int = 3600,
+    ) -> dict:
+        client = get_supabase_client()
+        version = (
+            client.table(VERSIONS_TABLE)
+            .select("source_image_paths, source_edit_states")
+            .eq("id", str(version_id))
+            .eq("tenant_id", str(tenant_id))
+            .single()
+            .execute()
+            .data
+        )
+        if not version:
+            raise HTTPException(status_code=404, detail="Version not found")
+        paths = version.get("source_image_paths") or []
+        urls = [storage.signed_url(p, expires_in) for p in paths]
+        return {"urls": urls, "edit_states": version.get("source_edit_states") or []}
 
     @staticmethod
     async def get_version_signed_url(version_id: UUID, tenant_id: UUID, expires_in: int = 3600) -> tuple[str, dict]:
