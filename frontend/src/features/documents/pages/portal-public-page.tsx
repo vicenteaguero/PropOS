@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LoadingSpinner } from "@shared/components/loading-spinner/loading-spinner";
+import { PageLayout } from "@shared/components/page-layout";
 import { portalsApi, type PublicPortalView } from "../api/portals-api";
 import { validateFile } from "../services/file-validation";
 
@@ -73,26 +74,28 @@ export function PortalPublicPage() {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        <LoadingSpinner size="lg" />
-      </div>
+      <PageLayout width="sm" centered>
+        <div className="flex justify-center">
+          <LoadingSpinner size="lg" />
+        </div>
+      </PageLayout>
     );
   }
 
   if (error || !view) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-4">
-        <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-6 text-sm text-destructive">
+      <PageLayout width="sm" centered>
+        <div className="mx-auto max-w-md rounded-lg border border-destructive/40 bg-destructive/10 p-6 text-sm text-destructive">
           {error ?? "Enlace no disponible"}
         </div>
-      </div>
+      </PageLayout>
     );
   }
 
   if (done) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-4">
-        <div className="w-full max-w-md space-y-4 rounded-lg border border-border bg-card p-6 text-center">
+      <PageLayout width="sm" centered>
+        <div className="mx-auto w-full max-w-md space-y-4 rounded-lg border border-border bg-card p-6 text-center">
           <Check className="mx-auto size-12 text-success" />
           <h2 className="text-lg font-semibold">Documento recibido</h2>
           <p className="text-sm text-muted-foreground">
@@ -111,13 +114,13 @@ export function PortalPublicPage() {
             Subir otro
           </Button>
         </div>
-      </div>
+      </PageLayout>
     );
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <div className="w-full max-w-md space-y-4 rounded-lg border border-border bg-card p-6">
+    <PageLayout width="sm" centered>
+      <div className="mx-auto w-full max-w-md space-y-4 rounded-lg border border-border bg-card p-6">
         <div>
           <h1 className="text-lg font-semibold">{view.title}</h1>
           {view.description && <p className="text-sm text-muted-foreground">{view.description}</p>}
@@ -167,6 +170,6 @@ export function PortalPublicPage() {
           <Upload className="size-4" /> {busy ? "Subiendo..." : "Subir documento"}
         </Button>
       </div>
-    </div>
+    </PageLayout>
   );
 }
