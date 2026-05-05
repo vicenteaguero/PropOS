@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -62,12 +63,14 @@ export function DocumentDetailPage() {
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scannerShots, setScannerShots] = useState<SourceShot[] | null>(null);
+  const [scannerLoading, setScannerLoading] = useState(false);
   const addVersion = useAddVersion(id ?? "");
 
   const hasSourceImages = !!currentVersion?.source_image_paths?.length;
 
   const openScannerReedit = async () => {
     if (!doc || !currentVersion?.id) return;
+    setScannerLoading(true);
     try {
       const { urls, edit_states } = await documentsApi.getSourceImages(doc.id, currentVersion.id);
       const shots: SourceShot[] = [];
@@ -93,6 +96,8 @@ export function DocumentDetailPage() {
       setScannerOpen(true);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error cargando páginas");
+    } finally {
+      setScannerLoading(false);
     }
   };
 
@@ -226,8 +231,14 @@ export function DocumentDetailPage() {
           <Download className="size-4" /> Descargar
         </Button>
         {hasSourceImages ? (
-          <Button size="sm" variant="secondary" onClick={openScannerReedit}>
-            <Camera className="size-4" /> Recortar
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={openScannerReedit}
+            disabled={scannerLoading}
+          >
+            <Camera className={cn("size-4", scannerLoading && "animate-pulse")} />
+            {scannerLoading ? "Cargando…" : "Recortar"}
           </Button>
         ) : null}
         <Button size="sm" variant="secondary" onClick={goEditor}>

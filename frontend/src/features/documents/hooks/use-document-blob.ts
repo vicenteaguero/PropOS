@@ -30,7 +30,7 @@ export function useDocumentBlob(
     }
     let cancelled = false;
     setState((s) => ({ ...s, loading: true, error: null }));
-    (async () => {
+    const attempt = async (retries: number): Promise<void> => {
       try {
         const { url } = await documentsApi.versionDownloadUrl(documentId, version.id);
         const result: CachedRead = await readDocument({
@@ -40,27 +40,36 @@ export function useDocumentBlob(
           mimeType: version.mime_type,
           signedUrl: url,
         });
-        if (!cancelled) {
-          setState({
-            loading: false,
-            error: null,
-            blob: result.blob,
-            source: result.source,
-            integrityOk: result.integrityOk,
-          });
-        }
+        if (cancelled) return;
+        setState({
+          loading: false,
+          error: null,
+          blob: result.blob,
+          source: result.source,
+          integrityOk: result.integrityOk,
+        });
       } catch (e) {
-        if (!cancelled) {
-          setState({
-            loading: false,
-            error: e instanceof Error ? e.message : "Error",
-            blob: null,
-            source: null,
-            integrityOk: true,
-          });
+        if (cancelled) return;
+        // Storage may take a moment to make a freshly-uploaded object readable
+        // through a signed URL. Retry a couple of times before surfacing the
+        // error so the user doesn't see a phantom "No se pudo cargar" right
+        // after creating a document.
+        if (retries > 0) {
+          setTimeout(() => {
+            if (!cancelled) void attempt(retries - 1);
+          }, 1500);
+          return;
         }
+        setState({
+          loading: false,
+          error: e instanceof Error ? e.message : "Error",
+          blob: null,
+          source: null,
+          integrityOk: true,
+        });
       }
-    })();
+    };
+    void attempt(2);
     return () => {
       cancelled = true;
     };

@@ -217,24 +217,30 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady, initialS
   }, [mode, activeShot]);
 
   // ---------- filtered preview cache ----------
+  // Key includes shotId so two shots with the same dimensions don't share a
+  // stale canvas. Without this, switching shots would briefly show the wrong
+  // image while the new preview built.
   const previewRef = useRef<{ key: string; canvas: HTMLCanvasElement } | null>(null);
-  const buildPreview = useCallback(async (bitmap: ImageBitmap, filter: FilterMode) => {
-    const key = `${bitmap.width}x${bitmap.height}:${filter}`;
-    if (previewRef.current?.key === key) return previewRef.current.canvas;
-    const max = 900;
-    const scale = Math.min(1, max / Math.max(bitmap.width, bitmap.height));
-    const w = Math.round(bitmap.width * scale);
-    const h = Math.round(bitmap.height * scale);
-    const base = document.createElement("canvas");
-    base.width = w;
-    base.height = h;
-    const bctx = base.getContext("2d");
-    if (!bctx) throw new Error("2d ctx");
-    bctx.drawImage(bitmap, 0, 0, w, h);
-    const out = await applyFilter(base, filter);
-    previewRef.current = { key, canvas: out };
-    return out;
-  }, []);
+  const buildPreview = useCallback(
+    async (shotId: string, bitmap: ImageBitmap, filter: FilterMode) => {
+      const key = `${shotId}:${bitmap.width}x${bitmap.height}:${filter}`;
+      if (previewRef.current?.key === key) return previewRef.current.canvas;
+      const max = 900;
+      const scale = Math.min(1, max / Math.max(bitmap.width, bitmap.height));
+      const w = Math.round(bitmap.width * scale);
+      const h = Math.round(bitmap.height * scale);
+      const base = document.createElement("canvas");
+      base.width = w;
+      base.height = h;
+      const bctx = base.getContext("2d");
+      if (!bctx) throw new Error("2d ctx");
+      bctx.drawImage(bitmap, 0, 0, w, h);
+      const out = await applyFilter(base, filter);
+      previewRef.current = { key, canvas: out };
+      return out;
+    },
+    [],
+  );
 
   // ---------- redraw ----------
   const redraw = useCallback(async () => {
@@ -264,7 +270,7 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady, initialS
     const drawX = (cw - drawW) / 2;
     const drawY = (ch - drawH) / 2;
 
-    const preview = await buildPreview(bitmap, edit.filter);
+    const preview = await buildPreview(activeShot!.id, bitmap, edit.filter);
     ctx.drawImage(preview, drawX, drawY, drawW, drawH);
 
     const toScreen = (p: { x: number; y: number }) => ({
@@ -318,6 +324,13 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady, initialS
     const mag = magRef.current;
     const bitmap = activeShot?.bitmap;
     if (!mag || !bitmap || !magnifier || !layout) return;
+    // After rotate, bitmap dims swap but `layout` is still from the prior
+    // render. Skip this frame so the magnifier doesn't sample with stale
+    // coordinates — redraw will run next tick and the next pointer move
+    // re-renders the lens correctly.
+    const layoutAspect = layout.drawW / layout.drawH;
+    const bitmapAspect = bitmap.width / bitmap.height;
+    if (Math.abs(layoutAspect - bitmapAspect) > 0.05) return;
     const ctx = mag.getContext("2d");
     if (!ctx) return;
     const dpr = window.devicePixelRatio || 1;
