@@ -35,7 +35,7 @@ def _build_payload(intent: str, resolved: ResolvedFields) -> dict[str, Any]:
     spec = get_intent_spec(intent)
     if spec is not None:
         whitelist = set(spec.required) | set(spec.optional) | {n for n, _ in spec.detailed}
-        whitelist |= {"summary", "summary_es"}  # always allowed
+        whitelist |= {"summary", "summary_es"}
         for k in list(extras):
             if k in whitelist and not _is_falsy(extras[k]):
                 payload[k] = extras.pop(k)
