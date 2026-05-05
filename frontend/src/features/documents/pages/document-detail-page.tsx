@@ -3,20 +3,28 @@ import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
   ArrowLeft,
+  Camera,
+  Cpu,
   Download,
   FileQuestion,
   History,
+  Link as LinkIcon,
+  MoreHorizontal,
   Pencil,
+  PenSquare,
+  ScanText,
   Share2,
   Trash2,
-  Link as LinkIcon,
-  Camera,
-  Cpu,
-  ScanText,
-  PenSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { LoadingSpinner } from "@shared/components/loading-spinner/loading-spinner";
 import { PageLayout } from "@shared/components/page-layout";
 import { useAuth } from "@shared/hooks/use-auth";
@@ -213,48 +221,52 @@ export function DocumentDetailPage() {
         </div>
       </div>
 
-      <div className="mb-3 flex flex-wrap gap-2">
-        <Button size="sm" variant="secondary" onClick={downloadCurrent} disabled={!blobState.blob}>
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <Button size="sm" onClick={downloadCurrent} disabled={!blobState.blob}>
           <Download className="size-4" /> Descargar
         </Button>
+        {hasSourceImages ? (
+          <Button size="sm" variant="secondary" onClick={openScannerReedit}>
+            <Camera className="size-4" /> Recortar
+          </Button>
+        ) : null}
         <Button size="sm" variant="secondary" onClick={goEditor}>
           <Pencil className="size-4" /> Editar
-        </Button>
-        <Button size="sm" variant="secondary" onClick={() => setShareLinkOpen(true)}>
-          <LinkIcon className="size-4" /> Shortlink
         </Button>
         <Button size="sm" variant="secondary" onClick={() => setShareViaOpen(true)}>
           <Share2 className="size-4" /> Compartir
         </Button>
-        <Button size="sm" variant="secondary" onClick={() => setHistoryOpen(true)}>
+        <Button size="sm" variant="ghost" onClick={() => setHistoryOpen(true)}>
           <History className="size-4" /> Versiones
         </Button>
-        <Button size="sm" variant="ghost" disabled title="Próximamente">
-          <ScanText className="size-4" /> OCR
-        </Button>
-        <Button size="sm" variant="ghost" disabled title="Próximamente">
-          <Cpu className="size-4" /> Analizar IA
-        </Button>
-        <Button size="sm" variant="ghost" disabled title="Próximamente">
-          <PenSquare className="size-4" /> Firmar
-        </Button>
-        <Button
-          size="sm"
-          variant={hasSourceImages ? "secondary" : "ghost"}
-          disabled={!hasSourceImages}
-          onClick={openScannerReedit}
-          title={hasSourceImages ? "Recortar páginas originales" : "Sin escaneo original"}
-        >
-          <Camera className="size-4" /> Recortar
-        </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          className="text-destructive"
-          onClick={() => setDeleteOpen(true)}
-        >
-          <Trash2 className="size-4" /> Eliminar
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="sm" variant="ghost" aria-label="Más acciones">
+              <MoreHorizontal className="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="min-w-48">
+            <DropdownMenuItem onClick={() => setShareLinkOpen(true)}>
+              <LinkIcon className="size-4" /> Shortlink
+            </DropdownMenuItem>
+            <DropdownMenuItem disabled>
+              <ScanText className="size-4" /> OCR · Próximamente
+            </DropdownMenuItem>
+            <DropdownMenuItem disabled>
+              <Cpu className="size-4" /> Analizar IA · Próximamente
+            </DropdownMenuItem>
+            <DropdownMenuItem disabled>
+              <PenSquare className="size-4" /> Firmar · Próximamente
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+              onClick={() => setDeleteOpen(true)}
+            >
+              <Trash2 className="size-4" /> Eliminar
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {!blobState.integrityOk && (
@@ -263,18 +275,20 @@ export function DocumentDetailPage() {
         </div>
       )}
 
-      <div className="grid gap-6 md:grid-cols-[2fr_1fr]">
-        <div className="rounded-lg border border-border bg-card p-3">
+      <div className="grid gap-4 lg:grid-cols-[3fr_1fr]">
+        <div className="overflow-hidden rounded-lg bg-card/40">
           <DocumentPreview
             blob={blobState.blob}
             mimeType={currentVersion?.mime_type}
             loading={blobState.loading}
           />
         </div>
-        <aside className="space-y-4">
+        <aside className="space-y-5">
           <section>
             <div className="mb-2 flex items-center justify-between">
-              <h3 className="text-sm font-semibold">Vínculos</h3>
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Vínculos
+              </h3>
               <Button size="sm" variant="ghost" onClick={() => setPickerOpen(true)}>
                 + Vincular
               </Button>
@@ -282,37 +296,24 @@ export function DocumentDetailPage() {
             <AssignmentList documentId={doc.id} assignments={doc.assignments ?? []} />
           </section>
           <section>
-            <h3 className="mb-2 text-sm font-semibold">Información</h3>
-            <dl className="space-y-1 text-xs">
-              <div className="flex justify-between">
-                <dt className="text-muted-foreground">Origen</dt>
-                <dd>{doc.origin}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-muted-foreground">Creado</dt>
-                <dd>{new Date(doc.created_at).toLocaleString()}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-muted-foreground">Actualizado</dt>
-                <dd>{new Date(doc.updated_at).toLocaleString()}</dd>
-              </div>
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Información
+            </h3>
+            <dl className="space-y-1.5 text-xs">
+              <InfoRow label="Origen" value={doc.origin} />
+              <InfoRow label="Creado" value={new Date(doc.created_at).toLocaleString()} />
+              <InfoRow label="Actualizado" value={new Date(doc.updated_at).toLocaleString()} />
               {currentVersion && (
                 <>
-                  <div className="flex justify-between">
-                    <dt className="text-muted-foreground">MIME</dt>
-                    <dd>{currentVersion.mime_type}</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-muted-foreground">Antivirus</dt>
-                    <dd>{currentVersion.scan_status}</dd>
-                  </div>
+                  <InfoRow label="MIME" value={currentVersion.mime_type} />
+                  <InfoRow label="Antivirus" value={currentVersion.scan_status} />
                 </>
               )}
               {blobState.source && (
-                <div className="flex justify-between">
-                  <dt className="text-muted-foreground">Fuente</dt>
-                  <dd>{blobState.source === "cache" ? "caché local" : "red"}</dd>
-                </div>
+                <InfoRow
+                  label="Fuente"
+                  value={blobState.source === "cache" ? "caché local" : "red"}
+                />
               )}
             </dl>
           </section>
@@ -375,5 +376,14 @@ export function DocumentDetailPage() {
         />
       )}
     </PageLayout>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-2">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="truncate text-right font-mono">{value}</dd>
+    </div>
   );
 }
