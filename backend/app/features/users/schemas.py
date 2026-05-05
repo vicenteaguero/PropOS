@@ -19,16 +19,24 @@ class UserBase(BaseModel):
     full_name: str | None = None
     role: UserRole = UserRole.AGENT
     is_active: bool = True
+    email: str | None = None
+    rut: str | None = None
 
 
-class UserCreate(UserBase):
-    pass
+class UserCreate(BaseModel):
+    email: str
+    password: str | None = None
+    full_name: str
+    rut: str | None = None
+    role: UserRole = UserRole.AGENT
+    is_active: bool = True
 
 
 class UserUpdate(BaseModel):
     full_name: str | None = None
     role: UserRole | None = None
     is_active: bool | None = None
+    rut: str | None = None
 
 
 class UserResponse(UserBase):
