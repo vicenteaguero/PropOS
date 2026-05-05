@@ -409,15 +409,10 @@ export function DocumentScannerEditor({
   const filterLabel = filter === "none" ? "Sin filtro" : filter === "bw" ? "B&N" : "Mejorar";
 
   return (
-    <div className="fixed inset-0 z-[60] flex flex-col bg-black text-white">
-      <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+    <div className="fixed inset-0 z-[60] flex flex-col bg-background text-foreground">
+      <div className="flex items-center justify-between border-b border-border/40 bg-card/40 px-4 py-3">
         <div className="text-sm font-medium">Recortar documento</div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => onOpenChange(false)}
-          className="text-white hover:bg-white/10"
-        >
+        <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)}>
           <X className="size-5" />
         </Button>
       </div>
@@ -442,22 +437,19 @@ export function DocumentScannerEditor({
           />
         )}
         {loading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/60 text-sm">
+          <div className="absolute inset-0 flex items-center justify-center bg-background/80 text-sm text-muted-foreground">
             Cargando…
           </div>
         )}
       </div>
 
-      <div className="flex items-center justify-around gap-2 border-t border-white/10 px-3 py-3">
+      <div className="flex items-center justify-around gap-2 border-t border-border/40 bg-card/40 px-3 py-3">
         <Button
           variant="ghost"
           size="sm"
           onClick={cycleFilter}
           disabled={busy || loading}
-          className={cn(
-            "flex flex-col gap-0.5 text-white hover:bg-white/10",
-            filter !== "none" && "text-blue-300",
-          )}
+          className={cn("flex flex-col gap-0.5", filter !== "none" && "text-primary")}
         >
           {filter === "bw" ? <Type className="size-5" /> : <Sparkles className="size-5" />}
           <span className="text-[10px]">{filterLabel}</span>
@@ -467,27 +459,27 @@ export function DocumentScannerEditor({
           size="sm"
           onClick={() => rotate(-90)}
           disabled={busy || loading}
-          className="flex flex-col gap-0.5 text-white hover:bg-white/10"
+          className="flex flex-col gap-0.5"
         >
           <RotateCcw className="size-5" />
-          <span className="text-[10px]">Izq</span>
+          <span className="text-[10px]">Rotar</span>
         </Button>
         <Button
           variant="ghost"
           size="sm"
           onClick={() => rotate(90)}
           disabled={busy || loading}
-          className="flex flex-col gap-0.5 text-white hover:bg-white/10"
+          className="flex flex-col gap-0.5"
         >
           <RotateCw className="size-5" />
-          <span className="text-[10px]">Der</span>
+          <span className="text-[10px]">Rotar</span>
         </Button>
         <Button
           variant="ghost"
           size="sm"
           onClick={flipH}
           disabled={busy || loading}
-          className="flex flex-col gap-0.5 text-white hover:bg-white/10"
+          className="flex flex-col gap-0.5"
         >
           <FlipHorizontal className="size-5" />
           <span className="text-[10px]">Voltear</span>
@@ -497,7 +489,7 @@ export function DocumentScannerEditor({
           size="sm"
           onClick={reDetect}
           disabled={busy || loading}
-          className="flex flex-col gap-0.5 text-white hover:bg-white/10"
+          className="flex flex-col gap-0.5"
         >
           <RefreshCw className="size-5" />
           <span className="text-[10px]">Auto</span>
@@ -507,17 +499,12 @@ export function DocumentScannerEditor({
           size="sm"
           onClick={reset}
           disabled={busy || loading}
-          className="flex flex-col gap-0.5 text-white hover:bg-white/10"
+          className="flex flex-col gap-0.5"
         >
-          <span className="text-xs">↺</span>
+          <span className="text-base leading-none">↺</span>
           <span className="text-[10px]">Reset</span>
         </Button>
-        <Button
-          size="lg"
-          onClick={apply}
-          disabled={busy || loading || !quad}
-          className="bg-blue-500 text-white hover:bg-blue-400"
-        >
+        <Button size="lg" onClick={apply} disabled={busy || loading || !quad}>
           <Check className="size-5" /> Aplicar
         </Button>
       </div>
