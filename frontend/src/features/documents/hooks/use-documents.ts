@@ -35,7 +35,18 @@ export function useCreateDocument() {
       displayName: string;
       origin?: string;
       downloadFilename?: string;
-    }) => documentsApi.create(input.file, input.displayName, input.origin, input.downloadFilename),
+      sourceImages?: Blob[];
+      sourceEditStates?: Record<string, unknown>[];
+    }) =>
+      documentsApi.create(
+        input.file,
+        input.displayName,
+        input.origin,
+        input.downloadFilename,
+        undefined,
+        input.sourceImages,
+        input.sourceEditStates,
+      ),
     onSuccess: () => qc.invalidateQueries({ queryKey: documentsKeys.all }),
   });
 }
@@ -69,12 +80,16 @@ export function useAddVersion(documentId: string) {
       downloadFilename?: string;
       editMetadata?: Record<string, unknown>;
       sourceVersionId?: string;
+      sourceImages?: Blob[];
+      sourceEditStates?: Record<string, unknown>[];
     }) =>
       documentsApi.addVersion(documentId, input.file, {
         notes: input.notes,
         downloadFilename: input.downloadFilename,
         editMetadata: input.editMetadata,
         sourceVersionId: input.sourceVersionId,
+        sourceImages: input.sourceImages,
+        sourceEditStates: input.sourceEditStates,
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: documentsKeys.detail(documentId) });
