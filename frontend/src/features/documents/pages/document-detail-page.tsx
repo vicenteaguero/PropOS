@@ -9,6 +9,7 @@ import {
   FileQuestion,
   History,
   Link as LinkIcon,
+  Loader2,
   MoreHorizontal,
   Pencil,
   PenSquare,
@@ -18,7 +19,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,7 +27,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LoadingSpinner } from "@shared/components/loading-spinner/loading-spinner";
 import { PageLayout } from "@shared/components/page-layout";
 import { useAuth } from "@shared/hooks/use-auth";
 import { useAddVersion, useDeleteDocument, useDocument } from "../hooks/use-documents";
@@ -138,8 +138,33 @@ export function DocumentDetailPage() {
   if (isLoading) {
     return (
       <PageLayout width="lg">
-        <div className="flex min-h-[40vh] justify-center">
-          <LoadingSpinner size="lg" />
+        <div className="mb-4 flex items-center gap-2">
+          <Skeleton className="size-8" />
+          <div className="min-w-0 flex-1 space-y-2">
+            <Skeleton className="h-5 w-2/3" />
+            <Skeleton className="h-3 w-1/2" />
+          </div>
+        </div>
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-8 w-24" />
+          ))}
+        </div>
+        <div className="grid gap-4 lg:grid-cols-[3fr_1fr]">
+          <Skeleton className="h-[60vh] w-full rounded-lg" />
+          <aside className="space-y-5">
+            <section className="space-y-2">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+            </section>
+            <section className="space-y-2">
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="h-3 w-full" />
+              <Skeleton className="h-3 w-5/6" />
+              <Skeleton className="h-3 w-4/6" />
+            </section>
+          </aside>
         </div>
       </PageLayout>
     );
@@ -228,7 +253,12 @@ export function DocumentDetailPage() {
 
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <Button size="sm" onClick={downloadCurrent} disabled={!blobState.blob}>
-          <Download className="size-4" /> Descargar
+          {blobState.loading && !blobState.blob ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <Download className="size-4" />
+          )}{" "}
+          Descargar
         </Button>
         {hasSourceImages ? (
           <Button
@@ -237,7 +267,11 @@ export function DocumentDetailPage() {
             onClick={openScannerReedit}
             disabled={scannerLoading}
           >
-            <Camera className={cn("size-4", scannerLoading && "animate-pulse")} />
+            {scannerLoading ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Camera className="size-4" />
+            )}
             {scannerLoading ? "Cargando…" : "Recortar"}
           </Button>
         ) : null}
@@ -379,10 +413,11 @@ export function DocumentDetailPage() {
             if (!o) setScannerShots(null);
           }}
           initialShots={scannerShots}
-          onPdfReady={(bytes, sources) => {
+          showFinalizeOverlay={false}
+          onPdfReady={async (bytes, sources) => {
+            await handleScannerPdf(bytes, sources);
             setScannerOpen(false);
             setScannerShots(null);
-            void handleScannerPdf(bytes, sources);
           }}
         />
       )}
