@@ -60,7 +60,10 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
-/* PropOS is always dark — dark palette in :root */
+/* PropOS is always dark — dark palette in :root.
+ * Multi-palette support: <html data-palette="default|anthropic|slate">.
+ * Default values live on :root; alternate palettes override under [data-palette="..."].
+ */
 :root {
   /* Header height — single source of truth, consumed by full-bleed pages (anita chat, etc.) */
   --app-header-h: 3.5rem;
@@ -102,6 +105,78 @@
   --sidebar-accent-foreground: #F9F6F4;
   --sidebar-border: rgba(158, 158, 158, 0.2);
   --sidebar-ring: #D4919B;
+}
+
+/* Anthropic-inspired palette — ink background, terracotta primary, cream foreground (dark mode) */
+[data-palette="anthropic"] {
+  --background: #191919;
+  --foreground: #F5F4EE;
+  --card: #1F1F1F;
+  --card-foreground: #F5F4EE;
+  --popover: #1F1F1F;
+  --popover-foreground: #F5F4EE;
+  --primary: #CC785C;
+  --primary-foreground: #191919;
+  --secondary: #2A2724;
+  --secondary-foreground: #F5F4EE;
+  --muted: #2A2724;
+  --muted-foreground: #B7B2A6;
+  --accent: #E8E4D8;
+  --accent-foreground: #191919;
+  --destructive: #ef4444;
+  --destructive-foreground: #F5F4EE;
+  --border: rgba(245, 244, 238, 0.12);
+  --input: rgba(245, 244, 238, 0.12);
+  --ring: #CC785C;
+  --chart-1: #CC785C;
+  --chart-2: #E8E4D8;
+  --chart-3: #B7B2A6;
+  --chart-4: #F5F4EE;
+  --chart-5: #2A2724;
+  --sidebar: #141414;
+  --sidebar-foreground: #F5F4EE;
+  --sidebar-primary: #CC785C;
+  --sidebar-primary-foreground: #191919;
+  --sidebar-accent: rgba(204, 120, 92, 0.12);
+  --sidebar-accent-foreground: #F5F4EE;
+  --sidebar-border: rgba(245, 244, 238, 0.1);
+  --sidebar-ring: #CC785C;
+}
+
+/* Slate — cool blue-gray dark alt */
+[data-palette="slate"] {
+  --background: #0F172A;
+  --foreground: #E2E8F0;
+  --card: #1E293B;
+  --card-foreground: #E2E8F0;
+  --popover: #1E293B;
+  --popover-foreground: #E2E8F0;
+  --primary: #60A5FA;
+  --primary-foreground: #0F172A;
+  --secondary: #1E293B;
+  --secondary-foreground: #E2E8F0;
+  --muted: #1E293B;
+  --muted-foreground: #94A3B8;
+  --accent: #334155;
+  --accent-foreground: #E2E8F0;
+  --destructive: #f87171;
+  --destructive-foreground: #0F172A;
+  --border: rgba(148, 163, 184, 0.2);
+  --input: rgba(148, 163, 184, 0.2);
+  --ring: #60A5FA;
+  --chart-1: #60A5FA;
+  --chart-2: #818CF8;
+  --chart-3: #94A3B8;
+  --chart-4: #E2E8F0;
+  --chart-5: #334155;
+  --sidebar: #0B1220;
+  --sidebar-foreground: #E2E8F0;
+  --sidebar-primary: #60A5FA;
+  --sidebar-primary-foreground: #0F172A;
+  --sidebar-accent: rgba(96, 165, 250, 0.12);
+  --sidebar-accent-foreground: #E2E8F0;
+  --sidebar-border: rgba(148, 163, 184, 0.18);
+  --sidebar-ring: #60A5FA;
 }
 
 @layer base {
