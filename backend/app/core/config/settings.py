@@ -25,6 +25,10 @@ class Settings(BaseSettings):
     anita_max_tool_calls_per_turn: int = 8
     anita_turn_timeout_seconds: int = 45
     anita_strict_json_retry: int = 2
+    # Window during which a fresh inbound (WhatsApp) or page mount (web) reuses
+    # the most recent session instead of starting a new one. Avoids fragmenting
+    # a single conversation across dozens of tiny sessions.
+    anita_session_inactivity_hours: int = 4
 
     # Kapso (WhatsApp BSP)
     kapso_api_key: str = ""
