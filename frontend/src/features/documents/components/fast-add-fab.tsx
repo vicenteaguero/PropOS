@@ -38,6 +38,7 @@ function useFastAdd() {
   const [propertyTitle, setPropertyTitle] = useState("");
   const [contactName, setContactName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [origin, setOrigin] = useState<"UPLOAD" | "CAMERA">("UPLOAD");
 
   const create = useCreateDocument();
   const createProperty = useCreateDraftProperty();
@@ -57,31 +58,27 @@ function useFastAdd() {
     setDisplayName("");
     setPropertyTitle("");
     setContactName("");
+    setOrigin("UPLOAD");
   };
 
   const handleSelectFile = (file: File) => {
     setPendingFile(file);
     setDisplayName(file.name.replace(/\.[^/.]+$/, ""));
+    setOrigin("UPLOAD");
   };
 
-  // Camera flow: skip "Documento rápido" modal — submit directly.
-  const handleCameraPdf = async (bytes: Uint8Array) => {
+  // Camera flow: open the same naming dialog so the user can choose name +
+  // assignments before upload. Same submit() handler runs the upload.
+  const handleCameraPdf = (bytes: Uint8Array) => {
     const file = new File([bytes], `escaneo-${Date.now()}.pdf`, {
       type: "application/pdf",
     });
     const name = `Escaneo ${new Date().toLocaleDateString("es-CL")}`;
-    setOpen(false);
-    reset();
-    setBusy(true);
-    try {
-      const doc = await create.mutateAsync({ file, displayName: name, origin: "CAMERA" });
-      toast.success("Documento agregado");
-      navigate(`/${role}/documents/${doc.id}`);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Error");
-    } finally {
-      setBusy(false);
-    }
+    setPendingFile(file);
+    setDisplayName(name);
+    setOrigin("CAMERA");
+    setCameraOpen(false);
+    setOpen(true);
   };
 
   const submit = async () => {
@@ -95,7 +92,7 @@ function useFastAdd() {
       const doc = await create.mutateAsync({
         file: pendingFile,
         displayName,
-        origin: "UPLOAD",
+        origin,
       });
       createdDocId = doc.id;
 
