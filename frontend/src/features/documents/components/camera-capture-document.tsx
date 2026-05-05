@@ -254,10 +254,17 @@ export function CameraCaptureDocument({
     let cancelled = false;
     (async () => {
       try {
+        // Push the back camera to its native resolution. iPhone main lens is
+        // 4032x3024 (12MP) — asking for that gets us full quality when HD is
+        // on. Standard mode caps at 1920x1080 to keep memory in check on older
+        // devices. `advanced` constraint is a hint Safari/Chrome will satisfy
+        // best-effort and silently lower to native max if unsupported.
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode: { ideal: "environment" },
-            width: { ideal: hdEnabled ? 2560 : 1280 },
+            width: { ideal: hdEnabled ? 4032 : 1920 },
+            height: { ideal: hdEnabled ? 3024 : 1080 },
+            advanced: hdEnabled ? [{ width: { min: 2560 }, height: { min: 1440 } }] : undefined,
           },
           audio: false,
         });
@@ -951,28 +958,21 @@ export function CameraCaptureDocument({
           )}
           {scanMode === "id" && !fallback && (
             <>
-              <svg
-                viewBox="0 0 100 100"
-                preserveAspectRatio="none"
-                className="pointer-events-none absolute inset-0 h-full w-full"
+              {/* ID-1 aspect 85.60/53.98 = 1.586. Use a real aspect-locked div
+                  centered over the container: max width 80vw / 60vh of the
+                  visible viewport, then aspect-ratio CSS preserves the shape
+                  on every screen size + camera resolution. */}
+              <div
+                className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+                style={{
+                  aspectRatio: "1.586 / 1",
+                  width: "min(80%, calc(60% * 1.586))",
+                }}
               >
-                {/* ID-card 1.586:1 aspect, centered. Width=80% of viewport. */}
-                <rect
-                  x="10"
-                  y={50 - (80 / 1.586) * 0.5}
-                  width="80"
-                  height={80 / 1.586}
-                  rx="3"
-                  ry="3"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="0.4"
-                  strokeDasharray="2 1.5"
-                  className="text-primary/70"
-                />
-              </svg>
-              <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-background/80 px-3 py-1 text-xs font-medium text-foreground">
-                {idHint}
+                <div className="h-full w-full rounded-xl border-[3px] border-dashed border-primary/80 shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]" />
+                <div className="absolute -bottom-9 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-background/85 px-3 py-1 text-xs font-medium text-foreground backdrop-blur-sm">
+                  {idHint}
+                </div>
               </div>
             </>
           )}
