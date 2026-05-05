@@ -9,6 +9,7 @@ export function useConversations(status?: ConversationStatus) {
     queryKey: ["client-chat", "conversations", status ?? "all"],
     queryFn: () => clientChatApi.listConversations(status),
     refetchInterval: 20_000,
+    staleTime: 30_000,
   });
 }
 
