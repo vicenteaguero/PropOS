@@ -8,7 +8,6 @@ chain Anita uses in PWA voice notes) and treated as text. Images land in
 an unprocessed media buffer keyed to the session — Anita acts on them
 only when a follow-up text intent consumes the buffer.
 """
-
 from __future__ import annotations
 
 import io
@@ -17,6 +16,9 @@ import uuid as _uuid
 from typing import Any
 from uuid import UUID, uuid4
 
+from datetime import UTC, datetime, timedelta
+
+from app.core.config.settings import settings
 from app.core.logging.logger import get_logger
 from app.core.supabase.client import get_supabase_client
 from app.features.anita.chat import run_chat_turn
@@ -87,17 +89,15 @@ async def handle_inbound_anita_batch(
             body = extract_text(msg) or ""
             if not body:
                 continue
-            db.table("anita_messages").insert(
-                {
-                    "tenant_id": tenant_id,
-                    "session_id": session_id,
-                    "role": "user",
-                    "content": {"text": body},
-                    "source": "whatsapp",
-                    "external_message_id": ext_id,
-                    "is_forwarded": forwarded,
-                }
-            ).execute()
+            db.table("anita_messages").insert({
+                "tenant_id": tenant_id,
+                "session_id": session_id,
+                "role": "user",
+                "content": {"text": body},
+                "source": "whatsapp",
+                "external_message_id": ext_id,
+                "is_forwarded": forwarded,
+            }).execute()
             text_parts.append(body)
             continue
 
@@ -112,20 +112,18 @@ async def handle_inbound_anita_batch(
                 logger.exception("kapso_audio_download_failed", event_type="kapso", error=str(exc))
                 continue
             transcription = _transcribe(blob, mime, tenant_id=UUID(tenant_id))
-            db.table("anita_messages").insert(
-                {
-                    "tenant_id": tenant_id,
-                    "session_id": session_id,
-                    "role": "user",
-                    "content": {"text": transcription or "[audio sin transcripción]"},
-                    "source": "whatsapp",
-                    "external_message_id": ext_id,
-                    "is_forwarded": forwarded,
-                    "media_kapso_id": media_id,
-                    "media_mime": mime,
-                    "transcription": transcription,
-                }
-            ).execute()
+            db.table("anita_messages").insert({
+                "tenant_id": tenant_id,
+                "session_id": session_id,
+                "role": "user",
+                "content": {"text": transcription or "[audio sin transcripción]"},
+                "source": "whatsapp",
+                "external_message_id": ext_id,
+                "is_forwarded": forwarded,
+                "media_kapso_id": media_id,
+                "media_mime": mime,
+                "transcription": transcription,
+            }).execute()
             if transcription:
                 text_parts.append(transcription)
             audio_count += 1
@@ -142,27 +140,22 @@ async def handle_inbound_anita_batch(
                 logger.exception("kapso_image_download_failed", event_type="kapso", error=str(exc))
                 continue
             media_url = _store_media(
-                blob,
-                mime,
-                tenant_id=tenant_id,
-                session_id=session_id,
-                message_id=str(_uuid.uuid4()),
+                blob, mime,
+                tenant_id=tenant_id, session_id=session_id, message_id=str(_uuid.uuid4()),
             )
-            db.table("anita_messages").insert(
-                {
-                    "tenant_id": tenant_id,
-                    "session_id": session_id,
-                    "role": "user",
-                    "content": {"text": "[imagen]"},
-                    "source": "whatsapp",
-                    "external_message_id": ext_id,
-                    "is_forwarded": forwarded,
-                    "media_kapso_id": media_id,
-                    "media_mime": mime,
-                    "media_url": media_url,
-                    "media_status": "unprocessed",
-                }
-            ).execute()
+            db.table("anita_messages").insert({
+                "tenant_id": tenant_id,
+                "session_id": session_id,
+                "role": "user",
+                "content": {"text": "[imagen]"},
+                "source": "whatsapp",
+                "external_message_id": ext_id,
+                "is_forwarded": forwarded,
+                "media_kapso_id": media_id,
+                "media_mime": mime,
+                "media_url": media_url,
+                "media_status": "unprocessed",
+            }).execute()
             image_count += 1
             continue
 
@@ -232,7 +225,9 @@ def _store_media(
     ext = (mimetypes.guess_extension(mime) or ".bin").lstrip(".")
     path = f"anita/{tenant_id}/{session_id}/{message_id}.{ext}"
     try:
-        db.storage.from_(MEDIA_BUCKET).upload(path, blob, {"content-type": mime, "upsert": "true"})
+        db.storage.from_(MEDIA_BUCKET).upload(
+            path, blob, {"content-type": mime, "upsert": "true"}
+        )
         return db.storage.from_(MEDIA_BUCKET).get_public_url(path)
     except Exception as exc:  # noqa: BLE001
         logger.exception("anita_whatsapp_store_failed", event_type="kapso", error=str(exc))
@@ -308,7 +303,17 @@ def _ensure_whatsapp_session(
     user_id: str,
     external_thread_id: str | None,
 ) -> dict[str, Any]:
+    """Resolve the Anita session for an inbound WhatsApp from a broker.
+
+    Reuse the most recent OPEN ``source='whatsapp'`` session whose
+    ``last_activity_at`` is within ``ANITA_SESSION_INACTIVITY_HOURS`` (default
+    4h). Older sessions are left as-is (still OPEN, but a new one starts so
+    bursts of messages don't pile into stale threads).
+    """
     db = get_supabase_client()
+    cutoff = (
+        datetime.now(UTC) - timedelta(hours=settings.anita_session_inactivity_hours)
+    ).isoformat()
     rows = (
         db.table("anita_sessions")
         .select("*")
@@ -316,6 +321,7 @@ def _ensure_whatsapp_session(
         .eq("user_id", user_id)
         .eq("source", "whatsapp")
         .eq("status", "OPEN")
+        .gte("last_activity_at", cutoff)
         .order("last_activity_at", desc=True)
         .limit(1)
         .execute()
