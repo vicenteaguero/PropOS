@@ -2,6 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 import { apiRequest } from "@features/documents/api/http";
+import { PageLayout } from "@shared/components/page-layout";
+import { PageHeader } from "@shared/components/page-header";
 
 export interface ColumnDef {
   key: string;
@@ -27,11 +29,9 @@ export function GenericApiTablePage({ title, description, endpoint, columns }: P
   });
 
   return (
-    <div className="container max-w-6xl py-6 space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold">{title}</h1>
-        {description && <p className="text-sm text-muted-foreground">{description}</p>}
-      </div>
+    <PageLayout width="lg">
+      <PageHeader title={title} description={description} />
+      <div className="space-y-4">
 
       {isLoading && (
         <div className="flex justify-center py-8">
@@ -86,6 +86,7 @@ export function GenericApiTablePage({ title, description, endpoint, columns }: P
           </CardContent>
         </Card>
       )}
-    </div>
+      </div>
+    </PageLayout>
   );
 }
