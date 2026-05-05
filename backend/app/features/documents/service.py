@@ -10,6 +10,10 @@ from app.features.documents import storage
 from app.features.documents.hashing import sha256_hex
 from app.features.documents.metadata import extract_pdf_metadata, strip_pdf_metadata
 from app.features.documents.stubs.scan import scan_file
+from app.features.documents.thumbnails import (
+    generate_first_page_png,
+    thumbnail_path as build_thumbnail_path,
+)
 from app.features.documents.validation import (
     kind_from_mime,
     validate_upload,
@@ -21,6 +25,47 @@ VERSIONS_TABLE = "document_versions"
 ASSIGNMENTS_TABLE = "document_assignments"
 
 logger = get_logger("DOCUMENTS")
+
+
+def _maybe_generate_thumbnail(
+    *,
+    mime: str,
+    pdf_bytes: bytes,
+    tenant_id: str,
+    document_id: str,
+    version_id: str,
+    version_number: int,
+) -> str | None:
+    """Render + upload first-page PNG thumb. Best-effort; logs and swallows failures.
+
+    Returns the storage path on success, None otherwise. Caller should persist
+    the path on the version row when non-None.
+    """
+    if mime != "application/pdf":
+        return None
+    try:
+        png = generate_first_page_png(pdf_bytes)
+    except Exception as exc:  # noqa: BLE001 — best-effort, never block upload
+        logger.warning(
+            "thumbnail render failed",
+            document_id=document_id,
+            version_id=version_id,
+            error=str(exc),
+        )
+        return None
+    path = build_thumbnail_path(tenant_id, document_id, version_number)
+    try:
+        storage.upload_object(path, png, "image/png")
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "thumbnail upload failed",
+            document_id=document_id,
+            version_id=version_id,
+            path=path,
+            error=str(exc),
+        )
+        return None
+    return path
 
 
 class DocumentService:
@@ -58,7 +103,45 @@ class DocumentService:
         if query:
             builder = builder.ilike("display_name", f"%{query}%")
         builder = builder.order("sort_order").order("created_at", desc=True)
-        return builder.execute().data
+        docs = builder.execute().data
+        # Hydrate current_version + thumbnail_url for grid cards in a single round-trip.
+        version_ids = [d.get("current_version_id") for d in docs if d.get("current_version_id")]
+        if version_ids:
+            versions = (
+                client.table(VERSIONS_TABLE)
+                .select("id, version_number, thumbnail_path, mime_type, page_count")
+                .in_("id", version_ids)
+                .execute()
+                .data
+            )
+            by_id = {v["id"]: v for v in versions}
+            for d in docs:
+                v = by_id.get(d.get("current_version_id"))
+                if not v:
+                    continue
+                if v.get("thumbnail_path"):
+                    try:
+                        v["thumbnail_url"] = storage.signed_url(v["thumbnail_path"])
+                    except Exception:
+                        v["thumbnail_url"] = None
+                d["current_version"] = v
+        # Hydrate assignments per doc so grouping by property/contact works on FE.
+        doc_ids_all = [d["id"] for d in docs]
+        if doc_ids_all:
+            assigns = (
+                client.table(ASSIGNMENTS_TABLE)
+                .select("*")
+                .eq("tenant_id", str(tenant_id))
+                .in_("document_id", doc_ids_all)
+                .execute()
+                .data
+            )
+            grouped: dict[str, list[dict]] = {}
+            for a in assigns:
+                grouped.setdefault(a["document_id"], []).append(a)
+            for d in docs:
+                d["assignments"] = grouped.get(d["id"], [])
+        return docs
 
     @staticmethod
     async def get_document(document_id: UUID, tenant_id: UUID) -> dict:
@@ -97,6 +180,13 @@ class DocumentService:
             paths = v.get("source_image_paths") or []
             if paths:
                 v["source_image_urls"] = [storage.signed_url(p) for p in paths]
+            thumb = v.get("thumbnail_path")
+            if thumb:
+                try:
+                    v["thumbnail_url"] = storage.signed_url(thumb)
+                except Exception:
+                    logger.warning("thumbnail signed url failed", path=thumb)
+                    v["thumbnail_url"] = None
         doc["versions"] = versions
         doc["assignments"] = assignments
         doc["current_version"] = next(
@@ -114,6 +204,7 @@ class DocumentService:
         content: bytes,
         declared_mime: str | None,
         original_filename: str | None,
+        tag: str | None = None,
         download_filename: str | None = None,
         edit_metadata: dict | None = None,
         source_raw_path: str | None = None,
@@ -152,6 +243,7 @@ class DocumentService:
             "display_name": display_name,
             "kind": kind,
             "origin": origin,
+            "tag": tag,
             "created_by": str(created_by),
         }
         ocr_status = "skipped" if mime != "application/pdf" else "pending"
@@ -214,6 +306,22 @@ class DocumentService:
                 except Exception:
                     logger.error("orphan cleanup failed", path=path)
             raise
+
+        thumb_path = _maybe_generate_thumbnail(
+            mime=mime,
+            pdf_bytes=normalized_content,
+            tenant_id=str(tenant_id),
+            document_id=document_id,
+            version_id=version_row["id"],
+            version_number=1,
+        )
+        if thumb_path:
+            try:
+                client.table(VERSIONS_TABLE).update({"thumbnail_path": thumb_path}).eq(
+                    "id", version_row["id"]
+                ).execute()
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("thumbnail path persist failed", error=str(exc))
 
         return await DocumentService.get_document(UUID(document_id), tenant_id)
 
@@ -361,6 +469,22 @@ class DocumentService:
                 except Exception:
                     logger.error("orphan cleanup failed", path=path)
             raise
+
+        thumb_path = _maybe_generate_thumbnail(
+            mime=mime,
+            pdf_bytes=normalized_content,
+            tenant_id=str(tenant_id),
+            document_id=str(document_id),
+            version_id=version_row["id"],
+            version_number=next_number,
+        )
+        if thumb_path:
+            try:
+                client.table(VERSIONS_TABLE).update({"thumbnail_path": thumb_path}).eq(
+                    "id", version_row["id"]
+                ).execute()
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("thumbnail path persist failed", error=str(exc))
 
         return await DocumentService.get_document(document_id, tenant_id)
 
