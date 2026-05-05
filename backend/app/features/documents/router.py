@@ -37,6 +37,40 @@ from app.features.documents.share_service import ShareService
 
 router = APIRouter(tags=["documents"])
 
+
+async def _read_source_images(
+    source_images: list[UploadFile] | None,
+    source_edit_states: str | None,
+) -> tuple[list[tuple[bytes, str | None]] | None, list[dict] | None]:
+    """Validate + materialize multipart source images & their EditState JSON."""
+    if not source_images:
+        if source_edit_states:
+            raise HTTPException(
+                status_code=400,
+                detail="source_edit_states provided without source_images",
+            )
+        return None, None
+    import json
+
+    parsed_states: list[dict] | None = None
+    if source_edit_states:
+        try:
+            parsed_states = json.loads(source_edit_states)
+        except json.JSONDecodeError as exc:
+            raise HTTPException(status_code=400, detail="source_edit_states invalid JSON") from exc
+        if not isinstance(parsed_states, list):
+            raise HTTPException(status_code=400, detail="source_edit_states must be a JSON array")
+        if len(parsed_states) != len(source_images):
+            raise HTTPException(
+                status_code=400,
+                detail="source_edit_states length must match source_images length",
+            )
+    images_payload: list[tuple[bytes, str | None]] = []
+    for img in source_images:
+        images_payload.append((await img.read(), img.content_type))
+    return images_payload, parsed_states
+
+
 # ----------------------------- Documents -----------------------------
 
 
@@ -70,6 +104,8 @@ async def create_document(
     origin: str = Form(default="UPLOAD"),
     download_filename: str | None = Form(default=None),
     edit_metadata: str | None = Form(default=None),
+    source_images: list[UploadFile] | None = File(default=None),
+    source_edit_states: str | None = Form(default=None),
     tenant_id: UUID = Depends(get_tenant_id),
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> dict:
@@ -87,6 +123,7 @@ async def create_document(
             parsed_meta = json.loads(edit_metadata)
         except json.JSONDecodeError as exc:
             raise HTTPException(status_code=400, detail="edit_metadata invalid JSON") from exc
+    images_payload, parsed_states = await _read_source_images(source_images, source_edit_states)
     return await DocumentService.create_document_with_first_version(
         tenant_id=tenant_id,
         created_by=UUID(current_user["id"]),
@@ -97,6 +134,8 @@ async def create_document(
         original_filename=file.filename,
         download_filename=download_filename,
         edit_metadata=parsed_meta,
+        source_images=images_payload,
+        source_edit_states=parsed_states,
     )
 
 
@@ -132,6 +171,8 @@ async def add_version(
     download_filename: str | None = Form(default=None),
     edit_metadata: str | None = Form(default=None),
     source_version_id: UUID | None = Form(default=None),
+    source_images: list[UploadFile] | None = File(default=None),
+    source_edit_states: str | None = Form(default=None),
     tenant_id: UUID = Depends(get_tenant_id),
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> dict:
@@ -144,6 +185,7 @@ async def add_version(
             parsed_meta = json.loads(edit_metadata)
         except json.JSONDecodeError as exc:
             raise HTTPException(status_code=400, detail="edit_metadata invalid JSON") from exc
+    images_payload, parsed_states = await _read_source_images(source_images, source_edit_states)
     return await DocumentService.add_version(
         document_id=document_id,
         tenant_id=tenant_id,
@@ -155,6 +197,8 @@ async def add_version(
         download_filename=download_filename,
         edit_metadata=parsed_meta,
         source_version_id=source_version_id,
+        source_images=images_payload,
+        source_edit_states=parsed_states,
     )
 
 
@@ -193,6 +237,16 @@ async def download_version(
 ) -> dict:
     url, _ = await DocumentService.get_version_signed_url(version_id, tenant_id)
     return {"url": url}
+
+
+@router.get("/documents/{document_id}/versions/{version_id}/source-images")
+async def get_version_source_images(
+    document_id: UUID,
+    version_id: UUID,
+    tenant_id: UUID = Depends(get_tenant_id),
+) -> dict:
+    """Refresh signed URLs for the original camera shots + their EditStates."""
+    return await DocumentService.get_source_images(version_id, tenant_id)
 
 
 # ----------------------------- Assignments -----------------------------
