@@ -28,6 +28,8 @@ export interface DocumentVersion {
   source_image_paths?: string[];
   source_edit_states?: Record<string, unknown>[];
   source_image_urls?: string[];
+  thumbnail_path?: string | null;
+  thumbnail_url?: string | null;
   created_by: string | null;
   created_at: string;
 }
@@ -48,6 +50,7 @@ export interface DocumentItem {
   display_name: string;
   kind: DocumentKind;
   origin: DocumentOrigin;
+  tag: string | null;
   current_version_id: string | null;
   sort_order: number;
   created_by: string | null;
