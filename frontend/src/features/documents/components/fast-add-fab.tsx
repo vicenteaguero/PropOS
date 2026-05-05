@@ -64,12 +64,16 @@ function useFastAdd() {
   const createContact = useCreateDraftContact();
   // Only fetch entity lists once the dialog is open with a pending file —
   // avoids two extra round-trips on every documents-page mount.
-  const entitiesEnabled = open && !!pendingFile;
+  // Fetch entity suggestions while either the upload dialog (after a file is
+  // picked) or the camera capture flow is open — the latter renders an inline
+  // finalize overlay that needs the same property/contact lists.
+  const entitiesEnabled = (open && !!pendingFile) || cameraOpen;
   const { data: properties = [], isFetching: loadingProperties } = useProperties(propertyTitle, {
     enabled: entitiesEnabled,
   });
   const { data: contacts = [], isFetching: loadingContacts } = useContacts(contactName, {
     enabled: entitiesEnabled,
+    propertyId: selectedProperty?.id,
   });
 
   // Smart filename auto-suggest: when both property + contact are filled and
@@ -137,6 +141,7 @@ function useFastAdd() {
         sourceEditStates: cameraSources?.map((s) => ({
           quad: s.edit.quad,
           filter: s.edit.filter,
+          bezierControls: s.edit.bezierControls,
         })),
       });
       createdDocId = doc.id;
@@ -191,6 +196,7 @@ function useFastAdd() {
     setNameTouched,
     propertyTitle,
     setPropertyTitle,
+    selectedProperty,
     setSelectedProperty,
     contactName,
     setContactName,
@@ -225,6 +231,7 @@ function FastAddDialogBody(state: ReturnType<typeof useFastAdd>) {
     setNameTouched,
     propertyTitle,
     setPropertyTitle,
+    selectedProperty,
     setSelectedProperty,
     contactName,
     setContactName,
@@ -304,7 +311,12 @@ function FastAddDialogBody(state: ReturnType<typeof useFastAdd>) {
                 <Label className="text-xs">Propiedad (existente o nueva como borrador)</Label>
                 <EntityCombobox<PropertyLite>
                   value={propertyTitle}
-                  onChange={setPropertyTitle}
+                  onChange={(text) => {
+                    setPropertyTitle(text);
+                    if (selectedProperty && text.trim() !== selectedProperty.title.trim()) {
+                      setSelectedProperty(null);
+                    }
+                  }}
                   onSelect={(p) => setSelectedProperty(p)}
                   items={properties}
                   getLabel={(p) => p.title}
@@ -349,6 +361,11 @@ function FastAddDialogBody(state: ReturnType<typeof useFastAdd>) {
                   }}
                   ariaLabel="Seleccionar contacto"
                 />
+                {selectedProperty && (
+                  <p className="text-[11px] text-muted-foreground">
+                    Filtrado por {selectedProperty.title}
+                  </p>
+                )}
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Etiqueta</Label>
@@ -387,6 +404,13 @@ function FastAddDialogBody(state: ReturnType<typeof useFastAdd>) {
               setCameraOpen(false);
               handleCameraPdf(bytes, sources);
             }}
+            propertySuggestions={properties}
+            contactSuggestions={contacts}
+            onPropertyQueryChange={setPropertyTitle}
+            onContactQueryChange={setContactName}
+            onPropertySelect={setSelectedProperty}
+            loadingProperties={loadingProperties}
+            loadingContacts={loadingContacts}
           />
         </Suspense>
       )}
