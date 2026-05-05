@@ -195,7 +195,11 @@ def _materialize_media(
         return []
     client = get_supabase_client()
     msgs = (
-        client.table("anita_messages").select("id, media_url, media_mime").in_("id", media_message_ids).execute().data
+        client.table("anita_messages")
+        .select("id, media_url, media_mime")
+        .in_("id", media_message_ids)
+        .execute()
+        .data
         or []
     )
     file_ids: list[UUID] = []
@@ -221,7 +225,9 @@ def _materialize_media(
         )
         file_ids.append(UUID(file_row["id"]))
     if msgs:
-        client.table("anita_messages").update({"media_status": "consumed"}).in_("id", [m["id"] for m in msgs]).execute()
+        client.table("anita_messages").update({"media_status": "consumed"}).in_(
+            "id", [m["id"] for m in msgs]
+        ).execute()
     return file_ids
 
 
@@ -231,7 +237,9 @@ def _accept_attach_photos_to_property(payload, tenant_id, user_id, anita_session
     if not property_id:
         raise ValueError("missing property_id (no resolved property match)")
     media_message_ids = payload.get("media_message_ids") or []
-    file_ids = _materialize_media(media_message_ids, tenant_id=tenant_id, user_id=user_id)
+    file_ids = _materialize_media(
+        media_message_ids, tenant_id=tenant_id, user_id=user_id
+    )
     rows = [
         {
             "tenant_id": str(tenant_id),
@@ -252,7 +260,9 @@ def _accept_attach_photos_to_property(payload, tenant_id, user_id, anita_session
 def _accept_create_document_from_photos(payload, tenant_id, user_id, anita_session_id):
     client = get_supabase_client()
     media_message_ids = payload.get("media_message_ids") or []
-    file_ids = _materialize_media(media_message_ids, tenant_id=tenant_id, user_id=user_id)
+    file_ids = _materialize_media(
+        media_message_ids, tenant_id=tenant_id, user_id=user_id
+    )
     doc_row = (
         client.table("documents")
         .insert(
