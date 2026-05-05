@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
@@ -18,6 +18,11 @@ export function DocumentPreview({ blob, mimeType, loading, maxPages = 25 }: Prop
   const [pageCount, setPageCount] = useState(0);
   const [pdfError, setPdfError] = useState<Error | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  // Track when blob first became available + whether we've already auto-retried
+  // for this blob, so a transient pdfjs failure right after upload self-heals
+  // without making the user tap "Reintentar".
+  const blobReadyAt = useRef<number>(0);
+  const autoRetried = useRef<boolean>(false);
 
   // Prefer the explicit mime from the version row; fall back to blob.type.
   const effectiveMime = (mimeType || blob?.type || "").toLowerCase();
@@ -34,6 +39,8 @@ export function DocumentPreview({ blob, mimeType, loading, maxPages = 25 }: Prop
         : blob;
     const url = URL.createObjectURL(typed);
     setSrc(url);
+    blobReadyAt.current = Date.now();
+    autoRetried.current = false;
     return () => URL.revokeObjectURL(url);
   }, [blob, effectiveMime]);
 
@@ -80,10 +87,22 @@ export function DocumentPreview({ blob, mimeType, loading, maxPages = 25 }: Prop
         onLoadSuccess={({ numPages }) => setPageCount(numPages)}
         onLoadError={(err) => {
           console.error("[pdfjs]", err);
+          // Auto-retry once if the failure happens within 5s of blob arrival;
+          // catches the storage-propagation / cold-worker race after upload.
+          if (!autoRetried.current && Date.now() - blobReadyAt.current < 5000) {
+            autoRetried.current = true;
+            setTimeout(() => setReloadKey((k) => k + 1), 1500);
+            return;
+          }
           setPdfError(err);
         }}
         onSourceError={(err) => {
           console.error("[pdfjs]", err);
+          if (!autoRetried.current && Date.now() - blobReadyAt.current < 5000) {
+            autoRetried.current = true;
+            setTimeout(() => setReloadKey((k) => k + 1), 1500);
+            return;
+          }
           setPdfError(err);
         }}
         loading={
