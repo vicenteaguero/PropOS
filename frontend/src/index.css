@@ -62,6 +62,8 @@
 
 /* PropOS is always dark — dark palette in :root */
 :root {
+  /* Header height — single source of truth, consumed by full-bleed pages (anita chat, etc.) */
+  --app-header-h: 3.5rem;
   --radius: 0.625rem;
   --background: #1C1816;
   --foreground: #F9F6F4;
