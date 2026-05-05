@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
+import { PageLayout } from "@shared/components/page-layout";
+import { PageHeader } from "@shared/components/page-header";
 import { useConversations } from "../hooks/use-client-chat";
 import { ConversationList } from "../components/conversation-list";
 import { MessageThread } from "../components/message-thread";
@@ -16,9 +18,7 @@ const TABS: { value: ConversationStatus | "all"; label: string }[] = [
 
 export function ClientInboxPage() {
   const [tab, setTab] = useState<ConversationStatus | "all">("open");
-  const { data: conversations = [], isLoading } = useConversations(
-    tab === "all" ? undefined : tab,
-  );
+  const { data: conversations = [], isLoading } = useConversations(tab === "all" ? undefined : tab);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const selected = useMemo(
@@ -27,15 +27,13 @@ export function ClientInboxPage() {
   );
 
   return (
-    <div className="container max-w-6xl py-6">
-      <div className="mb-4">
-        <h1 className="text-2xl font-semibold">Inbox de clientes</h1>
-        <p className="text-sm text-muted-foreground">
-          Conversaciones por WhatsApp gestionadas por la IA cliente. Tomá control cuando haga falta.
-        </p>
-      </div>
+    <PageLayout width="lg">
+      <PageHeader
+        title="Inbox de clientes"
+        description="Conversaciones por WhatsApp gestionadas por la IA cliente. Tomá control cuando haga falta."
+      />
 
-      <div className="mb-4 flex gap-2">
+      <div className="mb-4 flex flex-wrap gap-2">
         {TABS.map((t) => (
           <Button
             key={t.value}
@@ -48,7 +46,7 @@ export function ClientInboxPage() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-[320px_1fr]">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-[20rem_1fr]">
         <div>
           {isLoading ? (
             <Card className="flex justify-center p-6">
@@ -63,7 +61,7 @@ export function ClientInboxPage() {
           )}
         </div>
 
-        <div className="min-h-[60vh]">
+        <div className="min-h-[calc(100dvh-16rem)]">
           {selected ? (
             <MessageThread conversation={selected} />
           ) : (
@@ -73,6 +71,6 @@ export function ClientInboxPage() {
           )}
         </div>
       </div>
-    </div>
+    </PageLayout>
   );
 }
