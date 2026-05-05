@@ -12,6 +12,7 @@ from app.features.documents.metadata import extract_pdf_metadata, strip_pdf_meta
 from app.features.documents.stubs.scan import scan_file
 from app.features.documents.thumbnails import (
     generate_first_page_png,
+    generate_image_thumbnail,
     thumbnail_path as build_thumbnail_path,
 )
 from app.features.documents.validation import (
@@ -36,20 +37,27 @@ def _maybe_generate_thumbnail(
     version_id: str,
     version_number: int,
 ) -> str | None:
-    """Render + upload first-page PNG thumb. Best-effort; logs and swallows failures.
+    """Render + upload PNG thumb (PDF first page or raster image). Best-effort; logs and swallows failures.
+
+    The ``pdf_bytes`` parameter holds the raw bytes regardless of mime — the name is kept
+    for backwards compatibility with existing call sites.
 
     Returns the storage path on success, None otherwise. Caller should persist
     the path on the version row when non-None.
     """
-    if mime != "application/pdf":
-        return None
     try:
-        png = generate_first_page_png(pdf_bytes)
+        if mime == "application/pdf":
+            png = generate_first_page_png(pdf_bytes)
+        elif mime and mime.startswith("image/"):
+            png = generate_image_thumbnail(pdf_bytes, mime)
+        else:
+            return None
     except Exception as exc:  # noqa: BLE001 — best-effort, never block upload
         logger.warning(
             "thumbnail render failed",
             document_id=document_id,
             version_id=version_id,
+            mime=mime,
             error=str(exc),
         )
         return None
