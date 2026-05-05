@@ -1,5 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Camera, Check, Edit3, Plus, Trash2, X } from "lucide-react";
+import {
+  DndContext,
+  PointerSensor,
+  TouchSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  horizontalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -137,6 +153,22 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props)
       setShots((prev) => [...prev, { id: crypto.randomUUID(), blob: compressed, raw, state }]);
     }
     setEditing(null);
+  };
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 6 } }),
+  );
+
+  const handleDragEnd = (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    setShots((prev) => {
+      const from = prev.findIndex((s) => s.id === active.id);
+      const to = prev.findIndex((s) => s.id === over.id);
+      if (from < 0 || to < 0) return prev;
+      return arrayMove(prev, from, to);
+    });
   };
 
   const removeShot = (id: string) => {
@@ -279,35 +311,32 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props)
             )}
           </div>
 
-          <div className="grid auto-cols-[88px] grid-flow-col gap-2 overflow-x-auto border-t border-border/40 bg-card/40 p-3">
-            {shots.map((shot, i) => {
-              const isActive = activeId === shot.id;
-              return (
-                <button
-                  key={shot.id}
-                  type="button"
-                  onClick={() => {
-                    if (isActive) editShot(shot.id);
-                    else setActiveId(shot.id);
-                  }}
-                  className={cn(
-                    "relative aspect-[3/4] overflow-hidden rounded-md ring-1 transition",
-                    isActive ? "ring-2 ring-primary" : "ring-border/40 hover:ring-border",
-                  )}
-                  aria-pressed={isActive}
-                >
-                  <img
-                    src={shotUrls.get(shot.id)}
-                    alt={`Página ${i + 1}`}
-                    className="h-full w-full object-cover"
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={shots.map((s) => s.id)}
+              strategy={horizontalListSortingStrategy}
+            >
+              <div className="flex gap-2 overflow-x-auto border-t border-border/40 bg-card/40 p-3">
+                {shots.map((shot, i) => (
+                  <SortableThumb
+                    key={shot.id}
+                    id={shot.id}
+                    index={i}
+                    url={shotUrls.get(shot.id) ?? ""}
+                    isActive={activeId === shot.id}
+                    onTap={() => {
+                      if (activeId === shot.id) editShot(shot.id);
+                      else setActiveId(shot.id);
+                    }}
                   />
-                  <span className="absolute top-1 left-1 grid size-5 place-items-center rounded-full bg-foreground/85 text-[10px] font-semibold text-background">
-                    {i + 1}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
 
           <div className="flex items-center justify-between gap-2 border-t border-border/40 bg-card/40 px-4 py-3">
             <Button variant="ghost" size="sm" onClick={() => setMode("capture")}>
@@ -350,6 +379,47 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props)
           onSave={onEditorSave}
         />
       )}
+    </div>
+  );
+}
+
+interface SortableThumbProps {
+  id: string;
+  index: number;
+  url: string;
+  isActive: boolean;
+  onTap: () => void;
+}
+
+function SortableThumb({ id, index, url, isActive, onTap }: SortableThumbProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id,
+  });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+  };
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className={cn(
+        "relative aspect-[3/4] w-[88px] shrink-0 cursor-grab touch-none overflow-hidden rounded-md ring-1 transition active:cursor-grabbing",
+        isActive ? "ring-2 ring-primary" : "ring-border/40",
+      )}
+      onPointerUp={() => {
+        if (!isDragging) onTap();
+      }}
+      role="button"
+      tabIndex={0}
+    >
+      <img src={url} alt={`Página ${index + 1}`} className="h-full w-full object-cover" />
+      <span className="absolute top-1 left-1 grid size-5 place-items-center rounded-full bg-foreground/85 text-[10px] font-semibold text-background">
+        {index + 1}
+      </span>
     </div>
   );
 }
