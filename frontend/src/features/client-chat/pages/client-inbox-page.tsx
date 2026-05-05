@@ -1,9 +1,8 @@
 import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
-import { PageLayout } from "@shared/components/page-layout";
-import { PageHeader } from "@shared/components/page-header";
+import { Loader2, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { useConversations } from "../hooks/use-client-chat";
 import { ConversationList } from "../components/conversation-list";
 import { MessageThread } from "../components/message-thread";
@@ -16,61 +15,91 @@ const TABS: { value: ConversationStatus | "all"; label: string }[] = [
   { value: "all", label: "Todas" },
 ];
 
+const THIRTY_DAYS_MS = 30 * 24 * 3600 * 1000;
+
 export function ClientInboxPage() {
+  // Default filter: active/open conversations.
   const [tab, setTab] = useState<ConversationStatus | "all">("open");
-  const { data: conversations = [], isLoading } = useConversations(tab === "all" ? undefined : tab);
+  const [query, setQuery] = useState("");
+  const { data: conversations = [], isLoading } = useConversations(
+    tab === "all" ? undefined : tab,
+  );
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
+  // Default time-window: last 30 days (filter client-side).
+  const filtered = useMemo(() => {
+    const cutoff = Date.now() - THIRTY_DAYS_MS;
+    const q = query.trim().toLowerCase();
+    return conversations.filter((c) => {
+      const t = c.last_message_at ? new Date(c.last_message_at).getTime() : 0;
+      if (t && t < cutoff) return false;
+      if (!q) return true;
+      return (c.external_phone_e164 ?? "").toLowerCase().includes(q);
+    });
+  }, [conversations, query]);
+
   const selected = useMemo(
-    () => conversations.find((c) => c.id === selectedId) ?? null,
-    [conversations, selectedId],
+    () => filtered.find((c) => c.id === selectedId) ?? null,
+    [filtered, selectedId],
   );
 
   return (
-    <PageLayout width="lg">
-      <PageHeader
-        title="Inbox de clientes"
-        description="Conversaciones por WhatsApp gestionadas por la IA cliente. Tomá control cuando haga falta."
-      />
+    <div
+      className="grid grid-cols-1 md:grid-cols-[20rem_1fr]"
+      style={{ height: "calc(100dvh - var(--app-header-h))" }}
+    >
+      {/* Left column: filters + conversation list */}
+      <aside className="flex min-h-0 flex-col border-r border-border bg-background">
+        <div className="space-y-3 border-b border-border p-3">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Buscar teléfono..."
+              className="pl-8"
+            />
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {TABS.map((t) => (
+              <Button
+                key={t.value}
+                size="sm"
+                variant={tab === t.value ? "default" : "outline"}
+                onClick={() => setTab(t.value)}
+                className="h-7 rounded-full px-3 text-xs"
+              >
+                {t.label}
+              </Button>
+            ))}
+          </div>
+        </div>
 
-      <div className="mb-4 flex flex-wrap gap-2">
-        {TABS.map((t) => (
-          <Button
-            key={t.value}
-            size="sm"
-            variant={tab === t.value ? "default" : "outline"}
-            onClick={() => setTab(t.value)}
-          >
-            {t.label}
-          </Button>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-[20rem_1fr]">
-        <div>
+        <div className="min-h-0 flex-1 overflow-y-auto p-2">
           {isLoading ? (
-            <Card className="flex justify-center p-6">
+            <div className="flex justify-center p-6">
               <Loader2 className="size-5 animate-spin text-muted-foreground" />
-            </Card>
+            </div>
           ) : (
             <ConversationList
-              conversations={conversations}
+              conversations={filtered}
               selectedId={selectedId}
               onSelect={setSelectedId}
             />
           )}
         </div>
+      </aside>
 
-        <div className="min-h-[calc(100dvh-16rem)]">
-          {selected ? (
-            <MessageThread conversation={selected} />
-          ) : (
-            <Card className="flex h-full items-center justify-center p-6 text-sm text-muted-foreground">
-              Seleccioná una conversación.
-            </Card>
-          )}
-        </div>
-      </div>
-    </PageLayout>
+      {/* Right column: active chat */}
+      <section className="flex min-h-0 min-w-0 flex-col bg-background">
+        {selected ? (
+          <MessageThread conversation={selected} />
+        ) : (
+          <Card className="m-4 flex flex-1 items-center justify-center p-6 text-sm text-muted-foreground">
+            Seleccioná una conversación.
+          </Card>
+        )}
+      </section>
+    </div>
   );
 }
