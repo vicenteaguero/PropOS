@@ -10,8 +10,13 @@ export const entitiesApi = {
       body: { title, is_draft: isDraft },
     }),
 
-  listContacts: (q?: string) =>
-    apiRequest<ContactLite[]>(`/v1/contacts${q ? `?q=${encodeURIComponent(q)}` : ""}`),
+  listContacts: (q?: string, propertyId?: string) => {
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+    if (propertyId) params.set("property_id", propertyId);
+    const qs = params.toString();
+    return apiRequest<ContactLite[]>(`/v1/contacts${qs ? `?${qs}` : ""}`);
+  },
   createContact: (fullName: string, isDraft = true) =>
     apiRequest<ContactLite>("/v1/contacts", {
       method: "POST",
