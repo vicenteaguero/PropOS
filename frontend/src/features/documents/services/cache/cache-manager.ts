@@ -18,10 +18,18 @@ export interface FetchOptions {
   signedUrl: string;
 }
 
-async function fetchFromNetwork(url: string): Promise<Blob> {
+async function fetchFromNetwork(url: string, mimeType: string): Promise<Blob> {
   const res = await fetch(url, { credentials: "omit" });
   if (!res.ok) throw new Error(`fetch failed (${res.status})`);
-  return res.blob();
+  const raw = await res.blob();
+  // Re-wrap to guarantee correct mime regardless of server Content-Type.
+  return raw.type === mimeType ? raw : new Blob([raw], { type: mimeType });
+}
+
+function withMime(blob: Blob, mimeType: string): Blob {
+  // OPFS-stored files lose their original mime type on read; re-wrap.
+  if (blob.type === mimeType) return blob;
+  return new Blob([blob], { type: mimeType });
 }
 
 export async function readDocument(opts: FetchOptions): Promise<CachedRead> {
@@ -37,15 +45,15 @@ export async function readDocument(opts: FetchOptions): Promise<CachedRead> {
           accessCount: meta.accessCount + 1,
         });
       }
-      return { blob: cached, source: "cache", integrityOk: true };
+      return { blob: withMime(cached, opts.mimeType), source: "cache", integrityOk: true };
     }
     await removeFromCache(opts.sha256);
     await deleteEntry(opts.sha256);
-    const fresh = await fetchFromNetwork(opts.signedUrl);
+    const fresh = await fetchFromNetwork(opts.signedUrl, opts.mimeType);
     await persist(fresh, opts);
     return { blob: fresh, source: "network", integrityOk: false };
   }
-  const blob = await fetchFromNetwork(opts.signedUrl);
+  const blob = await fetchFromNetwork(opts.signedUrl, opts.mimeType);
   await persist(blob, opts);
   return { blob, source: "network", integrityOk: true };
 }
