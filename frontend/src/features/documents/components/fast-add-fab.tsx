@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@shared/hooks/use-auth";
 import { documentsApi } from "../api/documents-api";
 import { useCreateDocument } from "../hooks/use-documents";
+import type { SourceShot } from "./camera-capture-document";
 import {
   useContacts,
   useCreateDraftContact,
@@ -39,6 +40,7 @@ function useFastAdd() {
   const [contactName, setContactName] = useState("");
   const [busy, setBusy] = useState(false);
   const [origin, setOrigin] = useState<"UPLOAD" | "CAMERA">("UPLOAD");
+  const [cameraSources, setCameraSources] = useState<SourceShot[] | null>(null);
 
   const create = useCreateDocument();
   const createProperty = useCreateDraftProperty();
@@ -59,6 +61,7 @@ function useFastAdd() {
     setPropertyTitle("");
     setContactName("");
     setOrigin("UPLOAD");
+    setCameraSources(null);
   };
 
   const handleSelectFile = (file: File) => {
@@ -68,8 +71,9 @@ function useFastAdd() {
   };
 
   // Camera flow: open the same naming dialog so the user can choose name +
-  // assignments before upload. Same submit() handler runs the upload.
-  const handleCameraPdf = (bytes: Uint8Array) => {
+  // assignments before upload. Same submit() handler runs the upload, plus the
+  // original camera shots are persisted so the document can be re-edited later.
+  const handleCameraPdf = (bytes: Uint8Array, sources: SourceShot[]) => {
     const file = new File([bytes], `escaneo-${Date.now()}.pdf`, {
       type: "application/pdf",
     });
@@ -77,6 +81,7 @@ function useFastAdd() {
     setPendingFile(file);
     setDisplayName(name);
     setOrigin("CAMERA");
+    setCameraSources(sources);
     setCameraOpen(false);
     setOpen(true);
   };
@@ -93,6 +98,11 @@ function useFastAdd() {
         file: pendingFile,
         displayName,
         origin,
+        sourceImages: cameraSources?.map((s) => s.raw),
+        sourceEditStates: cameraSources?.map((s) => ({
+          quad: s.edit.quad,
+          filter: s.edit.filter,
+        })),
       });
       createdDocId = doc.id;
 
@@ -266,9 +276,9 @@ function FastAddDialogBody(state: ReturnType<typeof useFastAdd>) {
           <CameraCaptureDocument
             open={cameraOpen}
             onOpenChange={setCameraOpen}
-            onPdfReady={(bytes) => {
+            onPdfReady={(bytes, sources) => {
               setCameraOpen(false);
-              handleCameraPdf(bytes);
+              handleCameraPdf(bytes, sources);
             }}
           />
         </Suspense>
