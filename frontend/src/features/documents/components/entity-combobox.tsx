@@ -158,6 +158,7 @@ export function EntityCombobox<T>({
                     key={`manual-${m.key}`}
                     value={`manual-${m.key}`}
                     onSelect={() => handleManual(m)}
+                    className="text-foreground"
                   >
                     <Check className={cn("opacity-0", value === m.label && "opacity-100")} />
                     <span className="truncate">{m.label}</span>
@@ -177,6 +178,7 @@ export function EntityCombobox<T>({
                           key={key}
                           value={`${key}-${label}`}
                           onSelect={() => handlePick(item)}
+                          className="text-foreground"
                         >
                           <Check className={cn("opacity-0", value === label && "opacity-100")} />
                           <span className="truncate">{label}</span>
@@ -195,6 +197,7 @@ export function EntityCombobox<T>({
                           key={key}
                           value={`${key}-${label}`}
                           onSelect={() => handlePick(item)}
+                          className="text-foreground"
                         >
                           <Check className={cn("opacity-0", value === label && "opacity-100")} />
                           <span className="truncate">{label}</span>
@@ -208,10 +211,14 @@ export function EntityCombobox<T>({
               <>
                 {(items.length > 0 || manualEntries.length > 0) && <CommandSeparator />}
                 <CommandGroup>
-                  <CommandItem value={`__create__${trimmedQuery}`} onSelect={handleCreate}>
-                    <Plus className="opacity-70" />
-                    <span className="truncate">
-                      Crear «<span className="font-medium text-foreground">{trimmedQuery}</span>»
+                  <CommandItem
+                    value={`__create__${trimmedQuery}`}
+                    onSelect={handleCreate}
+                    className="bg-accent/40 text-foreground hover:bg-accent data-[selected=true]:bg-accent"
+                  >
+                    <Plus className="text-primary" />
+                    <span className="truncate text-foreground">
+                      Crear «<span className="font-semibold text-primary">{trimmedQuery}</span>»
                     </span>
                   </CommandItem>
                 </CommandGroup>
