@@ -28,9 +28,11 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props)
   const [busy, setBusy] = useState(false);
   const [fallback, setFallback] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [editing, setEditing] = useState<{ id?: string; sourceBlob: Blob; state?: EditState } | null>(
-    null,
-  );
+  const [editing, setEditing] = useState<{
+    id?: string;
+    sourceBlob: Blob;
+    state?: EditState;
+  } | null>(null);
 
   const shotUrls = useMemo(() => shots.map((s) => URL.createObjectURL(s.blob)), [shots]);
   useEffect(() => {
@@ -93,15 +95,15 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props)
       canvas.toBlob(resolve, "image/jpeg", 0.92),
     );
     if (!blob) return;
-    setEditing({ sourceBlob: blob });
+    const compressed = await compressBlob(blob, `shot-${Date.now()}.jpg`);
+    setShots((prev) => [...prev, { id: crypto.randomUUID(), blob: compressed, raw: blob }]);
   };
 
   const handleFileFallback = async (files: FileList | null) => {
     if (!files) return;
     for (const file of Array.from(files)) {
-      setEditing({ sourceBlob: file });
-      // open editor for one at a time; user clicks Aplicar to proceed
-      break;
+      const compressed = await compressBlob(file, `shot-${Date.now()}.jpg`);
+      setShots((prev) => [...prev, { id: crypto.randomUUID(), blob: compressed, raw: file }]);
     }
   };
 
