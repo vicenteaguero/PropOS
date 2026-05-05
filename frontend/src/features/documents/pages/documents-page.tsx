@@ -11,15 +11,25 @@ import { useAuth } from "@shared/hooks/use-auth";
 import { ViewModeToggle } from "../components/view-mode-toggle";
 import { DocumentsGrid } from "../components/documents-grid";
 import { DocumentsList } from "../components/documents-list";
+import { DocumentsGrouped } from "../components/documents-grouped";
+import { GroupByToggle, type GroupByMode } from "../components/group-by-toggle";
 import { NewDocumentButton } from "../components/fast-add-fab";
 import { useDocuments } from "../hooks/use-documents";
 import type { DocumentItem, ViewMode } from "../types";
 
 const VIEW_MODE_KEY = "documents:view-mode";
+const GROUP_BY_KEY = "propos:documents-view";
 
 function loadViewMode(): ViewMode {
   if (typeof window === "undefined") return "grid";
   return (localStorage.getItem(VIEW_MODE_KEY) as ViewMode) || "grid";
+}
+
+function loadGroupBy(): GroupByMode {
+  if (typeof window === "undefined") return "all";
+  const raw = localStorage.getItem(GROUP_BY_KEY);
+  if (raw === "property" || raw === "contact" || raw === "all") return raw;
+  return "all";
 }
 
 export function DocumentsPage() {
@@ -29,6 +39,7 @@ export function DocumentsPage() {
   const role = user?.role.toLowerCase() ?? "agent";
 
   const [viewMode, setViewMode] = useState<ViewMode>(loadViewMode);
+  const [groupBy, setGroupBy] = useState<GroupByMode>(loadGroupBy);
 
   const q = params.get("q") ?? "";
   const contactId = params.get("contact_id") ?? undefined;
@@ -45,6 +56,11 @@ export function DocumentsPage() {
   const setViewModePersist = (mode: ViewMode) => {
     setViewMode(mode);
     localStorage.setItem(VIEW_MODE_KEY, mode);
+  };
+
+  const setGroupByPersist = (mode: GroupByMode) => {
+    setGroupBy(mode);
+    localStorage.setItem(GROUP_BY_KEY, mode);
   };
 
   const setQuery = (next: string) => {
@@ -81,6 +97,7 @@ export function DocumentsPage() {
         <div className="min-w-[240px] flex-1">
           <SearchInput value={q} onChange={setQuery} placeholder="Buscar por nombre..." />
         </div>
+        <GroupByToggle value={groupBy} onChange={setGroupByPersist} />
         <ViewModeToggle value={viewMode} onChange={setViewModePersist} />
       </div>
 
@@ -127,10 +144,12 @@ export function DocumentsPage() {
       {!isLoading &&
         data &&
         data.length > 0 &&
-        (viewMode === "grid" ? (
+        (viewMode === "list" ? (
+          <DocumentsList documents={data} onOpen={openDocument} />
+        ) : groupBy === "all" ? (
           <DocumentsGrid documents={data} onOpen={openDocument} />
         ) : (
-          <DocumentsList documents={data} onOpen={openDocument} />
+          <DocumentsGrouped documents={data} groupBy={groupBy} onOpen={openDocument} />
         ))}
     </PageLayout>
   );
