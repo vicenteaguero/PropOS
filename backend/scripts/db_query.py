@@ -79,7 +79,14 @@ def main() -> None:
 
     with psycopg.connect(**_conn_kwargs(), row_factory=dict_row, autocommit=not write) as conn:
         with conn.cursor() as cur:
-            cur.execute(sql)
+            try:
+                cur.execute(sql)
+            except psycopg.errors.UndefinedColumn as exc:
+                _hint_columns(conn, sql, str(exc))
+                raise SystemExit(1) from None
+            except psycopg.errors.UndefinedTable as exc:
+                _hint_tables(conn, str(exc))
+                raise SystemExit(1) from None
             if cur.description:
                 rows = cur.fetchall()
                 _print_table(rows)
@@ -88,6 +95,43 @@ def main() -> None:
                 print(f"OK ({cur.rowcount} rows affected)")
         if write:
             conn.commit()
+
+
+def _hint_columns(conn, sql: str, err: str) -> None:
+    print(f"ERROR: {err.strip()}", file=sys.stderr)
+    # Try to extract table names from FROM/UPDATE/INTO clauses.
+    tables = set(re.findall(r"\b(?:from|join|update|into)\s+([a-zA-Z_][\w\.]*)", sql, re.IGNORECASE))
+    if not tables:
+        return
+    with conn.cursor() as cur:
+        for t in tables:
+            schema = "public"
+            name = t
+            if "." in t:
+                schema, name = t.split(".", 1)
+            cur.execute(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_schema=%s AND table_name=%s ORDER BY ordinal_position",
+                (schema, name),
+            )
+            cols = [r["column_name"] for r in cur.fetchall()]
+            if cols:
+                print(f"\nColumns in {schema}.{name}:", file=sys.stderr)
+                for c in cols:
+                    print(f"  - {c}", file=sys.stderr)
+
+
+def _hint_tables(conn, err: str) -> None:
+    print(f"ERROR: {err.strip()}", file=sys.stderr)
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT table_name FROM information_schema.tables "
+            "WHERE table_schema='public' ORDER BY table_name"
+        )
+        names = [r["table_name"] for r in cur.fetchall()]
+        print("\nAvailable public tables:", file=sys.stderr)
+        for n in names:
+            print(f"  - {n}", file=sys.stderr)
 
 
 def _print_table(rows: list[dict]) -> None:
