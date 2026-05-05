@@ -608,9 +608,11 @@ export function CameraCaptureDocument({
   const captureShot = async () => {
     const video = videoRef.current;
     if (!video) return;
+    const vw = video.videoWidth;
+    const vh = video.videoHeight;
     const canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    canvas.width = vw;
+    canvas.height = vh;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     ctx.drawImage(video, 0, 0);
@@ -619,7 +621,17 @@ export function CameraCaptureDocument({
     );
     if (!blob) return;
     const id = crypto.randomUUID();
-    setShots((prev) => [...prev, { id, raw: blob, bitmap: null, edit: null }]);
+    // In Carnet mode, pre-position the crop quad over the on-screen ID overlay
+    // rect so the user only fine-tunes corners instead of dragging from the
+    // image bounds. Falls back to whole image otherwise.
+    const initialEdit: ShotEdit | null =
+      scanMode === "id"
+        ? {
+            quad: idOverlayToImageQuad(vw, vh, video),
+            filter: "magic" as FilterMode,
+          }
+        : null;
+    setShots((prev) => [...prev, { id, raw: blob, bitmap: null, edit: initialEdit }]);
   };
 
   const handleFileFallback = async (files: FileList | null) => {
@@ -1660,4 +1672,38 @@ function TransformGroup({
       </Button>
     </div>
   );
+}
+
+// Map the on-screen Carnet overlay rect (centered at min(80vw, 60vh*1.586) wide,
+// aspect 1.586:1) into the captured image's pixel coordinates so the editor
+// pre-positions the crop quad over what the user was framing.
+function idOverlayToImageQuad(vw: number, vh: number, video: HTMLVideoElement): Quad {
+  const container = video.parentElement;
+  if (!container || !vw || !vh) {
+    return insetRect(vw, vh, 0.1);
+  }
+  const rect = container.getBoundingClientRect();
+  const cw = rect.width;
+  const ch = rect.height;
+  const sa = vw / vh;
+  const ca = cw / ch;
+  // object-contain: the video is fit centered inside the container, possibly
+  // letterboxed. Compute the actual displayed video size in CSS px.
+  const dispW = sa > ca ? cw : ch * sa;
+  const dispH = sa > ca ? cw / sa : ch;
+  const oW = Math.min(0.8 * window.innerWidth, 0.6 * window.innerHeight * 1.586);
+  const oH = oW / 1.586;
+  const ratioW = Math.min(1, oW / dispW);
+  const ratioH = Math.min(1, oH / dispH);
+  const halfW = (ratioW * vw) / 2;
+  const halfH = (ratioH * vh) / 2;
+  const cx = vw / 2;
+  const cy = vh / 2;
+  const cl = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+  return [
+    { x: cl(cx - halfW, 0, vw), y: cl(cy - halfH, 0, vh) },
+    { x: cl(cx + halfW, 0, vw), y: cl(cy - halfH, 0, vh) },
+    { x: cl(cx + halfW, 0, vw), y: cl(cy + halfH, 0, vh) },
+    { x: cl(cx - halfW, 0, vw), y: cl(cy + halfH, 0, vh) },
+  ];
 }
