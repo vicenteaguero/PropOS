@@ -1,7 +1,7 @@
 include .env
 export
 
-.PHONY: setup dev dev-frontend dev-hmr dev-pwa dev-pwa-hmr dev-docker-hmr dev-docker-pwa-hmr dev-docker-pwa-hmr-kapso stop build migrate seed format lint test clean logs backend-shell db-studio gcloud-auth deploy-setup deploy-secrets-sync deploy-trigger-setup deploy-trigger-list deploy-backend deploy-verify deploy-frontend kapso-templates-sync kapso-webhook-tunnel query query-write
+.PHONY: setup dev dev-frontend dev-hmr dev-pwa dev-pwa-hmr dev-pwa-hmr-kapso dev-docker-hmr dev-docker-pwa-hmr dev-docker-pwa-hmr-kapso stop build migrate seed format lint test clean logs backend-shell db-studio gcloud-auth deploy-setup deploy-secrets-sync deploy-trigger-setup deploy-trigger-list deploy-backend deploy-verify deploy-frontend kapso-templates-sync kapso-webhook-tunnel query query-write
 
 setup:
 	@bash scripts/setup.sh
@@ -29,6 +29,10 @@ dev-hmr:
 
 dev-pwa-hmr:
 	@PWA=1 bash scripts/dev_hmr.sh
+
+# Same as dev-pwa-hmr plus cloudflared tunnel for Kapso WhatsApp webhook.
+dev-pwa-hmr-kapso:
+	@PWA=1 KAPSO=1 bash scripts/dev_hmr.sh
 
 # Docker variant: runs api+frontend in containers (avoids Tahoe Node bug),
 # host runs only the HTTPS proxy on :5443 for HMR + iPhone LAN access.
@@ -129,10 +133,23 @@ test-anita-report:
 # (HEIC, JPG, PNG, WebP all accepted). Run this; PDFs land in output/ (overwritten).
 test-scanner:
 	@bash scripts/log.sh MAKE "📄" "Scanner pipeline (folders → PDFs)"
-	@cd backend && poetry run python -c "import cv2, pillow_heif, reportlab" 2>/dev/null || \
-		(echo "Installing scanner-harness deps..." && cd backend && \
-		 poetry run pip install opencv-python pillow pillow-heif reportlab numpy)
+	@cd backend && (poetry run python -c "import cv2, pillow_heif, reportlab" 2>/dev/null || \
+		(echo "Installing scanner-harness deps..." && \
+		 poetry run pip install opencv-python pillow pillow-heif reportlab numpy))
 	cd backend && poetry run python tests/integration/scanner/run_scanner.py
+
+test-docscanner:
+	@bash scripts/log.sh MAKE "🧠" "DocScanner DL pipeline (folders → PDFs)"
+	@cd backend && (poetry run python -c "import torch, skimage, gdown" 2>/dev/null || \
+		(echo "Installing docscanner-harness deps..." && \
+		 poetry run pip install torch torchvision scikit-image gdown))
+	@if [ ! -f backend/tests/integration/scanner/docscanner/model_pretrained/DocScanner-L.pth ]; then \
+		echo "Downloading pretrained models from Google Drive..." && \
+		cd backend && poetry run gdown --folder \
+		  https://drive.google.com/drive/folders/1W1_DJU8dfEh6FqDYqFQ7ypR38Z8c5r4D \
+		  -O tests/integration/scanner/docscanner/model_pretrained; \
+	fi
+	cd backend && poetry run python tests/integration/scanner/run_docscanner.py
 
 clean:
 	docker-compose down -v
