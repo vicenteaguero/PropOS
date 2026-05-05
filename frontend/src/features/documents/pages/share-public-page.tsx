@@ -164,7 +164,7 @@ export function SharePublicPage() {
         </PageLayout>
       </header>
       <PageLayout width="md">
-        <DocumentPreview blob={blob} loading={!blob} />
+        <DocumentPreview blob={blob} mimeType={view?.mime_type} loading={!blob} />
       </PageLayout>
       <PageLayout width="md" className="text-center text-xs text-muted-foreground">
         PropOS — Documento compartido
