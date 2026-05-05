@@ -6,6 +6,8 @@ import {
   FlipHorizontal,
   FlipVertical,
   Loader2,
+  Palette,
+  PenTool,
   Plus,
   RotateCcw,
   RotateCw,
@@ -14,6 +16,7 @@ import {
   Trash2,
   Type,
   X,
+  Zap,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -115,7 +118,10 @@ type Mode = "capture" | "edit";
 
 const HANDLE_RADIUS = 14;
 const MAGNIFIER_SIZE = 140;
-const MAGNIFIER_ZOOM = 2;
+const MAGNIFIER_ZOOM = 1.5;
+const HD_STORAGE_KEY = "propos:scanner-hd";
+
+type ScanMode = "document" | "id" | "photo";
 
 type Drag =
   | { kind: "corner"; corner: Corner }
@@ -158,6 +164,22 @@ export function CameraCaptureDocument({
   const [busy, setBusy] = useState(false);
   const [mode, setMode] = useState<Mode>(initialShotState.length > 0 ? "edit" : "capture");
   const [curveMode, setCurveMode] = useState(false);
+  const [scanMode, setScanMode] = useState<ScanMode>("document");
+  const [hdEnabled, setHdEnabled] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage?.getItem(HD_STORAGE_KEY) === "1";
+  });
+  const toggleHd = useCallback(() => {
+    setHdEnabled((v) => {
+      const next = !v;
+      try {
+        window.localStorage?.setItem(HD_STORAGE_KEY, next ? "1" : "0");
+      } catch {
+        /* no-op */
+      }
+      return next;
+    });
+  }, []);
 
   // ---------- finalize overlay state ----------
   const [finalizeOpen, setFinalizeOpen] = useState(false);
@@ -222,6 +244,7 @@ export function CameraCaptureDocument({
       setDocPropertyTitle("");
       setDocContactName("");
       setDocTag(undefined);
+      setScanMode("document");
       return;
     }
     if (mode !== "capture") {
@@ -232,7 +255,10 @@ export function CameraCaptureDocument({
     (async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 } },
+          video: {
+            facingMode: { ideal: "environment" },
+            width: { ideal: hdEnabled ? 2560 : 1280 },
+          },
           audio: false,
         });
         if (cancelled) {
@@ -254,7 +280,7 @@ export function CameraCaptureDocument({
       cancelled = true;
       stopStream();
     };
-  }, [open, mode, stopStream]);
+  }, [open, mode, stopStream, hdEnabled]);
 
   // ---------- decode active shot ----------
   useEffect(() => {
@@ -272,7 +298,7 @@ export function CameraCaptureDocument({
                   bitmap: decoded.bitmap,
                   edit: s.edit ?? {
                     quad: insetRect(decoded.bitmap.width, decoded.bitmap.height),
-                    filter: "none",
+                    filter: scanMode === "id" ? "magic" : "none",
                   },
                 }
               : s,
@@ -582,7 +608,7 @@ export function CameraCaptureDocument({
     if (!ctx) return;
     ctx.drawImage(video, 0, 0);
     const blob: Blob | null = await new Promise((resolve) =>
-      canvas.toBlob(resolve, "image/jpeg", 0.92),
+      canvas.toBlob(resolve, "image/jpeg", hdEnabled ? 0.95 : 0.92),
     );
     if (!blob) return;
     const id = crypto.randomUUID();
@@ -776,6 +802,8 @@ export function CameraCaptureDocument({
     setBusy(true);
     setSubmitting(true);
     setProgress("pdf");
+    const isId = scanMode === "id";
+    const jpegQuality = isId ? 0.95 : 0.92;
     try {
       const baked: Blob[] = [];
       const sources: SourceShot[] = [];
@@ -789,21 +817,27 @@ export function CameraCaptureDocument({
           quad: insetRect(bitmap.width, bitmap.height),
           filter: "none" as FilterMode,
         };
-        const warped = await warpQuad(bitmap, edit.quad, edit.bezierControls);
+        const warped = await warpQuad(bitmap, edit.quad, edit.bezierControls, {
+          forceLandscape: isId,
+        });
         const filtered = await applyFilter(warped, edit.filter);
-        const processed = await canvasToJpegBlob(filtered, 0.85);
+        const processed = await canvasToJpegBlob(filtered, jpegQuality);
         const compressed = await compressBlob(processed, `shot-${Date.now()}.jpg`);
         baked.push(compressed);
         sources.push({ raw: s.raw, edit });
       }
-      const pdf = await imagesToPdf(baked);
+      const pdf = await imagesToPdf(baked, { mode: isId ? "id" : "document" });
       setProgress("uploading");
       const finalMeta: FinalizeMeta = meta ?? {
         name: docName.trim() || defaultDocName,
       };
+      if (isId && !finalMeta.tag) finalMeta.tag = "ID";
       await onPdfReady(pdf, sources, finalMeta);
       setProgress("saving");
-      // Caller is responsible for closing the modal on success.
+      // Caller closes the modal on success. If they didn't, clear submitting
+      // so the editor returns to interactive state.
+      setSubmitting(false);
+      setProgress(null);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error generando PDF");
       setProgress(null);
@@ -859,6 +893,7 @@ export function CameraCaptureDocument({
 
   // -------------------- CAPTURE MODE --------------------
   if (mode === "capture") {
+    const idHint = shots.length === 0 ? "Frente" : shots.length === 1 ? "Reverso" : "Listo";
     return (
       <div className="fixed inset-0 z-50 flex flex-col bg-background text-foreground">
         <div className="flex items-center justify-between border-b border-border/40 bg-card/40 px-4 py-3">
@@ -868,7 +903,32 @@ export function CameraCaptureDocument({
           </Button>
         </div>
 
-        <div className="flex flex-1 items-center justify-center overflow-hidden bg-black">
+        {/* Scan mode chip row */}
+        <div className="flex items-center justify-center gap-2 border-b border-border/40 bg-card/30 px-3 py-2">
+          {(
+            [
+              { key: "document", label: "Documento" },
+              { key: "id", label: "Carnet" },
+              { key: "photo", label: "Foto" },
+            ] as { key: ScanMode; label: string }[]
+          ).map((c) => (
+            <button
+              key={c.key}
+              type="button"
+              onClick={() => setScanMode(c.key)}
+              className={cn(
+                "rounded-full border px-3 py-1 text-xs transition",
+                scanMode === c.key
+                  ? "border-primary bg-primary/15 text-primary"
+                  : "border-border text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="relative flex flex-1 items-center justify-center overflow-hidden bg-black">
           {fallback ? (
             <label className="flex flex-col items-center gap-3 rounded-lg border-2 border-dashed border-border/60 p-8 text-center text-foreground">
               <Camera className="size-10" strokeWidth={1.4} />
@@ -888,6 +948,33 @@ export function CameraCaptureDocument({
               muted
               className="max-h-full max-w-full object-contain"
             />
+          )}
+          {scanMode === "id" && !fallback && (
+            <>
+              <svg
+                viewBox="0 0 100 100"
+                preserveAspectRatio="none"
+                className="pointer-events-none absolute inset-0 h-full w-full"
+              >
+                {/* ID-card 1.586:1 aspect, centered. Width=80% of viewport. */}
+                <rect
+                  x="10"
+                  y={50 - (80 / 1.586) * 0.5}
+                  width="80"
+                  height={80 / 1.586}
+                  rx="3"
+                  ry="3"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="0.4"
+                  strokeDasharray="2 1.5"
+                  className="text-primary/70"
+                />
+              </svg>
+              <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-background/80 px-3 py-1 text-xs font-medium text-foreground">
+                {idHint}
+              </div>
+            </>
           )}
         </div>
 
@@ -918,15 +1005,32 @@ export function CameraCaptureDocument({
           </DndContext>
         )}
 
-        <div className="flex items-center justify-between gap-3 border-t border-border/40 bg-card/40 px-6 py-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShots([])}
-            disabled={shots.length === 0}
-          >
-            <Trash2 className="size-4" /> Limpiar
-          </Button>
+        <div className="flex items-center justify-between gap-2 border-t border-border/40 bg-card/40 px-4 py-4">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShots([])}
+              disabled={shots.length === 0}
+            >
+              <Trash2 className="size-4" /> Limpiar
+            </Button>
+            <button
+              type="button"
+              onClick={toggleHd}
+              aria-pressed={hdEnabled}
+              className={cn(
+                "flex h-9 items-center gap-1 rounded-full border px-3 text-xs font-medium transition",
+                hdEnabled
+                  ? "border-primary bg-primary/15 text-primary"
+                  : "border-border text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Zap className="size-3.5" />
+              HD
+              {hdEnabled && <Check className="size-3" />}
+            </button>
+          </div>
           {!fallback && (
             <Button
               size="lg"
@@ -1036,7 +1140,12 @@ export function CameraCaptureDocument({
             onClick={handleGeneratePdfClick}
             disabled={busy || submitting || shots.length === 0}
           >
-            <Check className="size-4" /> Generar PDF
+            {submitting ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Check className="size-4" />
+            )}{" "}
+            Generar PDF
           </Button>
         </div>
       </aside>
@@ -1059,14 +1168,23 @@ export function CameraCaptureDocument({
             </div>
           )}
           {magnifier && (
-            <canvas
-              ref={magRef}
-              className="pointer-events-none absolute z-[70]"
-              style={{
-                left: clampMag(magnifier.x - MAGNIFIER_SIZE / 2, layout?.canvasW),
-                top: magOffsetY(magnifier.y, layout),
-              }}
-            />
+            <>
+              <canvas
+                ref={magRef}
+                className="pointer-events-none absolute z-[70]"
+                style={{
+                  left: clampMag(magnifier.x - MAGNIFIER_SIZE / 2, layout?.canvasW),
+                  top: magOffsetY(magnifier.y, layout),
+                }}
+              />
+              <div
+                className="pointer-events-none absolute z-[60] size-3.5 rounded-full border-2 border-primary bg-transparent"
+                style={{
+                  left: magnifier.x - 7,
+                  top: magnifier.y - 7,
+                }}
+              />
+            </>
           )}
         </div>
 
@@ -1137,14 +1255,24 @@ export function CameraCaptureDocument({
             onClick={handleGeneratePdfClick}
             disabled={busy || submitting || shots.length === 0}
           >
-            <Check className="size-4" /> Generar PDF
+            {submitting ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Check className="size-4" />
+            )}{" "}
+            Generar PDF
           </Button>
         </div>
       </main>
 
       {finalizeOpen && (
         <div className="absolute inset-0 z-[80] flex items-center justify-center bg-background/85 backdrop-blur-sm">
-          <div className="w-full max-w-md space-y-4 rounded-lg border border-border/60 bg-card p-5 shadow-xl">
+          <div className="relative w-full max-w-md space-y-4 overflow-hidden rounded-lg border border-border/60 bg-card p-5 shadow-xl">
+            {submitting && (
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-0.5 overflow-hidden bg-primary/15">
+                <div className="anita-progress-bar h-full w-1/3 bg-primary" />
+              </div>
+            )}
             <div className="flex items-center justify-between">
               <h2 className="text-base font-semibold">Guardar documento</h2>
               {!submitting && (
@@ -1256,7 +1384,8 @@ export function CameraCaptureDocument({
               <Button size="sm" onClick={submitFinalize} disabled={submitting}>
                 {submitting ? (
                   <>
-                    <Loader2 className="size-4 animate-spin" /> Procesando…
+                    <Loader2 className="size-4 animate-spin" />{" "}
+                    {progress ? progressLabel[progress] : "Procesando…"}
                   </>
                 ) : (
                   <>
@@ -1314,9 +1443,9 @@ function magOffsetY(
     canvasH: number;
   } | null,
 ) {
-  if (!layout) return touchY - MAGNIFIER_SIZE / 2 - 100;
-  const above = touchY - 100 - MAGNIFIER_SIZE / 2;
-  const below = touchY + 100 - MAGNIFIER_SIZE / 2;
+  if (!layout) return touchY - MAGNIFIER_SIZE / 2 - 160;
+  const above = touchY - 160 - MAGNIFIER_SIZE / 2;
+  const below = touchY + 160 - MAGNIFIER_SIZE / 2;
   if (above < 8) return below;
   if (below + MAGNIFIER_SIZE > layout.canvasH - 8) return above;
   return above;
@@ -1378,21 +1507,22 @@ interface FilterCardsProps {
   bitmap?: ImageBitmap | null;
 }
 
+const FILTER_CARDS: { mode: FilterMode; label: string; Icon: typeof Ban }[] = [
+  { mode: "none", label: "Sin filtro", Icon: Ban },
+  { mode: "magic", label: "Mágico", Icon: Sparkles },
+  { mode: "color", label: "Color", Icon: Palette },
+  { mode: "bw", label: "B&N", Icon: Type },
+  { mode: "ink", label: "Tinta", Icon: PenTool },
+];
+
 function FilterCards({ value, onChange, disabled, bitmap }: FilterCardsProps) {
-  const items: { mode: FilterMode; label: string; Icon: typeof Ban }[] = [
-    { mode: "none", label: "Sin filtro", Icon: Ban },
-    { mode: "bw", label: "B&N", Icon: Type },
-    { mode: "enhance", label: "Mejorar", Icon: Sparkles },
-  ];
-  const [previews, setPreviews] = useState<Record<FilterMode, string | null>>({
-    none: null,
-    bw: null,
-    enhance: null,
-  });
+  const [previews, setPreviews] = useState<Record<string, string | null>>({});
+  // Treat legacy "enhance" as "magic" for selection state.
+  const selected: FilterMode = value === "enhance" ? "magic" : value;
 
   useEffect(() => {
     if (!bitmap) {
-      setPreviews({ none: null, bw: null, enhance: null });
+      setPreviews({});
       return;
     }
     let cancelled = false;
@@ -1402,8 +1532,9 @@ function FilterCards({ value, onChange, disabled, bitmap }: FilterCardsProps) {
       const scale = Math.min(1, max / Math.max(bitmap.width, bitmap.height));
       const w = Math.max(1, Math.round(bitmap.width * scale));
       const h = Math.max(1, Math.round(bitmap.height * scale));
-      const next: Record<FilterMode, string | null> = { none: null, bw: null, enhance: null };
-      for (const m of ["none", "bw", "enhance"] as FilterMode[]) {
+      const next: Record<string, string | null> = {};
+      for (const item of FILTER_CARDS) {
+        const m = item.mode;
         const base = document.createElement("canvas");
         base.width = w;
         base.height = h;
@@ -1428,16 +1559,16 @@ function FilterCards({ value, onChange, disabled, bitmap }: FilterCardsProps) {
   }, [bitmap]);
 
   return (
-    <div className="flex gap-2">
-      {items.map(({ mode, label, Icon }) => (
+    <div className="flex gap-2 overflow-x-auto">
+      {FILTER_CARDS.map(({ mode, label, Icon }) => (
         <button
           key={mode}
           type="button"
           disabled={disabled}
           onClick={() => onChange(mode)}
           className={cn(
-            "flex flex-1 flex-col items-center gap-1 rounded-md border bg-background p-2 text-xs transition",
-            value === mode
+            "flex flex-1 min-w-[64px] flex-col items-center gap-1 rounded-md border bg-background p-2 text-xs transition",
+            selected === mode
               ? "border-primary ring-2 ring-primary/40"
               : "border-border text-muted-foreground hover:text-foreground",
             disabled && "pointer-events-none opacity-50",
