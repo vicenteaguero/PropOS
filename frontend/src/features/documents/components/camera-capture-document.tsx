@@ -56,9 +56,8 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props)
       setEditing(null);
       return;
     }
-    // Warm up OpenCV in parallel with camera so the editor doesn't stall on first capture.
-    loadOpenCV().catch(() => {});
     let cancelled = false;
+    let warmupTimer: number | undefined;
     (async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -74,6 +73,11 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props)
           videoRef.current.srcObject = stream;
           await videoRef.current.play();
         }
+        // Warm up OpenCV after the camera is live, deferred so the 10MB script
+        // parse doesn't freeze the UI while the stream is starting.
+        warmupTimer = window.setTimeout(() => {
+          if (!cancelled) loadOpenCV().catch(() => {});
+        }, 1500);
       } catch (e) {
         console.warn("camera unavailable, fallback to file input", e);
         setFallback(true);
@@ -81,6 +85,7 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props)
     })();
     return () => {
       cancelled = true;
+      if (warmupTimer !== undefined) window.clearTimeout(warmupTimer);
       stopStream();
     };
   }, [open, stopStream]);
