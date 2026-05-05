@@ -218,3 +218,8 @@ frontend/.certs/
 
 # Scanner harness output
 backend/tests/integration/scanner/output/*.pdf
+
+# Scanner DL harness (cloned + weights + outputs, too big for git)
+backend/tests/integration/scanner/docscanner/
+backend/tests/integration/scanner/output/
+backend/tests/integration/scanner/output_docscanner/
