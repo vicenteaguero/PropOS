@@ -35,9 +35,9 @@ export default defineConfig({
       workbox: {
         skipWaiting: true,
         clientsClaim: true,
-        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+        maximumFileSizeToCacheInBytes: 12 * 1024 * 1024,
         globPatterns: ["**/*.{js,css,html,ico,png,svg,webp,woff,woff2,mjs}"],
-        globIgnores: ["**/opencv/**"],
+        globIgnores: ["**/opencv/**", "logo.png"],
         runtimeCaching: devPwa
           ? [{ urlPattern: /.*/, handler: "NetworkOnly" }]
           : [
