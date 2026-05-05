@@ -11,23 +11,32 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 
 interface Props {
   blob: Blob | null;
+  mimeType?: string | null;
   loading?: boolean;
   maxPages?: number;
 }
 
-export function DocumentPreview({ blob, loading, maxPages = 25 }: Props) {
+export function DocumentPreview({ blob, mimeType, loading, maxPages = 25 }: Props) {
   const [src, setSrc] = useState<string | null>(null);
   const [pageCount, setPageCount] = useState(0);
+
+  // Prefer the explicit mime from the version row; fall back to blob.type.
+  const effectiveMime = (mimeType || blob?.type || "").toLowerCase();
 
   useEffect(() => {
     if (!blob) {
       setSrc(null);
       return;
     }
-    const url = URL.createObjectURL(blob);
+    // Re-wrap blob with correct mime so <img> / browser viewer pick the right handler.
+    const typed =
+      effectiveMime && blob.type !== effectiveMime
+        ? new Blob([blob], { type: effectiveMime })
+        : blob;
+    const url = URL.createObjectURL(typed);
     setSrc(url);
     return () => URL.revokeObjectURL(url);
-  }, [blob]);
+  }, [blob, effectiveMime]);
 
   if (loading) {
     return (
@@ -39,13 +48,13 @@ export function DocumentPreview({ blob, loading, maxPages = 25 }: Props) {
 
   if (!src || !blob) return null;
 
-  if (blob.type.startsWith("image/")) {
+  if (effectiveMime.startsWith("image/")) {
     return (
       <img src={src} alt="preview" className="mx-auto max-h-[80dvh] rounded-md object-contain" />
     );
   }
 
-  if (blob.type === "application/pdf") {
+  if (effectiveMime === "application/pdf") {
     return (
       <Document
         file={src}
