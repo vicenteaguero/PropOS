@@ -1,5 +1,7 @@
 import { outputSize } from "./geometry";
-import type { Point, Quad } from "./types";
+import type { Point, Quad, Side } from "./types";
+
+export type BezierControls = { T?: Point; R?: Point; B?: Point; L?: Point };
 
 // Solve 8x8 linear system for perspective transform coefficients via Gaussian
 // elimination. Returns [a,b,c,d,e,f,g,h] where the homography is:
@@ -275,18 +277,180 @@ function fallback2DWarp(
   return out;
 }
 
+function lerpPt(a: Point, b: Point, t: number): Point {
+  return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+}
+
+// Quadratic bezier: B(t) = (1-t)^2 P0 + 2(1-t)t P1 + t^2 P2.
+function quadBezier(p0: Point, p1: Point | undefined, p2: Point, t: number): Point {
+  if (!p1) return lerpPt(p0, p2, t);
+  const u = 1 - t;
+  return {
+    x: u * u * p0.x + 2 * u * t * p1.x + t * t * p2.x,
+    y: u * u * p0.y + 2 * u * t * p1.y + t * t * p2.y,
+  };
+}
+
+function hasAnyBezier(controls: BezierControls): boolean {
+  return Boolean(controls.T || controls.R || controls.B || controls.L);
+}
+
+/**
+ * Coons-patch warp for curved/cylindrical documents. Each side is a quadratic
+ * bezier (or straight line when its control is undefined). Source point at
+ * unit (u, v) is the bilinear Coons interpolation of the four side curves.
+ * Renders to a 2D canvas via the same triangulated grid technique as the WebGL2
+ * fallback path (32x32 grid, +0.5px dilation to hide AA seams).
+ */
+function bezierCoonsWarp(
+  bitmap: ImageBitmap,
+  quad: Quad,
+  controls: BezierControls,
+  outW: number,
+  outH: number,
+  portrait: boolean,
+): HTMLCanvasElement {
+  const N = 32;
+  const [TL, TR, BR, BL] = quad;
+
+  const sideAt = (s: Side, t: number): Point => {
+    switch (s) {
+      case "T":
+        return quadBezier(TL, controls.T, TR, t);
+      case "B":
+        return quadBezier(BL, controls.B, BR, t);
+      case "L":
+        return quadBezier(TL, controls.L, BL, t);
+      case "R":
+        return quadBezier(TR, controls.R, BR, t);
+    }
+  };
+
+  const sample = (u: number, v: number): Point => {
+    const top = sideAt("T", u);
+    const bottom = sideAt("B", u);
+    const left = sideAt("L", v);
+    const right = sideAt("R", v);
+    const cx = (1 - u) * (1 - v) * TL.x + u * (1 - v) * TR.x + (1 - u) * v * BL.x + u * v * BR.x;
+    const cy = (1 - u) * (1 - v) * TL.y + u * (1 - v) * TR.y + (1 - u) * v * BL.y + u * v * BR.y;
+    return {
+      x: (1 - v) * top.x + v * bottom.x + (1 - u) * left.x + u * right.x - cx,
+      y: (1 - v) * top.y + v * bottom.y + (1 - u) * left.y + u * right.y - cy,
+    };
+  };
+
+  const grid: Point[][] = [];
+  for (let i = 0; i <= N; i++) {
+    const row: Point[] = [];
+    for (let j = 0; j <= N; j++) row.push(sample(j / N, i / N));
+    grid.push(row);
+  }
+  const dstMap = (u: number, v: number): Point => {
+    if (portrait) return { x: u * outW, y: v * outH };
+    return { x: v * outW, y: (1 - u) * outH };
+  };
+
+  const out = document.createElement("canvas");
+  out.width = outW;
+  out.height = outH;
+  const ctx = out.getContext("2d");
+  if (!ctx) throw new Error("2d context unavailable");
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, outW, outH);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+
+  const dilate = (p: Point, c: Point): Point => {
+    const dx = p.x - c.x;
+    const dy = p.y - c.y;
+    const len = Math.hypot(dx, dy);
+    if (len < 1e-6) return p;
+    const k = (len + 0.5) / len;
+    return { x: c.x + dx * k, y: c.y + dy * k };
+  };
+
+  const drawTriangle = (s0: Point, s1: Point, s2: Point, d0: Point, d1: Point, d2: Point) => {
+    const cx = (d0.x + d1.x + d2.x) / 3;
+    const cy = (d0.y + d1.y + d2.y) / 3;
+    const c = { x: cx, y: cy };
+    const D0 = dilate(d0, c);
+    const D1 = dilate(d1, c);
+    const D2 = dilate(d2, c);
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(D0.x, D0.y);
+    ctx.lineTo(D1.x, D1.y);
+    ctx.lineTo(D2.x, D2.y);
+    ctx.closePath();
+    ctx.clip();
+    const x0 = s0.x,
+      y0 = s0.y,
+      x1 = s1.x,
+      y1 = s1.y,
+      x2 = s2.x,
+      y2 = s2.y;
+    const X0 = D0.x,
+      Y0 = D0.y,
+      X1 = D1.x,
+      Y1 = D1.y,
+      X2 = D2.x,
+      Y2 = D2.y;
+    const det = x0 * (y1 - y2) + x1 * (y2 - y0) + x2 * (y0 - y1);
+    if (Math.abs(det) < 1e-9) {
+      ctx.restore();
+      return;
+    }
+    const a = (X0 * (y1 - y2) + X1 * (y2 - y0) + X2 * (y0 - y1)) / det;
+    const cAff = (X0 * (x2 - x1) + X1 * (x0 - x2) + X2 * (x1 - x0)) / det;
+    const e =
+      (X0 * (x1 * y2 - x2 * y1) + X1 * (x2 * y0 - x0 * y2) + X2 * (x0 * y1 - x1 * y0)) / det;
+    const b = (Y0 * (y1 - y2) + Y1 * (y2 - y0) + Y2 * (y0 - y1)) / det;
+    const d = (Y0 * (x2 - x1) + Y1 * (x0 - x2) + Y2 * (x1 - x0)) / det;
+    const f =
+      (Y0 * (x1 * y2 - x2 * y1) + Y1 * (x2 * y0 - x0 * y2) + Y2 * (x0 * y1 - x1 * y0)) / det;
+    ctx.transform(a, b, cAff, d, e, f);
+    ctx.drawImage(bitmap, 0, 0);
+    ctx.restore();
+  };
+
+  for (let i = 0; i < N; i++) {
+    for (let j = 0; j < N; j++) {
+      const s00 = grid[i]![j]!;
+      const s01 = grid[i]![j + 1]!;
+      const s10 = grid[i + 1]![j]!;
+      const s11 = grid[i + 1]![j + 1]!;
+      const d00 = dstMap(j / N, i / N);
+      const d01 = dstMap((j + 1) / N, i / N);
+      const d10 = dstMap(j / N, (i + 1) / N);
+      const d11 = dstMap((j + 1) / N, (i + 1) / N);
+      drawTriangle(s00, s01, s11, d00, d01, d11);
+      drawTriangle(s00, s11, s10, d00, d11, d10);
+    }
+  }
+  return out;
+}
+
 /**
  * GPU perspective warp via WebGL2. Renders in natural orientation, then copies
  * into a 2D canvas, rotating to portrait when source is landscape so PDF output
  * stays portrait. Falls back to a triangulated 2D canvas warp when WebGL2 is
- * unavailable.
+ * unavailable. When `bezierControls` has any side set, routes to a pure-canvas
+ * Coons-patch warp instead (handles curved/cylindrical documents).
  */
-export async function warpQuad(bitmap: ImageBitmap, quad: Quad): Promise<HTMLCanvasElement> {
+export async function warpQuad(
+  bitmap: ImageBitmap,
+  quad: Quad,
+  bezierControls?: BezierControls,
+): Promise<HTMLCanvasElement> {
   const { width: W, height: H } = outputSize(quad);
   const portrait = W <= H;
   // Final 2D output is always portrait-or-square (W <= H).
   const outW = portrait ? W : H;
   const outH = portrait ? H : W;
+
+  if (bezierControls && hasAnyBezier(bezierControls)) {
+    return bezierCoonsWarp(bitmap, quad, bezierControls, outW, outH, portrait);
+  }
 
   // Render in natural orientation (W x H, possibly landscape) on the GL canvas.
   const glCanvas = tryWebGLWarp(bitmap, quad, W, H);
