@@ -1,7 +1,7 @@
 include .env
 export
 
-.PHONY: setup dev dev-frontend dev-hmr dev-pwa dev-pwa-hmr dev-pwa-hmr-kapso dev-docker-hmr dev-docker-pwa-hmr dev-docker-pwa-hmr-kapso stop build migrate seed format lint test clean logs backend-shell db-studio gcloud-auth deploy-setup deploy-secrets-sync deploy-trigger-setup deploy-trigger-list deploy-backend deploy-verify deploy-frontend kapso-templates-sync kapso-webhook-tunnel query query-write
+.PHONY: setup dev dev-frontend dev-hmr dev-pwa dev-pwa-hmr dev-pwa-hmr-kapso dev-docker-hmr dev-docker-pwa-hmr dev-docker-pwa-hmr-kapso stop build migrate seed format lint test clean logs backend-shell db-studio gcloud-auth deploy-setup deploy-secrets-sync deploy-trigger-setup deploy-trigger-list deploy-backend deploy-verify deploy-frontend kapso-templates-sync kapso-webhook-tunnel query query-write backfill-thumbnails
 
 setup:
 	@bash scripts/setup.sh
@@ -252,3 +252,9 @@ query:
 query-write:
 	@if [ -z "$(SQL)" ]; then echo "usage: make query-write SQL=\"<sql>\"" && exit 1; fi
 	cd backend && poetry run python -m scripts.db_query --write "$(SQL)"
+
+# Backfill missing thumbnails for document_versions (PDFs + images).
+#   make backfill-thumbnails ARGS="--dry-run --limit 10"
+#   make backfill-thumbnails ARGS="--mime image"
+backfill-thumbnails:
+	cd backend && poetry run python -m scripts.backfill_thumbnails $(ARGS)
