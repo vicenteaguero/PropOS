@@ -76,9 +76,11 @@ async function imagesToIdPdf(blobs: Blob[], opts: PdfPageOptions): Promise<Uint8
     return pdf.save();
   }
 
-  // 2+ images: two per A4 portrait page, top half + bottom half.
+  // 2+ images: two per A4 portrait page, top + bottom. ID images render at
+  // 60% page width max (real ID size on paper, not full bleed) so the result
+  // looks like a typical "fotocopia dos caras" output.
   const halfH = (pageH - 2 * margin) / 2;
-  const slotW = pageW - 2 * margin;
+  const slotW = (pageW - 2 * margin) * 0.6;
   for (let i = 0; i < blobs.length; i += 2) {
     const page = pdf.addPage([pageW, pageH]);
     for (let k = 0; k < 2; k++) {
