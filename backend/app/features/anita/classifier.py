@@ -31,6 +31,8 @@ INTENTS = (
     "create_property",
     "create_campaign",
     "add_note",
+    "attach_photos_to_property",
+    "create_document_from_photos",
     "query_count",
     "query_freeform",
     "ambiguous",
@@ -46,6 +48,7 @@ Si hay varias acciones, una por línea (sin bullets ni numeración).
 Intents válidos (campo `intent`):
   log_interaction, create_person, create_task, log_transaction,
   create_organization, create_property, create_campaign, add_note,
+  attach_photos_to_property, create_document_from_photos,
   query_count, query_freeform, ambiguous, out_of_scope
 
 Vocabulario universal (usa los que apliquen):
@@ -110,12 +113,22 @@ Ejemplos:
   in:  agrega comprador Tomás Vergara, RUT 18 millones 573 mil 892 K,
        teléfono +56 9 8743 2110
   out: intent=create_person kind=BUYER full_name="Tomás Vergara" rut="18.573.892-K" phone="+56987432110"
+
+  in:  agrega esas fotos a la casa de Av. Providencia 1711
+  out: intent=attach_photos_to_property property="Av. Providencia 1711"
+
+  in:  esas fotos son del depto de Las Condes
+  out: intent=attach_photos_to_property property="depto Las Condes"
+
+  in:  hazme un documento con esas fotos llamado tasación Apoquindo
+  out: intent=create_document_from_photos title="tasación Apoquindo"
 """
 
 
 @dataclass
 class Action:
     """One action emitted by the classifier (one line of KV output)."""
+
     intent: str
     fields: dict[str, Any] = field(default_factory=dict)
     raw: str = ""
@@ -210,9 +223,7 @@ async def classify(user_text: str) -> ClassifierResult:
     usage = completion.usage
     actual = (usage.prompt_tokens if usage else 0) + (usage.completion_tokens if usage else 0)
     if actual:
-        get_rate_limiter().record_response(
-            settings.anita_provider, settings.anita_model, actual, headers=headers
-        )
+        get_rate_limiter().record_response(settings.anita_provider, settings.anita_model, actual, headers=headers)
     return ClassifierResult(
         actions=actions,
         raw=raw_text,
@@ -281,13 +292,11 @@ async def extract_details(
     line = (completion.choices[0].message.content or "").strip().splitlines()
     line = next((ln.strip().lstrip("-* ").strip() for ln in line if "=" in ln), "")
     new_fields = parse_kv(line)
-    new_fields.pop("intent", None)  # safety: ignore stray intent= echoes
+    new_fields.pop("intent", None)
 
     usage = completion.usage
     tin = usage.prompt_tokens if usage else 0
     tout = usage.completion_tokens if usage else 0
     if tin + tout > 0:
-        get_rate_limiter().record_response(
-            settings.anita_provider, settings.anita_model, tin + tout, headers=headers
-        )
+        get_rate_limiter().record_response(settings.anita_provider, settings.anita_model, tin + tout, headers=headers)
     return new_fields, tin, tout
