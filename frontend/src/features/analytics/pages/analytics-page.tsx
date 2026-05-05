@@ -4,6 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Loader2, RefreshCw } from "lucide-react";
 import { apiRequest } from "@features/documents/api/http";
 import { formatCLP } from "@/lib/locale-cl";
+import { PageLayout } from "@shared/components/page-layout";
+import { PageHeader } from "@shared/components/page-header";
+import { CHART_COLORS, CHART_HEIGHT } from "@shared/lib/chart-config";
 import {
   Bar,
   BarChart,
@@ -54,7 +57,14 @@ interface FunnelRow {
 }
 
 const STAGE_ORDER = ["LEAD", "QUALIFIED", "VISIT", "OFFER", "RESERVATION", "CLOSED"];
-const STAGE_COLORS = ["#a78bfa", "#818cf8", "#60a5fa", "#34d399", "#fbbf24", "#f472b6"];
+const STAGE_COLORS = [
+  CHART_COLORS.primary,
+  CHART_COLORS.accent,
+  CHART_COLORS.surface,
+  CHART_COLORS.success,
+  CHART_COLORS.warning,
+  CHART_COLORS.neutral,
+];
 
 export function AnalyticsPage() {
   const queryClient = useQueryClient();
@@ -96,32 +106,29 @@ export function AnalyticsPage() {
   const funnelLatest = aggregateFunnelLatestMonth(funnel.data ?? []);
 
   return (
-    <div className="container max-w-6xl py-6 space-y-4">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">Analítica</h1>
-          <p className="text-sm text-muted-foreground">
-            Métricas internas (solo ADMIN). Refresca las materialized views si cambian datos
-            recientes.
-          </p>
-        </div>
-        <Button
-          onClick={() => refresh.mutate()}
-          disabled={refresh.isPending}
-          variant="outline"
-          size="sm"
-          className="gap-1"
-        >
-          {refresh.isPending ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            <RefreshCw className="size-4" />
-          )}
-          Refrescar
-        </Button>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+    <PageLayout width="lg">
+      <PageHeader
+        title="Analítica"
+        description="Métricas internas (solo ADMIN). Refresca las materialized views si cambian datos recientes."
+        actions={
+          <Button
+            onClick={() => refresh.mutate()}
+            disabled={refresh.isPending}
+            variant="outline"
+            size="sm"
+            className="gap-1"
+          >
+            {refresh.isPending ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <RefreshCw className="size-4" />
+            )}
+            Refrescar
+          </Button>
+        }
+      />
+      <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
         <KpiCard label="Ingresos totales" value={formatCLP(totalIn / 100)} />
         <KpiCard label="Gastos totales" value={formatCLP(totalOut / 100)} tone="destructive" />
         <KpiCard label="Pendientes Anita" value={String(pending.data?.pending_count ?? 0)} />
@@ -140,7 +147,7 @@ export function AnalyticsPage() {
                 Sin transacciones aún.
               </p>
             ) : (
-              <ResponsiveContainer width="100%" height={260}>
+              <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
                 <LineChart data={revenueByMonth}>
                   <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
                   <XAxis dataKey="month" tick={{ fontSize: 11 }} />
@@ -154,14 +161,14 @@ export function AnalyticsPage() {
                     type="monotone"
                     dataKey="in_cents"
                     name="Ingresos"
-                    stroke="#34d399"
+                    stroke={CHART_COLORS.success}
                     strokeWidth={2}
                   />
                   <Line
                     type="monotone"
                     dataKey="out_cents"
                     name="Gastos"
-                    stroke="#f87171"
+                    stroke={CHART_COLORS.error}
                     strokeWidth={2}
                   />
                 </LineChart>
@@ -182,7 +189,7 @@ export function AnalyticsPage() {
                 Sin oportunidades aún.
               </p>
             ) : (
-              <ResponsiveContainer width="100%" height={260}>
+              <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
                 <BarChart data={funnelLatest}>
                   <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
                   <XAxis dataKey="stage" tick={{ fontSize: 11 }} />
@@ -239,7 +246,7 @@ export function AnalyticsPage() {
                       <td
                         className={
                           "py-2 pr-4 " +
-                          (roi == null ? "" : roi >= 0 ? "text-emerald-500" : "text-destructive")
+                          (roi == null ? "" : roi >= 0 ? "text-success" : "text-destructive")
                         }
                       >
                         {roi == null ? "—" : `${roi.toFixed(0)}%`}
@@ -282,7 +289,8 @@ export function AnalyticsPage() {
           )}
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </PageLayout>
   );
 }
 
