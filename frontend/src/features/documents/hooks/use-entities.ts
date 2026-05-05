@@ -7,17 +7,25 @@ export const entitiesKeys = {
   areas: ["entities", "areas"] as const,
 };
 
-export function useProperties(q?: string) {
+interface EntityQueryOpts {
+  enabled?: boolean;
+}
+
+export function useProperties(q?: string, opts: EntityQueryOpts = {}) {
   return useQuery({
     queryKey: entitiesKeys.properties(q),
     queryFn: () => entitiesApi.listProperties(q),
+    enabled: opts.enabled ?? true,
+    staleTime: 60_000,
   });
 }
 
-export function useContacts(q?: string) {
+export function useContacts(q?: string, opts: EntityQueryOpts = {}) {
   return useQuery({
     queryKey: entitiesKeys.contacts(q),
     queryFn: () => entitiesApi.listContacts(q),
+    enabled: opts.enabled ?? true,
+    staleTime: 60_000,
   });
 }
 
