@@ -50,10 +50,24 @@ export function DocumentDetailPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
 
-  const downloadName = useMemo(
-    () => currentVersion?.download_filename || doc?.display_name || "documento",
-    [currentVersion, doc],
-  );
+  const downloadName = useMemo(() => {
+    const base = currentVersion?.download_filename || doc?.display_name || "documento";
+    const mime = currentVersion?.mime_type ?? "";
+    const extByMime: Record<string, string> = {
+      "application/pdf": "pdf",
+      "image/jpeg": "jpg",
+      "image/png": "png",
+      "image/webp": "webp",
+      "image/heic": "heic",
+      "image/heif": "heif",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+    };
+    const wantedExt = extByMime[mime];
+    if (!wantedExt) return base;
+    const hasExt = /\.[a-z0-9]{2,5}$/i.test(base);
+    if (hasExt) return base;
+    return `${base}.${wantedExt}`;
+  }, [currentVersion, doc]);
 
   if (isLoading) {
     return (
@@ -98,11 +112,17 @@ export function DocumentDetailPage() {
 
   const downloadCurrent = () => {
     if (!blobState.blob) return;
-    const url = URL.createObjectURL(blobState.blob);
+    const mime = currentVersion?.mime_type || "application/octet-stream";
+    const typed =
+      blobState.blob.type === mime ? blobState.blob : new Blob([blobState.blob], { type: mime });
+    const url = URL.createObjectURL(typed);
     const a = document.createElement("a");
     a.href = url;
     a.download = downloadName;
+    a.rel = "noopener";
+    document.body.appendChild(a);
     a.click();
+    a.remove();
     URL.revokeObjectURL(url);
   };
 
@@ -186,7 +206,11 @@ export function DocumentDetailPage() {
 
       <div className="grid gap-6 md:grid-cols-[2fr_1fr]">
         <div className="rounded-lg border border-border bg-card p-3">
-          <DocumentPreview blob={blobState.blob} loading={blobState.loading} />
+          <DocumentPreview
+            blob={blobState.blob}
+            mimeType={currentVersion?.mime_type}
+            loading={blobState.loading}
+          />
         </div>
         <aside className="space-y-4">
           <section>
