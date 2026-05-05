@@ -93,6 +93,8 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props)
       canvas.toBlob(resolve, "image/jpeg", 0.92),
     );
     if (!blob) return;
+    // Open scanner editor immediately so the user can adjust the auto-detected
+    // corners before the page is added.
     setEditing({ sourceBlob: blob });
   };
 
@@ -100,8 +102,6 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props)
     if (!files) return;
     for (const file of Array.from(files)) {
       setEditing({ sourceBlob: file });
-      // open editor for one at a time; user clicks Aplicar to proceed
-      break;
     }
   };
 
