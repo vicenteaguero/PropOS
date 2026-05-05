@@ -60,15 +60,11 @@ class UserService:
         rut = payload.rut.strip() if payload.rut else None
 
         # Pre-check uniqueness (friendlier error than DB constraint).
-        existing_email = (
-            client.table(PROFILES_TABLE).select("id").ilike("email", email).limit(1).execute()
-        )
+        existing_email = client.table(PROFILES_TABLE).select("id").ilike("email", email).limit(1).execute()
         if existing_email.data:
             raise HTTPException(status_code=409, detail="Email ya registrado")
         if rut:
-            existing_rut = (
-                client.table(PROFILES_TABLE).select("id").eq("rut", rut).limit(1).execute()
-            )
+            existing_rut = client.table(PROFILES_TABLE).select("id").eq("rut", rut).limit(1).execute()
             if existing_rut.data:
                 raise HTTPException(status_code=409, detail="RUT ya registrado")
 

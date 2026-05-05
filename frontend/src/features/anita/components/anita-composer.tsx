@@ -93,9 +93,7 @@ export function AnitaComposer({ onSend, onAudio, isStreaming }: Props) {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
-      const mimeType = MediaRecorder.isTypeSupported("audio/webm")
-        ? "audio/webm"
-        : "audio/mp4";
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "audio/mp4";
       mimeRef.current = mimeType;
       const recorder = new MediaRecorder(stream, { mimeType });
       recorderRef.current = recorder;
@@ -113,7 +111,9 @@ export function AnitaComposer({ onSend, onAudio, isStreaming }: Props) {
       };
 
       // AudioContext for waveform
-      const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const Ctx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       const audioCtx = new Ctx();
       audioCtxRef.current = audioCtx;
       const source = audioCtx.createMediaStreamSource(stream);
@@ -201,7 +201,11 @@ export function AnitaComposer({ onSend, onAudio, isStreaming }: Props) {
             disabled={!text.trim() || isStreaming}
             title="Enviar"
           >
-            {isStreaming ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+            {isStreaming ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Send className="size-4" />
+            )}
           </Button>
         </div>
       )}

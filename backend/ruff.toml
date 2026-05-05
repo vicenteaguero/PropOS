@@ -1,6 +1,7 @@
 output-format = "concise"
 line-length = 120
 target-version = "py312"
+extend-exclude = ["tests/integration/scanner/docscanner"]
 
 lint.select = [
   "Q",   # flake8-quotes

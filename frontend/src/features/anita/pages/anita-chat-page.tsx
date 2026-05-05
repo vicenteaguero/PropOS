@@ -2,13 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { History, Loader2, PlusCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import {
   useAnitaMessages,
   useAnitaSessionList,
@@ -149,10 +143,13 @@ export function AnitaChatPage() {
                   }`}
                 >
                   <p className="line-clamp-2 font-medium text-foreground">
-                    {s.preview || <span className="italic text-muted-foreground">(sin mensajes)</span>}
+                    {s.preview || (
+                      <span className="italic text-muted-foreground">(sin mensajes)</span>
+                    )}
                   </p>
                   <p className="mt-1 text-[10px] text-muted-foreground">
-                    {relativeTime(s.last_activity_at)} · {s.status === "OPEN" ? "abierta" : "cerrada"}
+                    {relativeTime(s.last_activity_at)} ·{" "}
+                    {s.status === "OPEN" ? "abierta" : "cerrada"}
                   </p>
                 </button>
               ))}

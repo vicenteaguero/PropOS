@@ -28,9 +28,11 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props)
   const [busy, setBusy] = useState(false);
   const [fallback, setFallback] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [editing, setEditing] = useState<{ id?: string; sourceBlob: Blob; state?: EditState } | null>(
-    null,
-  );
+  const [editing, setEditing] = useState<{
+    id?: string;
+    sourceBlob: Blob;
+    state?: EditState;
+  } | null>(null);
 
   const shotUrls = useMemo(() => shots.map((s) => URL.createObjectURL(s.blob)), [shots]);
   useEffect(() => {

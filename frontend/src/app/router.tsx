@@ -64,10 +64,7 @@ export function AppRouter() {
             </ProtectedRoute>
           }
         >
-          <Route
-            index
-            element={role === "ADMIN" ? <AdminHomePage /> : <EmptyDashboard />}
-          />
+          <Route index element={role === "ADMIN" ? <AdminHomePage /> : <EmptyDashboard />} />
 
           {role === "ADMIN" && <Route path="anita" element={<AnitaChatPage />} />}
 

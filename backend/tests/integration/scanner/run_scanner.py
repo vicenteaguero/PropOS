@@ -12,6 +12,7 @@ on every run).
 Dependencies: opencv-python, numpy, pillow, pillow-heif, reportlab.
 The Makefile target installs them into the project's poetry env if missing.
 """
+
 from __future__ import annotations
 
 import io
@@ -72,10 +73,10 @@ def order_quad(pts: np.ndarray) -> np.ndarray:
     s = pts.sum(axis=1)
     d = pts[:, 0] - pts[:, 1]
     ordered = np.zeros((4, 2), dtype=np.float32)
-    ordered[0] = pts[np.argmin(s)]   # TL
-    ordered[1] = pts[np.argmax(d)]   # TR
-    ordered[2] = pts[np.argmax(s)]   # BR
-    ordered[3] = pts[np.argmin(d)]   # BL
+    ordered[0] = pts[np.argmin(s)]  # TL
+    ordered[1] = pts[np.argmax(d)]  # TR
+    ordered[2] = pts[np.argmax(s)]  # BR
+    ordered[3] = pts[np.argmin(d)]  # BL
     return ordered
 
 
@@ -168,9 +169,7 @@ def warp(image_rgb: np.ndarray, quad: np.ndarray) -> np.ndarray:
     w, h = output_size(quad)
     dst = np.array([[0, 0], [w, 0], [w, h], [0, h]], dtype=np.float32)
     m = cv2.getPerspectiveTransform(quad, dst)
-    warped = cv2.warpPerspective(
-        image_rgb, m, (w, h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE
-    )
+    warped = cv2.warpPerspective(image_rgb, m, (w, h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
     # PDF output is always Letter portrait. If warp came out landscape, rotate
     # 90° counterclockwise so content reads upright on the page.
     if warped.shape[1] > warped.shape[0]:
@@ -183,9 +182,7 @@ def apply_filter(image_rgb: np.ndarray, mode: str) -> np.ndarray:
         return image_rgb
     if mode == "bw":
         gray = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2GRAY)
-        bw = cv2.adaptiveThreshold(
-            gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 25, 15
-        )
+        bw = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 25, 15)
         return cv2.cvtColor(bw, cv2.COLOR_GRAY2RGB)
     if mode == "enhance":
         lab = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2LAB)

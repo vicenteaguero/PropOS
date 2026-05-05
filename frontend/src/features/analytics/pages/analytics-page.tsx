@@ -128,167 +128,167 @@ export function AnalyticsPage() {
         }
       />
       <div className="space-y-4">
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-        <KpiCard label="Ingresos totales" value={formatCLP(totalIn / 100)} />
-        <KpiCard label="Gastos totales" value={formatCLP(totalOut / 100)} tone="destructive" />
-        <KpiCard label="Pendientes Anita" value={String(pending.data?.pending_count ?? 0)} />
-      </div>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <KpiCard label="Ingresos totales" value={formatCLP(totalIn / 100)} />
+          <KpiCard label="Gastos totales" value={formatCLP(totalOut / 100)} tone="destructive" />
+          <KpiCard label="Pendientes Anita" value={String(pending.data?.pending_count ?? 0)} />
+        </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Revenue mensual</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {revenue.isLoading ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : revenueByMonth.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-8 text-center">
+                  Sin transacciones aún.
+                </p>
+              ) : (
+                <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
+                  <LineChart data={revenueByMonth}>
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                    <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => formatCLP(v / 100)} />
+                    <Tooltip
+                      formatter={(v) => formatCLP(Number(v) / 100)}
+                      contentStyle={{ fontSize: 12 }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: 12 }} />
+                    <Line
+                      type="monotone"
+                      dataKey="in_cents"
+                      name="Ingresos"
+                      stroke={CHART_COLORS.success}
+                      strokeWidth={2}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="out_cents"
+                      name="Gastos"
+                      stroke={CHART_COLORS.error}
+                      strokeWidth={2}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Funnel (último mes)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {funnel.isLoading ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : funnelLatest.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-8 text-center">
+                  Sin oportunidades aún.
+                </p>
+              ) : (
+                <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
+                  <BarChart data={funnelLatest}>
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                    <XAxis dataKey="stage" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                    <Tooltip contentStyle={{ fontSize: 12 }} />
+                    <Bar dataKey="count" name="Oportunidades">
+                      {funnelLatest.map((_, i) => (
+                        <Cell key={i} fill={STAGE_COLORS[i % STAGE_COLORS.length]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Revenue mensual</CardTitle>
+            <CardTitle className="text-base">Ad ROI por campaña</CardTitle>
           </CardHeader>
-          <CardContent>
-            {revenue.isLoading ? (
+          <CardContent className="overflow-x-auto">
+            {adRoi.isLoading ? (
               <Loader2 className="size-4 animate-spin" />
-            ) : revenueByMonth.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-8 text-center">
-                Sin transacciones aún.
-              </p>
             ) : (
-              <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-                <LineChart data={revenueByMonth}>
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => formatCLP(v / 100)} />
-                  <Tooltip
-                    formatter={(v) => formatCLP(Number(v) / 100)}
-                    contentStyle={{ fontSize: 12 }}
-                  />
-                  <Legend wrapperStyle={{ fontSize: 12 }} />
-                  <Line
-                    type="monotone"
-                    dataKey="in_cents"
-                    name="Ingresos"
-                    stroke={CHART_COLORS.success}
-                    strokeWidth={2}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="out_cents"
-                    name="Gastos"
-                    stroke={CHART_COLORS.error}
-                    strokeWidth={2}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b text-left text-muted-foreground">
+                    <th className="py-2 pr-4">Campaña</th>
+                    <th className="py-2 pr-4">Canal</th>
+                    <th className="py-2 pr-4">Presupuesto</th>
+                    <th className="py-2 pr-4">Gastado</th>
+                    <th className="py-2 pr-4">Ganadas</th>
+                    <th className="py-2 pr-4">Valor ganado</th>
+                    <th className="py-2 pr-4">ROI</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {adRoi.data?.map((r) => {
+                    const roi =
+                      r.spend_cents > 0
+                        ? ((r.won_value_cents - r.spend_cents) / r.spend_cents) * 100
+                        : null;
+                    return (
+                      <tr key={r.campaign_id} className="border-b last:border-0">
+                        <td className="py-2 pr-4">{r.campaign_name}</td>
+                        <td className="py-2 pr-4">{r.channel}</td>
+                        <td className="py-2 pr-4">
+                          {r.budget_cents != null ? formatCLP(r.budget_cents / 100) : "—"}
+                        </td>
+                        <td className="py-2 pr-4">{formatCLP(r.spend_cents / 100)}</td>
+                        <td className="py-2 pr-4">{r.won_count}</td>
+                        <td className="py-2 pr-4">{formatCLP(r.won_value_cents / 100)}</td>
+                        <td
+                          className={
+                            "py-2 pr-4 " +
+                            (roi == null ? "" : roi >= 0 ? "text-success" : "text-destructive")
+                          }
+                        >
+                          {roi == null ? "—" : `${roi.toFixed(0)}%`}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             )}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Funnel (último mes)</CardTitle>
+            <CardTitle className="text-base">Pipeline activo</CardTitle>
           </CardHeader>
           <CardContent>
-            {funnel.isLoading ? (
+            {pipeline.isLoading ? (
               <Loader2 className="size-4 animate-spin" />
-            ) : funnelLatest.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-8 text-center">
-                Sin oportunidades aún.
-              </p>
             ) : (
-              <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-                <BarChart data={funnelLatest}>
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                  <XAxis dataKey="stage" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
-                  <Tooltip contentStyle={{ fontSize: 12 }} />
-                  <Bar dataKey="count" name="Oportunidades">
-                    {funnelLatest.map((_, i) => (
-                      <Cell key={i} fill={STAGE_COLORS[i % STAGE_COLORS.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+              <div className="space-y-1 text-sm">
+                {[...(pipeline.data ?? [])]
+                  .sort(
+                    (a, b) =>
+                      STAGE_ORDER.indexOf(a.pipeline_stage) - STAGE_ORDER.indexOf(b.pipeline_stage),
+                  )
+                  .map((p) => (
+                    <div
+                      key={p.pipeline_stage}
+                      className="flex justify-between border-b py-1 last:border-0"
+                    >
+                      <span>{p.pipeline_stage}</span>
+                      <span className="text-muted-foreground">
+                        {p.opp_count} • {formatCLP(p.expected_value_cents / 100)}
+                      </span>
+                    </div>
+                  ))}
+              </div>
             )}
           </CardContent>
         </Card>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Ad ROI por campaña</CardTitle>
-        </CardHeader>
-        <CardContent className="overflow-x-auto">
-          {adRoi.isLoading ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b text-left text-muted-foreground">
-                  <th className="py-2 pr-4">Campaña</th>
-                  <th className="py-2 pr-4">Canal</th>
-                  <th className="py-2 pr-4">Presupuesto</th>
-                  <th className="py-2 pr-4">Gastado</th>
-                  <th className="py-2 pr-4">Ganadas</th>
-                  <th className="py-2 pr-4">Valor ganado</th>
-                  <th className="py-2 pr-4">ROI</th>
-                </tr>
-              </thead>
-              <tbody>
-                {adRoi.data?.map((r) => {
-                  const roi =
-                    r.spend_cents > 0
-                      ? ((r.won_value_cents - r.spend_cents) / r.spend_cents) * 100
-                      : null;
-                  return (
-                    <tr key={r.campaign_id} className="border-b last:border-0">
-                      <td className="py-2 pr-4">{r.campaign_name}</td>
-                      <td className="py-2 pr-4">{r.channel}</td>
-                      <td className="py-2 pr-4">
-                        {r.budget_cents != null ? formatCLP(r.budget_cents / 100) : "—"}
-                      </td>
-                      <td className="py-2 pr-4">{formatCLP(r.spend_cents / 100)}</td>
-                      <td className="py-2 pr-4">{r.won_count}</td>
-                      <td className="py-2 pr-4">{formatCLP(r.won_value_cents / 100)}</td>
-                      <td
-                        className={
-                          "py-2 pr-4 " +
-                          (roi == null ? "" : roi >= 0 ? "text-success" : "text-destructive")
-                        }
-                      >
-                        {roi == null ? "—" : `${roi.toFixed(0)}%`}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Pipeline activo</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {pipeline.isLoading ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            <div className="space-y-1 text-sm">
-              {[...(pipeline.data ?? [])]
-                .sort(
-                  (a, b) =>
-                    STAGE_ORDER.indexOf(a.pipeline_stage) - STAGE_ORDER.indexOf(b.pipeline_stage),
-                )
-                .map((p) => (
-                  <div
-                    key={p.pipeline_stage}
-                    className="flex justify-between border-b py-1 last:border-0"
-                  >
-                    <span>{p.pipeline_stage}</span>
-                    <span className="text-muted-foreground">
-                      {p.opp_count} • {formatCLP(p.expected_value_cents / 100)}
-                    </span>
-                  </div>
-                ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
       </div>
     </PageLayout>
   );
