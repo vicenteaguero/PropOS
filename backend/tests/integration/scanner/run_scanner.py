@@ -12,6 +12,7 @@ on every run).
 Dependencies: opencv-python, numpy, pillow, pillow-heif, reportlab.
 The Makefile target installs them into the project's poetry env if missing.
 """
+
 from __future__ import annotations
 
 import io
@@ -42,9 +43,9 @@ FIXTURES_DIR = ROOT / "fixtures"
 OUTPUT_DIR = ROOT / "output"
 SCENARIOS = ROOT / "scenarios.json"
 
-MAX_DIM = 800  # detection downscale
-LETTER_W_PT, LETTER_H_PT = letter  # 612 x 792
-MARGIN_PT = 28.35  # 1 cm
+MAX_DIM = 1200
+LETTER_W_PT, LETTER_H_PT = letter
+MARGIN_PT = 28.35
 
 IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif"}
 
@@ -72,41 +73,86 @@ def order_quad(pts: np.ndarray) -> np.ndarray:
     s = pts.sum(axis=1)
     d = pts[:, 0] - pts[:, 1]
     ordered = np.zeros((4, 2), dtype=np.float32)
-    ordered[0] = pts[np.argmin(s)]   # TL
-    ordered[1] = pts[np.argmax(d)]   # TR
-    ordered[2] = pts[np.argmax(s)]   # BR
-    ordered[3] = pts[np.argmin(d)]   # BL
+    ordered[0] = pts[np.argmin(s)]
+    ordered[1] = pts[np.argmax(d)]
+    ordered[2] = pts[np.argmax(s)]
+    ordered[3] = pts[np.argmin(d)]
     return ordered
+
+
+def _find_paper_contour(gray: np.ndarray) -> np.ndarray | None:
+    """jscanify's pipeline: Canny → blur → Otsu threshold → biggest contour.
+    Simple but effective on flat documents with decent contrast vs background."""
+    canny = cv2.Canny(gray, 50, 200)
+    blur = cv2.GaussianBlur(canny, (3, 3), 0)
+    _, thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_OTSU)
+    contours, _ = cv2.findContours(thresh, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
+    if not contours:
+        return None
+    return max(contours, key=cv2.contourArea)
+
+
+def _corners_from_contour(contour: np.ndarray) -> np.ndarray:
+    """jscanify's getCornerPoints: split contour points into 4 quadrants
+    relative to the minAreaRect center, then take the point farthest from the
+    center in each quadrant. Robust to rounded/imperfect corners — no
+    approxPolyDP convexity assumption."""
+    rect = cv2.minAreaRect(contour)
+    cx, cy = rect[0]
+    pts = contour.reshape(-1, 2).astype(np.float32)
+
+    tl = tr = bl = br = None
+    tl_d = tr_d = bl_d = br_d = -1.0
+    for x, y in pts:
+        d = float((x - cx) ** 2 + (y - cy) ** 2)
+        if x < cx and y < cy:
+            if d > tl_d:
+                tl_d, tl = d, (x, y)
+        elif x > cx and y < cy:
+            if d > tr_d:
+                tr_d, tr = d, (x, y)
+        elif x < cx and y > cy:
+            if d > bl_d:
+                bl_d, bl = d, (x, y)
+        elif x > cx and y > cy:
+            if d > br_d:
+                br_d, br = d, (x, y)
+
+    if None in (tl, tr, bl, br):
+        return np.array([])
+    return np.array([tl, tr, br, bl], dtype=np.float32)
 
 
 def detect_corners(image_rgb: np.ndarray) -> tuple[np.ndarray, bool]:
     h, w = image_rgb.shape[:2]
     scale = min(1.0, MAX_DIM / max(h, w))
     small = cv2.resize(image_rgb, (int(w * scale), int(h * scale)))
-    gray = cv2.cvtColor(small, cv2.COLOR_RGB2GRAY)
-    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-    edges = cv2.Canny(blurred, 50, 150)
-    contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     sh, sw = small.shape[:2]
-    min_area = sh * sw * 0.2
-    candidates = []
-    for c in contours:
-        area = cv2.contourArea(c)
-        if area < min_area:
-            continue
-        peri = cv2.arcLength(c, True)
-        approx = cv2.approxPolyDP(c, 0.02 * peri, True)
-        if len(approx) == 4 and cv2.isContourConvex(approx):
-            candidates.append((area, approx.astype(np.float32) / scale))
-    if not candidates:
-        # fallback: 5% inset rect
-        ix, iy = w * 0.05, h * 0.05
-        return (
-            np.array([[ix, iy], [w - ix, iy], [w - ix, h - iy], [ix, h - iy]], dtype=np.float32),
-            False,
-        )
-    candidates.sort(key=lambda t: t[0], reverse=True)
-    return order_quad(candidates[0][1]), True
+    gray = cv2.cvtColor(small, cv2.COLOR_RGB2GRAY)
+
+    contour = _find_paper_contour(gray)
+    fallback_quad = np.array(
+        [
+            [w * 0.05, h * 0.05],
+            [w - w * 0.05, h * 0.05],
+            [w - w * 0.05, h - h * 0.05],
+            [w * 0.05, h - h * 0.05],
+        ],
+        dtype=np.float32,
+    )
+
+    if contour is None:
+        return fallback_quad, False
+    area = cv2.contourArea(contour)
+    if area < sh * sw * 0.05 or area > sh * sw * 0.85:
+        return fallback_quad, False
+
+    quad_small = _corners_from_contour(contour)
+    if quad_small.size == 0:
+        return fallback_quad, False
+
+    quad_full = quad_small / scale
+    return order_quad(quad_full), True
 
 
 # ---------------------------------------------------------------- warp + filter
@@ -123,9 +169,12 @@ def warp(image_rgb: np.ndarray, quad: np.ndarray) -> np.ndarray:
     w, h = output_size(quad)
     dst = np.array([[0, 0], [w, 0], [w, h], [0, h]], dtype=np.float32)
     m = cv2.getPerspectiveTransform(quad, dst)
-    return cv2.warpPerspective(
-        image_rgb, m, (w, h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE
-    )
+    warped = cv2.warpPerspective(image_rgb, m, (w, h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
+    # PDF output is always Letter portrait. If warp came out landscape, rotate
+    # 90° counterclockwise so content reads upright on the page.
+    if warped.shape[1] > warped.shape[0]:
+        warped = cv2.rotate(warped, cv2.ROTATE_90_COUNTERCLOCKWISE)
+    return warped
 
 
 def apply_filter(image_rgb: np.ndarray, mode: str) -> np.ndarray:
@@ -133,19 +182,17 @@ def apply_filter(image_rgb: np.ndarray, mode: str) -> np.ndarray:
         return image_rgb
     if mode == "bw":
         gray = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2GRAY)
-        bw = cv2.adaptiveThreshold(
-            gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 25, 15
-        )
+        bw = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 25, 15)
         return cv2.cvtColor(bw, cv2.COLOR_GRAY2RGB)
     if mode == "enhance":
         lab = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2LAB)
         l, a, b = cv2.split(lab)
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        clahe = cv2.createCLAHE(clipLimit=1.0, tileGridSize=(16, 16))
         l = clahe.apply(l)
         merged = cv2.merge([l, a, b])
         out = cv2.cvtColor(merged, cv2.COLOR_LAB2RGB)
-        blur = cv2.GaussianBlur(out, (0, 0), 1.5)
-        return cv2.addWeighted(out, 1.5, blur, -0.5, 0)
+        blur = cv2.GaussianBlur(out, (0, 0), 1.0)
+        return cv2.addWeighted(out, 1.2, blur, -0.2, 0)
     raise ValueError(f"unknown filter: {mode}")
 
 
@@ -153,22 +200,8 @@ def apply_filter(image_rgb: np.ndarray, mode: str) -> np.ndarray:
 
 
 def page_size_for(image_w: int, image_h: int) -> tuple[float, float]:
-    """Pick portrait or landscape Letter to minimize wasted area."""
-    portrait_waste = wasted(image_w, image_h, LETTER_W_PT, LETTER_H_PT)
-    landscape_waste = wasted(image_w, image_h, LETTER_H_PT, LETTER_W_PT)
-    return (
-        (LETTER_H_PT, LETTER_W_PT) if landscape_waste < portrait_waste else (LETTER_W_PT, LETTER_H_PT)
-    )
-
-
-def wasted(iw: int, ih: int, pw: float, ph: float) -> float:
-    cw = pw - 2 * MARGIN_PT
-    ch = ph - 2 * MARGIN_PT
-    if cw <= 0 or ch <= 0:
-        return float("inf")
-    scale = min(cw / iw, ch / ih)
-    drawn = iw * scale * ih * scale
-    return pw * ph - drawn
+    """Always Letter portrait. Landscape images are pre-rotated upstream."""
+    return LETTER_W_PT, LETTER_H_PT
 
 
 def to_jpeg_bytes(image_rgb: np.ndarray, quality: int = 85) -> bytes:
@@ -204,7 +237,7 @@ def build_pdf(processed_images: list[np.ndarray], out_path: Path) -> None:
 
 def discover_files(folder: Path) -> list[Path]:
     files = [p for p in folder.iterdir() if p.suffix.lower() in IMAGE_EXTS]
-    files.sort(key=lambda p: (len(p.stem), p.stem))  # 0, 1, 2, ..., 10
+    files.sort(key=lambda p: (len(p.stem), p.stem))
     return files
 
 
