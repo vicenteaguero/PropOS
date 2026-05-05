@@ -262,7 +262,7 @@ export function FastAddFab() {
       <Button
         size="icon"
         onClick={() => state.setOpen(true)}
-        className="fixed bottom-6 right-6 z-30 h-14 w-14 rounded-full shadow-lg shadow-primary/30 md:bottom-8 md:right-8"
+        className="fixed bottom-24 right-6 z-30 h-14 w-14 rounded-full shadow-lg shadow-primary/30 md:bottom-28 md:right-8"
         aria-label="Agregar documento"
       >
         <Plus className="size-6" />
