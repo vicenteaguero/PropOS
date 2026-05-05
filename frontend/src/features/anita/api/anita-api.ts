@@ -16,13 +16,12 @@ export interface AnitaSessionListItem {
 
 export const anitaApi = {
   createOrResumeSession: (opts?: { forceNew?: boolean }) =>
-    apiRequest<AnitaSession>(
-      `${BASE}/sessions${opts?.forceNew ? "?force_new=true" : ""}`,
-      { method: "POST", body: {} },
-    ),
+    apiRequest<AnitaSession>(`${BASE}/sessions${opts?.forceNew ? "?force_new=true" : ""}`, {
+      method: "POST",
+      body: {},
+    }),
 
-  listSessions: () =>
-    apiRequest<AnitaSessionListItem[]>(`${BASE}/sessions`),
+  listSessions: () => apiRequest<AnitaSessionListItem[]>(`${BASE}/sessions`),
 
   listMessages: (sessionId: string) =>
     apiRequest<AnitaMessage[]>(`${BASE}/sessions/${sessionId}/messages`),

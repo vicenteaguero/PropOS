@@ -53,14 +53,11 @@ async def create_or_resume_session(
     user_id = current_user["id"]
 
     if force_new:
-        client.table("anita_sessions").update(
-            {"status": "CLOSED", "closed_at": datetime.now(UTC).isoformat()}
-        ).eq("user_id", user_id).eq("tenant_id", str(tenant_id)).eq("status", "OPEN").execute()
+        client.table("anita_sessions").update({"status": "CLOSED", "closed_at": datetime.now(UTC).isoformat()}).eq(
+            "user_id", user_id
+        ).eq("tenant_id", str(tenant_id)).eq("status", "OPEN").execute()
     else:
-        cutoff = (
-            datetime.now(UTC)
-            - timedelta(hours=settings.anita_session_inactivity_hours)
-        ).isoformat()
+        cutoff = (datetime.now(UTC) - timedelta(hours=settings.anita_session_inactivity_hours)).isoformat()
         existing = (
             client.table("anita_sessions")
             .select("*")

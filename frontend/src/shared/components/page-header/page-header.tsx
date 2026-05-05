@@ -11,13 +11,7 @@ interface PageHeaderProps {
   className?: string;
 }
 
-export function PageHeader({
-  title,
-  description,
-  actions,
-  backTo,
-  className,
-}: PageHeaderProps) {
+export function PageHeader({ title, description, actions, backTo, className }: PageHeaderProps) {
   return (
     <div className={cn("mb-6 space-y-2", className)}>
       {backTo && (
@@ -31,9 +25,7 @@ export function PageHeader({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
           <h1 className="text-xl font-semibold tracking-tight md:text-2xl">{title}</h1>
-          {description && (
-            <p className="text-sm text-muted-foreground">{description}</p>
-          )}
+          {description && <p className="text-sm text-muted-foreground">{description}</p>}
         </div>
         {actions && <div className="flex items-center gap-2">{actions}</div>}
       </div>

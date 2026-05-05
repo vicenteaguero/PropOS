@@ -122,7 +122,7 @@ def dispatch(
 ) -> dict[str, Any]:
     """Run one intent. Returns a uniform shape consumed by ``chat.run_chat_turn``::
 
-      {kind, ...} where kind ∈ {"proposal", "query", "clarify", "out_of_scope"}.
+    {kind, ...} where kind ∈ {"proposal", "query", "clarify", "out_of_scope"}.
     """
     if intent == "out_of_scope":
         return {"kind": "out_of_scope", "message": "No identifiqué una acción clara. ¿Podés repetirlo?"}
@@ -130,8 +130,7 @@ def dispatch(
     if intent == "ambiguous":
         return {
             "kind": "clarify",
-            "reason": resolved.extras.get("reason", "")
-                      or "el clasificador marcó ambigüedad",
+            "reason": resolved.extras.get("reason", "") or "el clasificador marcó ambigüedad",
             "candidates": resolved.ambiguity_summary,
         }
 
@@ -184,9 +183,7 @@ def dispatch(
         accept_fn = ACCEPTOR_BY_KIND.get(proposal_kind)
         if accept_fn is not None:
             try:
-                committed_table, row_id = accept_fn(
-                    dict(payload), tenant_id, user_id, session_id
-                )
+                committed_table, row_id = accept_fn(dict(payload), tenant_id, user_id, session_id)
             except Exception as exc:  # noqa: BLE001
                 # Auto-commit failed (e.g. DB constraint). Fall back to pending
                 # so the user can fix it manually rather than losing the action.
@@ -226,9 +223,7 @@ def dispatch(
     return {**result, "kind": "proposal", "proposal_kind": result.get("kind")}
 
 
-def _consume_media_buffer(
-    session_id: UUID, *, max_age_min: int = 60
-) -> list[dict[str, Any]]:
+def _consume_media_buffer(session_id: UUID, *, max_age_min: int = 60) -> list[dict[str, Any]]:
     """Return the current "pack" of unprocessed media for the session.
 
     A pack = photos that arrived AFTER the last assistant turn (so previous
@@ -295,10 +290,7 @@ def _dispatch_query(intent: str, resolved: ResolvedFields, tenant_id: UUID) -> d
     from app.features.anita.tools.text_to_sql import generate_and_run_sql
 
     question = (
-        resolved.extras.get("intent_text")
-        or resolved.extras.get("summary")
-        or resolved.extras.get("question")
-        or ""
+        resolved.extras.get("intent_text") or resolved.extras.get("summary") or resolved.extras.get("question") or ""
     )
     if not question:
         return {

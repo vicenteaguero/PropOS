@@ -69,7 +69,6 @@ export function UploadDropzone({ onFile, disabled }: Props) {
           onChange={(e) => handle(e.target.files?.[0])}
         />
       </div>
-
     </>
   );
 }

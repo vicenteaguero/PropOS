@@ -21,10 +21,22 @@ logger = get_logger("ANITA_TEXT_SQL")
 # Tables we expose to the model. Keep tight — every table costs prompt
 # tokens and increases the chance of writing a confused JOIN.
 _EXPOSED_TABLES = (
-    "properties", "contacts", "people", "organizations",
-    "interactions", "interaction_participants", "interaction_targets",
-    "tasks", "transactions", "projects", "project_properties",
-    "campaigns", "documents", "notes", "tags", "taggings",
+    "properties",
+    "contacts",
+    "people",
+    "organizations",
+    "interactions",
+    "interaction_participants",
+    "interaction_targets",
+    "tasks",
+    "transactions",
+    "projects",
+    "project_properties",
+    "campaigns",
+    "documents",
+    "notes",
+    "tags",
+    "taggings",
     "pending_proposals",
 )
 
@@ -97,9 +109,9 @@ async def generate_and_run_sql(
     tenant_id: UUID,
 ) -> dict[str, Any]:
     """Returns {kind, ...}:
-      - {kind: "query_sql", sql, rows, columns, row_count}
-      - {kind: "out_of_scope", message}
-      - {kind: "error", reason, sql?}
+    - {kind: "query_sql", sql, rows, columns, row_count}
+    - {kind: "out_of_scope", message}
+    - {kind: "error", reason, sql?}
     """
     from openai import AsyncOpenAI
 

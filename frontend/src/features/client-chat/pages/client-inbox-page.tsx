@@ -21,9 +21,7 @@ export function ClientInboxPage() {
   // Default filter: active/open conversations.
   const [tab, setTab] = useState<ConversationStatus | "all">("open");
   const [query, setQuery] = useState("");
-  const { data: conversations = [], isLoading } = useConversations(
-    tab === "all" ? undefined : tab,
-  );
+  const { data: conversations = [], isLoading } = useConversations(tab === "all" ? undefined : tab);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   // Default time-window: last 30 days (filter client-side).

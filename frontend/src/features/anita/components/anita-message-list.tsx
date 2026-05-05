@@ -93,7 +93,9 @@ function summarizeToolOutput(output: unknown): string {
     return trimmed.length > 80 ? `${trimmed.slice(0, 80)}…` : trimmed;
   }
   if (Array.isArray(output)) {
-    return output.length === 0 ? "(sin resultados)" : `${output.length} resultado${output.length === 1 ? "" : "s"}`;
+    return output.length === 0
+      ? "(sin resultados)"
+      : `${output.length} resultado${output.length === 1 ? "" : "s"}`;
   }
   if (typeof output === "object") {
     const keys = Object.keys(output as Record<string, unknown>);

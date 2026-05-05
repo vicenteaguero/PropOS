@@ -43,53 +43,53 @@ export function WorkflowsPage() {
         description="Procesos reutilizables (closing de venta, onboarding propietario, etc)."
       />
       <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Nuevo workflow</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <Input
-            placeholder="Nombre (ej: Closing venta casa)"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-          />
-          <Textarea
-            placeholder="Pasos, uno por línea..."
-            value={newSteps}
-            onChange={(e) => setNewSteps(e.target.value)}
-          />
-          <Button
-            size="sm"
-            onClick={() => create.mutate()}
-            disabled={!newName.trim() || create.isPending}
-            className="gap-1"
-          >
-            {create.isPending ? (
-              <Loader2 className="size-3 animate-spin" />
-            ) : (
-              <Plus className="size-3" />
-            )}
-            Crear
-          </Button>
-        </CardContent>
-      </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Nuevo workflow</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <Input
+              placeholder="Nombre (ej: Closing venta casa)"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+            />
+            <Textarea
+              placeholder="Pasos, uno por línea..."
+              value={newSteps}
+              onChange={(e) => setNewSteps(e.target.value)}
+            />
+            <Button
+              size="sm"
+              onClick={() => create.mutate()}
+              disabled={!newName.trim() || create.isPending}
+              className="gap-1"
+            >
+              {create.isPending ? (
+                <Loader2 className="size-3 animate-spin" />
+              ) : (
+                <Plus className="size-3" />
+              )}
+              Crear
+            </Button>
+          </CardContent>
+        </Card>
 
-      {list.isLoading ? (
-        <div className="flex justify-center py-8">
-          <Loader2 className="size-5 animate-spin text-muted-foreground" />
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {list.data?.map((w) => (
-            <WorkflowCard key={w.id} workflow={w} />
-          ))}
-          {list.data?.length === 0 && (
-            <Card className="p-8 text-center text-muted-foreground text-sm">
-              Sin workflows. Crea uno arriba.
-            </Card>
-          )}
-        </div>
-      )}
+        {list.isLoading ? (
+          <div className="flex justify-center py-8">
+            <Loader2 className="size-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {list.data?.map((w) => (
+              <WorkflowCard key={w.id} workflow={w} />
+            ))}
+            {list.data?.length === 0 && (
+              <Card className="p-8 text-center text-muted-foreground text-sm">
+                Sin workflows. Crea uno arriba.
+              </Card>
+            )}
+          </div>
+        )}
       </div>
     </PageLayout>
   );

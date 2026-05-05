@@ -15,6 +15,7 @@ Pipeline:
 Pretrained models live in docscanner/model_pretrained/ (downloaded via gdown
 from the official Google Drive folder).
 """
+
 from __future__ import annotations
 
 import io
@@ -52,11 +53,7 @@ LETTER_W_PT, LETTER_H_PT = letter
 MARGIN_PT = 28.35
 IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif"}
 
-DEVICE = (
-    torch.device("mps")
-    if torch.backends.mps.is_available()
-    else torch.device("cpu")
-)
+DEVICE = torch.device("mps") if torch.backends.mps.is_available() else torch.device("cpu")
 
 
 # --------------------------------------------------------------- model wiring
@@ -166,9 +163,7 @@ def apply_filter(image_rgb: np.ndarray, mode: str) -> np.ndarray:
         return image_rgb
     if mode == "bw":
         gray = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2GRAY)
-        bw = cv2.adaptiveThreshold(
-            gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 25, 15
-        )
+        bw = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 25, 15)
         return cv2.cvtColor(bw, cv2.COLOR_GRAY2RGB)
     if mode == "enhance":
         lab = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2LAB)
@@ -202,9 +197,7 @@ def build_pdf(images: list[np.ndarray], out_path: Path) -> None:
         draw_w, draw_h = w * scale, h * scale
         x = (LETTER_W_PT - draw_w) / 2
         y = (LETTER_H_PT - draw_h) / 2
-        c.drawImage(
-            ImageReader(io.BytesIO(to_jpeg_bytes(img))), x, y, width=draw_w, height=draw_h
-        )
+        c.drawImage(ImageReader(io.BytesIO(to_jpeg_bytes(img))), x, y, width=draw_w, height=draw_h)
         c.showPage()
     c.save()
 
