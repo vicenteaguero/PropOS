@@ -10,6 +10,7 @@ import {
   RotateCcw,
   RotateCw,
   Sparkles,
+  Spline,
   Trash2,
   Type,
   X,
@@ -50,11 +51,14 @@ import {
   moveSide,
 } from "../services/scanner/geometry";
 import { warpQuad } from "../services/scanner/perspective-warp";
-import type { Corner, FilterMode, Quad, Side } from "../services/scanner/types";
+import type { Corner, FilterMode, Point, Quad, Side } from "../services/scanner/types";
+
+export type BezierControls = { T?: Point; R?: Point; B?: Point; L?: Point };
 
 export interface ShotEdit {
   quad: Quad;
   filter: FilterMode;
+  bezierControls?: BezierControls;
 }
 
 export interface SourceShot {
@@ -88,6 +92,10 @@ interface Props {
   /** Forwarded query strings — caller refetches based on these. */
   onPropertyQueryChange?: (q: string) => void;
   onContactQueryChange?: (q: string) => void;
+  /** Emitted when the user picks (or clears) an existing property in the
+   * inline finalize overlay. Caller uses the id to narrow the contacts list
+   * to those associated with the property. */
+  onPropertySelect?: (property: PropertyLite | null) => void;
   loadingProperties?: boolean;
   loadingContacts?: boolean;
 }
@@ -123,6 +131,7 @@ export function CameraCaptureDocument({
   contactSuggestions = [],
   onPropertyQueryChange,
   onContactQueryChange,
+  onPropertySelect,
   loadingProperties,
   loadingContacts,
 }: Props) {
@@ -148,6 +157,7 @@ export function CameraCaptureDocument({
   );
   const [busy, setBusy] = useState(false);
   const [mode, setMode] = useState<Mode>(initialShotState.length > 0 ? "edit" : "capture");
+  const [curveMode, setCurveMode] = useState(false);
 
   // ---------- finalize overlay state ----------
   const [finalizeOpen, setFinalizeOpen] = useState(false);
@@ -156,6 +166,7 @@ export function CameraCaptureDocument({
   const defaultDocName = useMemo(() => `Escaneo ${new Date().toLocaleDateString("es-CL")}`, []);
   const [docName, setDocName] = useState(defaultDocName);
   const [docPropertyTitle, setDocPropertyTitle] = useState("");
+  const [docSelectedProperty, setDocSelectedProperty] = useState<PropertyLite | null>(null);
   const [docContactName, setDocContactName] = useState("");
   const [docTag, setDocTag] = useState<string | undefined>(undefined);
 
@@ -340,13 +351,42 @@ export function CameraCaptureDocument({
     });
     const sQuad = edit.quad.map(toScreen);
     const mids = midSidePoints(edit.quad);
-    const sMids = (Object.keys(mids) as Side[]).map((s) => ({ s, p: toScreen(mids[s]) }));
+    const bez = edit.bezierControls;
+    // Display handle for a side: bezier midpoint when control set, else side midpoint.
+    const sideHandlePoint = (s: Side): Point => {
+      const ctrl = bez?.[s];
+      if (!ctrl) return mids[s];
+      const [a, b] = sideEndpoints(edit.quad, s);
+      // Quadratic bezier at t=0.5: 0.25 a + 0.5 ctrl + 0.25 b.
+      return {
+        x: 0.25 * a.x + 0.5 * ctrl.x + 0.25 * b.x,
+        y: 0.25 * a.y + 0.5 * ctrl.y + 0.25 * b.y,
+      };
+    };
+    const sMids = (Object.keys(mids) as Side[]).map((s) => ({
+      s,
+      p: toScreen(sideHandlePoint(s)),
+    }));
 
     ctx.lineWidth = 2;
     ctx.strokeStyle = "rgba(99,102,241,0.95)";
     ctx.fillStyle = "rgba(99,102,241,0.12)";
     ctx.beginPath();
-    sQuad.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+    const [TL, TR, BR, BL] = sQuad;
+    const sCtrl = (s: Side) => (bez?.[s] ? toScreen(bez[s]!) : null);
+    ctx.moveTo(TL!.x, TL!.y);
+    const cT = sCtrl("T");
+    if (cT) ctx.quadraticCurveTo(cT.x, cT.y, TR!.x, TR!.y);
+    else ctx.lineTo(TR!.x, TR!.y);
+    const cR = sCtrl("R");
+    if (cR) ctx.quadraticCurveTo(cR.x, cR.y, BR!.x, BR!.y);
+    else ctx.lineTo(BR!.x, BR!.y);
+    const cB = sCtrl("B");
+    if (cB) ctx.quadraticCurveTo(cB.x, cB.y, BL!.x, BL!.y);
+    else ctx.lineTo(BL!.x, BL!.y);
+    const cL = sCtrl("L");
+    if (cL) ctx.quadraticCurveTo(cL.x, cL.y, TL!.x, TL!.y);
+    else ctx.lineTo(TL!.x, TL!.y);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
@@ -485,6 +525,28 @@ export function CameraCaptureDocument({
       setShots((prev) =>
         prev.map((s) => (s.id === id ? { ...s, edit: { ...s.edit!, quad: next } } : s)),
       );
+    } else if (curveMode) {
+      // Bezier mode: drag updates the control point for this side.
+      const side = dragRef.current.side;
+      const cx = Math.max(0, Math.min(bitmap.width, img.x));
+      const cy = Math.max(0, Math.min(bitmap.height, img.y));
+      dragRef.current.last = img;
+      setShots((prev) =>
+        prev.map((s) =>
+          s.id === id
+            ? {
+                ...s,
+                edit: {
+                  ...s.edit!,
+                  bezierControls: {
+                    ...(s.edit?.bezierControls ?? {}),
+                    [side]: { x: cx, y: cy },
+                  },
+                },
+              }
+            : s,
+        ),
+      );
     } else {
       const last = dragRef.current.last;
       const delta = { x: img.x - last.x, y: img.y - last.y };
@@ -577,6 +639,15 @@ export function CameraCaptureDocument({
           const newQuad = (
             oldQuad ? oldQuad.map((p) => mapPoint(p, w, h)) : insetRect(next.width, next.height)
           ) as Quad;
+          const oldCtrls = s.edit?.bezierControls;
+          const newCtrls: BezierControls | undefined = oldCtrls
+            ? (Object.fromEntries(
+                (Object.keys(oldCtrls) as Side[]).flatMap((k) => {
+                  const p = oldCtrls[k];
+                  return p ? [[k, mapPoint(p, w, h)]] : [];
+                }),
+              ) as BezierControls)
+            : undefined;
           return {
             ...s,
             raw: blob ?? s.raw,
@@ -585,6 +656,7 @@ export function CameraCaptureDocument({
               ...(s.edit ?? { filter: "none" as FilterMode }),
               quad: newQuad,
               filter: s.edit?.filter ?? "none",
+              bezierControls: newCtrls,
             },
           };
         }),
@@ -667,7 +739,11 @@ export function CameraCaptureDocument({
         s.id === id
           ? {
               ...s,
-              edit: { quad: insetRect(bitmap.width, bitmap.height), filter: "none" },
+              edit: {
+                quad: insetRect(bitmap.width, bitmap.height),
+                filter: "none",
+                bezierControls: undefined,
+              },
             }
           : s,
       ),
@@ -713,7 +789,7 @@ export function CameraCaptureDocument({
           quad: insetRect(bitmap.width, bitmap.height),
           filter: "none" as FilterMode,
         };
-        const warped = await warpQuad(bitmap, edit.quad);
+        const warped = await warpQuad(bitmap, edit.quad, edit.bezierControls);
         const filtered = await applyFilter(warped, edit.filter);
         const processed = await canvasToJpegBlob(filtered, 0.85);
         const compressed = await compressBlob(processed, `shot-${Date.now()}.jpg`);
@@ -937,6 +1013,8 @@ export function CameraCaptureDocument({
               onRotateRight={() => rotate(90)}
               onFlipH={flipH}
               onFlipV={flipV}
+              curveActive={curveMode}
+              onToggleCurve={() => setCurveMode((v) => !v)}
               disabled={busy || !activeShot?.bitmap}
             />
           </div>
@@ -1008,6 +1086,8 @@ export function CameraCaptureDocument({
             onRotateRight={() => rotate(90)}
             onFlipH={flipH}
             onFlipV={flipV}
+            curveActive={curveMode}
+            onToggleCurve={() => setCurveMode((v) => !v)}
             disabled={busy || !activeShot?.bitmap}
           />
         </div>
@@ -1093,15 +1173,26 @@ export function CameraCaptureDocument({
                 onChange={(text) => {
                   setDocPropertyTitle(text);
                   onPropertyQueryChange?.(text);
+                  if (docSelectedProperty && text.trim() !== docSelectedProperty.title.trim()) {
+                    setDocSelectedProperty(null);
+                    onPropertySelect?.(null);
+                  }
                 }}
-                onSelect={() => undefined}
+                onSelect={(p) => {
+                  setDocSelectedProperty(p);
+                  onPropertySelect?.(p);
+                }}
                 items={propertySuggestions}
                 getLabel={(p) => p.title}
                 getKey={(p) => p.id}
                 loading={loadingProperties}
                 placeholder="Av. Reñaca 115"
                 emptyText="Sin propiedades"
-                onAddNew={(text) => setDocPropertyTitle(text)}
+                onAddNew={(text) => {
+                  setDocPropertyTitle(text);
+                  setDocSelectedProperty(null);
+                  onPropertySelect?.(null);
+                }}
                 disabled={submitting}
                 ariaLabel="Seleccionar propiedad"
               />
@@ -1125,6 +1216,11 @@ export function CameraCaptureDocument({
                 disabled={submitting}
                 ariaLabel="Seleccionar contacto"
               />
+              {docSelectedProperty && (
+                <p className="text-[11px] text-muted-foreground">
+                  Filtrado por {docSelectedProperty.title}
+                </p>
+              )}
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Etiqueta</Label>
@@ -1182,6 +1278,20 @@ export function CameraCaptureDocument({
 // ============================================================================
 // helpers
 // ============================================================================
+
+function sideEndpoints(quad: Quad, side: Side): [Point, Point] {
+  const [TL, TR, BR, BL] = quad;
+  switch (side) {
+    case "T":
+      return [TL, TR];
+    case "R":
+      return [TR, BR];
+    case "B":
+      return [BR, BL];
+    case "L":
+      return [BL, TL];
+  }
+}
 
 function magnifierPosition(
   sx: number,
@@ -1350,6 +1460,8 @@ interface TransformGroupProps {
   onRotateRight: () => void;
   onFlipH: () => void;
   onFlipV: () => void;
+  curveActive: boolean;
+  onToggleCurve: () => void;
   disabled?: boolean;
 }
 
@@ -1358,6 +1470,8 @@ function TransformGroup({
   onRotateRight,
   onFlipH,
   onFlipV,
+  curveActive,
+  onToggleCurve,
   disabled,
 }: TransformGroupProps) {
   return (
@@ -1397,6 +1511,17 @@ function TransformGroup({
         aria-label="Voltear vertical"
       >
         <FlipVertical className="size-5" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={onToggleCurve}
+        disabled={disabled}
+        aria-label="Curva"
+        aria-pressed={curveActive}
+        className={cn(curveActive && "bg-primary/15 text-primary hover:bg-primary/25")}
+      >
+        <Spline className="size-5" />
       </Button>
     </div>
   );
