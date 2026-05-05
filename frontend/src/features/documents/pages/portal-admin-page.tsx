@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { LoadingSpinner } from "@shared/components/loading-spinner/loading-spinner";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
+import { PageLayout } from "@shared/components/page-layout";
+import { PageHeader } from "@shared/components/page-header";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useDeletePortal, usePortals } from "../hooks/use-portals";
 import { portalsApi } from "../api/portals-api";
@@ -21,16 +23,21 @@ export function PortalAdminPage() {
   const [qrOf, setQrOf] = useState<{ slug: string; title: string } | null>(null);
 
   return (
-    <div className="container mx-auto max-w-5xl px-4 py-6">
-      <div className="mb-4 flex items-center gap-2">
-        <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
-          <ArrowLeft className="size-4" />
-        </Button>
-        <h1 className="flex-1 text-lg font-semibold">Enlaces de subida anónima</h1>
-        <Button size="sm" onClick={() => setCreateOpen(true)}>
-          <Plus className="size-4" /> Nuevo enlace
-        </Button>
-      </div>
+    <PageLayout width="lg">
+      <PageHeader
+        title="Enlaces de subida anónima"
+        description="Crea enlaces públicos para recibir documentos desde fuera del equipo."
+        actions={
+          <>
+            <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
+              <ArrowLeft className="size-4" /> Volver
+            </Button>
+            <Button size="sm" onClick={() => setCreateOpen(true)}>
+              <Plus className="size-4" /> Nuevo enlace
+            </Button>
+          </>
+        }
+      />
 
       {isLoading && (
         <div className="flex justify-center py-8">
@@ -59,7 +66,7 @@ export function PortalAdminPage() {
                   {p.description && (
                     <p className="text-xs text-muted-foreground">{p.description}</p>
                   )}
-                  <div className="mt-1 flex flex-wrap gap-2 text-[10px] text-muted-foreground">
+                  <div className="mt-1 flex flex-wrap gap-2 text-xs text-muted-foreground">
                     <span className="rounded bg-muted px-1.5 py-0.5">{p.access_mode}</span>
                     <span className="rounded bg-muted px-1.5 py-0.5">
                       {p.max_file_size_mb} MB max
@@ -135,6 +142,6 @@ export function PortalAdminPage() {
           )}
         </DialogContent>
       </Dialog>
-    </div>
+    </PageLayout>
   );
 }
