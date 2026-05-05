@@ -37,7 +37,7 @@ export default defineConfig({
         clientsClaim: true,
         maximumFileSizeToCacheInBytes: 12 * 1024 * 1024,
         globPatterns: ["**/*.{js,css,html,ico,png,svg,webp,woff,woff2,mjs}"],
-        globIgnores: ["**/opencv/**", "logo.png"],
+        globIgnores: ["logo.png"],
         runtimeCaching: devPwa
           ? [{ urlPattern: /.*/, handler: "NetworkOnly" }]
           : [
@@ -48,15 +48,6 @@ export default defineConfig({
                 options: {
                   cacheName: "documents-signed",
                   expiration: { maxEntries: 200, maxAgeSeconds: 3600 },
-                },
-              },
-              {
-                urlPattern: /\/opencv\/opencv\.js$/,
-                handler: "CacheFirst",
-                options: {
-                  cacheName: "opencv-runtime",
-                  expiration: { maxEntries: 1, maxAgeSeconds: 60 * 60 * 24 * 365 },
-                  cacheableResponse: { statuses: [0, 200] },
                 },
               },
               {
