@@ -19,7 +19,6 @@ export function AnitaDrawer({ open, onOpenChange }: Props) {
   const sessionId = sessionQuery.data?.id;
   const messagesQuery = useAnitaMessages(sessionId);
   const chat = useAnitaChat(sessionId);
-  const [autoSend] = useState(true);
   const [closing, setClosing] = useState(false);
   const queryClient = useQueryClient();
 
@@ -85,6 +84,7 @@ export function AnitaDrawer({ open, onOpenChange }: Props) {
                 isStreaming={chat.isStreaming}
                 isThinking={chat.isThinking}
                 pendingUserText={chat.pendingUserText}
+                pendingAudio={chat.pendingAudio}
                 liveProposals={chat.proposalsCreated}
               />
             </div>
@@ -92,9 +92,8 @@ export function AnitaDrawer({ open, onOpenChange }: Props) {
             <div className="p-4 border-t border-border shrink-0">
               <AnitaComposer
                 onSend={chat.send}
+                onAudio={chat.submitAudio}
                 isStreaming={chat.isStreaming}
-                autoSend={autoSend}
-                sessionId={sessionId}
               />
             </div>
           </>
