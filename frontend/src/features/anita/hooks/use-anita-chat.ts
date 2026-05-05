@@ -32,19 +32,25 @@ const INITIAL: AnitaChatState = {
 export function useAnitaChat(sessionId: string | undefined) {
   const [state, setState] = useState<AnitaChatState>(INITIAL);
   const abortRef = useRef<AbortController | null>(null);
+  const thinkingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const queryClient = useQueryClient();
 
   const send = useCallback(
     async (userText: string) => {
       if (!sessionId || !userText.trim()) return;
 
-      // Show user's message + "thinking" indicator immediately.
+      // Show user's message immediately, but defer "thinking" indicator
+      // ~400ms — first SSE event usually arrives faster than that.
       setState({
         ...INITIAL,
         isStreaming: true,
-        isThinking: true,
+        isThinking: false,
         pendingUserText: userText,
       });
+      if (thinkingTimerRef.current) clearTimeout(thinkingTimerRef.current);
+      thinkingTimerRef.current = setTimeout(() => {
+        setState((s) => (s.isStreaming && !s.liveText ? { ...s, isThinking: true } : s));
+      }, 400);
       const controller = new AbortController();
       abortRef.current = controller;
 
@@ -53,6 +59,10 @@ export function useAnitaChat(sessionId: string | undefined) {
           sessionId,
           { user_text: userText },
           (event: ChatStreamEvent) => {
+            if (thinkingTimerRef.current) {
+              clearTimeout(thinkingTimerRef.current);
+              thinkingTimerRef.current = null;
+            }
             if (event.type === "text") {
               setState((s) => ({
                 ...s,
@@ -102,6 +112,10 @@ export function useAnitaChat(sessionId: string | undefined) {
 
   const cancel = useCallback(() => {
     abortRef.current?.abort();
+    if (thinkingTimerRef.current) {
+      clearTimeout(thinkingTimerRef.current);
+      thinkingTimerRef.current = null;
+    }
     setState((s) => ({ ...s, isStreaming: false, isThinking: false }));
   }, []);
 
