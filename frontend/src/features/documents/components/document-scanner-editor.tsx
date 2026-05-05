@@ -272,7 +272,11 @@ export function DocumentScannerEditor({
     } else {
       const last = dragRef.current.last;
       const delta = { x: img.x - last.x, y: img.y - last.y };
-      const next = clampQuad(moveSide(quad, dragRef.current.side, delta), bitmap.width, bitmap.height);
+      const next = clampQuad(
+        moveSide(quad, dragRef.current.side, delta),
+        bitmap.width,
+        bitmap.height,
+      );
       dragRef.current.last = img;
       setQuad(next);
     }

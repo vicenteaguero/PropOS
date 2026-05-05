@@ -36,6 +36,7 @@ TEST_SCHEMA = os.environ.get("ANITA_TEST_SCHEMA", "propos_test")
 def _schema_is_exposed(schema: str) -> bool:
     """Probe PostgREST: does it know about this schema?"""
     from app.core.supabase.client import get_supabase_client
+
     try:
         get_supabase_client().schema(schema).table("tenants").select("id").limit(1).execute()
         return True
@@ -68,6 +69,7 @@ def _route_to_test_schema() -> Generator[str, None, None]:
         get_supabase_client.cache_clear()
         active = "public"
         import warnings
+
         warnings.warn(
             f"PostgREST has not exposed schema {TEST_SCHEMA!r}; falling back to "
             "'public' + tenant scoping. Add it under Project Settings → API → "

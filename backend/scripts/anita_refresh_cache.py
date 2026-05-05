@@ -33,9 +33,9 @@ def main() -> None:
                 indent=2,
             )
         )
-        print(f"  [{i}/{len(audios)}] {p.name}  ({result.get('source','?')}, {len(result['text'])} chars)")
+        print(f"  [{i}/{len(audios)}] {p.name}  ({result.get('source', '?')}, {len(result['text'])} chars)")
         if i < len(audios):
-            time.sleep(4)  # 20 req/min budget
+            time.sleep(4)
     print("done")
 
 

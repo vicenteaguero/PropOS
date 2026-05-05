@@ -29,14 +29,10 @@ def main() -> None:
     for (test, provider), records in sorted(by_test.items()):
         passes = sum(1 for r in records if r.get("pass"))
         n = len(records)
-        avg_latency = (
-            sum(r.get("latency_ms", 0) for r in records) // n if n else 0
-        )
+        avg_latency = sum(r.get("latency_ms", 0) for r in records) // n if n else 0
         toks_in = sum((r.get("tokens", {}) or {}).get("in", 0) or 0 for r in records)
         toks_out = sum((r.get("tokens", {}) or {}).get("out", 0) or 0 for r in records)
-        print(
-            f"| {test} | {provider} | {passes}/{n} | {avg_latency} | {toks_in}/{toks_out} |"
-        )
+        print(f"| {test} | {provider} | {passes}/{n} | {avg_latency} | {toks_in}/{toks_out} |")
 
 
 if __name__ == "__main__":

@@ -1,4 +1,5 @@
 """PWA-facing REST endpoints for client_chat + opt-in capture."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -88,7 +89,9 @@ async def send_human_reply(
 
     try:
         return await send_freeform_to_conversation(
-            tenant_id, conversation_id, payload.text,
+            tenant_id,
+            conversation_id,
+            payload.text,
             sender_user_id=current_user["id"],
         )
     except ConsentError as exc:
@@ -155,13 +158,7 @@ async def upsert_consent(
         "created_by": current_user["id"],
     }
     if existing:
-        return (
-            db.table("client_consents")
-            .update(base)
-            .eq("id", existing[0]["id"])
-            .execute()
-            .data[0]
-        )
+        return db.table("client_consents").update(base).eq("id", existing[0]["id"]).execute().data[0]
     return db.table("client_consents").insert(base).execute().data[0]
 
 
@@ -172,9 +169,7 @@ async def revoke_consent(
     channel: str = "whatsapp",
 ) -> dict:
     db = get_supabase_client()
-    db.table("client_consents").update(
-        {"opted_out_at": _now(), "opted_in_at": None}
-    ).eq("tenant_id", str(tenant_id)).eq("contact_id", str(contact_id)).eq(
-        "channel", channel
-    ).execute()
+    db.table("client_consents").update({"opted_out_at": _now(), "opted_in_at": None}).eq(
+        "tenant_id", str(tenant_id)
+    ).eq("contact_id", str(contact_id)).eq("channel", channel).execute()
     return {"status": "revoked"}

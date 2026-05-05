@@ -30,7 +30,7 @@ EXPECTED_PROJECTS = 2
 EXPECTED_ORGS = 2
 EXPECTED_INTERACTIONS = 4
 EXPECTED_OPEN_TASKS = 3
-EXPECTED_PROPERTIES_NO_RECENT_INTERACTION = 2  # for query_sql test #9
+EXPECTED_PROPERTIES_NO_RECENT_INTERACTION = 2
 
 
 @dataclass
@@ -120,10 +120,7 @@ def seed(tenant_name: str | None = None) -> SeedHandles:
         ("edificio_centro", "Edificio Centro"),
         ("loteo_chicureo", "Loteo Chicureo Norte"),
     ]
-    rows = [
-        {"id": str(uuid4()), "tenant_id": str(tenant_id), "name": name}
-        for _, name in proj_specs
-    ]
+    rows = [{"id": str(uuid4()), "tenant_id": str(tenant_id), "name": name} for _, name in proj_specs]
     try:
         client.table("projects").insert(rows).execute()
         for (key, _), row in zip(proj_specs, rows, strict=True):
@@ -139,8 +136,7 @@ def seed(tenant_name: str | None = None) -> SeedHandles:
         ("portal_yapo", "Yapo.cl", "PORTAL"),
     ]
     rows = [
-        {"id": str(uuid4()), "tenant_id": str(tenant_id), "name": name, "kind": kind}
-        for _, name, kind in org_specs
+        {"id": str(uuid4()), "tenant_id": str(tenant_id), "name": name, "kind": kind} for _, name, kind in org_specs
     ]
     try:
         client.table("organizations").insert(rows).execute()

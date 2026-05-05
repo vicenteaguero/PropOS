@@ -4,6 +4,7 @@ Usage:
     poetry run python -m scripts.kapso_send_template +56911111111 visit_confirmation \
         contact_name=Juan property_address="Calle 123" datetime="lunes 10:00"
 """
+
 from __future__ import annotations
 
 import asyncio

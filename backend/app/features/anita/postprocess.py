@@ -23,8 +23,13 @@ from app.features.anita.classifier import Action
 # Intents that imply a structured write to a domain entity. If any of
 # them is present, ``add_note`` is redundant.
 _STRUCTURED_WRITES = {
-    "log_interaction", "create_person", "create_task", "log_transaction",
-    "create_organization", "create_property", "create_campaign",
+    "log_interaction",
+    "create_person",
+    "create_task",
+    "log_transaction",
+    "create_organization",
+    "create_property",
+    "create_campaign",
 }
 
 # Match the final verifier token (digit or K) of a RUT-like string.
@@ -39,8 +44,12 @@ _VAGUE_NOTE_MIN_CHARS = 20
 # Phrases the user uses to *defer* providing real content. When any of
 # these appear, treat the request as ambiguous instead of guessing a note.
 _DEFERRAL_PHRASES = (
-    "después te cuento", "después te explico", "después te digo",
-    "déjalo así", "te cuento bien", "después te paso",
+    "después te cuento",
+    "después te explico",
+    "después te digo",
+    "déjalo así",
+    "te cuento bien",
+    "después te paso",
 )
 
 
@@ -67,11 +76,13 @@ def dedupe_actions(actions: list[Action], user_text: str = "") -> list[Action]:
         if a.intent == "add_note":
             body = str(a.fields.get("body") or a.fields.get("summary") or "").strip()
             if deferral or len(body) < _VAGUE_NOTE_MIN_CHARS:
-                out.append(Action(
-                    intent="ambiguous",
-                    fields={"reason": "sin contenido accionable"},
-                    raw=a.raw,
-                ))
+                out.append(
+                    Action(
+                        intent="ambiguous",
+                        fields={"reason": "sin contenido accionable"},
+                        raw=a.raw,
+                    )
+                )
                 continue
         out.append(a)
     return out
@@ -104,13 +115,19 @@ def normalize_rut(action: Action) -> None:
     if len(digits) > 8:
         digits = digits[-8:]
     rev = digits[::-1]
-    grouped = ".".join(rev[i:i + 3] for i in range(0, len(rev), 3))[::-1]
+    grouped = ".".join(rev[i : i + 3] for i in range(0, len(rev), 3))[::-1]
     action.fields["rut"] = f"{grouped}-{verifier}"
 
 
 _LUCAS_RE = re.compile(r"(\d[\d.,]*)\s*(lucas|palos|millones?|mil)\b", re.IGNORECASE)
-_MULTIPLIER = {"lucas": 1_000, "mil": 1_000, "palos": 1_000_000,
-               "millon": 1_000_000, "millones": 1_000_000, "millón": 1_000_000}
+_MULTIPLIER = {
+    "lucas": 1_000,
+    "mil": 1_000,
+    "palos": 1_000_000,
+    "millon": 1_000_000,
+    "millones": 1_000_000,
+    "millón": 1_000_000,
+}
 
 
 def _expand_value(num_text: str, unit: str) -> int | None:

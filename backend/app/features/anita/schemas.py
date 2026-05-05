@@ -51,6 +51,7 @@ class ChatRequest(BaseModel):
 
 # ── Discriminated union for chat content blocks ────────────────────────
 
+
 class TextBlock(BaseModel):
     type: Literal["text"] = "text"
     text: str

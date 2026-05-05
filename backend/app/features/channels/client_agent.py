@@ -10,6 +10,7 @@ Differs from Anita:
 - Hand-off: if conversation ``ai_enabled=false`` or ``status='assigned'``,
   do not auto-reply.
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -24,6 +25,7 @@ from app.features.integrations.kapso import client as kapso_client
 
 def _now() -> str:
     return datetime.now(UTC).isoformat()
+
 
 logger = get_logger("CLIENT_AGENT")
 
@@ -75,9 +77,9 @@ async def handle_inbound_client(
             "external_message_id": external_message_id,
         }
     ).execute()
-    db.table("client_conversations").update(
-        {"last_inbound_at": _now(), "last_message_at": _now()}
-    ).eq("id", conv["id"]).execute()
+    db.table("client_conversations").update({"last_inbound_at": _now(), "last_message_at": _now()}).eq(
+        "id", conv["id"]
+    ).execute()
 
     # Auto-record inbound consent (replying counts as opt-in for utility).
     _record_inbound_consent(conv["tenant_id"], contact["id"])
@@ -108,17 +110,15 @@ async def handle_inbound_client(
     try:
         resp = await kapso_client.send_text(phone_e164, reply)
         ext = (resp.get("messages") or [{}])[0].get("id")
-        db.table("client_messages").update(
-            {"delivery_status": "sent", "external_message_id": ext}
-        ).eq("id", msg["id"]).execute()
-        db.table("client_conversations").update(
-            {"last_message_at": _now()}
-        ).eq("id", conv["id"]).execute()
+        db.table("client_messages").update({"delivery_status": "sent", "external_message_id": ext}).eq(
+            "id", msg["id"]
+        ).execute()
+        db.table("client_conversations").update({"last_message_at": _now()}).eq("id", conv["id"]).execute()
     except Exception as exc:  # noqa: BLE001
         logger.exception("client_agent_send_failed", event_type="kapso", error=str(exc))
-        db.table("client_messages").update(
-            {"delivery_status": "failed", "failure_reason": str(exc)[:500]}
-        ).eq("id", msg["id"]).execute()
+        db.table("client_messages").update({"delivery_status": "failed", "failure_reason": str(exc)[:500]}).eq(
+            "id", msg["id"]
+        ).execute()
 
 
 def _ensure_contact_from_phone(
@@ -127,12 +127,7 @@ def _ensure_contact_from_phone(
 ) -> dict[str, Any]:
     db = get_supabase_client()
     rows = (
-        db.table("contacts")
-        .select("id, tenant_id, full_name, phone")
-        .eq("phone", phone_e164)
-        .limit(1)
-        .execute()
-        .data
+        db.table("contacts").select("id, tenant_id, full_name, phone").eq("phone", phone_e164).limit(1).execute().data
     )
     if rows:
         return rows[0]
@@ -213,9 +208,9 @@ def _record_inbound_consent(tenant_id: str, contact_id: str) -> None:
     if existing and existing[0].get("opted_in_at"):
         return
     if existing:
-        db.table("client_consents").update(
-            {"opted_in_at": _now(), "method": "inbound_reply", "opted_out_at": None}
-        ).eq("id", existing[0]["id"]).execute()
+        db.table("client_consents").update({"opted_in_at": _now(), "method": "inbound_reply", "opted_out_at": None}).eq(
+            "id", existing[0]["id"]
+        ).execute()
     else:
         db.table("client_consents").insert(
             {
@@ -265,9 +260,7 @@ async def _generate_reply(history: list[dict[str, str]], user_text: str) -> str:
         base_url = "https://api.openai.com/v1"
 
     est_tokens = sum(len(m["content"]) for m in history) // 4 + 100
-    await get_rate_limiter().acquire(
-        settings.client_agent_provider, settings.client_agent_model, est_tokens
-    )
+    await get_rate_limiter().acquire(settings.client_agent_provider, settings.client_agent_model, est_tokens)
 
     client = AsyncOpenAI(api_key=api_key, base_url=base_url)
     messages = [

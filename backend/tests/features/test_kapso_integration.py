@@ -1,9 +1,8 @@
 """Tests for the Kapso integration: signature, dispatcher, channel router."""
+
 from __future__ import annotations
 
-import json
 from datetime import UTC, datetime, timedelta
-from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -117,7 +116,9 @@ def test_dispatcher_blocks_without_consent(monkeypatch):
 
         asyncio.run(
             dispatcher.send_template_to_contact(
-                "tenant-1", "contact-1", "+56911111111",
+                "tenant-1",
+                "contact-1",
+                "+56911111111",
                 "visit_confirmation",
                 {"contact_name": "x", "property_address": "y", "datetime": "z"},
             )
@@ -147,9 +148,7 @@ def test_dispatcher_window_outside_24h_blocks_freeform(monkeypatch):
     import asyncio
 
     with pytest.raises(dispatcher.WindowError):
-        asyncio.run(
-            dispatcher.send_freeform_to_conversation("t1", "c1", "hola")
-        )
+        asyncio.run(dispatcher.send_freeform_to_conversation("t1", "c1", "hola"))
 
 
 # ─────────────────────── channel router identity ───────────────────────
@@ -158,16 +157,8 @@ def test_dispatcher_window_outside_24h_blocks_freeform(monkeypatch):
 def test_router_internal_user_match(monkeypatch):
     from app.features.channels import router as ch_router
 
-    db = _supabase_table(
-        {
-            "user_phones": [
-                {"user_id": "u1", "tenant_id": "t1", "phone_e164": "+56999"}
-            ]
-        }
-    )
-    monkeypatch.setattr(
-        "app.features.channels.router.get_supabase_client", lambda: db
-    )
+    db = _supabase_table({"user_phones": [{"user_id": "u1", "tenant_id": "t1", "phone_e164": "+56999"}]})
+    monkeypatch.setattr("app.features.channels.router.get_supabase_client", lambda: db)
     match = ch_router._match_internal_user("+56999")
     assert match is not None
     assert match["user_id"] == "u1"
@@ -177,7 +168,5 @@ def test_router_external_contact_no_match(monkeypatch):
     from app.features.channels import router as ch_router
 
     db = _supabase_table({"user_phones": []})
-    monkeypatch.setattr(
-        "app.features.channels.router.get_supabase_client", lambda: db
-    )
+    monkeypatch.setattr("app.features.channels.router.get_supabase_client", lambda: db)
     assert ch_router._match_internal_user("+56000") is None

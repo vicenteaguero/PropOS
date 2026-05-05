@@ -4,6 +4,7 @@
 - Enforces 24h freeform window: outside window only HSM templates allowed.
 - Persists ``client_messages`` row before calling Kapso so realtime UI sees it.
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
@@ -48,14 +49,7 @@ def _has_consent(tenant_id: str, contact_id: str) -> bool:
 
 def _within_freeform_window(conversation_id: str) -> bool:
     db = get_supabase_client()
-    row = (
-        db.table("client_conversations")
-        .select("last_inbound_at")
-        .eq("id", conversation_id)
-        .limit(1)
-        .execute()
-        .data
-    )
+    row = db.table("client_conversations").select("last_inbound_at").eq("id", conversation_id).limit(1).execute().data
     if not row or not row[0].get("last_inbound_at"):
         return False
     last = datetime.fromisoformat(str(row[0]["last_inbound_at"]).replace("Z", "+00:00"))
@@ -148,13 +142,14 @@ async def send_template_to_contact(
         body_preview = body_preview.replace(f"{{{{{i}}}}}", v)
 
     msg_row = _record_outbound(
-        tenant_id, conv["id"], body_preview,
-        template_name=template_name, sender_user_id=sender_user_id,
+        tenant_id,
+        conv["id"],
+        body_preview,
+        template_name=template_name,
+        sender_user_id=sender_user_id,
     )
 
-    resp = await kapso_client.send_template(
-        phone_e164, template.name, rendered_vars, lang=template.language
-    )
+    resp = await kapso_client.send_template(phone_e164, template.name, rendered_vars, lang=template.language)
     _update_status_from_resp(msg_row["id"], resp)
     return {"message_id": msg_row["id"], "kapso": resp}
 
@@ -189,8 +184,11 @@ async def send_freeform_to_conversation(
         raise RuntimeError("conversation has no external phone")
 
     msg_row = _record_outbound(
-        tenant_id, conversation_id, text,
-        template_name=None, sender_user_id=sender_user_id,
+        tenant_id,
+        conversation_id,
+        text,
+        template_name=None,
+        sender_user_id=sender_user_id,
     )
     resp = await kapso_client.send_text(phone, text)
     _update_status_from_resp(msg_row["id"], resp)
@@ -199,7 +197,7 @@ async def send_freeform_to_conversation(
 
 def _update_status_from_resp(message_id: str, resp: dict[str, Any]) -> None:
     db = get_supabase_client()
-    msgs = (resp.get("messages") or [])
+    msgs = resp.get("messages") or []
     external_id = msgs[0].get("id") if msgs else None
     db.table("client_messages").update(
         {

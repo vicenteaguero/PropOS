@@ -34,21 +34,18 @@ export function useConversationMessages(conversationId: string | null) {
           filter: `conversation_id=eq.${conversationId}`,
         },
         (payload) => {
-          qc.setQueryData<ClientMessage[]>(
-            ["client-chat", "messages", conversationId],
-            (prev) => {
-              if (!prev) return prev;
-              const incoming = payload.new as ClientMessage | null;
-              if (payload.eventType === "INSERT" && incoming) {
-                if (prev.some((m) => m.id === incoming.id)) return prev;
-                return [...prev, incoming];
-              }
-              if (payload.eventType === "UPDATE" && incoming) {
-                return prev.map((m) => (m.id === incoming.id ? incoming : m));
-              }
-              return prev;
-            },
-          );
+          qc.setQueryData<ClientMessage[]>(["client-chat", "messages", conversationId], (prev) => {
+            if (!prev) return prev;
+            const incoming = payload.new as ClientMessage | null;
+            if (payload.eventType === "INSERT" && incoming) {
+              if (prev.some((m) => m.id === incoming.id)) return prev;
+              return [...prev, incoming];
+            }
+            if (payload.eventType === "UPDATE" && incoming) {
+              return prev.map((m) => (m.id === incoming.id ? incoming : m));
+            }
+            return prev;
+          });
         },
       )
       .subscribe();

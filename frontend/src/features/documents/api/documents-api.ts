@@ -73,10 +73,9 @@ export const documentsApi = {
     }),
 
   restoreOriginal: (documentId: string, versionId: string) =>
-    apiRequest<DocumentItem>(
-      `/v1/documents/${documentId}/versions/${versionId}/restore-original`,
-      { method: "POST" },
-    ),
+    apiRequest<DocumentItem>(`/v1/documents/${documentId}/versions/${versionId}/restore-original`, {
+      method: "POST",
+    }),
 
   versionDownloadUrl: (documentId: string, versionId: string) =>
     apiRequest<{ url: string }>(`/v1/documents/${documentId}/versions/${versionId}/download`),
