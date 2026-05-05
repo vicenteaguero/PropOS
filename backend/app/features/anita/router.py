@@ -30,25 +30,36 @@ router = APIRouter(prefix="/anita")
     tags=["anita-sessions"],
 )
 async def create_or_resume_session(
+    force_new: bool = False,
     tenant_id: UUID = Depends(get_tenant_id),
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> dict:
+    """Open a session. With ``force_new=true``, closes any OPEN session
+    for the user and starts a fresh one — used when the chat page mounts
+    so each visit is a clean slate."""
+    from datetime import UTC, datetime
+
     client = get_supabase_client()
     user_id = current_user["id"]
 
-    existing = (
-        client.table("anita_sessions")
-        .select("*")
-        .eq("user_id", user_id)
-        .eq("tenant_id", str(tenant_id))
-        .eq("status", "OPEN")
-        .order("last_activity_at", desc=True)
-        .limit(1)
-        .execute()
-        .data
-    )
-    if existing:
-        return existing[0]
+    if force_new:
+        client.table("anita_sessions").update({"status": "CLOSED", "closed_at": datetime.now(UTC).isoformat()}).eq(
+            "user_id", user_id
+        ).eq("tenant_id", str(tenant_id)).eq("status", "OPEN").execute()
+    else:
+        existing = (
+            client.table("anita_sessions")
+            .select("*")
+            .eq("user_id", user_id)
+            .eq("tenant_id", str(tenant_id))
+            .eq("status", "OPEN")
+            .order("last_activity_at", desc=True)
+            .limit(1)
+            .execute()
+            .data
+        )
+        if existing:
+            return existing[0]
 
     return (
         client.table("anita_sessions")
@@ -63,6 +74,66 @@ async def create_or_resume_session(
         .execute()
         .data[0]
     )
+
+
+@router.get(
+    "/sessions",
+    tags=["anita-sessions"],
+)
+async def list_sessions(
+    limit: int = 30,
+    tenant_id: UUID = Depends(get_tenant_id),
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> list[dict]:
+    """List recent sessions for the current user with a short preview
+    (first user message) so the chat history drawer can render them."""
+    client = get_supabase_client()
+    user_id = current_user["id"]
+
+    sessions = (
+        client.table("anita_sessions")
+        .select("id, status, started_at, last_activity_at, closed_at")
+        .eq("user_id", user_id)
+        .eq("tenant_id", str(tenant_id))
+        .order("last_activity_at", desc=True)
+        .limit(limit)
+        .execute()
+        .data
+        or []
+    )
+    if not sessions:
+        return []
+
+    ids = [s["id"] for s in sessions]
+    previews = (
+        client.table("anita_messages")
+        .select("session_id, content, created_at, role")
+        .in_("session_id", ids)
+        .eq("role", "user")
+        .order("created_at")
+        .execute()
+        .data
+        or []
+    )
+    seen: dict[str, str] = {}
+    for m in previews:
+        sid = m["session_id"]
+        if sid in seen:
+            continue
+        content = m.get("content") or {}
+        text = ""
+        if isinstance(content, dict):
+            text = content.get("text") or ""
+        elif isinstance(content, list):
+            for block in content:
+                if isinstance(block, dict) and block.get("type") == "text":
+                    text = block.get("text") or ""
+                    break
+        seen[sid] = (text or "")[:80]
+
+    for s in sessions:
+        s["preview"] = seen.get(s["id"], "")
+    return sessions
 
 
 @router.patch(
