@@ -81,9 +81,13 @@ function tryWebGLWarp(
   naturalW: number,
   naturalH: number,
 ): HTMLCanvasElement | null {
+  // Super-sample at 2x: GL canvas renders at higher resolution, then we
+  // downscale into the final 2D canvas with high-quality smoothing.
+  const ssW = naturalW * 2;
+  const ssH = naturalH * 2;
   const canvas = document.createElement("canvas");
-  canvas.width = naturalW;
-  canvas.height = naturalH;
+  canvas.width = ssW;
+  canvas.height = ssH;
   const gl = canvas.getContext("webgl2", {
     premultipliedAlpha: false,
     preserveDrawingBuffer: true,
@@ -148,7 +152,7 @@ function tryWebGLWarp(
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, texture);
 
-    gl.viewport(0, 0, naturalW, naturalH);
+    gl.viewport(0, 0, ssW, ssH);
     gl.clearColor(1, 1, 1, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
     gl.drawArrays(gl.TRIANGLE_FAN, 0, 4);
@@ -196,15 +200,19 @@ function fallback2DWarp(
     return { x: v * outW, y: (1 - u) * outH };
   };
 
-  const out = document.createElement("canvas");
-  out.width = outW;
-  out.height = outH;
-  const ctx = out.getContext("2d");
+  // Super-sample at 2x then downscale into final canvas.
+  const ssW = outW * 2;
+  const ssH = outH * 2;
+  const ssCanvas = document.createElement("canvas");
+  ssCanvas.width = ssW;
+  ssCanvas.height = ssH;
+  const ctx = ssCanvas.getContext("2d");
   if (!ctx) throw new Error("2d context unavailable");
   ctx.fillStyle = "#fff";
-  ctx.fillRect(0, 0, outW, outH);
+  ctx.fillRect(0, 0, ssW, ssH);
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
+  ctx.scale(2, 2);
 
   // Dilate destination triangle by +0.5px from centroid to hide AA seams.
   const dilate = (p: Point, c: Point): Point => {
@@ -274,6 +282,14 @@ function fallback2DWarp(
       drawTriangle(s00, s11, s10, d00, d11, d10);
     }
   }
+  const out = document.createElement("canvas");
+  out.width = outW;
+  out.height = outH;
+  const outCtx = out.getContext("2d");
+  if (!outCtx) throw new Error("2d context unavailable");
+  outCtx.imageSmoothingEnabled = true;
+  outCtx.imageSmoothingQuality = "high";
+  outCtx.drawImage(ssCanvas, 0, 0, outW, outH);
   return out;
 }
 
@@ -350,15 +366,19 @@ function bezierCoonsWarp(
     return { x: v * outW, y: (1 - u) * outH };
   };
 
-  const out = document.createElement("canvas");
-  out.width = outW;
-  out.height = outH;
-  const ctx = out.getContext("2d");
+  // Super-sample at 2x then downscale into final canvas.
+  const ssW = outW * 2;
+  const ssH = outH * 2;
+  const ssCanvas = document.createElement("canvas");
+  ssCanvas.width = ssW;
+  ssCanvas.height = ssH;
+  const ctx = ssCanvas.getContext("2d");
   if (!ctx) throw new Error("2d context unavailable");
   ctx.fillStyle = "#fff";
-  ctx.fillRect(0, 0, outW, outH);
+  ctx.fillRect(0, 0, ssW, ssH);
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
+  ctx.scale(2, 2);
 
   const dilate = (p: Point, c: Point): Point => {
     const dx = p.x - c.x;
@@ -427,6 +447,14 @@ function bezierCoonsWarp(
       drawTriangle(s00, s11, s10, d00, d11, d10);
     }
   }
+  const out = document.createElement("canvas");
+  out.width = outW;
+  out.height = outH;
+  const outCtx = out.getContext("2d");
+  if (!outCtx) throw new Error("2d context unavailable");
+  outCtx.imageSmoothingEnabled = true;
+  outCtx.imageSmoothingQuality = "high";
+  outCtx.drawImage(ssCanvas, 0, 0, outW, outH);
   return out;
 }
 
@@ -437,27 +465,41 @@ function bezierCoonsWarp(
  * unavailable. When `bezierControls` has any side set, routes to a pure-canvas
  * Coons-patch warp instead (handles curved/cylindrical documents).
  */
+export interface WarpOptions {
+  /** When true, always emit a landscape output (W >= H). Used by ID mode so
+   * cards always render as horizontal landscape. */
+  forceLandscape?: boolean;
+}
+
 export async function warpQuad(
   bitmap: ImageBitmap,
   quad: Quad,
   bezierControls?: BezierControls,
+  options?: WarpOptions,
 ): Promise<HTMLCanvasElement> {
   const { width: W, height: H } = outputSize(quad);
-  const portrait = W <= H;
-  // Final 2D output is always portrait-or-square (W <= H).
-  const outW = portrait ? W : H;
-  const outH = portrait ? H : W;
+  const naturalPortrait = W <= H;
+  // Output orientation: by default always portrait. With forceLandscape, always
+  // landscape (W >= H).
+  const wantPortrait = options?.forceLandscape ? false : true;
+  const outW = wantPortrait ? Math.min(W, H) : Math.max(W, H);
+  const outH = wantPortrait ? Math.max(W, H) : Math.min(W, H);
+  // Whether the warp source orientation matches the desired output.
+  const matches = wantPortrait ? naturalPortrait : !naturalPortrait;
 
   if (bezierControls && hasAnyBezier(bezierControls)) {
-    return bezierCoonsWarp(bitmap, quad, bezierControls, outW, outH, portrait);
+    console.debug("[warp] fallback");
+    return bezierCoonsWarp(bitmap, quad, bezierControls, outW, outH, matches);
   }
 
   // Render in natural orientation (W x H, possibly landscape) on the GL canvas.
   const glCanvas = tryWebGLWarp(bitmap, quad, W, H);
 
   if (!glCanvas) {
-    return fallback2DWarp(bitmap, quad, outW, outH, portrait);
+    console.debug("[warp] fallback");
+    return fallback2DWarp(bitmap, quad, outW, outH, matches);
   }
+  console.debug("[warp] webgl2");
 
   const out = document.createElement("canvas");
   out.width = outW;
@@ -469,15 +511,18 @@ export async function warpQuad(
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
 
-  if (portrait) {
+  if (matches) {
+    // Direct copy (downscaling from supersampled GL canvas).
     ctx.drawImage(glCanvas, 0, 0, outW, outH);
   } else {
-    // Landscape source -> rotate -90deg into portrait output.
-    // Map (x, y) in W x H source to (y, W - x) in outW x outH (= H x W).
+    // Rotate -90deg: source W x H landscape -> outW x outH portrait, or
+    // source W x H portrait -> outW x outH landscape (forceLandscape).
     ctx.save();
     ctx.translate(0, outH);
     ctx.rotate(-Math.PI / 2);
-    ctx.drawImage(glCanvas, 0, 0, W, H);
+    // Destination size after rotation is H wide x W tall in pre-rotation
+    // coords, which matches outH x outW after rotation.
+    ctx.drawImage(glCanvas, 0, 0, outH, outW);
     ctx.restore();
   }
 
