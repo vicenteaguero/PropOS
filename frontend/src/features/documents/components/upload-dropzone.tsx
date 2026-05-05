@@ -2,10 +2,8 @@ import { Upload } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { IMAGE_MIME, validateFile } from "../services/file-validation";
-import { compressBlob } from "../services/image-compression";
+import { validateFile } from "../services/file-validation";
 import type { EditState } from "../services/scanner/types";
-import { DocumentScannerEditor } from "./document-scanner-editor";
 
 interface Props {
   onFile: (file: File, meta?: { editState?: EditState; raw?: Blob }) => void | Promise<void>;
@@ -14,7 +12,6 @@ interface Props {
 
 export function UploadDropzone({ onFile, disabled }: Props) {
   const [hover, setHover] = useState(false);
-  const [pending, setPending] = useState<{ file: File; mime: string } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handle = useCallback(
@@ -25,10 +22,8 @@ export function UploadDropzone({ onFile, disabled }: Props) {
         toast.error(validation.reason ?? "Archivo inválido");
         return;
       }
-      if (IMAGE_MIME.has(validation.mime)) {
-        setPending({ file, mime: validation.mime });
-        return;
-      }
+      // Scanner editor is opt-in: upload goes straight through. User can
+      // open the editor later from the document detail / version drawer.
       await onFile(file);
     },
     [onFile],
@@ -74,21 +69,6 @@ export function UploadDropzone({ onFile, disabled }: Props) {
           onChange={(e) => handle(e.target.files?.[0])}
         />
       </div>
-
-      {pending && (
-        <DocumentScannerEditor
-          open
-          sourceBlob={pending.file}
-          onOpenChange={(o) => {
-            if (!o) setPending(null);
-          }}
-          onSave={async ({ processed, state, raw }) => {
-            const compressed = await compressBlob(processed, `scan-${Date.now()}.jpg`);
-            await onFile(compressed, { editState: state, raw });
-            setPending(null);
-          }}
-        />
-      )}
     </>
   );
 }
