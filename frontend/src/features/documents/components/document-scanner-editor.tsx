@@ -1,18 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  Check,
-  FlipHorizontal,
-  RefreshCw,
-  RotateCcw,
-  RotateCw,
-  Sparkles,
-  Type,
-  X,
-} from "lucide-react";
+import { Check, FlipHorizontal, RotateCcw, RotateCw, Sparkles, Type, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { detectCorners } from "../services/scanner/corner-detect";
 import { decodeImage } from "../services/scanner/decode";
 import { canvasToJpegBlob, applyFilter } from "../services/scanner/filters";
 import {
@@ -294,19 +284,6 @@ export function DocumentScannerEditor({
     setMagnifier(null);
   };
 
-  const reDetect = async () => {
-    const bitmap = bitmapRef.current;
-    if (!bitmap) return;
-    setBusy(true);
-    try {
-      const det = await detectCorners(bitmap);
-      setQuad(det.quad);
-      setAutoDetected(det.autoDetected);
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const reset = () => {
     const bitmap = bitmapRef.current;
     if (!bitmap) return;
@@ -411,9 +388,20 @@ export function DocumentScannerEditor({
   return (
     <div className="fixed inset-0 z-[60] flex flex-col bg-background text-foreground">
       <div className="flex items-center justify-between border-b border-border/40 bg-card/40 px-4 py-3">
-        <div className="text-sm font-medium">Recortar documento</div>
-        <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)}>
-          <X className="size-5" />
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)}>
+            <X className="size-5" />
+          </Button>
+          <div className="text-sm font-medium">Recortar documento</div>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={reset}
+          disabled={busy || loading}
+          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+        >
+          Restablecer
         </Button>
       </div>
 
@@ -443,7 +431,7 @@ export function DocumentScannerEditor({
         )}
       </div>
 
-      <div className="flex items-center justify-around gap-2 border-t border-border/40 bg-card/40 px-3 py-3">
+      <div className="flex items-center justify-between gap-3 border-t border-border/40 bg-card/40 px-4 py-3">
         <Button
           variant="ghost"
           size="sm"
@@ -454,56 +442,37 @@ export function DocumentScannerEditor({
           {filter === "bw" ? <Type className="size-5" /> : <Sparkles className="size-5" />}
           <span className="text-[10px]">{filterLabel}</span>
         </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => rotate(-90)}
-          disabled={busy || loading}
-          className="flex flex-col gap-0.5"
-        >
-          <RotateCcw className="size-5" />
-          <span className="text-[10px]">Rotar</span>
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => rotate(90)}
-          disabled={busy || loading}
-          className="flex flex-col gap-0.5"
-        >
-          <RotateCw className="size-5" />
-          <span className="text-[10px]">Rotar</span>
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={flipH}
-          disabled={busy || loading}
-          className="flex flex-col gap-0.5"
-        >
-          <FlipHorizontal className="size-5" />
-          <span className="text-[10px]">Voltear</span>
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={reDetect}
-          disabled={busy || loading}
-          className="flex flex-col gap-0.5"
-        >
-          <RefreshCw className="size-5" />
-          <span className="text-[10px]">Auto</span>
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={reset}
-          disabled={busy || loading}
-          className="flex flex-col gap-0.5"
-        >
-          <span className="text-base leading-none">↺</span>
-          <span className="text-[10px]">Reset</span>
-        </Button>
+
+        <div className="flex items-center gap-1 rounded-md border border-border/40 bg-background/40 p-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => rotate(-90)}
+            disabled={busy || loading}
+            aria-label="Rotar a la izquierda"
+          >
+            <RotateCcw className="size-5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => rotate(90)}
+            disabled={busy || loading}
+            aria-label="Rotar a la derecha"
+          >
+            <RotateCw className="size-5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={flipH}
+            disabled={busy || loading}
+            aria-label="Voltear horizontal"
+          >
+            <FlipHorizontal className="size-5" />
+          </Button>
+        </div>
+
         <Button size="lg" onClick={apply} disabled={busy || loading || !quad}>
           <Check className="size-5" /> Aplicar
         </Button>

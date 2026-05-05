@@ -280,20 +280,12 @@ function FastAddDialogBody(state: ReturnType<typeof useFastAdd>) {
   );
 }
 
-export function FastAddFab() {
+export function NewDocumentButton() {
   const state = useFastAdd();
   return (
     <>
-      <Button
-        size="icon"
-        variant="secondary"
-        onClick={() => state.setOpen(true)}
-        // Stack above Anita FAB (which sits at bottom-6 right-6, h-14).
-        // 6 (bottom) + 14 (h) + 4 (gap) = 24 → bottom-24, same right-6.
-        className="fixed bottom-24 right-6 z-40 h-14 w-14 rounded-full shadow-lg shadow-primary/20"
-        aria-label="Agregar documento"
-      >
-        <Plus className="size-6" />
+      <Button size="sm" onClick={() => state.setOpen(true)}>
+        <Plus className="size-4" /> Nuevo documento
       </Button>
       <FastAddDialogBody {...state} />
     </>

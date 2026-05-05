@@ -11,7 +11,7 @@ import { useAuth } from "@shared/hooks/use-auth";
 import { ViewModeToggle } from "../components/view-mode-toggle";
 import { DocumentsGrid } from "../components/documents-grid";
 import { DocumentsList } from "../components/documents-list";
-import { FastAddFab } from "../components/fast-add-fab";
+import { NewDocumentButton } from "../components/fast-add-fab";
 import { useDocuments } from "../hooks/use-documents";
 import type { DocumentItem, ViewMode } from "../types";
 
@@ -72,6 +72,7 @@ export function DocumentsPage() {
             >
               <Folder className="size-4" /> Enlaces de subida
             </Button>
+            <NewDocumentButton />
           </div>
         }
       />
@@ -119,7 +120,7 @@ export function DocumentsPage() {
       {!isLoading && !error && data && data.length === 0 && (
         <EmptyState
           title="Sin documentos"
-          description="Usá el botón flotante para escanear con la cámara o subir un archivo."
+          description="Tocá «Nuevo documento» para escanear con la cámara o subir un archivo."
         />
       )}
 
@@ -131,8 +132,6 @@ export function DocumentsPage() {
         ) : (
           <DocumentsList documents={data} onOpen={openDocument} />
         ))}
-
-      <FastAddFab />
     </PageLayout>
   );
 }
