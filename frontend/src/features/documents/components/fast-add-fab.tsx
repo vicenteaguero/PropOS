@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Camera, FilePlus2, Plus, X } from "lucide-react";
+import { Camera, FilePlus2, Plus, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -295,31 +295,45 @@ function FastAddDialogBody(state: ReturnType<typeof useFastAdd>) {
   return (
     <>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Nuevo documento</DialogTitle>
+            <DialogTitle className="text-base">Nuevo documento</DialogTitle>
+            <p className="text-xs text-muted-foreground">
+              Escanea con la cámara o arrastra un archivo.
+            </p>
           </DialogHeader>
 
           {!pendingFile && (
-            <div className="space-y-3">
-              <Button
-                variant="secondary"
-                className="w-full"
+            <div className="grid gap-3 sm:grid-cols-2">
+              <button
+                type="button"
                 onClick={() => {
                   setOpen(false);
                   setCameraOpen(true);
                 }}
+                className="group flex aspect-[5/4] flex-col items-center justify-center gap-2 rounded-xl border border-border bg-card p-5 text-center transition hover:border-primary/60 hover:bg-card/70"
               >
-                <Camera className="size-4" /> Escanear con cámara
-              </Button>
-              <div className="text-center text-xs text-muted-foreground">o</div>
+                <span className="grid size-12 place-items-center rounded-full bg-primary/15 text-primary transition group-hover:bg-primary/25">
+                  <Camera className="size-6" strokeWidth={1.6} />
+                </span>
+                <span className="text-sm font-semibold text-foreground">Escanear</span>
+                <span className="text-[11px] leading-tight text-muted-foreground">
+                  Cámara · ID · varias páginas
+                </span>
+              </button>
+
               <Suspense
                 fallback={
-                  <div className="h-24 animate-pulse rounded-md border border-dashed border-border bg-muted/30" />
+                  <div className="aspect-[5/4] animate-pulse rounded-xl border border-dashed border-border/60 bg-card/30" />
                 }
               >
-                <UploadDropzone onFile={handleSelectFile} />
+                <UploadDropzone onFile={handleSelectFile} compact />
               </Suspense>
+
+              <p className="col-span-full text-center text-[11px] text-muted-foreground">
+                <Upload className="-mt-0.5 mr-1 inline-block size-3" /> PDF · DOCX · JPG · PNG ·
+                WebP · HEIC — hasta 50 MB
+              </p>
             </div>
           )}
 
