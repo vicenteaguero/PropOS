@@ -20,8 +20,8 @@ import {
   useProperties,
 } from "../hooks/use-entities";
 
-// Lazy-load the camera capture flow — pulls in opencv-backed scanner modules
-// (~hundreds of KB). Only loads when the user actually opens the camera.
+// Lazy-load the camera capture flow so the documents page chunk stays small.
+// The scanner modules + dnd-kit only fetch when the user opens the camera.
 const CameraCaptureDocument = lazy(() =>
   import("./camera-capture-document").then((m) => ({ default: m.CameraCaptureDocument })),
 );
