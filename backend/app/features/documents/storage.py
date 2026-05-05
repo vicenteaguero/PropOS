@@ -54,6 +54,10 @@ def anonymous_path(tenant_id: str, portal_id: str, upload_id: str, ext: str) -> 
     return f"{tenant_id}/4_anonymous/{portal_id}/{upload_id}.{ext}"
 
 
+def source_image_path(tenant_id: str, document_id: str, version_number: int, index: int, ext: str) -> str:
+    return f"{tenant_id}/5_sources/{document_id}/v{version_number}/{index}.{ext}"
+
+
 def ext_for_mime(mime: str) -> str:
     return {
         "application/pdf": "pdf",
