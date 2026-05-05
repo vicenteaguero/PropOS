@@ -183,6 +183,107 @@ def _accept_create_property(payload, tenant_id, user_id, anita_session_id):
     return ("properties", UUID(inserted["id"]))
 
 
+def _materialize_media(
+    media_message_ids: list[str],
+    *,
+    tenant_id: UUID,
+    user_id: UUID,
+) -> list[UUID]:
+    """For each anita_messages id, lift its media into media_files (one row
+    per file) and mark the message consumed. Returns the new media_files ids."""
+    if not media_message_ids:
+        return []
+    client = get_supabase_client()
+    msgs = (
+        client.table("anita_messages").select("id, media_url, media_mime").in_("id", media_message_ids).execute().data
+        or []
+    )
+    file_ids: list[UUID] = []
+    for m in msgs:
+        if not m.get("media_url"):
+            continue
+        mime = m.get("media_mime") or "application/octet-stream"
+        file_kind = "IMAGE" if mime.startswith("image/") else "AUDIO" if mime.startswith("audio/") else "OTHER"
+        file_row = (
+            client.table("media_files")
+            .insert(
+                {
+                    "tenant_id": str(tenant_id),
+                    "url": m["media_url"],
+                    "type": mime,
+                    "source": "whatsapp",
+                    "uploaded_by": str(user_id),
+                    "kind": file_kind,
+                }
+            )
+            .execute()
+            .data[0]
+        )
+        file_ids.append(UUID(file_row["id"]))
+    if msgs:
+        client.table("anita_messages").update({"media_status": "consumed"}).in_("id", [m["id"] for m in msgs]).execute()
+    return file_ids
+
+
+def _accept_attach_photos_to_property(payload, tenant_id, user_id, anita_session_id):
+    client = get_supabase_client()
+    property_id = payload.get("property_id")
+    if not property_id:
+        raise ValueError("missing property_id (no resolved property match)")
+    media_message_ids = payload.get("media_message_ids") or []
+    file_ids = _materialize_media(media_message_ids, tenant_id=tenant_id, user_id=user_id)
+    rows = [
+        {
+            "tenant_id": str(tenant_id),
+            "media_file_id": str(fid),
+            "target_table": "properties",
+            "target_row_id": str(property_id),
+            "role": "PHOTO",
+            "position": idx,
+            "created_by": str(user_id),
+        }
+        for idx, fid in enumerate(file_ids)
+    ]
+    if rows:
+        client.table("media_assets").insert(rows).execute()
+    return ("media_assets", UUID(property_id))
+
+
+def _accept_create_document_from_photos(payload, tenant_id, user_id, anita_session_id):
+    client = get_supabase_client()
+    media_message_ids = payload.get("media_message_ids") or []
+    file_ids = _materialize_media(media_message_ids, tenant_id=tenant_id, user_id=user_id)
+    doc_row = (
+        client.table("documents")
+        .insert(
+            {
+                "tenant_id": str(tenant_id),
+                "display_name": payload.get("title") or "Documento",
+                "kind": "OTHER",
+                "origin": "ANITA",
+                "created_by": str(user_id),
+            }
+        )
+        .execute()
+        .data[0]
+    )
+    rows = [
+        {
+            "tenant_id": str(tenant_id),
+            "media_file_id": str(fid),
+            "target_table": "documents",
+            "target_row_id": doc_row["id"],
+            "role": "PAGE",
+            "position": idx,
+            "created_by": str(user_id),
+        }
+        for idx, fid in enumerate(file_ids)
+    ]
+    if rows:
+        client.table("media_assets").insert(rows).execute()
+    return ("documents", UUID(doc_row["id"]))
+
+
 def _accept_add_note(payload, tenant_id, user_id, anita_session_id):
     client = get_supabase_client()
     payload = {k: v for k, v in payload.items() if k not in ("summary_es",)}
@@ -193,15 +294,25 @@ def _accept_add_note(payload, tenant_id, user_id, anita_session_id):
     return ("notes", UUID(row["id"]))
 
 
+# Registry used both by /admin/pendientes (manual accept) and by the dispatcher
+# auto-commit path. Map proposal_kind -> writer fn.
+ACCEPTOR_BY_KIND: dict[str, Any] = {
+    "propose_create_person": _accept_create_person,
+    "propose_log_interaction": _accept_log_interaction,
+    "propose_create_task": _accept_create_task,
+    "propose_log_transaction": _accept_log_transaction,
+    "propose_create_campaign": _accept_create_campaign,
+    "propose_create_organization": _accept_create_organization,
+    "propose_create_property": _accept_create_property,
+    "propose_add_note": _accept_add_note,
+    "propose_attach_photos_to_property": _accept_attach_photos_to_property,
+    "propose_create_document_from_photos": _accept_create_document_from_photos,
+}
+
+
 def register_all_dispatchers() -> None:
     """Called from main.py / app startup to wire pending acceptance."""
     from app.features.pending.service import register_accept_dispatcher
 
-    register_accept_dispatcher("propose_create_person", _accept_create_person)
-    register_accept_dispatcher("propose_log_interaction", _accept_log_interaction)
-    register_accept_dispatcher("propose_create_task", _accept_create_task)
-    register_accept_dispatcher("propose_log_transaction", _accept_log_transaction)
-    register_accept_dispatcher("propose_create_campaign", _accept_create_campaign)
-    register_accept_dispatcher("propose_create_organization", _accept_create_organization)
-    register_accept_dispatcher("propose_create_property", _accept_create_property)
-    register_accept_dispatcher("propose_add_note", _accept_add_note)
+    for kind, fn in ACCEPTOR_BY_KIND.items():
+        register_accept_dispatcher(kind, fn)
