@@ -37,6 +37,7 @@ order-by-type = true
 "scripts/**/*.py" = ["ERA001"]
 "app/features/anita/tools/definitions.py" = ["E501"]
 "app/features/anita/system_prompt.py" = ["E501"]
+"tests/integration/scanner/*.py" = ["E741", "N812"]
 
 [format]
 quote-style = "double"
