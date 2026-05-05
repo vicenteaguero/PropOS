@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Camera, FilePlus2, Plus, X } from "lucide-react";
@@ -6,10 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 import { useAuth } from "@shared/hooks/use-auth";
 import { documentsApi } from "../api/documents-api";
 import { useCreateDocument } from "../hooks/use-documents";
+import type { ContactLite, PropertyLite } from "../types";
 import type { SourceShot } from "./camera-capture-document";
+import { EntityCombobox, type ManualEntry } from "./entity-combobox";
 import {
   useContacts,
   useCreateDraftContact,
@@ -27,6 +30,14 @@ const UploadDropzone = lazy(() =>
   import("./upload-dropzone").then((m) => ({ default: m.UploadDropzone })),
 );
 
+const QUICK_TAGS = ["ID", "Contrato", "Boleta", "Otro"] as const;
+type QuickTag = (typeof QUICK_TAGS)[number];
+
+function shortLabel(value: string, max = 24): string {
+  const trimmed = value.trim();
+  return trimmed.length <= max ? trimmed : `${trimmed.slice(0, max - 1)}…`;
+}
+
 function useFastAdd() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -36,11 +47,17 @@ function useFastAdd() {
   const [cameraOpen, setCameraOpen] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [displayName, setDisplayName] = useState("");
+  const [nameTouched, setNameTouched] = useState(false);
   const [propertyTitle, setPropertyTitle] = useState("");
+  const [selectedProperty, setSelectedProperty] = useState<PropertyLite | null>(null);
   const [contactName, setContactName] = useState("");
+  const [selectedContact, setSelectedContact] = useState<ContactLite | null>(null);
+  const [tag, setTag] = useState<QuickTag | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   const [origin, setOrigin] = useState<"UPLOAD" | "CAMERA">("UPLOAD");
   const [cameraSources, setCameraSources] = useState<SourceShot[] | null>(null);
+  const [manualProperties, setManualProperties] = useState<ManualEntry[]>([]);
+  const [manualContacts, setManualContacts] = useState<ManualEntry[]>([]);
 
   const create = useCreateDocument();
   const createProperty = useCreateDraftProperty();
@@ -48,25 +65,41 @@ function useFastAdd() {
   // Only fetch entity lists once the dialog is open with a pending file —
   // avoids two extra round-trips on every documents-page mount.
   const entitiesEnabled = open && !!pendingFile;
-  const { data: properties = [] } = useProperties(propertyTitle, {
+  const { data: properties = [], isFetching: loadingProperties } = useProperties(propertyTitle, {
     enabled: entitiesEnabled,
   });
-  const { data: contacts = [] } = useContacts(contactName, {
+  const { data: contacts = [], isFetching: loadingContacts } = useContacts(contactName, {
     enabled: entitiesEnabled,
   });
+
+  // Smart filename auto-suggest: when both property + contact are filled and
+  // the user hasn't manually edited the name yet, derive it from the picks.
+  useEffect(() => {
+    if (nameTouched) return;
+    if (!propertyTitle.trim() || !contactName.trim()) return;
+    const next = `${shortLabel(propertyTitle)} — ${shortLabel(contactName)} — ${tag ?? "Documento"}`;
+    setDisplayName(next);
+  }, [propertyTitle, contactName, tag, nameTouched]);
 
   const reset = () => {
     setPendingFile(null);
     setDisplayName("");
+    setNameTouched(false);
     setPropertyTitle("");
+    setSelectedProperty(null);
     setContactName("");
+    setSelectedContact(null);
+    setTag(undefined);
     setOrigin("UPLOAD");
     setCameraSources(null);
+    setManualProperties([]);
+    setManualContacts([]);
   };
 
   const handleSelectFile = (file: File) => {
     setPendingFile(file);
     setDisplayName(file.name.replace(/\.[^/.]+$/, ""));
+    setNameTouched(true);
     setOrigin("UPLOAD");
   };
 
@@ -80,6 +113,7 @@ function useFastAdd() {
     const name = `Escaneo ${new Date().toLocaleDateString("es-CL")}`;
     setPendingFile(file);
     setDisplayName(name);
+    setNameTouched(true);
     setOrigin("CAMERA");
     setCameraSources(sources);
     setCameraOpen(false);
@@ -98,6 +132,7 @@ function useFastAdd() {
         file: pendingFile,
         displayName,
         origin,
+        tag,
         sourceImages: cameraSources?.map((s) => s.raw),
         sourceEditStates: cameraSources?.map((s) => ({
           quad: s.edit.quad,
@@ -108,19 +143,21 @@ function useFastAdd() {
 
       const assignments: Promise<unknown>[] = [];
       if (propertyTitle.trim()) {
-        const matchingProp = properties.find(
-          (p) => p.title.trim().toLowerCase() === propertyTitle.trim().toLowerCase(),
-        );
         const propertyId =
-          matchingProp?.id ?? (await createProperty.mutateAsync(propertyTitle.trim())).id;
+          selectedProperty?.id ??
+          properties.find(
+            (p) => p.title.trim().toLowerCase() === propertyTitle.trim().toLowerCase(),
+          )?.id ??
+          (await createProperty.mutateAsync(propertyTitle.trim())).id;
         assignments.push(assignTo(doc.id, "PROPERTY", propertyId));
       }
       if (contactName.trim()) {
-        const matchingContact = contacts.find(
-          (c) => c.full_name.trim().toLowerCase() === contactName.trim().toLowerCase(),
-        );
         const contactId =
-          matchingContact?.id ?? (await createContact.mutateAsync(contactName.trim())).id;
+          selectedContact?.id ??
+          contacts.find(
+            (c) => c.full_name.trim().toLowerCase() === contactName.trim().toLowerCase(),
+          )?.id ??
+          (await createContact.mutateAsync(contactName.trim())).id;
         assignments.push(assignTo(doc.id, "CONTACT", contactId));
       }
       await Promise.all(assignments);
@@ -151,12 +188,23 @@ function useFastAdd() {
     setPendingFile,
     displayName,
     setDisplayName,
+    setNameTouched,
     propertyTitle,
     setPropertyTitle,
+    setSelectedProperty,
     contactName,
     setContactName,
+    setSelectedContact,
+    tag,
+    setTag,
     properties,
     contacts,
+    loadingProperties,
+    loadingContacts,
+    manualProperties,
+    setManualProperties,
+    manualContacts,
+    setManualContacts,
     busy,
     submit,
     handleSelectFile,
@@ -174,12 +222,23 @@ function FastAddDialogBody(state: ReturnType<typeof useFastAdd>) {
     setPendingFile,
     displayName,
     setDisplayName,
+    setNameTouched,
     propertyTitle,
     setPropertyTitle,
+    setSelectedProperty,
     contactName,
     setContactName,
+    setSelectedContact,
+    tag,
+    setTag,
     properties,
     contacts,
+    loadingProperties,
+    loadingContacts,
+    manualProperties,
+    setManualProperties,
+    manualContacts,
+    setManualContacts,
     busy,
     submit,
     handleSelectFile,
@@ -233,35 +292,83 @@ function FastAddDialogBody(state: ReturnType<typeof useFastAdd>) {
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Nombre del documento</Label>
-                <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+                <Input
+                  value={displayName}
+                  onChange={(e) => {
+                    setDisplayName(e.target.value);
+                    setNameTouched(true);
+                  }}
+                />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Propiedad (existente o nueva como borrador)</Label>
-                <Input
+                <EntityCombobox<PropertyLite>
                   value={propertyTitle}
-                  onChange={(e) => setPropertyTitle(e.target.value)}
+                  onChange={setPropertyTitle}
+                  onSelect={(p) => setSelectedProperty(p)}
+                  items={properties}
+                  getLabel={(p) => p.title}
+                  getKey={(p) => p.id}
+                  loading={loadingProperties}
                   placeholder="Av. Reñaca 115"
-                  list="fab-properties"
+                  emptyText="Sin propiedades"
+                  manualEntries={manualProperties}
+                  onAddNew={(text) => {
+                    setSelectedProperty(null);
+                    setPropertyTitle(text);
+                    setManualProperties((prev) =>
+                      prev.some((m) => m.label.toLowerCase() === text.toLowerCase())
+                        ? prev
+                        : [...prev, { label: text, key: text.toLowerCase() }],
+                    );
+                  }}
+                  ariaLabel="Seleccionar propiedad"
                 />
-                <datalist id="fab-properties">
-                  {properties.map((p) => (
-                    <option key={p.id} value={p.title} />
-                  ))}
-                </datalist>
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Contacto (existente o nuevo como borrador)</Label>
-                <Input
+                <EntityCombobox<ContactLite>
                   value={contactName}
-                  onChange={(e) => setContactName(e.target.value)}
+                  onChange={setContactName}
+                  onSelect={(c) => setSelectedContact(c)}
+                  items={contacts}
+                  getLabel={(c) => c.full_name}
+                  getKey={(c) => c.id}
+                  loading={loadingContacts}
                   placeholder="Jaime Pérez"
-                  list="fab-contacts"
+                  emptyText="Sin contactos"
+                  manualEntries={manualContacts}
+                  onAddNew={(text) => {
+                    setSelectedContact(null);
+                    setContactName(text);
+                    setManualContacts((prev) =>
+                      prev.some((m) => m.label.toLowerCase() === text.toLowerCase())
+                        ? prev
+                        : [...prev, { label: text, key: text.toLowerCase() }],
+                    );
+                  }}
+                  ariaLabel="Seleccionar contacto"
                 />
-                <datalist id="fab-contacts">
-                  {contacts.map((c) => (
-                    <option key={c.id} value={c.full_name} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Etiqueta</Label>
+                <div className="flex flex-wrap gap-2">
+                  {QUICK_TAGS.map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setTag(tag === t ? undefined : t)}
+                      className={cn(
+                        "rounded-full border px-3 py-1 text-xs transition",
+                        tag === t
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {t}
+                    </button>
                   ))}
-                </datalist>
+                </div>
               </div>
               <Button onClick={submit} disabled={busy} className="w-full">
                 {busy ? "Subiendo..." : "Crear documento"}
