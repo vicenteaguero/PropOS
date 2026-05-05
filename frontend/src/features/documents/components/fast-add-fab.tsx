@@ -107,21 +107,61 @@ function useFastAdd() {
     setOrigin("UPLOAD");
   };
 
-  // Camera flow: open the same naming dialog so the user can choose name +
-  // assignments before upload. Same submit() handler runs the upload, plus the
-  // original camera shots are persisted so the document can be re-edited later.
-  const handleCameraPdf = (bytes: Uint8Array, sources: SourceShot[]) => {
+  // Camera flow: bake everything inline. Camera modal supplies the meta from
+  // its own finalize overlay (name + assignments), so we go straight to
+  // create + assign here, then close the camera modal and navigate.
+  const handleCameraPdf = async (
+    bytes: Uint8Array,
+    sources: SourceShot[],
+    meta: { name: string; propertyTitle?: string; contactName?: string; tag?: string },
+  ) => {
     const file = new File([bytes], `escaneo-${Date.now()}.pdf`, {
       type: "application/pdf",
     });
-    const name = `Escaneo ${new Date().toLocaleDateString("es-CL")}`;
-    setPendingFile(file);
-    setDisplayName(name);
-    setNameTouched(true);
-    setOrigin("CAMERA");
-    setCameraSources(sources);
-    setCameraOpen(false);
-    setOpen(true);
+    let createdDocId: string | null = null;
+    try {
+      const doc = await create.mutateAsync({
+        file,
+        displayName: meta.name,
+        origin: "CAMERA",
+        tag: meta.tag,
+        sourceImages: sources.map((s) => s.raw),
+        sourceEditStates: sources.map((s) => ({
+          quad: s.edit.quad,
+          filter: s.edit.filter,
+          bezierControls: s.edit.bezierControls,
+        })),
+      });
+      createdDocId = doc.id;
+
+      const assignments: Promise<unknown>[] = [];
+      const propTitle = meta.propertyTitle?.trim();
+      const contactNm = meta.contactName?.trim();
+      if (propTitle) {
+        const propertyId =
+          properties.find((p) => p.title.trim().toLowerCase() === propTitle.toLowerCase())?.id ??
+          (await createProperty.mutateAsync(propTitle)).id;
+        assignments.push(assignTo(doc.id, "PROPERTY", propertyId));
+      }
+      if (contactNm) {
+        const contactId =
+          contacts.find((c) => c.full_name.trim().toLowerCase() === contactNm.toLowerCase())?.id ??
+          (await createContact.mutateAsync(contactNm)).id;
+        assignments.push(assignTo(doc.id, "CONTACT", contactId));
+      }
+      await Promise.all(assignments);
+
+      toast.success("Documento agregado");
+      reset();
+      setCameraOpen(false);
+      navigate(`/${role}/documents/${doc.id}`);
+    } catch (e) {
+      if (createdDocId) {
+        documentsApi.remove(createdDocId).catch(() => undefined);
+      }
+      toast.error(e instanceof Error ? e.message : "Error guardando documento");
+      // Don't rethrow — let the editor re-enable for retry.
+    }
   };
 
   const submit = async () => {
@@ -400,9 +440,8 @@ function FastAddDialogBody(state: ReturnType<typeof useFastAdd>) {
           <CameraCaptureDocument
             open={cameraOpen}
             onOpenChange={setCameraOpen}
-            onPdfReady={(bytes, sources) => {
-              setCameraOpen(false);
-              handleCameraPdf(bytes, sources);
+            onPdfReady={async (bytes, sources, meta) => {
+              await handleCameraPdf(bytes, sources, meta);
             }}
             propertySuggestions={properties}
             contactSuggestions={contacts}
