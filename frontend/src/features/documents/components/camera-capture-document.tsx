@@ -47,15 +47,20 @@ import {
 import { warpQuad } from "../services/scanner/perspective-warp";
 import type { Corner, FilterMode, Quad, Side } from "../services/scanner/types";
 
+export interface ShotEdit {
+  quad: Quad;
+  filter: FilterMode;
+}
+
+export interface SourceShot {
+  raw: Blob;
+  edit: ShotEdit;
+}
+
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onPdfReady: (pdfBytes: Uint8Array) => void;
-}
-
-interface ShotEdit {
-  quad: Quad;
-  filter: FilterMode;
+  onPdfReady: (pdfBytes: Uint8Array, sources: SourceShot[]) => void;
 }
 
 interface Shot {
@@ -592,6 +597,7 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props)
     setBusy(true);
     try {
       const baked: Blob[] = [];
+      const sources: SourceShot[] = [];
       for (const s of shots) {
         let bitmap = s.bitmap;
         if (!bitmap) {
@@ -607,9 +613,10 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props)
         const processed = await canvasToJpegBlob(filtered, 0.85);
         const compressed = await compressBlob(processed, `shot-${Date.now()}.jpg`);
         baked.push(compressed);
+        sources.push({ raw: s.raw, edit });
       }
       const pdf = await imagesToPdf(baked);
-      onPdfReady(pdf);
+      onPdfReady(pdf, sources);
       onOpenChange(false);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error generando PDF");
