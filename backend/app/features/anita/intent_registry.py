@@ -31,6 +31,15 @@ class IntentSpec:
     detailed: tuple[tuple[str, str], ...] = ()
     complex: bool = False
     defaults: dict[str, object] = field(default_factory=dict)
+    # When true and required fields present + no ambiguity, dispatcher writes
+    # directly to the target table instead of queuing in pending_proposals.
+    # Set to False for high-stakes intents that always need human confirmation.
+    auto_commit: bool = True
+    # When true, dispatcher injects unprocessed media (recent photos in the
+    # active session) into the payload as `media_message_ids`, so the executor
+    # can attach them on commit. Used by attach_photos_to_property and
+    # create_document_from_photos.
+    consumes_media: bool = False
 
     @property
     def all_fields(self) -> tuple[str, ...]:
@@ -72,6 +81,7 @@ REGISTRY: dict[str, IntentSpec] = {
         optional=("currency", "description", "occurred_at"),
         aliases={"amount_clp": "amount", "due": "occurred_at"},
         defaults={"currency": "CLP"},
+        auto_commit=False,
     ),
     "create_organization": IntentSpec(
         name="create_organization",
@@ -110,16 +120,43 @@ REGISTRY: dict[str, IntentSpec] = {
         ),
         complex=True,
         aliases={
-            "size_m2": "area_m2", "area": "area_m2", "metros": "area_m2", "m2": "area_m2",
+            "size_m2": "area_m2",
+            "area": "area_m2",
+            "metros": "area_m2",
+            "m2": "area_m2",
             "name": "title",
-            "parking": "parking_count", "estacionamientos": "parking_count",
-            "storage": "has_storage", "bodega": "has_storage",
-            "common_expenses": "hoa_clp", "gastos_comunes": "hoa_clp", "gc": "hoa_clp",
-            "year": "year_built", "año": "year_built",
-            "price": "price_clp", "precio": "price_clp", "amount": "price_clp",
+            "parking": "parking_count",
+            "estacionamientos": "parking_count",
+            "storage": "has_storage",
+            "bodega": "has_storage",
+            "common_expenses": "hoa_clp",
+            "gastos_comunes": "hoa_clp",
+            "gc": "hoa_clp",
+            "year": "year_built",
+            "año": "year_built",
+            "price": "price_clp",
+            "precio": "price_clp",
+            "amount": "price_clp",
             "Comuna": "comuna",
         },
         defaults={"status": "AVAILABLE"},
+    ),
+    "attach_photos_to_property": IntentSpec(
+        name="attach_photos_to_property",
+        proposal_kind="propose_attach_photos_to_property",
+        target_table="media_assets",
+        required=("title",),
+        aliases={"property": "title"},
+        consumes_media=True,
+    ),
+    "create_document_from_photos": IntentSpec(
+        name="create_document_from_photos",
+        proposal_kind="propose_create_document_from_photos",
+        target_table="documents",
+        required=("title",),
+        optional=("description",),
+        aliases={"name": "title"},
+        consumes_media=True,
     ),
     "create_campaign": IntentSpec(
         name="create_campaign",
