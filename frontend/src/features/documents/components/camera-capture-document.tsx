@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { compressBlob } from "../services/image-compression";
 import { imagesToPdf } from "../services/pdf-from-images";
+import { loadOpenCV } from "../services/scanner/opencv-loader";
 import type { EditState } from "../services/scanner/types";
 import { DocumentScannerEditor } from "./document-scanner-editor";
 
@@ -55,6 +56,8 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props)
       setEditing(null);
       return;
     }
+    // Warm up OpenCV in parallel with camera so the editor doesn't stall on first capture.
+    loadOpenCV().catch(() => {});
     let cancelled = false;
     (async () => {
       try {
