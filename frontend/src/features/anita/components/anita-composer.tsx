@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Mic, MicOff, Send, Loader2, ChevronRight } from "lucide-react";
+import { Mic, Square, Send, Loader2, X } from "lucide-react";
 import { useMicrophone } from "@shared/hooks/use-microphone";
 import { anitaApi } from "../api/anita-api";
 
@@ -14,15 +14,13 @@ interface Props {
 
 /**
  * Audio path: MediaRecorder → POST /anita/transcripts → autosend text.
- *
- * Web Speech API was dropped — mobile OS dictation is free and we want
- * a single codepath that works for upcoming WhatsApp audio messages.
+ * Audio playback shows as soon as recording stops; transcription runs
+ * in background so the user isn't blocked.
  */
 export function AnitaComposer({ onSend, isStreaming, autoSend = true, sessionId }: Props) {
   const [text, setText] = useState("");
   const [transcribing, setTranscribing] = useState(false);
-  const [lastTranscript, setLastTranscript] = useState<string | null>(null);
-  const [showTranscript, setShowTranscript] = useState(false);
+  const [transcribeError, setTranscribeError] = useState<string | null>(null);
   const recorder = useMicrophone();
 
   // After recording stops: server STT → fill input → autoSend.
@@ -32,25 +30,27 @@ export function AnitaComposer({ onSend, isStreaming, autoSend = true, sessionId 
     let cancelled = false;
     (async () => {
       setTranscribing(true);
+      setTranscribeError(null);
       try {
         const result = await anitaApi.createTranscript(blob, sessionId);
         if (cancelled) return;
         setText(result.text);
-        setLastTranscript(result.text);
-        setShowTranscript(false);
         if (autoSend && result.text.trim()) {
           setTimeout(() => {
             if (!cancelled && result.text.trim()) {
               onSend(result.text.trim());
               setText("");
+              recorder.clearRecording();
             }
           }, 1500);
         }
       } catch (err) {
-        if (!cancelled) console.error("transcribe failed", err);
+        if (!cancelled) {
+          const msg = err instanceof Error ? err.message : "transcripción falló";
+          setTranscribeError(msg);
+        }
       } finally {
         if (!cancelled) setTranscribing(false);
-        recorder.clearRecording();
       }
     })();
     return () => {
@@ -59,12 +59,15 @@ export function AnitaComposer({ onSend, isStreaming, autoSend = true, sessionId 
   }, [recorder.audioBlob, autoSend, sessionId, onSend, recorder]);
 
   const isListening = recorder.isRecording;
+  const hasAudio = !!recorder.audioUrl && !isListening;
 
   const handleMicClick = () => {
     if (recorder.isRecording) {
       recorder.stopRecording();
     } else {
       setText("");
+      setTranscribeError(null);
+      recorder.clearRecording();
       void recorder.startRecording();
     }
   };
@@ -73,43 +76,43 @@ export function AnitaComposer({ onSend, isStreaming, autoSend = true, sessionId 
     if (!text.trim() || isStreaming) return;
     onSend(text.trim());
     setText("");
+    recorder.clearRecording();
+  };
+
+  const discardAudio = () => {
+    recorder.clearRecording();
+    setTranscribeError(null);
+    setText("");
   };
 
   return (
     <div className="space-y-2">
       {recorder.error && <p className="text-xs text-destructive">{recorder.error}</p>}
+      {transcribeError && <p className="text-xs text-destructive">Error: {transcribeError}</p>}
 
-      {lastTranscript && !isListening && !transcribing && (
-        <details
-          open={showTranscript}
-          onToggle={(e) => setShowTranscript((e.target as HTMLDetailsElement).open)}
-          className="text-xs text-muted-foreground"
-        >
-          <summary className="cursor-pointer flex items-center gap-1 select-none">
-            <ChevronRight className={`size-3 transition-transform ${showTranscript ? "rotate-90" : ""}`} />
-            🎙 Transcripción
-          </summary>
-          <p className="mt-1 pl-4 whitespace-pre-wrap">{lastTranscript}</p>
-        </details>
+      {hasAudio && (
+        <div className="flex items-center gap-2 rounded-md border border-border bg-muted/30 px-2 py-1">
+          <audio controls src={recorder.audioUrl ?? undefined} className="h-8 flex-1" />
+          {transcribing && (
+            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Loader2 className="size-3 animate-spin" />
+              Transcribiendo…
+            </span>
+          )}
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            onClick={discardAudio}
+            title="Descartar audio"
+            className="size-7"
+          >
+            <X className="size-3" />
+          </Button>
+        </div>
       )}
 
       <div className="flex gap-2">
-        <Button
-          type="button"
-          size="icon"
-          variant={isListening ? "destructive" : "secondary"}
-          onClick={handleMicClick}
-          disabled={isStreaming || transcribing}
-          title="Hablar"
-        >
-          {isListening ? (
-            <MicOff className="size-4" />
-          ) : transcribing ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            <Mic className="size-4" />
-          )}
-        </Button>
         <Input
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -120,23 +123,35 @@ export function AnitaComposer({ onSend, isStreaming, autoSend = true, sessionId 
             }
           }}
           placeholder={
-            isListening ? "Grabando… toca para parar" : transcribing ? "Transcribiendo…" : "Habla o escribe a Anita…"
+            isListening
+              ? "Grabando… toca cuadrado para parar"
+              : transcribing
+                ? "Transcribiendo… puedes editar el texto"
+                : "Habla o escribe a Anita…"
           }
-          disabled={isStreaming || transcribing}
+          disabled={isStreaming || isListening}
           className="flex-1"
         />
         <Button
           type="button"
           size="icon"
+          variant={isListening ? "destructive" : "secondary"}
+          onClick={handleMicClick}
+          disabled={isStreaming}
+          title={isListening ? "Parar grabación" : "Hablar"}
+        >
+          {isListening ? <Square className="size-4 fill-current" /> : <Mic className="size-4" />}
+        </Button>
+        <Button
+          type="button"
+          size="icon"
           onClick={handleSend}
-          disabled={!text.trim() || isStreaming}
+          disabled={!text.trim() || isStreaming || isListening}
+          title="Enviar"
         >
           {isStreaming ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
         </Button>
       </div>
-      {autoSend && !isListening && text && lastTranscript === text && (
-        <p className="text-xs text-muted-foreground">Enviando en 1.5s… toca el input para editar.</p>
-      )}
     </div>
   );
 }
