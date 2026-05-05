@@ -53,23 +53,6 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props)
     }
   }, []);
 
-  const startStream = useCallback(async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 } },
-        audio: false,
-      });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
-    } catch (e) {
-      console.warn("camera unavailable, fallback to file input", e);
-      setFallback(true);
-    }
-  }, []);
-
   useEffect(() => {
     if (!open) {
       stopStream();
@@ -80,13 +63,37 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props)
       setMode("capture");
       return;
     }
-    if (mode === "capture") {
-      void startStream();
-    } else {
+    if (mode !== "capture") {
       stopStream();
+      return;
     }
-    return () => stopStream();
-  }, [open, mode, startStream, stopStream]);
+    let cancelled = false;
+    (async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 } },
+          audio: false,
+        });
+        if (cancelled) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play();
+        }
+      } catch (e) {
+        if (cancelled) return;
+        console.warn("camera unavailable, fallback to file input", e);
+        setFallback(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+      stopStream();
+    };
+  }, [open, mode, stopStream]);
 
   const captureShot = async () => {
     const video = videoRef.current;
