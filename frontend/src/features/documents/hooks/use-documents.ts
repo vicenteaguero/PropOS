@@ -12,6 +12,10 @@ export function useDocuments(params: ListDocumentsParams = {}) {
   return useQuery({
     queryKey: documentsKeys.list(params),
     queryFn: () => documentsApi.list(params),
+    // List endpoint returns metadata only; cache aggressively to avoid 20s
+    // hard-reload waterfalls on every navigation back to the documents page.
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
   });
 }
 
