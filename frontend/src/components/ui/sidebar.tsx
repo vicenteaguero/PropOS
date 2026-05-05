@@ -114,7 +114,7 @@ function SidebarProvider({
 
   return (
     <SidebarContext.Provider value={contextValue}>
-      <TooltipProvider delayDuration={0}>
+      <TooltipProvider delayDuration={300} disableHoverableContent>
         <div
           data-slot="sidebar-wrapper"
           style={
@@ -509,6 +509,12 @@ function SidebarMenuButton({
     return button;
   }
 
+  // Only wrap in Tooltip when sidebar is collapsed on desktop —
+  // otherwise the tooltip can ghost / stay mounted while expanded.
+  if (state !== "collapsed" || isMobile) {
+    return button;
+  }
+
   if (typeof tooltip === "string") {
     tooltip = {
       children: tooltip,
@@ -518,12 +524,7 @@ function SidebarMenuButton({
   return (
     <Tooltip>
       <TooltipTrigger asChild>{button}</TooltipTrigger>
-      <TooltipContent
-        side="right"
-        align="center"
-        hidden={state !== "collapsed" || isMobile}
-        {...tooltip}
-      />
+      <TooltipContent side="right" align="center" {...tooltip} />
     </Tooltip>
   );
 }
