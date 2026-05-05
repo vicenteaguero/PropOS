@@ -20,8 +20,8 @@ from rapidfuzz import fuzz, process
 
 from app.features.anita.context import TenantSnapshot
 
-MIN_SCORE = 70           # below this → "not_found"
-AMBIGUITY_GAP = 8        # if top1 - top2 < gap → ambiguous
+MIN_SCORE = 70
+AMBIGUITY_GAP = 8
 
 
 @dataclass
@@ -36,13 +36,14 @@ class FieldResolution:
     raw: str
     resolved_id: UUID | None = None
     candidates: list[Candidate] = field(default_factory=list)
-    status: str = "ok"  # ok | ambiguous | not_found
+    status: str = "ok"
 
 
 @dataclass
 class ResolvedFields:
     """Every entity-style field annotated. `extras` carries the rest of
     classifier output (kind, duration_min, amount_clp, summary, etc.)."""
+
     person: FieldResolution | None = None
     property: FieldResolution | None = None
     project: FieldResolution | None = None
@@ -105,16 +106,16 @@ def resolve(fields: dict[str, Any], snapshot: TenantSnapshot, *, intent: str = "
     leftover = dict(fields)
     is_create = intent in CREATE_INTENTS
 
-    if (q := leftover.pop("person", None)):
+    if q := leftover.pop("person", None):
         if is_create and intent == "create_person":
             resolved.person = FieldResolution(raw=str(q), status="not_found")
         else:
             resolved.person = _resolve_one(str(q), snapshot.people, ("full_name",))
-    if (q := leftover.pop("property", None)):
+    if q := leftover.pop("property", None):
         resolved.property = _resolve_one(str(q), snapshot.properties, ("title", "address"))
-    if (q := leftover.pop("project", None)):
+    if q := leftover.pop("project", None):
         resolved.project = _resolve_one(str(q), snapshot.projects, ("name",))
-    if (q := leftover.pop("org", None)):
+    if q := leftover.pop("org", None):
         if is_create and intent == "create_organization":
             resolved.org = FieldResolution(raw=str(q), status="not_found")
         else:
@@ -123,18 +124,21 @@ def resolve(fields: dict[str, Any], snapshot: TenantSnapshot, *, intent: str = "
     resolved.extras = leftover
 
     # Aggregate ambiguity. Any field that didn't match cleanly bubbles up.
-    for name, fr in (("person", resolved.person), ("property", resolved.property),
-                     ("project", resolved.project), ("org", resolved.org)):
+    for name, fr in (
+        ("person", resolved.person),
+        ("property", resolved.property),
+        ("project", resolved.project),
+        ("org", resolved.org),
+    ):
         if fr is None:
             continue
         if fr.status == "ambiguous":
             resolved.is_ambiguous = True
-            resolved.ambiguity_summary.append({
-                "field": name,
-                "raw": fr.raw,
-                "candidates": [
-                    {"id": str(c.id), "label": c.label, "score": int(c.score)}
-                    for c in fr.candidates
-                ],
-            })
+            resolved.ambiguity_summary.append(
+                {
+                    "field": name,
+                    "raw": fr.raw,
+                    "candidates": [{"id": str(c.id), "label": c.label, "score": int(c.score)} for c in fr.candidates],
+                }
+            )
     return resolved

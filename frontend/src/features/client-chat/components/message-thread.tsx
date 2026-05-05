@@ -2,11 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Loader2, Send } from "lucide-react";
-import {
-  useConversationMessages,
-  useSendMessage,
-  useTakeover,
-} from "../hooks/use-client-chat";
+import { useConversationMessages, useSendMessage, useTakeover } from "../hooks/use-client-chat";
 import type { ClientConversation } from "../types";
 
 interface Props {
@@ -96,7 +92,8 @@ export function MessageThread({ conversation }: Props) {
       <div className="border-t p-3">
         {!inWindow && (
           <div className="mb-2 rounded bg-warning/10 p-2 text-xs text-warning-foreground">
-            Fuera de la ventana de 24h — sólo plantillas aprobadas hasta nueva respuesta del cliente.
+            Fuera de la ventana de 24h — sólo plantillas aprobadas hasta nueva respuesta del
+            cliente.
           </div>
         )}
         <div className="flex gap-2">
@@ -117,9 +114,7 @@ export function MessageThread({ conversation }: Props) {
             <Send className="size-4" />
           </Button>
         </div>
-        {send.isError && (
-          <div className="mt-2 text-xs text-destructive">{String(send.error)}</div>
-        )}
+        {send.isError && <div className="mt-2 text-xs text-destructive">{String(send.error)}</div>}
       </div>
     </Card>
   );

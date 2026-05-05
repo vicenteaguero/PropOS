@@ -1,4 +1,5 @@
 """HMAC-SHA256 signature verification for Kapso webhooks."""
+
 from __future__ import annotations
 
 import hashlib
@@ -16,7 +17,7 @@ def verify(secret: str, raw_body: bytes, header_value: str | None) -> bool:
         return False
     received = header_value.strip()
     if received.startswith("sha256="):
-        received = received[len("sha256="):]
+        received = received[len("sha256=") :]
     expected = compute(secret, raw_body)
     try:
         return hmac.compare_digest(expected, received)

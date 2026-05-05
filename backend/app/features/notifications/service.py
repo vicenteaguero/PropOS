@@ -92,6 +92,10 @@ async def notify_contact_whatsapp(
     from app.features.notifications.whatsapp.dispatcher import send_template_to_contact
 
     return await send_template_to_contact(
-        tenant_id, contact_id, phone_e164, template_name, vars_map,
+        tenant_id,
+        contact_id,
+        phone_e164,
+        template_name,
+        vars_map,
         sender_user_id=sender_user_id,
     )

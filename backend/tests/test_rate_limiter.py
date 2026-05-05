@@ -84,15 +84,15 @@ def test_record_response_with_headers_overrides_local_count(limiter):
     headers = {
         # Groq sends these as DAILY for requests, MINUTE for tokens.
         "x-ratelimit-limit-requests": "1000",
-        "x-ratelimit-remaining-requests": "910",  # 90 used today
+        "x-ratelimit-remaining-requests": "910",
         "x-ratelimit-limit-tokens": "12000",
-        "x-ratelimit-remaining-tokens": "9000",   # 3000 used this minute
+        "x-ratelimit-remaining-tokens": "9000",
     }
     limiter.record_response("test", "model", actual_tokens=0, headers=headers)
 
     state = limiter._state_for("test", "model")
     assert state is not None
-    assert state.req_day.total(0.0) == 90      # synced from `requests` header
-    assert state.req_min.total(0.0) == 0       # not touched
-    assert state.tok_min.total(0.0) == 3000    # synced from `tokens` header
-    assert state.tok_day.total(0.0) == 0       # not touched
+    assert state.req_day.total(0.0) == 90
+    assert state.req_min.total(0.0) == 0
+    assert state.tok_min.total(0.0) == 3000
+    assert state.tok_day.total(0.0) == 0

@@ -194,7 +194,7 @@ class RateLimiter:
         key = (provider, model)
         state = self._states.get(key)
         if state is None:
-            return  # acquire wasn't called or model unregistered
+            return
 
         now = time.monotonic()
         # We added est_tokens during acquire(); the true cost may differ.
@@ -223,6 +223,7 @@ class RateLimiter:
         `req_min` and `tok_day` are kept by the running counters from
         ``acquire`` since the headers don't expose them.
         """
+
         def _g(name: str) -> str | None:
             return headers.get(name) or headers.get(name.lower())
 

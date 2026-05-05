@@ -20,13 +20,29 @@ from sqlglot import exp
 # Functions safe to call. Everything else rejected.
 ALLOWED_FUNCTIONS = {
     # Aggregates
-    "count", "sum", "avg", "min", "max",
+    "count",
+    "sum",
+    "avg",
+    "min",
+    "max",
     # Date helpers
-    "now", "current_date", "current_timestamp",
-    "date_trunc", "date_part", "to_char", "to_date", "to_timestamp",
-    "extract", "age",
+    "now",
+    "current_date",
+    "current_timestamp",
+    "date_trunc",
+    "date_part",
+    "to_char",
+    "to_date",
+    "to_timestamp",
+    "extract",
+    "age",
     # String helpers
-    "lower", "upper", "trim", "concat", "coalesce", "nullif",
+    "lower",
+    "upper",
+    "trim",
+    "concat",
+    "coalesce",
+    "nullif",
     # Type casts
     "cast",
 }

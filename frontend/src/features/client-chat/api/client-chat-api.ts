@@ -1,9 +1,5 @@
 import { apiRequest } from "@features/documents/api/http";
-import type {
-  ClientConversation,
-  ClientMessage,
-  ConversationStatus,
-} from "../types";
+import type { ClientConversation, ClientMessage, ConversationStatus } from "../types";
 
 const BASE = "/v1/client-chat";
 
@@ -17,15 +13,12 @@ export const clientChatApi = {
     apiRequest<ClientMessage[]>(`${BASE}/conversations/${conversationId}/messages`),
 
   send: (conversationId: string, text: string) =>
-    apiRequest<{ message_id: string }>(
-      `${BASE}/conversations/${conversationId}/send`,
-      { method: "POST", body: { text } },
-    ),
+    apiRequest<{ message_id: string }>(`${BASE}/conversations/${conversationId}/send`, {
+      method: "POST",
+      body: { text },
+    }),
 
-  patch: (
-    conversationId: string,
-    body: { ai_enabled?: boolean; status?: ConversationStatus },
-  ) =>
+  patch: (conversationId: string, body: { ai_enabled?: boolean; status?: ConversationStatus }) =>
     apiRequest<ClientConversation>(`${BASE}/conversations/${conversationId}`, {
       method: "PATCH",
       body,

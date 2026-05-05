@@ -65,6 +65,7 @@ async def main() -> None:
         return
 
     from uuid import UUID
+
     tid = UUID(tenant_id_str)
     uid = UUID(os.environ.get("ANITA_AB_USER_ID", "00000000-0000-0000-0000-000000000001"))
 

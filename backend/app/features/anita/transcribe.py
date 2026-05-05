@@ -85,25 +85,58 @@ def build_whisper_vocab(tenant_id: UUID | None = None) -> str:
 
     try:
         from app.core.supabase.client import get_supabase_client
+
         c = get_supabase_client()
         tid = str(tenant_id)
 
-        people = [r["full_name"] for r in c.table("contacts").select("full_name")
-                  .eq("tenant_id", tid).is_("deleted_at", "null")
-                  .order("created_at", desc=True).limit(40).execute().data
-                  if r.get("full_name")]
-        props = [r["title"] for r in c.table("properties").select("title")
-                 .eq("tenant_id", tid).is_("deleted_at", "null")
-                 .order("updated_at", desc=True).limit(20).execute().data
-                 if r.get("title")]
-        orgs = [r["name"] for r in c.table("organizations").select("name")
-                .eq("tenant_id", tid).is_("deleted_at", "null")
-                .order("name").limit(20).execute().data
-                if r.get("name")]
-        projects = [r["name"] for r in c.table("projects").select("name")
-                    .eq("tenant_id", tid).is_("deleted_at", "null")
-                    .order("updated_at", desc=True).limit(10).execute().data
-                    if r.get("name")]
+        people = [
+            r["full_name"]
+            for r in c.table("contacts")
+            .select("full_name")
+            .eq("tenant_id", tid)
+            .is_("deleted_at", "null")
+            .order("created_at", desc=True)
+            .limit(40)
+            .execute()
+            .data
+            if r.get("full_name")
+        ]
+        props = [
+            r["title"]
+            for r in c.table("properties")
+            .select("title")
+            .eq("tenant_id", tid)
+            .is_("deleted_at", "null")
+            .order("updated_at", desc=True)
+            .limit(20)
+            .execute()
+            .data
+            if r.get("title")
+        ]
+        orgs = [
+            r["name"]
+            for r in c.table("organizations")
+            .select("name")
+            .eq("tenant_id", tid)
+            .is_("deleted_at", "null")
+            .order("name")
+            .limit(20)
+            .execute()
+            .data
+            if r.get("name")
+        ]
+        projects = [
+            r["name"]
+            for r in c.table("projects")
+            .select("name")
+            .eq("tenant_id", tid)
+            .is_("deleted_at", "null")
+            .order("updated_at", desc=True)
+            .limit(10)
+            .execute()
+            .data
+            if r.get("name")
+        ]
     except Exception:  # pragma: no cover — defensive: vocab is best-effort
         return _WHISPER_VOCAB_STATIC
 
@@ -136,14 +169,19 @@ def _transcribe_groq(file: IO[bytes], filename: str, vocab: str | None = None) -
     client = OpenAI(
         api_key=settings.groq_api_key,
         base_url="https://api.groq.com/openai/v1",
+        timeout=30.0,
+        max_retries=1,
     )
-    response = client.audio.transcriptions.create(
-        model="whisper-large-v3",
-        file=(filename, file, "audio/webm"),
-        language="es",
-        response_format="verbose_json",
-        prompt=vocab or _WHISPER_VOCAB_STATIC,
-    )
+    try:
+        response = client.audio.transcriptions.create(
+            model="whisper-large-v3",
+            file=(filename, file, "audio/webm"),
+            language="es",
+            response_format="verbose_json",
+            prompt=vocab or _WHISPER_VOCAB_STATIC,
+        )
+    except Exception as exc:
+        raise TranscriptionError(f"groq whisper failed: {exc}") from exc
     return {
         "text": response.text,
         "language": getattr(response, "language", "es"),
@@ -161,13 +199,16 @@ def _transcribe_openai(file: IO[bytes], filename: str) -> dict:
     except ImportError as exc:
         raise TranscriptionError("openai package not installed") from exc
 
-    client = OpenAI(api_key=settings.openai_api_key)
-    response = client.audio.transcriptions.create(
-        model="whisper-1",
-        file=(filename, file, "audio/webm"),
-        language="es",
-        response_format="verbose_json",
-    )
+    client = OpenAI(api_key=settings.openai_api_key, timeout=30.0, max_retries=1)
+    try:
+        response = client.audio.transcriptions.create(
+            model="whisper-1",
+            file=(filename, file, "audio/webm"),
+            language="es",
+            response_format="verbose_json",
+        )
+    except Exception as exc:
+        raise TranscriptionError(f"openai whisper failed: {exc}") from exc
     return {
         "text": response.text,
         "language": getattr(response, "language", "es"),

@@ -4,6 +4,7 @@ Reads ``app.features.notifications.whatsapp.templates.REGISTRY`` and POSTs
 each entry to Kapso's template create endpoint. Idempotent: existing
 templates with the same name are skipped (Kapso 409).
 """
+
 from __future__ import annotations
 
 import asyncio

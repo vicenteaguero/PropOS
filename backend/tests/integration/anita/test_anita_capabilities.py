@@ -68,12 +68,18 @@ def _save_transcribe_cache(audio_path: Path, result: dict[str, Any]) -> None:
         )
     )
 
+
 # Flatten (scenario, variant) for parametrize.
 VARIANTS = [
-    {**v, "scenario_id": s["id"], "expected_actions": s["expected_actions"],
-     "expected_no_proposals": s.get("expected_no_proposals", False),
-     "expected_text_contains": s.get("expected_text_contains", [])}
-    for s in SCENARIOS for v in s["variants"]
+    {
+        **v,
+        "scenario_id": s["id"],
+        "expected_actions": s["expected_actions"],
+        "expected_no_proposals": s.get("expected_no_proposals", False),
+        "expected_text_contains": s.get("expected_text_contains", []),
+    }
+    for s in SCENARIOS
+    for v in s["variants"]
 ]
 RESULTS_PATH = Path(__file__).parent / "results.jsonl"
 
@@ -239,9 +245,7 @@ def _action_matches(call: dict, expected: dict) -> bool:
     ids=[f"{v['scenario_id']}::{v['register']}" for v in VARIANTS],
 )
 @pytest.mark.asyncio
-async def test_audio_action_chain(
-    spec: dict, provider: str, seed_handles: SeedHandles
-) -> None:
+async def test_audio_action_chain(spec: dict, provider: str, seed_handles: SeedHandles) -> None:
     """End-to-end: audio → Whisper → Anita turn → expected tool calls.
 
     Falls back to using `transcript` text directly if the audio file

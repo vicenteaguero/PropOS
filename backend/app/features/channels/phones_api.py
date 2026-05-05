@@ -1,4 +1,5 @@
 """user_phones admin endpoints — assign E.164 phone → internal user."""
+
 from __future__ import annotations
 
 import re
@@ -45,6 +46,7 @@ async def assign_phone(
         raise HTTPException(status_code=400, detail="phone must be E.164 (e.g. +56911112222)")
     db = get_supabase_client()
     from datetime import UTC, datetime
+
     row = {
         "tenant_id": str(tenant_id),
         "user_id": str(payload.user_id),
@@ -66,7 +68,5 @@ async def unassign_phone(
     tenant_id: UUID = Depends(get_tenant_id),
 ) -> dict:
     db = get_supabase_client()
-    db.table("user_phones").delete().eq("id", str(phone_id)).eq(
-        "tenant_id", str(tenant_id)
-    ).execute()
+    db.table("user_phones").delete().eq("id", str(phone_id)).eq("tenant_id", str(tenant_id)).execute()
     return {"status": "deleted"}

@@ -24,18 +24,12 @@ export function ConversationList({ conversations, selectedId, onSelect }: Props)
           type="button"
           onClick={() => onSelect(c.id)}
           className={`w-full rounded-md border p-3 text-left transition ${
-            selectedId === c.id
-              ? "border-primary bg-accent"
-              : "border-border hover:bg-accent/50"
+            selectedId === c.id ? "border-primary bg-accent" : "border-border hover:bg-accent/50"
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">
-              {c.external_phone_e164 ?? "(sin número)"}
-            </span>
-            <Badge variant={c.status === "open" ? "default" : "outline"}>
-              {c.status}
-            </Badge>
+            <span className="text-sm font-medium">{c.external_phone_e164 ?? "(sin número)"}</span>
+            <Badge variant={c.status === "open" ? "default" : "outline"}>{c.status}</Badge>
           </div>
           <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
             <span>{c.source}</span>

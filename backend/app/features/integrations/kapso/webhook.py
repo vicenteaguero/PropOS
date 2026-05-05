@@ -6,6 +6,7 @@ Public endpoint (no JWT). HMAC-SHA256 verified. Persists raw event to
 Critical: must return 200 within 10s or Kapso retries. Heavy work (LLM
 calls) goes to a BackgroundTasks queue.
 """
+
 from __future__ import annotations
 
 import json
@@ -114,11 +115,9 @@ async def _process_event(event_row_id: str, body: dict[str, Any]) -> None:
     client = get_supabase_client()
     try:
         await route_inbound(body)
-        client.table("kapso_webhook_events").update(
-            {"processed_at": datetime.now(UTC).isoformat()}
-        ).eq("id", event_row_id).execute()
+        client.table("kapso_webhook_events").update({"processed_at": datetime.now(UTC).isoformat()}).eq(
+            "id", event_row_id
+        ).execute()
     except Exception as exc:  # noqa: BLE001
         logger.exception("kapso_event_processing_failed", event_type="kapso")
-        client.table("kapso_webhook_events").update(
-            {"process_error": str(exc)[:500]}
-        ).eq("id", event_row_id).execute()
+        client.table("kapso_webhook_events").update({"process_error": str(exc)[:500]}).eq("id", event_row_id).execute()
