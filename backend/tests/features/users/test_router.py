@@ -42,6 +42,8 @@ def _build_table_mock(execute_return):
     table_mock.update.return_value = table_mock
     table_mock.delete.return_value = table_mock
     table_mock.eq.return_value = table_mock
+    table_mock.ilike.return_value = table_mock
+    table_mock.limit.return_value = table_mock
     table_mock.single.return_value = table_mock
     table_mock.execute.return_value = _mock_execute(execute_return)
     return table_mock
@@ -91,7 +93,23 @@ async def test_create_user(mock_client, client):
     table_mock = _build_table_mock([MOCK_USER])
     mock_client.return_value.table.return_value = table_mock
 
+    # Auth admin createUser returns a fake user with the expected id.
+    auth_user = MagicMock(id=MOCK_OTHER_USER_ID)
+    auth_resp = MagicMock(user=auth_user)
+    mock_client.return_value.auth.admin.create_user.return_value = auth_resp
+
+    # First execute() = uniqueness check (empty), subsequent = insert returns row.
+    calls = {"n": 0}
+
+    def execute_side_effect(*_a, **_k):
+        calls["n"] += 1
+        return _mock_execute([] if calls["n"] == 1 else [MOCK_USER])
+
+    table_mock.execute.return_value = None
+    table_mock.execute.side_effect = execute_side_effect
+
     payload = {
+        "email": "john.agent@test.local",
         "full_name": "John Agent",
         "role": "AGENT",
         "is_active": True,
