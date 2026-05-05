@@ -2,6 +2,9 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 import { apiRequest } from "@features/documents/api/http";
+import { PageLayout } from "@shared/components/page-layout";
+import { PageHeader } from "@shared/components/page-header";
+import { CHART_COLORS, CHART_HEIGHT } from "@shared/lib/chart-config";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 interface AnitaCost {
@@ -34,29 +37,29 @@ export function AnitaCostPage() {
 
   if (isLoading) {
     return (
-      <div className="container max-w-5xl py-8 flex justify-center">
-        <Loader2 className="size-5 animate-spin text-muted-foreground" />
-      </div>
+      <PageLayout width="lg">
+        <div className="flex min-h-[40vh] justify-center">
+          <Loader2 className="size-5 animate-spin text-muted-foreground" />
+        </div>
+      </PageLayout>
     );
   }
   if (isError || !data) {
     return (
-      <div className="container max-w-5xl py-6">
+      <PageLayout width="lg">
         <p className="text-destructive">No pude cargar costos.</p>
-      </div>
+      </PageLayout>
     );
   }
 
   return (
-    <div className="container max-w-5xl py-6 space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold">Costo Anita (últimos 30 días)</h1>
-        <p className="text-sm text-muted-foreground">
-          Tokens consumidos + USD acumulados (estimado en cents).
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+    <PageLayout width="lg">
+      <PageHeader
+        title="Costo Anita (últimos 30 días)"
+        description="Tokens consumidos + USD acumulados (estimado en cents)."
+      />
+      <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader>
             <CardTitle className="text-sm text-muted-foreground">Mensajes</CardTitle>
@@ -99,13 +102,13 @@ export function AnitaCostPage() {
           {data.by_day.length === 0 ? (
             <p className="text-sm text-muted-foreground py-8 text-center">Sin actividad aún.</p>
           ) : (
-            <ResponsiveContainer width="100%" height={220}>
+            <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
               <BarChart data={data.by_day}>
                 <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
                 <XAxis dataKey="day" tick={{ fontSize: 10 }} />
                 <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => fmtUSD(v)} />
                 <Tooltip formatter={(v) => fmtUSD(Number(v))} contentStyle={{ fontSize: 12 }} />
-                <Bar dataKey="cost_cents" fill="#a78bfa" />
+                <Bar dataKey="cost_cents" fill={CHART_COLORS.primary} />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -149,6 +152,7 @@ export function AnitaCostPage() {
           </table>
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </PageLayout>
   );
 }
