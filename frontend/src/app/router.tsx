@@ -17,6 +17,7 @@ import { AnitaCostPage } from "@features/analytics/pages/anita-cost-page";
 import { EntityTimelinePage } from "@features/analytics/pages/entity-timeline-page";
 import { WorkflowsPage } from "@features/workflows/pages/workflows-page";
 import { AnitaChatPage } from "@features/anita/pages/anita-chat-page";
+import { AdminHomePage } from "@features/home/pages/admin-home-page";
 import { ClientInboxPage } from "@features/client-chat/pages/client-inbox-page";
 import { AdminPhonesPage } from "@features/admin-phones/pages/admin-phones-page";
 import type { UserRole } from "@shared/types/auth";
@@ -63,12 +64,7 @@ export function AppRouter() {
             </ProtectedRoute>
           }
         >
-          <Route
-            index
-            element={
-              role === "ADMIN" ? <Navigate to="/admin/anita" replace /> : <EmptyDashboard />
-            }
-          />
+          <Route index element={role === "ADMIN" ? <AdminHomePage /> : <EmptyDashboard />} />
 
           {role === "ADMIN" && <Route path="anita" element={<AnitaChatPage />} />}
 
