@@ -5,9 +5,23 @@ import type { AnitaMessage, AnitaSession, AnitaTranscript, ChatStreamEvent } fro
 
 const BASE = "/v1/anita";
 
+export interface AnitaSessionListItem {
+  id: string;
+  status: "OPEN" | "CLOSED";
+  started_at: string;
+  last_activity_at: string;
+  closed_at: string | null;
+  preview: string;
+}
+
 export const anitaApi = {
-  createOrResumeSession: () =>
-    apiRequest<AnitaSession>(`${BASE}/sessions`, { method: "POST", body: {} }),
+  createOrResumeSession: (opts?: { forceNew?: boolean }) =>
+    apiRequest<AnitaSession>(`${BASE}/sessions${opts?.forceNew ? "?force_new=true" : ""}`, {
+      method: "POST",
+      body: {},
+    }),
+
+  listSessions: () => apiRequest<AnitaSessionListItem[]>(`${BASE}/sessions`),
 
   listMessages: (sessionId: string) =>
     apiRequest<AnitaMessage[]>(`${BASE}/sessions/${sessionId}/messages`),
