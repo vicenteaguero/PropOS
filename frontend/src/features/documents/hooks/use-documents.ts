@@ -37,6 +37,7 @@ export function useCreateDocument() {
       downloadFilename?: string;
       sourceImages?: Blob[];
       sourceEditStates?: Record<string, unknown>[];
+      tag?: string;
     }) =>
       documentsApi.create(
         input.file,
@@ -46,6 +47,7 @@ export function useCreateDocument() {
         undefined,
         input.sourceImages,
         input.sourceEditStates,
+        input.tag,
       ),
     onSuccess: () => qc.invalidateQueries({ queryKey: documentsKeys.all }),
   });
