@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
 import { apiRequest } from "@features/documents/api/http";
+import { PageLayout } from "@shared/components/page-layout";
+import { PageHeader } from "@shared/components/page-header";
 
 interface TimelineEvent {
   event_at: string;
@@ -30,13 +32,12 @@ export function EntityTimelinePage() {
   });
 
   return (
-    <div className="container max-w-3xl py-6 space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold">Cronología</h1>
-        <p className="text-sm text-muted-foreground">
-          {table} / <span className="font-mono">{id}</span>
-        </p>
-      </div>
+    <PageLayout width="md">
+      <PageHeader
+        title="Cronología"
+        description={`${table} / ${id}`}
+      />
+      <div className="space-y-4">
 
       {isLoading && (
         <div className="flex justify-center py-8">
@@ -76,13 +77,14 @@ export function EntityTimelinePage() {
               <p className="text-muted-foreground mb-1">
                 source={e.source} {e.actor ? `· actor=${e.actor.slice(0, 8)}…` : ""}
               </p>
-              <pre className="bg-muted p-2 rounded overflow-x-auto text-[10px]">
+              <pre className="overflow-x-auto rounded bg-muted p-2 text-xs">
                 {JSON.stringify(e.payload, null, 2)}
               </pre>
             </CardContent>
           </Card>
         ))}
       </div>
-    </div>
+      </div>
+    </PageLayout>
   );
 }
