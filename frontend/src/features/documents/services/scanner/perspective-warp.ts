@@ -52,7 +52,7 @@ export async function warpQuad(bitmap: ImageBitmap, quad: Quad): Promise<HTMLCan
 
   // Solve homography (unit square -> source quad) so each grid sample is the
   // true perspective-correct source location for a regular destination grid.
-  const N = 32;
+  const N = 16;
   const grid: { x: number; y: number }[][] = [];
   const unit: Quad = [
     { x: 0, y: 0 },

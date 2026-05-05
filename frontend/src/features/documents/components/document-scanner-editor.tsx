@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, FlipHorizontal, RotateCcw, RotateCw, Sparkles, Type, X } from "lucide-react";
+import { Check, FlipHorizontal, RotateCcw, RotateCw, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -295,6 +295,7 @@ export function DocumentScannerEditor({
     draw: (ctx: CanvasRenderingContext2D, w: number, h: number) => void,
     outW: number,
     outH: number,
+    mapPoint: (p: { x: number; y: number }, w: number, h: number) => { x: number; y: number },
   ) => {
     const bitmap = bitmapRef.current;
     if (!bitmap) return;
@@ -310,11 +311,16 @@ export function DocumentScannerEditor({
       const blob = await new Promise<Blob | null>((resolve) =>
         canvas.toBlob((b) => resolve(b), "image/jpeg", 0.92),
       );
+      const w = bitmap.width;
+      const h = bitmap.height;
       bitmap.close?.();
       bitmapRef.current = next;
       if (blob) jpegRef.current = blob;
-      setQuad(insetRect(next.width, next.height));
-      setAutoDetected(false);
+      setQuad((prev) =>
+        prev
+          ? (prev.map((p) => mapPoint(p, w, h)) as typeof prev)
+          : insetRect(next.width, next.height),
+      );
     } finally {
       setBusy(false);
     }
@@ -327,6 +333,11 @@ export function DocumentScannerEditor({
     const h = bitmap.height;
     const outW = deg === 180 ? w : h;
     const outH = deg === 180 ? h : w;
+    const mapPoint = (p: { x: number; y: number }, sw: number, sh: number) => {
+      if (deg === 90) return { x: sh - p.y, y: p.x };
+      if (deg === -90) return { x: p.y, y: sw - p.x };
+      return { x: sw - p.x, y: sh - p.y };
+    };
     void replaceBitmap(
       (ctx) => {
         ctx.translate(outW / 2, outH / 2);
@@ -335,6 +346,7 @@ export function DocumentScannerEditor({
       },
       outW,
       outH,
+      mapPoint,
     );
   };
 
@@ -349,11 +361,8 @@ export function DocumentScannerEditor({
       },
       bitmap.width,
       bitmap.height,
+      (p, sw) => ({ x: sw - p.x, y: p.y }),
     );
-  };
-
-  const cycleFilter = () => {
-    setFilter((prev) => (prev === "none" ? "bw" : prev === "bw" ? "enhance" : "none"));
   };
 
   const apply = async () => {
@@ -383,8 +392,6 @@ export function DocumentScannerEditor({
 
   if (!open) return null;
 
-  const filterLabel = filter === "none" ? "Sin filtro" : filter === "bw" ? "B&N" : "Mejorar";
-
   return (
     <div className="fixed inset-0 z-[60] flex flex-col bg-background text-foreground">
       <div className="flex items-center justify-between border-b border-border/40 bg-card/40 px-4 py-3">
@@ -405,7 +412,7 @@ export function DocumentScannerEditor({
         </Button>
       </div>
 
-      <div ref={containerRef} className="relative flex-1 overflow-hidden touch-none select-none">
+      <div ref={containerRef} className="relative flex-1 touch-none select-none">
         <canvas
           ref={canvasRef}
           onPointerDown={onPointerDown}
@@ -417,7 +424,7 @@ export function DocumentScannerEditor({
         {magnifier && (
           <canvas
             ref={magRef}
-            className="pointer-events-none absolute"
+            className="pointer-events-none absolute z-[70]"
             style={{
               left: magnifier.x - MAGNIFIER_SIZE / 2,
               top: magnifier.y + MAGNIFIER_OFFSET_Y - MAGNIFIER_SIZE / 2,
@@ -431,18 +438,26 @@ export function DocumentScannerEditor({
         )}
       </div>
 
-      <div className="flex items-center justify-between gap-3 border-t border-border/40 bg-card/40 px-4 py-3">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={cycleFilter}
-          disabled={busy || loading}
-          className={cn("flex flex-col gap-0.5", filter !== "none" && "text-primary")}
-        >
-          {filter === "bw" ? <Type className="size-5" /> : <Sparkles className="size-5" />}
-          <span className="text-[10px]">{filterLabel}</span>
-        </Button>
+      <div className="flex items-center justify-center gap-2 border-t border-border/40 bg-card/30 px-3 py-2">
+        {(["none", "bw", "enhance"] as FilterMode[]).map((m) => (
+          <button
+            key={m}
+            type="button"
+            onClick={() => setFilter(m)}
+            disabled={busy || loading}
+            className={cn(
+              "rounded-full border px-3 py-1 text-xs transition",
+              filter === m
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border bg-background text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {m === "none" ? "Sin filtro" : m === "bw" ? "B&N" : "Mejorar"}
+          </button>
+        ))}
+      </div>
 
+      <div className="flex items-center justify-between gap-3 border-t border-border/40 bg-card/40 px-4 py-3">
         <div className="flex items-center gap-1 rounded-md border border-border/40 bg-background/40 p-1">
           <Button
             variant="ghost"
