@@ -43,9 +43,9 @@ FIXTURES_DIR = ROOT / "fixtures"
 OUTPUT_DIR = ROOT / "output"
 SCENARIOS = ROOT / "scenarios.json"
 
-MAX_DIM = 1200  # detection downscale
-LETTER_W_PT, LETTER_H_PT = letter  # 612 x 792
-MARGIN_PT = 28.35  # 1 cm
+MAX_DIM = 1200
+LETTER_W_PT, LETTER_H_PT = letter
+MARGIN_PT = 28.35
 
 IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif"}
 
@@ -73,10 +73,10 @@ def order_quad(pts: np.ndarray) -> np.ndarray:
     s = pts.sum(axis=1)
     d = pts[:, 0] - pts[:, 1]
     ordered = np.zeros((4, 2), dtype=np.float32)
-    ordered[0] = pts[np.argmin(s)]  # TL
-    ordered[1] = pts[np.argmax(d)]  # TR
-    ordered[2] = pts[np.argmax(s)]  # BR
-    ordered[3] = pts[np.argmin(d)]  # BL
+    ordered[0] = pts[np.argmin(s)]
+    ordered[1] = pts[np.argmax(d)]
+    ordered[2] = pts[np.argmax(s)]
+    ordered[3] = pts[np.argmin(d)]
     return ordered
 
 
@@ -237,7 +237,7 @@ def build_pdf(processed_images: list[np.ndarray], out_path: Path) -> None:
 
 def discover_files(folder: Path) -> list[Path]:
     files = [p for p in folder.iterdir() if p.suffix.lower() in IMAGE_EXTS]
-    files.sort(key=lambda p: (len(p.stem), p.stem))  # 0, 1, 2, ..., 10
+    files.sort(key=lambda p: (len(p.stem), p.stem))
     return files
 
 
