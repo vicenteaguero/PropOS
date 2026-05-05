@@ -2,6 +2,7 @@
 
 Auth: X-API-Key header. Base URL configurable via settings.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -96,6 +97,53 @@ async def send_template(
         },
     }
     return await _post(f"{_phone_path()}/messages", payload)
+
+
+async def _get(path: str, *, parse_json: bool = True) -> Any:
+    url = f"{settings.kapso_base_url.rstrip('/')}{path}"
+    async with httpx.AsyncClient(timeout=30.0) as http:
+        resp = await http.get(url, headers=_headers())
+    if resp.status_code >= 400:
+        logger.warning(
+            "kapso_api_error",
+            event_type="kapso",
+            status=resp.status_code,
+            body=resp.text[:500],
+            path=path,
+        )
+        raise KapsoError(
+            f"Kapso {resp.status_code}: {resp.text[:200]}",
+            status_code=resp.status_code,
+            body=resp.text,
+        )
+    return resp.json() if parse_json and resp.content else resp.content
+
+
+async def _get_bytes(url: str) -> bytes:
+    """Fetch raw bytes from a media URL. Auth header included for Meta CDN."""
+    async with httpx.AsyncClient(timeout=60.0) as http:
+        resp = await http.get(url, headers=_headers())
+    if resp.status_code >= 400:
+        raise KapsoError(
+            f"media fetch {resp.status_code}: {resp.text[:200]}",
+            status_code=resp.status_code,
+        )
+    return resp.content
+
+
+async def download_media(media_id: str) -> tuple[bytes, str]:
+    """Download a media object by id. Two-step: GET metadata → GET bytes.
+
+    Meta Cloud API contract (Kapso proxies it): ``GET /{media_id}`` returns
+    ``{url, mime_type, file_size, ...}``. Then GET that URL (auth required)
+    yields the raw payload.
+    """
+    meta = await _get(f"/{media_id}")
+    if not isinstance(meta, dict) or "url" not in meta:
+        raise KapsoError(f"unexpected media metadata: {str(meta)[:200]}")
+    mime = meta.get("mime_type", "application/octet-stream")
+    blob = await _get_bytes(meta["url"])
+    return blob, mime
 
 
 async def mark_read(message_id: str) -> dict[str, Any]:
