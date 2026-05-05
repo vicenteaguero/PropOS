@@ -95,7 +95,7 @@ export function MessageThread({ conversation }: Props) {
 
       <div className="border-t p-3">
         {!inWindow && (
-          <div className="mb-2 rounded bg-warning/10 p-2 text-xs text-warning-foreground">
+          <div className="mb-2 rounded-md border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive">
             Fuera de la ventana de 24h — sólo plantillas aprobadas hasta nueva respuesta del cliente.
           </div>
         )}
