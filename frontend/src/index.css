@@ -231,3 +231,16 @@
 .propos-tour-popover .driver-popover-arrow-side-bottom .driver-popover-arrow {
   border-color: var(--card);
 }
+
+@keyframes anita-progress-bar {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
+}
+
+.anita-progress-bar {
+  animation: anita-progress-bar 1.4s ease-in-out infinite;
+}
