@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { LoadingSpinner } from "@shared/components/loading-spinner/loading-spinner";
+import { PageLayout } from "@shared/components/page-layout";
 import { useAuth } from "@shared/hooks/use-auth";
 import { useAddVersion, useDocument } from "../hooks/use-documents";
 import { useDocumentBlob } from "../hooks/use-document-blob";
@@ -37,30 +38,36 @@ export function DocumentEditorPage() {
 
   if (isLoading || !doc || !currentVersion) {
     return (
-      <div className="flex h-[60dvh] items-center justify-center">
-        <LoadingSpinner size="lg" />
-      </div>
+      <PageLayout width="xl">
+        <div className="flex min-h-[40vh] items-center justify-center">
+          <LoadingSpinner size="lg" />
+        </div>
+      </PageLayout>
     );
   }
 
   if (currentVersion.mime_type !== "application/pdf") {
     return (
-      <div className="container mx-auto max-w-3xl px-4 py-6 text-sm text-muted-foreground">
-        El editor solo soporta PDFs en V1. Convierte el documento primero.
-      </div>
+      <PageLayout width="md">
+        <p className="text-sm text-muted-foreground">
+          El editor solo soporta PDFs en V1. Convierte el documento primero.
+        </p>
+      </PageLayout>
     );
   }
 
   if (!bytes) {
     return (
-      <div className="flex h-[60dvh] items-center justify-center">
-        <LoadingSpinner size="lg" />
-      </div>
+      <PageLayout width="xl">
+        <div className="flex min-h-[40vh] items-center justify-center">
+          <LoadingSpinner size="lg" />
+        </div>
+      </PageLayout>
     );
   }
 
   return (
-    <div className="container mx-auto max-w-7xl px-4 py-6">
+    <PageLayout width="xl">
       <h1 className="mb-3 text-lg font-semibold">Editar — {doc.display_name}</h1>
       <DocumentEditor
         initialBytes={bytes}
@@ -78,6 +85,6 @@ export function DocumentEditorPage() {
           }
         }}
       />
-    </div>
+    </PageLayout>
   );
 }
