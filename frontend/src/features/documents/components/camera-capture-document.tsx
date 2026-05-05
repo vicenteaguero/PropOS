@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Camera, Check, RotateCcw, Trash2, X } from "lucide-react";
+import { Camera, Check, Edit3, Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -21,20 +21,27 @@ interface Shot {
   state?: EditState;
 }
 
+type Mode = "capture" | "review";
+
 export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [shots, setShots] = useState<Shot[]>([]);
   const [busy, setBusy] = useState(false);
   const [fallback, setFallback] = useState(false);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [mode, setMode] = useState<Mode>("capture");
+  const [activeId, setActiveId] = useState<string | null>(null);
   const [editing, setEditing] = useState<{
     id?: string;
     sourceBlob: Blob;
     state?: EditState;
   } | null>(null);
 
-  const shotUrls = useMemo(() => shots.map((s) => URL.createObjectURL(s.blob)), [shots]);
+  const shotUrls = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const s of shots) map.set(s.id, URL.createObjectURL(s.blob));
+    return map;
+  }, [shots]);
   useEffect(() => {
     return () => shotUrls.forEach((u) => URL.revokeObjectURL(u));
   }, [shotUrls]);
@@ -46,41 +53,40 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props)
     }
   }, []);
 
+  const startStream = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 } },
+        audio: false,
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
+    } catch (e) {
+      console.warn("camera unavailable, fallback to file input", e);
+      setFallback(true);
+    }
+  }, []);
+
   useEffect(() => {
     if (!open) {
       stopStream();
       setShots([]);
-      setSelectedId(null);
+      setActiveId(null);
       setFallback(false);
       setEditing(null);
+      setMode("capture");
       return;
     }
-    let cancelled = false;
-    (async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 } },
-          audio: false,
-        });
-        if (cancelled) {
-          stream.getTracks().forEach((t) => t.stop());
-          return;
-        }
-        streamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          await videoRef.current.play();
-        }
-      } catch (e) {
-        console.warn("camera unavailable, fallback to file input", e);
-        setFallback(true);
-      }
-    })();
-    return () => {
-      cancelled = true;
+    if (mode === "capture") {
+      void startStream();
+    } else {
       stopStream();
-    };
-  }, [open, stopStream]);
+    }
+    return () => stopStream();
+  }, [open, mode, startStream, stopStream]);
 
   const captureShot = async () => {
     const video = videoRef.current;
@@ -95,15 +101,13 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props)
       canvas.toBlob(resolve, "image/jpeg", 0.92),
     );
     if (!blob) return;
-    // Open scanner editor immediately so the user can adjust the auto-detected
-    // corners before the page is added.
-    setEditing({ sourceBlob: blob });
+    setShots((prev) => [...prev, { id: crypto.randomUUID(), blob, raw: blob }]);
   };
 
   const handleFileFallback = async (files: FileList | null) => {
     if (!files) return;
     for (const file of Array.from(files)) {
-      setEditing({ sourceBlob: file });
+      setShots((prev) => [...prev, { id: crypto.randomUUID(), blob: file, raw: file }]);
     }
   };
 
@@ -128,13 +132,12 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props)
     setEditing(null);
   };
 
-  const removeSelected = () => {
-    if (!selectedId) return;
-    setShots((prev) => prev.filter((s) => s.id !== selectedId));
-    setSelectedId(null);
+  const removeShot = (id: string) => {
+    setShots((prev) => prev.filter((s) => s.id !== id));
+    if (activeId === id) setActiveId(null);
   };
 
-  const editSelected = (id: string) => {
+  const editShot = (id: string) => {
     const shot = shots.find((s) => s.id === id);
     if (!shot) return;
     setEditing({ id, sourceBlob: shot.raw, state: shot.state });
@@ -166,92 +169,162 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props)
 
   if (!open) return null;
 
+  const activeShot = activeId ? shots.find((s) => s.id === activeId) : null;
+
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-overlay/95 text-foreground">
-      <div className="flex items-center justify-between border-b border-border/30 px-4 py-3">
-        <div className="text-sm font-medium">Cámara · {shots.length} pág.</div>
+    <div className="fixed inset-0 z-50 flex flex-col bg-background text-foreground">
+      <div className="flex items-center justify-between border-b border-border/40 bg-card/40 px-4 py-3">
+        <div className="text-sm font-medium">
+          {mode === "capture" ? `Cámara · ${shots.length} pág.` : `Revisar · ${shots.length} pág.`}
+        </div>
         <Button variant="ghost" size="icon" onClick={closeWithGuard}>
           <X className="size-5" />
         </Button>
       </div>
-      <div className="flex flex-1 items-center justify-center overflow-hidden">
-        {fallback ? (
-          <label className="flex flex-col items-center gap-3 rounded-lg border-2 border-dashed border-border/60 p-8 text-center">
-            <Camera className="size-10" strokeWidth={1.4} />
-            <span className="text-sm">Cámara no disponible. Selecciona fotos.</span>
-            <input
-              type="file"
-              accept="image/*,.heic,.heif"
-              onChange={(e) => handleFileFallback(e.target.files)}
-              className="text-xs"
-            />
-          </label>
-        ) : (
-          <video
-            ref={videoRef}
-            playsInline
-            muted
-            className="max-h-full max-w-full object-contain"
-          />
-        )}
-      </div>
-      {shots.length > 0 && (
-        <div className="flex items-center gap-2 overflow-x-auto border-t border-border/30 px-4 py-3">
-          {shots.map((shot, i) => {
-            const isSelected = selectedId === shot.id;
-            return (
-              <button
-                type="button"
-                key={shot.id}
-                onClick={() => {
-                  if (isSelected) editSelected(shot.id);
-                  else setSelectedId(shot.id);
-                }}
-                className={cn(
-                  "shrink-0 overflow-hidden rounded transition",
-                  isSelected
-                    ? "ring-2 ring-primary scale-105"
-                    : "ring-1 ring-border/40 hover:ring-border",
-                )}
-                aria-pressed={isSelected}
-                aria-label={`Página ${i + 1}`}
-              >
-                <img src={shotUrls[i]} alt={`shot ${i + 1}`} className="h-20 w-16 object-cover" />
-              </button>
-            );
-          })}
-          {selectedId && (
-            <Button variant="destructive" size="sm" onClick={removeSelected} className="shrink-0">
-              <Trash2 className="size-4" /> Eliminar página
-            </Button>
+
+      {mode === "capture" && (
+        <>
+          <div className="flex flex-1 items-center justify-center overflow-hidden bg-black">
+            {fallback ? (
+              <label className="flex flex-col items-center gap-3 rounded-lg border-2 border-dashed border-border/60 p-8 text-center text-foreground">
+                <Camera className="size-10" strokeWidth={1.4} />
+                <span className="text-sm">Cámara no disponible. Selecciona fotos.</span>
+                <input
+                  type="file"
+                  accept="image/*,.heic,.heif"
+                  multiple
+                  onChange={(e) => handleFileFallback(e.target.files)}
+                  className="text-xs"
+                />
+              </label>
+            ) : (
+              <video
+                ref={videoRef}
+                playsInline
+                muted
+                className="max-h-full max-w-full object-contain"
+              />
+            )}
+          </div>
+
+          {shots.length > 0 && (
+            <div className="flex items-center gap-2 overflow-x-auto border-t border-border/40 bg-card/40 px-4 py-2">
+              {shots.map((shot, i) => (
+                <div key={shot.id} className="relative shrink-0">
+                  <img
+                    src={shotUrls.get(shot.id)}
+                    alt={`Página ${i + 1}`}
+                    className="h-16 w-12 rounded object-cover ring-1 ring-border/40"
+                  />
+                  <span className="absolute -top-1 -right-1 grid size-5 place-items-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
+                    {i + 1}
+                  </span>
+                </div>
+              ))}
+            </div>
           )}
-        </div>
+
+          <div className="flex items-center justify-between gap-3 border-t border-border/40 bg-card/40 px-6 py-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShots([])}
+              disabled={shots.length === 0}
+            >
+              <Trash2 className="size-4" /> Limpiar
+            </Button>
+            {!fallback && (
+              <Button
+                size="lg"
+                onClick={captureShot}
+                className="size-16 rounded-full p-0"
+                aria-label="Capturar"
+              >
+                <Camera className="size-7" />
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant={shots.length === 0 ? "ghost" : "default"}
+              onClick={() => setMode("review")}
+              disabled={shots.length === 0}
+            >
+              Revisar ({shots.length})
+            </Button>
+          </div>
+        </>
       )}
-      <div className="flex items-center justify-around border-t border-border/30 px-4 py-3">
-        <Button
-          variant="ghost"
-          size="lg"
-          onClick={() => {
-            setShots([]);
-            setSelectedId(null);
-          }}
-          disabled={shots.length === 0}
-        >
-          <RotateCcw className="size-5" /> Reiniciar
-        </Button>
-        {!fallback && (
-          <Button
-            size="lg"
-            onClick={captureShot}
-            className="rounded-full bg-foreground text-background hover:bg-foreground/85"
-          >
-            <Camera className="size-6" />
-          </Button>
-        )}
-        <Button size="lg" onClick={finalize} disabled={shots.length === 0 || busy}>
-          <Check className="size-5" /> Listo
-        </Button>
-      </div>
+
+      {mode === "review" && (
+        <>
+          <div className="flex flex-1 items-center justify-center overflow-hidden bg-card/30 p-4">
+            {activeShot ? (
+              <img
+                src={shotUrls.get(activeShot.id)}
+                alt="Vista previa"
+                className="max-h-full max-w-full rounded-md object-contain"
+              />
+            ) : (
+              <div className="text-sm text-muted-foreground">Selecciona una página</div>
+            )}
+          </div>
+
+          <div className="grid auto-cols-[88px] grid-flow-col gap-2 overflow-x-auto border-t border-border/40 bg-card/40 p-3">
+            {shots.map((shot, i) => {
+              const isActive = activeId === shot.id;
+              return (
+                <button
+                  key={shot.id}
+                  type="button"
+                  onClick={() => setActiveId(shot.id)}
+                  className={cn(
+                    "relative aspect-[3/4] overflow-hidden rounded-md ring-1 transition",
+                    isActive ? "ring-2 ring-primary" : "ring-border/40 hover:ring-border",
+                  )}
+                  aria-pressed={isActive}
+                >
+                  <img
+                    src={shotUrls.get(shot.id)}
+                    alt={`Página ${i + 1}`}
+                    className="h-full w-full object-cover"
+                  />
+                  <span className="absolute top-1 left-1 grid size-5 place-items-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
+                    {i + 1}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center justify-between gap-2 border-t border-border/40 bg-card/40 px-4 py-3">
+            <Button variant="ghost" size="sm" onClick={() => setMode("capture")}>
+              <Plus className="size-4" /> Tomar más
+            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => activeId && editShot(activeId)}
+                disabled={!activeId}
+              >
+                <Edit3 className="size-4" /> Editar
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => activeId && removeShot(activeId)}
+                disabled={!activeId}
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+              >
+                <Trash2 className="size-4" /> Eliminar
+              </Button>
+            </div>
+            <Button size="sm" onClick={finalize} disabled={shots.length === 0 || busy}>
+              <Check className="size-4" /> Generar PDF
+            </Button>
+          </div>
+        </>
+      )}
 
       {editing && (
         <DocumentScannerEditor
