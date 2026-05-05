@@ -1,6 +1,7 @@
 import { Navigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { LoginForm } from "@features/auth/components/login-form/login-form";
+import { PageLayout } from "@shared/components/page-layout";
 import { useAuth } from "@shared/hooks/use-auth";
 
 export function LoginPage() {
@@ -11,8 +12,8 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <Card className="w-full max-w-sm">
+    <PageLayout width="sm" centered>
+      <Card className="mx-auto max-w-sm">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold text-primary">PropOS</CardTitle>
           <CardDescription>Plataforma de gestión inmobiliaria</CardDescription>
@@ -21,6 +22,6 @@ export function LoginPage() {
           <LoginForm />
         </CardContent>
       </Card>
-    </div>
+    </PageLayout>
   );
 }
