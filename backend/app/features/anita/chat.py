@@ -64,6 +64,7 @@ async def run_chat_turn(
 
     snapshot = load_snapshot(tenant_id)
     proposals_created: list[str] = []
+    executed_rows: list[dict[str, str]] = []
     response_chunks: list[str] = []
     blocks: list[dict[str, Any]] = []
     pass2_in = pass2_out = 0
@@ -98,6 +99,12 @@ async def run_chat_turn(
         # Apply registry aliases + defaults BEFORE resolver/dispatcher.
         action.fields.update(normalize_fields(action.intent, action.fields))
 
+        # query_freeform needs the raw user question — classifier may have
+        # only emitted a short `summary=`. Stash the full text so the
+        # text-to-SQL prompt has full context.
+        if action.intent == "query_freeform":
+            action.fields.setdefault("intent_text", user_text)
+
         resolved = resolve(action.fields, snapshot, intent=action.intent)
         outcome = dispatch(
             action.intent,
@@ -125,6 +132,18 @@ async def run_chat_turn(
                 "name": outcome.get("proposal_kind", ""),
                 "input": action.fields,
             })
+        elif outcome.get("kind") == "executed":
+            executed_rows.append({
+                "kind": outcome.get("proposal_kind", ""),
+                "table": outcome.get("target_table", ""),
+                "row_id": outcome.get("row_id", ""),
+            })
+            blocks.append({
+                "type": "tool_use",
+                "id": outcome.get("row_id", ""),
+                "name": outcome.get("proposal_kind", ""),
+                "input": action.fields,
+            })
 
         response_chunks.append(_format_response(action.intent, outcome, resolved))
 
@@ -147,6 +166,7 @@ async def run_chat_turn(
     yield {
         "type": "done",
         "proposals_created": proposals_created,
+        "executed_rows": executed_rows,
         "tokens": {
             "in": classification.tokens_in + pass2_in,
             "out": classification.tokens_out + pass2_out,
@@ -175,8 +195,10 @@ def _tool_name_for(intent: str, outcome: dict[str, Any]) -> str:
         return "clarify"
     if kind == "query":
         return "query_views"
-    if kind == "needs_sql":
+    if kind == "needs_sql" or kind == "query_sql":
         return "query_sql"
+    if kind == "error":
+        return "error"
     if kind == "out_of_scope":
         return "out_of_scope"
     return {
@@ -212,7 +234,28 @@ def _format_response(intent: str, outcome: dict[str, Any], resolved) -> str:
             return f"Cuento {summary['count']}."
         return f"Resultado: {json.dumps(summary, ensure_ascii=False)[:200]}"
     if kind == "needs_sql":
-        return "Esa consulta necesita SQL libre — pendiente de implementar."
+        return "No alcancé a entender la pregunta. ¿Podés repetirla con más detalle?"
+    if kind == "query_sql":
+        rows = outcome.get("rows", [])
+        n = outcome.get("row_count", len(rows))
+        if n == 0:
+            return "Consulté la base y no hay resultados."
+        # Compact preview: up to 5 rows, first 4 columns.
+        cols = outcome.get("columns", [])[:4]
+        preview = []
+        for r in rows[:5]:
+            preview.append(", ".join(f"{c}={r.get(c)}" for c in cols))
+        more = f" (+{n - 5} más)" if n > 5 else ""
+        return f"Encontré {n}: " + " | ".join(preview) + more
+    if kind == "error":
+        reason = outcome.get("reason", "error")
+        return f"Hubo un error al consultar: {reason[:160]}"
+    if kind == "executed":
+        summary_es = (outcome.get("summary_es") or "").strip()
+        if summary_es:
+            return f"Listo, {summary_es}."
+        table = outcome.get("target_table", "")
+        return f"Listo, agregado en {table}." if table else "Listo."
     if kind == "proposal":
         summary_es = (outcome.get("summary_es") or "").strip()
         if summary_es:
