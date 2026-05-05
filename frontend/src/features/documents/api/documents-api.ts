@@ -32,6 +32,7 @@ export const documentsApi = {
     editMetadata?: Record<string, unknown>,
     sourceImages?: Blob[],
     sourceEditStates?: Record<string, unknown>[],
+    tag?: string,
   ) => {
     const fd = new FormData();
     fd.append("file", file);
@@ -43,6 +44,7 @@ export const documentsApi = {
       sourceImages.forEach((img, i) => fd.append("source_images", img, `source-${i}.jpg`));
       if (sourceEditStates) fd.append("source_edit_states", JSON.stringify(sourceEditStates));
     }
+    if (tag) fd.append("tag", tag);
     return apiRequest<DocumentItem>("/v1/documents", { method: "POST", formData: fd });
   },
 
