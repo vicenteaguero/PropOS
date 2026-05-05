@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Camera, FilePlus2, Plus, X } from "lucide-react";
@@ -15,8 +15,16 @@ import {
   useCreateDraftProperty,
   useProperties,
 } from "../hooks/use-entities";
-import { CameraCaptureDocument } from "./camera-capture-document";
-import { UploadDropzone } from "./upload-dropzone";
+
+// Lazy-load the camera capture flow — pulls in opencv-backed scanner modules
+// (~hundreds of KB). Only loads when the user actually opens the camera.
+const CameraCaptureDocument = lazy(() =>
+  import("./camera-capture-document").then((m) => ({ default: m.CameraCaptureDocument })),
+);
+// Upload dropzone is light but only needed inside the dialog; defer it too.
+const UploadDropzone = lazy(() =>
+  import("./upload-dropzone").then((m) => ({ default: m.UploadDropzone })),
+);
 
 function useFastAdd() {
   const navigate = useNavigate();
@@ -34,8 +42,15 @@ function useFastAdd() {
   const create = useCreateDocument();
   const createProperty = useCreateDraftProperty();
   const createContact = useCreateDraftContact();
-  const { data: properties = [] } = useProperties(propertyTitle);
-  const { data: contacts = [] } = useContacts(contactName);
+  // Only fetch entity lists once the dialog is open with a pending file —
+  // avoids two extra round-trips on every documents-page mount.
+  const entitiesEnabled = open && !!pendingFile;
+  const { data: properties = [] } = useProperties(propertyTitle, {
+    enabled: entitiesEnabled,
+  });
+  const { data: contacts = [] } = useContacts(contactName, {
+    enabled: entitiesEnabled,
+  });
 
   const reset = () => {
     setPendingFile(null);
@@ -185,7 +200,13 @@ function FastAddDialogBody(state: ReturnType<typeof useFastAdd>) {
                 <Camera className="size-4" /> Escanear con cámara
               </Button>
               <div className="text-center text-xs text-muted-foreground">o</div>
-              <UploadDropzone onFile={handleSelectFile} />
+              <Suspense
+                fallback={
+                  <div className="h-24 animate-pulse rounded-md border border-dashed border-border bg-muted/30" />
+                }
+              >
+                <UploadDropzone onFile={handleSelectFile} />
+              </Suspense>
             </div>
           )}
 
@@ -243,14 +264,18 @@ function FastAddDialogBody(state: ReturnType<typeof useFastAdd>) {
         </DialogContent>
       </Dialog>
 
-      <CameraCaptureDocument
-        open={cameraOpen}
-        onOpenChange={setCameraOpen}
-        onPdfReady={(bytes) => {
-          setCameraOpen(false);
-          handleCameraPdf(bytes);
-        }}
-      />
+      {cameraOpen && (
+        <Suspense fallback={null}>
+          <CameraCaptureDocument
+            open={cameraOpen}
+            onOpenChange={setCameraOpen}
+            onPdfReady={(bytes) => {
+              setCameraOpen(false);
+              handleCameraPdf(bytes);
+            }}
+          />
+        </Suspense>
+      )}
     </>
   );
 }
@@ -261,8 +286,11 @@ export function FastAddFab() {
     <>
       <Button
         size="icon"
+        variant="secondary"
         onClick={() => state.setOpen(true)}
-        className="fixed bottom-24 right-6 z-30 h-14 w-14 rounded-full shadow-lg shadow-primary/30 md:bottom-28 md:right-8"
+        // Stack above Anita FAB (which sits at bottom-6 right-6, h-14).
+        // 6 (bottom) + 14 (h) + 4 (gap) = 24 → bottom-24, same right-6.
+        className="fixed bottom-24 right-6 z-40 h-14 w-14 rounded-full shadow-lg shadow-primary/20"
         aria-label="Agregar documento"
       >
         <Plus className="size-6" />
