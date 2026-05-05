@@ -57,7 +57,7 @@ export function useDocumentBlob(
         if (retries > 0) {
           setTimeout(() => {
             if (!cancelled) void attempt(retries - 1);
-          }, 1500);
+          }, 2000);
           return;
         }
         setState({
@@ -69,7 +69,7 @@ export function useDocumentBlob(
         });
       }
     };
-    void attempt(2);
+    void attempt(3);
     return () => {
       cancelled = true;
     };
