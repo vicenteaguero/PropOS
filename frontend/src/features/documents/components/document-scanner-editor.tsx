@@ -75,16 +75,26 @@ export function DocumentScannerEditor({
         bitmapRef.current = decoded.bitmap;
         jpegRef.current = decoded.asJpegBlob;
         if (!initialState) {
+          // Show editable fallback rect immediately so the user can crop right
+          // away. Auto-detect runs in the background and replaces the quad if
+          // it succeeds within the timeout.
+          setQuad(insetRect(decoded.bitmap.width, decoded.bitmap.height));
+          setAutoDetected(false);
+          if (!cancelled) setLoading(false);
           try {
-            const det = await detectCorners(decoded.bitmap);
+            const detected = await Promise.race([
+              detectCorners(decoded.bitmap),
+              new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error("detect timeout")), 8000),
+              ),
+            ]);
             if (cancelled) return;
-            setQuad(det.quad);
-            setAutoDetected(det.autoDetected);
+            setQuad(detected.quad);
+            setAutoDetected(detected.autoDetected);
           } catch (e) {
-            console.warn("auto-detect failed", e);
-            setQuad(insetRect(decoded.bitmap.width, decoded.bitmap.height));
-            setAutoDetected(false);
+            console.warn("auto-detect skipped", e);
           }
+          return;
         }
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "Error decodificando imagen");

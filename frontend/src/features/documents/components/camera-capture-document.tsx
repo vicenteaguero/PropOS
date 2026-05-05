@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { compressBlob } from "../services/image-compression";
 import { imagesToPdf } from "../services/pdf-from-images";
-import { loadOpenCV } from "../services/scanner/opencv-loader";
 import type { EditState } from "../services/scanner/types";
 import { DocumentScannerEditor } from "./document-scanner-editor";
 
@@ -57,11 +56,10 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props)
       return;
     }
     let cancelled = false;
-    let warmupTimer: number | undefined;
     (async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 } },
+          video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 } },
           audio: false,
         });
         if (cancelled) {
@@ -73,11 +71,6 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props)
           videoRef.current.srcObject = stream;
           await videoRef.current.play();
         }
-        // Warm up OpenCV after the camera is live, deferred so the 10MB script
-        // parse doesn't freeze the UI while the stream is starting.
-        warmupTimer = window.setTimeout(() => {
-          if (!cancelled) loadOpenCV().catch(() => {});
-        }, 1500);
       } catch (e) {
         console.warn("camera unavailable, fallback to file input", e);
         setFallback(true);
@@ -85,7 +78,6 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady }: Props)
     })();
     return () => {
       cancelled = true;
-      if (warmupTimer !== undefined) window.clearTimeout(warmupTimer);
       stopStream();
     };
   }, [open, stopStream]);
