@@ -51,16 +51,59 @@ class UserService:
 
     @staticmethod
     async def create_user(payload: object, tenant_id: UUID) -> dict:
+        import secrets
+
+        from fastapi import HTTPException
+
         client = get_supabase_client()
-        data = payload.model_dump()
-        data["tenant_id"] = str(tenant_id)
-        data["role"] = data["role"].value
-        logger.info(
-            "creating",
-            event_type="write",
-            tenant_id=str(tenant_id),
-        )
-        response = client.table(PROFILES_TABLE).insert(data).execute()
+        email = payload.email.strip().lower()
+        rut = payload.rut.strip() if payload.rut else None
+
+        # Pre-check uniqueness (friendlier error than DB constraint).
+        existing_email = client.table(PROFILES_TABLE).select("id").ilike("email", email).limit(1).execute()
+        if existing_email.data:
+            raise HTTPException(status_code=409, detail="Email ya registrado")
+        if rut:
+            existing_rut = client.table(PROFILES_TABLE).select("id").eq("rut", rut).limit(1).execute()
+            if existing_rut.data:
+                raise HTTPException(status_code=409, detail="RUT ya registrado")
+
+        password = payload.password or secrets.token_urlsafe(16)
+        try:
+            auth_resp = client.auth.admin.create_user(
+                {
+                    "email": email,
+                    "password": password,
+                    "email_confirm": True,
+                    "user_metadata": {"full_name": payload.full_name},
+                }
+            )
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=f"Auth create failed: {exc}") from exc
+
+        user_id = auth_resp.user.id if auth_resp and auth_resp.user else None
+        if not user_id:
+            raise HTTPException(status_code=500, detail="Auth user creation returned no id")
+
+        profile = {
+            "id": user_id,
+            "tenant_id": str(tenant_id),
+            "full_name": payload.full_name,
+            "role": payload.role.value,
+            "is_active": payload.is_active,
+            "email": email,
+            "rut": rut,
+        }
+        logger.info("creating", event_type="write", tenant_id=str(tenant_id))
+        try:
+            response = client.table(PROFILES_TABLE).insert(profile).execute()
+        except Exception as exc:
+            # Rollback auth user on profile failure.
+            try:
+                client.auth.admin.delete_user(user_id)
+            except Exception:  # noqa: BLE001
+                pass
+            raise HTTPException(status_code=400, detail=f"Profile insert failed: {exc}") from exc
         return response.data[0]
 
     @staticmethod
