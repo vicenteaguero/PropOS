@@ -55,6 +55,10 @@ class DocumentVersionResponse(BaseModel):
     notes: str | None = None
     edit_metadata: dict | None = None
     source_raw_path: str | None = None
+    source_image_paths: list[str] = Field(default_factory=list)
+    source_edit_states: list[dict] = Field(default_factory=list)
+    # Transient signed URLs hydrated on GET; not persisted.
+    source_image_urls: list[str] | None = None
     created_by: UUID | None = None
     created_at: datetime
 
