@@ -5,6 +5,7 @@ import {
   Check,
   FlipHorizontal,
   FlipVertical,
+  Loader2,
   Plus,
   RotateCcw,
   RotateCw,
@@ -13,6 +14,10 @@ import {
   Type,
   X,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import type { ContactLite, PropertyLite } from "../types";
+import { EntityCombobox } from "./entity-combobox";
 import {
   DndContext,
   PointerSensor,
@@ -57,12 +62,39 @@ export interface SourceShot {
   edit: ShotEdit;
 }
 
+export interface FinalizeMeta {
+  name: string;
+  propertyTitle?: string;
+  contactName?: string;
+  tag?: string;
+}
+
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onPdfReady: (pdfBytes: Uint8Array, sources: SourceShot[]) => void;
+  onPdfReady: (
+    pdfBytes: Uint8Array,
+    sources: SourceShot[],
+    meta: FinalizeMeta,
+  ) => Promise<void> | void;
   initialShots?: SourceShot[];
+  /** When true, the editor renders the inline finalize overlay (name + assignments).
+   * When false, it skips the overlay and just emits the PDF (legacy behavior used
+   * by the document detail re-edit flow which already has metadata). */
+  showFinalizeOverlay?: boolean;
+  /** Suggestions for the inline finalize combobox. Caller controls fetching. */
+  propertySuggestions?: PropertyLite[];
+  contactSuggestions?: ContactLite[];
+  /** Forwarded query strings — caller refetches based on these. */
+  onPropertyQueryChange?: (q: string) => void;
+  onContactQueryChange?: (q: string) => void;
+  loadingProperties?: boolean;
+  loadingContacts?: boolean;
 }
+
+type FinalizeProgress = null | "pdf" | "uploading" | "saving";
+
+const QUICK_TAGS = ["ID", "Contrato", "Boleta", "Otro"] as const;
 
 interface Shot {
   id: string;
@@ -81,7 +113,19 @@ type Drag =
   | { kind: "corner"; corner: Corner }
   | { kind: "side"; side: Side; last: { x: number; y: number } };
 
-export function CameraCaptureDocument({ open, onOpenChange, onPdfReady, initialShots }: Props) {
+export function CameraCaptureDocument({
+  open,
+  onOpenChange,
+  onPdfReady,
+  initialShots,
+  showFinalizeOverlay = true,
+  propertySuggestions = [],
+  contactSuggestions = [],
+  onPropertyQueryChange,
+  onContactQueryChange,
+  loadingProperties,
+  loadingContacts,
+}: Props) {
   // ---------- camera stream ----------
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -104,6 +148,16 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady, initialS
   );
   const [busy, setBusy] = useState(false);
   const [mode, setMode] = useState<Mode>(initialShotState.length > 0 ? "edit" : "capture");
+
+  // ---------- finalize overlay state ----------
+  const [finalizeOpen, setFinalizeOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [progress, setProgress] = useState<FinalizeProgress>(null);
+  const defaultDocName = useMemo(() => `Escaneo ${new Date().toLocaleDateString("es-CL")}`, []);
+  const [docName, setDocName] = useState(defaultDocName);
+  const [docPropertyTitle, setDocPropertyTitle] = useState("");
+  const [docContactName, setDocContactName] = useState("");
+  const [docTag, setDocTag] = useState<string | undefined>(undefined);
 
   // ---------- canvas / drag ----------
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -150,6 +204,13 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady, initialS
       setActiveId(null);
       setFallback(false);
       setMode("capture");
+      setFinalizeOpen(false);
+      setSubmitting(false);
+      setProgress(null);
+      setDocName(defaultDocName);
+      setDocPropertyTitle("");
+      setDocContactName("");
+      setDocTag(undefined);
       return;
     }
     if (mode !== "capture") {
@@ -615,12 +676,30 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady, initialS
   };
 
   // ---------- generate PDF ----------
-  const finalize = async () => {
+  // When the inline overlay is enabled, "Generar PDF" first opens the finalize
+  // overlay so the user can name the doc + pick assignments without the modal
+  // flashing closed. When disabled (re-edit flow), keep legacy behavior: bake
+  // PDF immediately and let the caller close the modal.
+  const handleGeneratePdfClick = () => {
+    if (shots.length === 0) {
+      toast.error("Captura al menos una imagen");
+      return;
+    }
+    if (showFinalizeOverlay) {
+      setFinalizeOpen(true);
+      return;
+    }
+    void runFinalize();
+  };
+
+  const runFinalize = async (meta?: FinalizeMeta) => {
     if (shots.length === 0) {
       toast.error("Captura al menos una imagen");
       return;
     }
     setBusy(true);
+    setSubmitting(true);
+    setProgress("pdf");
     try {
       const baked: Blob[] = [];
       const sources: SourceShot[] = [];
@@ -642,13 +721,30 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady, initialS
         sources.push({ raw: s.raw, edit });
       }
       const pdf = await imagesToPdf(baked);
-      onPdfReady(pdf, sources);
-      onOpenChange(false);
+      setProgress("uploading");
+      const finalMeta: FinalizeMeta = meta ?? {
+        name: docName.trim() || defaultDocName,
+      };
+      await onPdfReady(pdf, sources, finalMeta);
+      setProgress("saving");
+      // Caller is responsible for closing the modal on success.
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error generando PDF");
+      setProgress(null);
+      setSubmitting(false);
     } finally {
       setBusy(false);
     }
+  };
+
+  const submitFinalize = () => {
+    const meta: FinalizeMeta = {
+      name: docName.trim() || defaultDocName,
+      propertyTitle: docPropertyTitle.trim() || undefined,
+      contactName: docContactName.trim() || undefined,
+      tag: docTag,
+    };
+    void runFinalize(meta);
   };
 
   // ---------- close guard ----------
@@ -779,6 +875,12 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady, initialS
   }
 
   // -------------------- EDIT MODE --------------------
+  const progressLabel: Record<NonNullable<FinalizeProgress>, string> = {
+    pdf: "Generando PDF…",
+    uploading: "Subiendo…",
+    saving: "Guardando…",
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background text-foreground md:flex-row">
       {/* Header (mobile) */}
@@ -853,8 +955,8 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady, initialS
           <Button
             size="sm"
             className="ml-auto"
-            onClick={finalize}
-            disabled={busy || shots.length === 0}
+            onClick={handleGeneratePdfClick}
+            disabled={busy || submitting || shots.length === 0}
           >
             <Check className="size-4" /> Generar PDF
           </Button>
@@ -950,11 +1052,129 @@ export function CameraCaptureDocument({ open, onOpenChange, onPdfReady, initialS
           >
             <Trash2 className="size-4" /> Eliminar
           </Button>
-          <Button size="sm" onClick={finalize} disabled={busy || shots.length === 0}>
+          <Button
+            size="sm"
+            onClick={handleGeneratePdfClick}
+            disabled={busy || submitting || shots.length === 0}
+          >
             <Check className="size-4" /> Generar PDF
           </Button>
         </div>
       </main>
+
+      {finalizeOpen && (
+        <div className="absolute inset-0 z-[80] flex items-center justify-center bg-background/85 backdrop-blur-sm">
+          <div className="w-full max-w-md space-y-4 rounded-lg border border-border/60 bg-card p-5 shadow-xl">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold">Guardar documento</h2>
+              {!submitting && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setFinalizeOpen(false)}
+                  aria-label="Cerrar"
+                >
+                  <X className="size-5" />
+                </Button>
+              )}
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Nombre</Label>
+              <Input
+                value={docName}
+                onChange={(e) => setDocName(e.target.value)}
+                disabled={submitting}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Propiedad</Label>
+              <EntityCombobox<PropertyLite>
+                value={docPropertyTitle}
+                onChange={(text) => {
+                  setDocPropertyTitle(text);
+                  onPropertyQueryChange?.(text);
+                }}
+                onSelect={() => undefined}
+                items={propertySuggestions}
+                getLabel={(p) => p.title}
+                getKey={(p) => p.id}
+                loading={loadingProperties}
+                placeholder="Av. Reñaca 115"
+                emptyText="Sin propiedades"
+                onAddNew={(text) => setDocPropertyTitle(text)}
+                disabled={submitting}
+                ariaLabel="Seleccionar propiedad"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Contacto</Label>
+              <EntityCombobox<ContactLite>
+                value={docContactName}
+                onChange={(text) => {
+                  setDocContactName(text);
+                  onContactQueryChange?.(text);
+                }}
+                onSelect={() => undefined}
+                items={contactSuggestions}
+                getLabel={(c) => c.full_name}
+                getKey={(c) => c.id}
+                loading={loadingContacts}
+                placeholder="Jaime Pérez"
+                emptyText="Sin contactos"
+                onAddNew={(text) => setDocContactName(text)}
+                disabled={submitting}
+                ariaLabel="Seleccionar contacto"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Etiqueta</Label>
+              <div className="flex flex-wrap gap-2">
+                {QUICK_TAGS.map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    disabled={submitting}
+                    onClick={() => setDocTag(docTag === t ? undefined : t)}
+                    className={cn(
+                      "rounded-full border px-3 py-1 text-xs transition",
+                      docTag === t
+                        ? "border-primary bg-primary/15 text-primary"
+                        : "border-border text-muted-foreground hover:text-foreground",
+                      submitting && "pointer-events-none opacity-50",
+                    )}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setFinalizeOpen(false)}
+                disabled={submitting}
+              >
+                Cancelar
+              </Button>
+              <Button size="sm" onClick={submitFinalize} disabled={submitting}>
+                {submitting ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" /> Procesando…
+                  </>
+                ) : (
+                  <>
+                    <Check className="size-4" /> Crear documento
+                  </>
+                )}
+              </Button>
+            </div>
+            {progress && (
+              <p className="text-center text-xs text-muted-foreground">{progressLabel[progress]}</p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
