@@ -31,6 +31,8 @@ INTENTS = (
     "create_property",
     "create_campaign",
     "add_note",
+    "attach_photos_to_property",
+    "create_document_from_photos",
     "query_count",
     "query_freeform",
     "ambiguous",
@@ -46,6 +48,7 @@ Si hay varias acciones, una por línea (sin bullets ni numeración).
 Intents válidos (campo `intent`):
   log_interaction, create_person, create_task, log_transaction,
   create_organization, create_property, create_campaign, add_note,
+  attach_photos_to_property, create_document_from_photos,
   query_count, query_freeform, ambiguous, out_of_scope
 
 Vocabulario universal (usa los que apliquen):
@@ -110,6 +113,15 @@ Ejemplos:
   in:  agrega comprador Tomás Vergara, RUT 18 millones 573 mil 892 K,
        teléfono +56 9 8743 2110
   out: intent=create_person kind=BUYER full_name="Tomás Vergara" rut="18.573.892-K" phone="+56987432110"
+
+  in:  agrega esas fotos a la casa de Av. Providencia 1711
+  out: intent=attach_photos_to_property property="Av. Providencia 1711"
+
+  in:  esas fotos son del depto de Las Condes
+  out: intent=attach_photos_to_property property="depto Las Condes"
+
+  in:  hazme un documento con esas fotos llamado tasación Apoquindo
+  out: intent=create_document_from_photos title="tasación Apoquindo"
 """
 
 
