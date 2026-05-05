@@ -13,6 +13,10 @@ export interface EditState {
   autoDetected: boolean;
   sourceWidth: number;
   sourceHeight: number;
+  /** Optional bow controls. Each side has a single control point (in image coords)
+   * that pulls the side's bezier midpoint. When undefined, the side renders as a
+   * straight line (current behavior). */
+  bezierControls?: { T?: Point; R?: Point; B?: Point; L?: Point };
 }
 
 export interface HitResult {
