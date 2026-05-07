@@ -1,6 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useAgentName } from "@core/branding/agent-branding";
 
 interface Candidate {
   id: string;
@@ -23,11 +24,12 @@ interface Props {
 }
 
 export function ProposalDisambiguationPicker({ field, candidates, selected, onPick }: Props) {
+  const agentName = useAgentName();
   if (!candidates || candidates.length === 0) return null;
   return (
     <div className="space-y-2">
       <p className="text-xs text-muted-foreground">
-        Anita encontró {candidates.length} coincidencias para{" "}
+        {agentName} encontró {candidates.length} coincidencias para{" "}
         <span className="font-mono">{field}</span>. Elige una:
       </p>
       <div className="space-y-1">
