@@ -4,12 +4,47 @@ import { supabase } from "@core/supabase/client";
 import { clientChatApi } from "../api/client-chat-api";
 import type { ClientMessage, ConversationStatus } from "../types";
 
-export function useConversations(status?: ConversationStatus) {
+export function useConversations(status?: ConversationStatus, archived = false) {
   return useQuery({
-    queryKey: ["client-chat", "conversations", status ?? "all"],
-    queryFn: () => clientChatApi.listConversations(status),
+    queryKey: ["client-chat", "conversations", status ?? "all", archived ? "archived" : "active"],
+    queryFn: () => clientChatApi.listConversations(status, archived),
     refetchInterval: 20_000,
     staleTime: 30_000,
+  });
+}
+
+export function useArchiveConversation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, archived }: { id: string; archived: boolean }) =>
+      clientChatApi.patch(id, { archived }),
+    onMutate: async ({ id }) => {
+      await qc.cancelQueries({ queryKey: ["client-chat", "conversations"] });
+      const snapshots: Array<{
+        key: readonly unknown[];
+        data: Array<{ id: string }> | undefined;
+      }> = [];
+      const queries = qc.getQueriesData<Array<{ id: string }>>({
+        queryKey: ["client-chat", "conversations"],
+      });
+      for (const [key, data] of queries) {
+        snapshots.push({ key, data });
+        if (data)
+          qc.setQueryData(
+            key,
+            data.filter((c) => c.id !== id),
+          );
+      }
+      return { snapshots };
+    },
+    onError: (_err, _vars, ctx) => {
+      ctx?.snapshots.forEach(({ key, data }) => {
+        if (data) qc.setQueryData(key, data);
+      });
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["client-chat", "conversations"] });
+    },
   });
 }
 
