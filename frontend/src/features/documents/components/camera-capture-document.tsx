@@ -42,7 +42,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { compressBlob } from "../services/image-compression";
-import { imagesToPdf } from "../services/pdf-from-images";
+import { imagesToPdf, PAPER_SIZE_LABELS, type PaperSizeId } from "../services/pdf-from-images";
+import { useTenantBranding } from "@core/branding/agent-branding";
 import { decodeImage } from "../services/scanner/decode";
 import { applyFilter, canvasToJpegBlob } from "../services/scanner/filters";
 import {
@@ -165,6 +166,11 @@ export function CameraCaptureDocument({
   const [mode, setMode] = useState<Mode>(initialShotState.length > 0 ? "edit" : "capture");
   const [curveMode, setCurveMode] = useState(false);
   const [scanMode, setScanMode] = useState<ScanMode>("document");
+  const branding = useTenantBranding();
+  const tenantPaper = (branding.defaultPaperSize || "A4").toUpperCase() as PaperSizeId;
+  const [paperSize, setPaperSize] = useState<PaperSizeId>(
+    PAPER_SIZE_LABELS[tenantPaper] ? tenantPaper : "A4",
+  );
   const [hdEnabled, setHdEnabled] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
     return window.localStorage?.getItem(HD_STORAGE_KEY) === "1";
@@ -845,7 +851,10 @@ export function CameraCaptureDocument({
         baked.push(compressed);
         sources.push({ raw: s.raw, edit });
       }
-      const pdf = await imagesToPdf(baked, { mode: isId ? "id" : "document" });
+      const pdf = await imagesToPdf(baked, {
+        mode: isId ? "id" : "document",
+        paperSize: isId ? "A4" : paperSize,
+      });
       setProgress("uploading");
       const finalMeta: FinalizeMeta = meta ?? {
         name: docName.trim() || defaultDocName,
@@ -1286,7 +1295,7 @@ export function CameraCaptureDocument({
           <div className="relative w-full max-w-md space-y-4 overflow-hidden rounded-lg border border-border/60 bg-card p-5 shadow-xl">
             {submitting && (
               <div className="pointer-events-none absolute inset-x-0 top-0 h-0.5 overflow-hidden bg-primary/15">
-                <div className="anita-progress-bar h-full w-1/3 bg-primary" />
+                <div className="agent-progress-bar h-full w-1/3 bg-primary" />
               </div>
             )}
             <div className="flex items-center justify-between">
@@ -1310,6 +1319,23 @@ export function CameraCaptureDocument({
                 disabled={submitting}
               />
             </div>
+            {scanMode !== "id" && (
+              <div className="space-y-1">
+                <Label className="text-xs">Tamaño de página</Label>
+                <select
+                  value={paperSize}
+                  onChange={(e) => setPaperSize(e.target.value as PaperSizeId)}
+                  disabled={submitting}
+                  className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  {(Object.keys(PAPER_SIZE_LABELS) as PaperSizeId[]).map((p) => (
+                    <option key={p} value={p}>
+                      {PAPER_SIZE_LABELS[p]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="space-y-1">
               <Label className="text-xs">Propiedad</Label>
               <EntityCombobox<PropertyLite>
