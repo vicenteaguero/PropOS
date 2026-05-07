@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends
 
 from app.core.dependencies import get_current_user, get_tenant_id, require_role
 from app.features.users.schemas import (
+    AvatarUpdate,
     UserCreate,
     UserResponse,
     UserUpdate,
@@ -20,6 +21,14 @@ async def get_me(
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> dict:
     return await UserService.get_me(UUID(current_user["id"]))
+
+
+@router.patch("/me/avatar", response_model=UserResponse)
+async def update_my_avatar(
+    payload: AvatarUpdate,
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> dict:
+    return await UserService.update_avatar(UUID(current_user["id"]), payload.avatar_url)
 
 
 @router.get("", response_model=list[UserResponse], dependencies=[Depends(require_role("ADMIN"))])
