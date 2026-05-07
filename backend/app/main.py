@@ -11,8 +11,8 @@ from app.core.middleware.tenant import TenantMiddleware
 from app.core.middleware.timing import TimingMiddleware
 from app.features.ads.router import router as ads_router
 from app.features.analytics.router import router as analytics_router
-from app.features.anita.router import router as anita_router
-from app.features.anita.tools.executors import register_all_dispatchers
+from app.features.agent.router import router as agent_router
+from app.features.agent.tools.executors import register_all_dispatchers
 from app.features.channels.phones_api import router as user_phones_router
 from app.features.channels.router_api import router as client_chat_router
 from app.features.integrations.kapso.webhook import router as kapso_webhook_router
@@ -34,7 +34,9 @@ from app.features.publications.router import router as publications_router
 from app.features.taggings.router import router as taggings_router
 from app.features.tags.router import router as tags_router
 from app.features.tasks.router import router as tasks_router
+from app.features.tenants.router import router as tenants_router
 from app.features.transactions.router import router as transactions_router
+from app.features.uf.router import router as uf_router
 from app.features.users.router import router as users_router
 from app.features.workflows.router import router as workflows_router
 
@@ -74,6 +76,8 @@ def create_app() -> FastAPI:
 
     versioned_prefix = f"{API_PREFIX}/{API_VERSION}"
     application.include_router(users_router, prefix=versioned_prefix)
+    application.include_router(tenants_router, prefix=versioned_prefix)
+    application.include_router(uf_router, prefix=versioned_prefix)
     application.include_router(notifications_router, prefix=versioned_prefix)
     application.include_router(properties_router, prefix=versioned_prefix)
     application.include_router(contacts_router, prefix=versioned_prefix)
@@ -94,7 +98,7 @@ def create_app() -> FastAPI:
     application.include_router(tags_router, prefix=versioned_prefix)
     application.include_router(taggings_router, prefix=versioned_prefix)
     application.include_router(workflows_router, prefix=versioned_prefix)
-    application.include_router(anita_router, prefix=versioned_prefix)
+    application.include_router(agent_router, prefix=versioned_prefix)
     application.include_router(analytics_router, prefix=versioned_prefix)
     application.include_router(client_chat_router, prefix=versioned_prefix)
     application.include_router(user_phones_router, prefix=versioned_prefix)
@@ -102,7 +106,7 @@ def create_app() -> FastAPI:
     # Public webhook (no JWT). Mounted under versioned prefix; HMAC-verified.
     application.include_router(kapso_webhook_router, prefix=versioned_prefix)
 
-    # Wire pending acceptance dispatchers (Anita propose_* → domain inserts)
+    # Wire pending acceptance dispatchers (Agent propose_* → domain inserts)
     register_all_dispatchers()
 
     @application.get(HEALTH_PATH)
