@@ -18,7 +18,7 @@ from typing import Any
 from app.core.config.settings import settings
 from app.core.logging.logger import get_logger
 
-logger = get_logger("ANITA_CLASSIFY")
+logger = get_logger("AGENT_CLASSIFY")
 
 # Intents the classifier may emit. Keep tight — every entry costs prompt tokens.
 # The PER-INTENT schema lives in `intent_registry.py`, NOT here.
@@ -182,11 +182,11 @@ async def classify(user_text: str) -> ClassifierResult:
     """
     from openai import AsyncOpenAI
 
-    from app.features.anita.rate_limiter import get_rate_limiter
+    from app.features.agent.rate_limiter import get_rate_limiter
 
     # Rough token estimate before send → limiter blocks if budget tight.
     est_tokens = (len(SYSTEM_PROMPT) + len(user_text)) // 4
-    await get_rate_limiter().acquire(settings.anita_provider, settings.anita_model, est_tokens)
+    await get_rate_limiter().acquire(settings.agent_provider, settings.agent_model, est_tokens)
 
     client = AsyncOpenAI(
         api_key=settings.groq_api_key,
@@ -194,7 +194,7 @@ async def classify(user_text: str) -> ClassifierResult:
     )
 
     raw_response = await client.chat.completions.with_raw_response.create(
-        model=settings.anita_model,
+        model=settings.agent_model,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": user_text.strip()},
@@ -223,7 +223,7 @@ async def classify(user_text: str) -> ClassifierResult:
     usage = completion.usage
     actual = (usage.prompt_tokens if usage else 0) + (usage.completion_tokens if usage else 0)
     if actual:
-        get_rate_limiter().record_response(settings.anita_provider, settings.anita_model, actual, headers=headers)
+        get_rate_limiter().record_response(settings.agent_provider, settings.agent_model, actual, headers=headers)
     return ClassifierResult(
         actions=actions,
         raw=raw_text,
@@ -264,21 +264,21 @@ async def extract_details(
     """
     from openai import AsyncOpenAI
 
-    from app.features.anita.rate_limiter import get_rate_limiter
+    from app.features.agent.rate_limiter import get_rate_limiter
 
     fields_block = "\n".join(f"  {n}: {desc}" for n, desc in detailed)
     captured_str = ", ".join(f"{k}={v}" for k, v in captured.items()) or "(ninguno)"
     system = _PASS2_TEMPLATE.format(intent=intent, fields=fields_block, captured=captured_str)
 
     est_tokens = (len(system) + len(user_text)) // 4
-    await get_rate_limiter().acquire(settings.anita_provider, settings.anita_model, est_tokens)
+    await get_rate_limiter().acquire(settings.agent_provider, settings.agent_model, est_tokens)
 
     client = AsyncOpenAI(
         api_key=settings.groq_api_key,
         base_url="https://api.groq.com/openai/v1",
     )
     raw_response = await client.chat.completions.with_raw_response.create(
-        model=settings.anita_model,
+        model=settings.agent_model,
         messages=[
             {"role": "system", "content": system},
             {"role": "user", "content": user_text.strip()},
@@ -298,5 +298,5 @@ async def extract_details(
     tin = usage.prompt_tokens if usage else 0
     tout = usage.completion_tokens if usage else 0
     if tin + tout > 0:
-        get_rate_limiter().record_response(settings.anita_provider, settings.anita_model, tin + tout, headers=headers)
+        get_rate_limiter().record_response(settings.agent_provider, settings.agent_model, tin + tout, headers=headers)
     return new_fields, tin, tout
