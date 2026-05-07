@@ -2,12 +2,28 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
+import { execSync } from "node:child_process";
 import path from "path";
 
 const devPwa = process.env.VITE_DEV_PWA === "true";
 
+function gitVersion(): string {
+  try {
+    return execSync("git describe --tags --always --dirty", { stdio: ["ignore", "pipe", "ignore"] })
+      .toString()
+      .trim();
+  } catch {
+    return "dev";
+  }
+}
+
+const APP_VERSION = process.env.VITE_APP_VERSION ?? gitVersion();
+
 export default defineConfig({
   envDir: "../",
+  define: {
+    "import.meta.env.VITE_APP_VERSION": JSON.stringify(APP_VERSION),
+  },
   plugins: [
     react(),
     tailwindcss(),
@@ -31,6 +47,26 @@ export default defineConfig({
             purpose: "maskable",
           },
         ],
+        shortcuts: [
+          {
+            name: "Agente",
+            short_name: "Agente",
+            url: "/admin/agent",
+            icons: [{ src: "/pwa-192x192.png", sizes: "192x192" }],
+          },
+          {
+            name: "Documentos",
+            short_name: "Docs",
+            url: "/admin/documents",
+            icons: [{ src: "/pwa-192x192.png", sizes: "192x192" }],
+          },
+          {
+            name: "Inbox",
+            short_name: "Inbox",
+            url: "/admin/client-inbox",
+            icons: [{ src: "/pwa-192x192.png", sizes: "192x192" }],
+          },
+        ],
       },
       workbox: {
         skipWaiting: true,
@@ -44,10 +80,13 @@ export default defineConfig({
               { urlPattern: /\/api\/.*/, handler: "NetworkFirst" },
               {
                 urlPattern: /\/storage\/v1\/object\/sign\/documents\//,
-                handler: "NetworkFirst",
+                handler: "StaleWhileRevalidate",
                 options: {
                   cacheName: "documents-signed",
-                  expiration: { maxEntries: 200, maxAgeSeconds: 3600 },
+                  // 7 days; pinned-offline docs prefetch into this cache and
+                  // remain available for the full window.
+                  expiration: { maxEntries: 500, maxAgeSeconds: 60 * 60 * 24 * 7 },
+                  cacheableResponse: { statuses: [0, 200] },
                 },
               },
               {
