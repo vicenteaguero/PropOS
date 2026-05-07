@@ -224,9 +224,9 @@ def cleanup(handles: SeedHandles) -> None:
         "organizations",
         "properties",
         "contacts",
-        "anita_messages",
-        "anita_transcripts",
-        "anita_sessions",
+        "agent_messages",
+        "agent_transcripts",
+        "agent_sessions",
         "pending_proposals",
     ]
     for t in tables:
