@@ -12,10 +12,10 @@ PENDING_TABLE = "pending_proposals"
 logger = get_logger("PENDING")
 
 # Registry: tool kind → executor that performs the actual mutation.
-# Populated in Phase E by app.features.anita.tools.executors when each
+# Populated in Phase E by app.features.agent.tools.executors when each
 # propose_* executor is implemented. Signature:
 #   executor(payload: dict, tenant_id: UUID, user_id: UUID,
-#            anita_session_id: UUID) -> tuple[str, UUID]
+#            agent_session_id: UUID) -> tuple[str, UUID]
 # returning (target_table, created_row_id).
 ACCEPT_DISPATCHERS: dict[str, Callable[..., tuple[str, UUID]]] = {}
 
@@ -118,20 +118,20 @@ class PendingService:
                 payload[key] = str(chosen_id)
 
         # Stamp PostgREST headers so the universal audit_log trigger
-        # records source='anita' + anita_session_id (see migration 0033).
-        anita_session_id = UUID(proposal["anita_session_id"])
+        # records source='agent' + agent_session_id (see migration 0033).
+        agent_session_id = UUID(proposal["agent_session_id"])
         postgrest_headers = client.postgrest.session.headers
-        postgrest_headers["X-Anita-Session-Id"] = str(anita_session_id)
-        postgrest_headers["X-Action-Source"] = "anita"
+        postgrest_headers["X-Agent-Session-Id"] = str(agent_session_id)
+        postgrest_headers["X-Action-Source"] = "agent"
         try:
             target_table, created_row_id = dispatcher(
                 payload=payload,
                 tenant_id=tenant_id,
                 user_id=reviewer_user,
-                anita_session_id=anita_session_id,
+                agent_session_id=agent_session_id,
             )
         finally:
-            postgrest_headers.pop("X-Anita-Session-Id", None)
+            postgrest_headers.pop("X-Agent-Session-Id", None)
             postgrest_headers.pop("X-Action-Source", None)
 
         from datetime import UTC, datetime
