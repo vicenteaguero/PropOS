@@ -1,0 +1,53 @@
+source,endpoint_url,what_returns,auth_required,output_format,plazo,rpa_difficulty_1to5,api_official_yn,notes,checked_date
+SII,https://www4.sii.cl/mapasui/internet/,Geocoder catastral: rol+subrol desde direccion,no,html_app,instantaneo,4,no,Falla en direcciones nuevas o rurales; carga JS,2026-05-07
+SII,https://zeus.sii.cl/avalu_cgi/br/brc110.sh,Certificado avaluo fiscal simple PDF,no,pdf,instantaneo,2,no,Gratuito; necesita comuna+rol,2026-05-07
+SII,https://www2.sii.cl/vicana/Menu/ConsultarAntecedentesSC,Certificado avaluo detallado y antecedentes propiedad,clave_tributaria,html+pdf,instantaneo,4,no,Solo dueno inscrito,2026-05-07
+SII,https://www.sii.cl/servicios_online/1048-2569.html,Reavaluos y rol semestral contribuciones,no,html,instantaneo,3,no,,2026-05-07
+SII,https://www.sii.cl/preguntas_frecuentes/bienes_raices/001_004_2258.htm,FAQ bienes raices,no,html,instantaneo,1,no,Documental,2026-05-07
+TGR,https://www.tgr.cl/certificado-deuda-contribuciones/,Certificado deuda contribuciones bien raiz,no,pdf,instantaneo,2,no,Gratis vigencia 1 mes; comuna+rol+subrol,2026-05-07
+TGR,https://tgr.cl/contribuciones/,Pago contribuciones online,clave_unica,html,instantaneo,3,no,,2026-05-07
+DOM_minvu,https://domenlinea.minvu.cl/,Plataforma centralizada DOM nacional 80+ tramites,clave_unica,html_app,5_30_dias,4,no,Cobertura ~190 comunas; lista oficial Google Sheet 1KCzxqMxsr1WqWfZEIBj7zAqLbCDSc3cW,2026-05-07
+DOM_minvu,https://revisiondom.minvu.cl/,Login municipal interno DOM en linea,user_pass,html_app,n/a,5,no,No accesible publico,2026-05-07
+MINVU_CNE,https://cne.minvu.cl/cne.web/,Certificado de no expropiacion MINVU,no,pdf,instantaneo,3,no,Gratuito,2026-05-07
+MOP_Vialidad,https://vialidad.mop.gob.cl/informe-de-no-expropiacion/,Informe no expropiacion caminos publicos,clave_unica,pdf,variable,3,no,Plataforma SIAC,2026-05-07
+MOP_SIAC,https://siac.mop.gob.cl/,Atencion ciudadana MOP solicitudes y consultas,clave_unica,html,variable,3,no,,2026-05-07
+SISS,https://www.siss.gob.cl/,Registro concesionarios sanitarios y consulta empresa por territorio,no,html,instantaneo,2,no,,2026-05-07
+SISS,https://www.siss.gob.cl/586/w3-propertyvalue-6379.html,Registro empresas sanitarias autorizadas,no,html,instantaneo,2,no,,2026-05-07
+SEC,https://www.sec.cl/,Tramites electricos TE1 TE2 TE3 TE4 declaraciones instalaciones,clave_unica,html_app,8_30_dias,4,no,,2026-05-07
+SAG_cerofilas,https://sag.cerofilas.gob.cl/,Subdivision predios rusticos DL 3.516 + IFC art 55 LGUC,clave_unica,html_app,30_60_dias,3,no,Tramitacion 100% digital,2026-05-07
+SAG,https://www.sag.gob.cl/tramites/solicitud-de-certificacion-de-subdivision-de-predios-rusticos,Certificacion proyecto subdivision rustico,clave_unica,pdf,30_60_dias,3,no,,2026-05-07
+SAG,https://www.sag.gob.cl/tramites/solicitud-de-informe-de-factibilidad-para-construcciones-ajenas-la-agricultura-en-area-rural-ifc,IFC informe favorable construcciones art 55 LGUC,clave_unica,pdf,60_120_dias,3,no,,2026-05-07
+DGA,https://dga.mop.gob.cl/derechos-de-agua/derechos-registrados/,Catastro Publico de Aguas CPA derechos inscritos,no,html_app,instantaneo,3,no,Buscador derechos registrados,2026-05-07
+DGA,https://dga.mop.gob.cl/tramites/listado-de-tramites/regularizacion-de-derechos-de-aprovechamiento-de-aguas/,Regularizacion derechos uso 5 anos uso comprobable,clave_unica,pdf,12_24_meses,4,no,Plazo Ley 21.727 hasta 6-abr-2027,2026-05-07
+SEA_SEIA,https://www.sea.gob.cl/,Sistema evaluacion impacto ambiental tramites,clave_unica,html_app,90_365_dias,4,no,,2026-05-07
+SEA_SEIA,https://seia.sea.gob.cl/,Buscador publico proyectos SEIA y RCA,no,html_app,instantaneo,3,no,,2026-05-07
+SEA_SIG,https://sig.sea.gob.cl/mapadeproyectos/,Mapa georeferenciado proyectos SEIA,no,html_geomap,instantaneo,3,no,Geoespacial,2026-05-07
+SINIA,https://sinia.mma.gob.cl/evaluacion-y-fiscalizacion/resoluciones-de-calificacion-ambiental-rca/,Buscador RCA resoluciones calificacion ambiental,no,html,instantaneo,3,no,,2026-05-07
+CMN,https://www.monumentos.gob.cl/servicios/normas,Normas Ley 17.288 Monumentos Nacionales,no,html,instantaneo,1,no,Documental,2026-05-07
+CMN,https://www.monumentos.gob.cl/tramites/autorizacion-intervencion-zonas-tipicas-pintorescas,Autorizacion intervencion ZT,clave_unica,pdf,90_180_dias,3,no,,2026-05-07
+CMN,https://www.monumentos.gob.cl/tramites/autorizacion-intervencion-monumentos-historicos,Autorizacion intervencion MH,clave_unica,pdf,90_180_dias,3,no,,2026-05-07
+SBAP,https://sbap.gob.cl/,Servicio Biodiversidad y Areas Protegidas Ley 21.600,no,html,n/a,2,no,Institucion creada sept 2023; inicio operaciones gradual,2026-05-07
+MMA,https://areasprotegidas.mma.gob.cl/,Catastro nacional areas protegidas geomap,no,html_geomap,instantaneo,3,no,Capas SNASPE santuarios reservas,2026-05-07
+SSFFAA,https://portalconcesiones.ssffaa.cl/,Concesiones maritimas portal 100% online,clave_unica,html_app,180_540_dias,4,no,DL 1.939 80m playa fiscal,2026-05-07
+SSFFAA,https://portalconcesiones.ssffaa.cl/CCMM,Buscador concesiones maritimas otorgadas,no,html,instantaneo,3,no,,2026-05-07
+CBR_Santiago,https://www.conservador.cl/portal/,Portal nacional Conservador Bienes Raices Santiago,clave_unica,pdf,1_5_dias,2,no,Pago por documento ~$3000-8000,2026-05-07
+CBR_Santiago,https://conservador.cl/portal/copia_dominio_vigente,Copia dominio vigente certificado,clave_unica,pdf,1_3_dias,2,no,,2026-05-07
+CBR_Santiago,https://conservador.cl/portal/gp,Certificado hipotecas gravamenes prohibiciones,clave_unica,pdf,1_3_dias,2,no,,2026-05-07
+CBR_Santiago,https://www.conservador.cl/portal/indice_propiedad,Indice registro propiedad por nombre,clave_unica,html,instantaneo,3,no,,2026-05-07
+CBR_Santiago,https://conservador.cl/portal/estado,Estado caratula tramite CBR,no,html,instantaneo,2,no,,2026-05-07
+CBR_Coquimbo,https://cbrcoquimbo.cl/,CBR Coquimbo portal transacciones,clave_unica,pdf,1_5_dias,3,no,Cada CBR es autonomo; cobertura RM/Rancagua/Talca via portales locales separados,2026-05-07
+CBR_Buin,https://www.cbrbuin.cl/menu/menu_propiedad.php,CBR Buin registro propiedad,clave_unica,pdf,1_5_dias,3,no,Patron similar otros CBRs comunales,2026-05-07
+CONADI,http://www.conadi.gob.cl/,Corporacion Nacional Desarrollo Indigena tierras Ley 19.253,no,html,n/a,2,no,Verificacion ADI y tierras indigenas,2026-05-07
+CONADI,http://www.conadi.gob.cl/areas-de-desarrollo-indigena,Listado ADIs Areas Desarrollo Indigena,no,html,instantaneo,2,no,Cobertura mayoritaria fuera scope RM/OHiggins/Maule,2026-05-07
+RegistroCivil,https://www.registrocivil.cl/,Certificados matrimonio nacimiento defuncion antecedentes,clave_unica,pdf,instantaneo,2,si_partial,Para regimen patrimonial sociedad conyugal,2026-05-07
+ChileAtiende,https://www.chileatiende.gob.cl/,Catalogo central tramites estado,no,html,instantaneo,2,no,Metadata sobre todos los tramites con fichas,2026-05-07
+BienesNacionales,https://www.bienes.cl/,Saneamiento DL 2.695 pequena propiedad raiz,clave_unica,pdf,12_36_meses,3,no,Tramitacion administrativa-judicial mixta,2026-05-07
+MINVU_IDE,https://ide.minvu.cl/,Geoportal MINVU capas WMS WFS PRMS planes reguladores,no,wms_wfs,instantaneo,2,si,API geoespacial estandar OGC,2026-05-07
+MINVU_centroestudios,https://centrodeestudios.minvu.gob.cl/planes-reguladores/,Planes reguladores estado por comuna,no,html,instantaneo,2,no,,2026-05-07
+MINVU_observatorio,http://observatorios.minvu.cl/esplanurba/main.php,Estado tramitacion planes reguladores,no,html_app,instantaneo,3,no,,2026-05-07
+MINVU_seguimiento,http://seguimientoipt.minvu.cl/main.php,Seguimiento IPT PRC PRI,no,html_app,instantaneo,3,no,,2026-05-07
+MINVU_administradores,https://www.minvu.gob.cl/nueva-ley-de-copropiedad-inmobiliaria/,Registro Nacional Administradores condominios Ley 21.442,clave_unica,html,instantaneo,2,no,Obligatorio desde sep-2025,2026-05-07
+SMA,https://snifa.sma.gob.cl/,Sistema Nacional Informacion Fiscalizacion Ambiental,no,html_app,instantaneo,3,no,Sanciones ambientales sobre proyectos con RCA,2026-05-07
+LeyChile_BCN,https://www.bcn.cl/leychile/,Texto vigente leyes Chile,no,html_pdf,instantaneo,1,si_partial,Fuente normativa autoritativa,2026-05-07
+SEC_factibilidad,https://www.cge.cl/wp-content/uploads/2023/07/Proceso-de-factibilidad-individual.pdf,Proceso factibilidad electrica CGE,no,pdf,8_30_dias,3,no,Distribuidoras varias: CGE Enel Chilquinta etc,2026-05-07
+SEREMI_Salud,https://www.minsal.cl/,Permisos sanitarios industrias y comercios,clave_unica,pdf,30_180_dias,4,no,Tramites por SEREMI regional,2026-05-07
