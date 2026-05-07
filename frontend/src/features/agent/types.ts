@@ -1,4 +1,4 @@
-export interface AnitaSession {
+export interface AgentSession {
   id: string;
   tenant_id: string;
   user_id: string;
@@ -10,7 +10,7 @@ export interface AnitaSession {
   closed_at: string | null;
 }
 
-export interface AnitaTranscript {
+export interface AgentTranscript {
   transcript_id: string;
   text: string;
   language: string | null;
@@ -18,7 +18,7 @@ export interface AnitaTranscript {
   source: "browser_speech" | "groq_whisper" | "openai_whisper" | "manual_text";
 }
 
-export interface AnitaMessageBlock {
+export interface AgentMessageBlock {
   type: "text" | "tool_use" | "tool_result";
   text?: string;
   name?: string;
@@ -27,11 +27,11 @@ export interface AnitaMessageBlock {
   tool_call_id?: string;
 }
 
-export interface AnitaMessage {
+export interface AgentMessage {
   id: string;
   session_id: string;
   role: "user" | "assistant" | "tool" | "system";
-  content: AnitaMessageBlock[] | { text: string } | string;
+  content: AgentMessageBlock[] | { text: string } | string;
   provider: string | null;
   model: string | null;
   tokens_in: number | null;
@@ -56,7 +56,7 @@ export type ProposalStatus = "pending" | "accepted" | "rejected" | "superseded" 
 export interface PendingProposal {
   id: string;
   tenant_id: string;
-  anita_session_id: string;
+  agent_session_id: string;
   proposed_by_user: string;
   kind: string;
   target_table: string | null;
