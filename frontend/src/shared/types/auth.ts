@@ -6,6 +6,8 @@ export interface UserProfile {
   role: UserRole;
   tenantId: string;
   isActive: boolean;
+  avatarUrl: string | null;
+  adminScope: string[];
 }
 
 export interface AuthState {
