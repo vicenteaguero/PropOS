@@ -18,7 +18,7 @@ from uuid import UUID
 
 from rapidfuzz import fuzz, process
 
-from app.features.anita.context import TenantSnapshot
+from app.features.agent.context import TenantSnapshot
 
 MIN_SCORE = 70
 AMBIGUITY_GAP = 8
