@@ -1,11 +1,11 @@
-"""Drive Anita's run_chat_turn from a WhatsApp inbound message.
+"""Drive Agent's run_chat_turn from a WhatsApp inbound message.
 
-Anita expects an SSE consumer; here we drain the async iterator, collect
+Agent expects an SSE consumer; here we drain the async iterator, collect
 text events, persist with source='whatsapp', and reply via Kapso.
 
 Multimodal: audio is transcribed via our Whisper pipeline (same provider
-chain Anita uses in PWA voice notes) and treated as text. Images land in
-an unprocessed media buffer keyed to the session — Anita acts on them
+chain Agent uses in PWA voice notes) and treated as text. Images land in
+an unprocessed media buffer keyed to the session — Agent acts on them
 only when a follow-up text intent consumes the buffer.
 """
 
@@ -22,8 +22,8 @@ from datetime import UTC, datetime, timedelta
 from app.core.config.settings import settings
 from app.core.logging.logger import get_logger
 from app.core.supabase.client import get_supabase_client
-from app.features.anita.chat import run_chat_turn
-from app.features.anita.transcribe import transcribe_audio
+from app.features.agent.chat import run_chat_turn
+from app.features.agent.transcribe import transcribe_audio
 from app.features.channels.router import (
     classify_message,
     extract_media_id,
@@ -32,24 +32,24 @@ from app.features.channels.router import (
 )
 from app.features.integrations.kapso import client as kapso_client
 
-logger = get_logger("ANITA_WHATSAPP")
+logger = get_logger("AGENT_WHATSAPP")
 
 MEDIA_BUCKET = "media"
 
 
-async def handle_inbound_anita_batch(
+async def handle_inbound_agent_batch(
     *,
     user_match: dict[str, Any],
     items: list[dict[str, Any]],
     phone_e164: str,
     external_thread_id: str | None,
 ) -> None:
-    """Handle a batch of inbound messages (mixed text/audio/image) for Anita.
+    """Handle a batch of inbound messages (mixed text/audio/image) for Agent.
 
     - Text bodies + audio transcriptions are concatenated into a single
       ``run_chat_turn`` invocation (one classifier call per batch).
     - Images go into the unprocessed buffer; if no text/audio came along
-      Anita just acks the photos and waits.
+      Agent just acks the photos and waits.
     """
     db = get_supabase_client()
     tenant_id = user_match["tenant_id"]
@@ -72,7 +72,7 @@ async def handle_inbound_anita_batch(
         # tagged as whatsapp, we've processed it before.
         if ext_id:
             dup = (
-                db.table("anita_messages")
+                db.table("agent_messages")
                 .select("id")
                 .eq("external_message_id", ext_id)
                 .eq("source", "whatsapp")
@@ -90,7 +90,7 @@ async def handle_inbound_anita_batch(
             body = extract_text(msg) or ""
             if not body:
                 continue
-            db.table("anita_messages").insert(
+            db.table("agent_messages").insert(
                 {
                     "tenant_id": tenant_id,
                     "session_id": session_id,
@@ -115,7 +115,7 @@ async def handle_inbound_anita_batch(
                 logger.exception("kapso_audio_download_failed", event_type="kapso", error=str(exc))
                 continue
             transcription = _transcribe(blob, mime, tenant_id=UUID(tenant_id))
-            db.table("anita_messages").insert(
+            db.table("agent_messages").insert(
                 {
                     "tenant_id": tenant_id,
                     "session_id": session_id,
@@ -151,7 +151,7 @@ async def handle_inbound_anita_batch(
                 session_id=session_id,
                 message_id=str(_uuid.uuid4()),
             )
-            db.table("anita_messages").insert(
+            db.table("agent_messages").insert(
                 {
                     "tenant_id": tenant_id,
                     "session_id": session_id,
@@ -175,7 +175,7 @@ async def handle_inbound_anita_batch(
 
     if not user_text:
         # Pure media batch (likely images alone). Send a single Spanish ack so
-        # the user knows photos arrived and Anita is awaiting instructions.
+        # the user knows photos arrived and Agent is awaiting instructions.
         if image_count > 0:
             ack = (
                 "📷 Recibí la foto, dime qué hago con ella."
@@ -184,12 +184,12 @@ async def handle_inbound_anita_batch(
             )
             try:
                 resp = await kapso_client.send_text(phone_e164, ack)
-                _record_outbound_anita(tenant_id, session_id, ack, resp)
+                _record_outbound_agent(tenant_id, session_id, ack, resp)
             except Exception as exc:  # noqa: BLE001
-                logger.exception("anita_whatsapp_ack_failed", event_type="kapso", error=str(exc))
+                logger.exception("agent_whatsapp_ack_failed", event_type="kapso", error=str(exc))
         return
 
-    # Drain Anita's SSE generator and send the assistant reply.
+    # Drain Agent's SSE generator and send the assistant reply.
     assistant_text = ""
     async for event in run_chat_turn(
         session_id=UUID(session_id),
@@ -205,9 +205,9 @@ async def handle_inbound_anita_batch(
 
     try:
         resp = await kapso_client.send_text(phone_e164, assistant_text)
-        _record_outbound_anita(tenant_id, session_id, assistant_text, resp)
+        _record_outbound_agent(tenant_id, session_id, assistant_text, resp)
     except Exception as exc:  # noqa: BLE001
-        logger.exception("anita_whatsapp_send_failed", event_type="kapso", error=str(exc))
+        logger.exception("agent_whatsapp_send_failed", event_type="kapso", error=str(exc))
 
 
 def _transcribe(blob: bytes, mime: str, *, tenant_id: UUID) -> str | None:
@@ -216,7 +216,7 @@ def _transcribe(blob: bytes, mime: str, *, tenant_id: UUID) -> str | None:
     try:
         result = transcribe_audio(io.BytesIO(blob), filename=filename, tenant_id=tenant_id)
     except Exception as exc:  # noqa: BLE001
-        logger.exception("anita_whatsapp_transcribe_failed", event_type="kapso", error=str(exc))
+        logger.exception("agent_whatsapp_transcribe_failed", event_type="kapso", error=str(exc))
         return None
     text = (result.get("text") or "").strip()
     return text or None
@@ -233,19 +233,19 @@ def _store_media(
     """Upload bytes to Supabase Storage. Returns public URL or None on error."""
     db = get_supabase_client()
     ext = (mimetypes.guess_extension(mime) or ".bin").lstrip(".")
-    path = f"anita/{tenant_id}/{session_id}/{message_id}.{ext}"
+    path = f"agent/{tenant_id}/{session_id}/{message_id}.{ext}"
     try:
         db.storage.from_(MEDIA_BUCKET).upload(path, blob, {"content-type": mime, "upsert": "true"})
         return db.storage.from_(MEDIA_BUCKET).get_public_url(path)
     except Exception as exc:  # noqa: BLE001
-        logger.exception("anita_whatsapp_store_failed", event_type="kapso", error=str(exc))
+        logger.exception("agent_whatsapp_store_failed", event_type="kapso", error=str(exc))
         return None
 
 
 # ---------- Legacy entrypoint (kept for any callers; thin wrapper) ----------
 
 
-async def handle_inbound_anita(
+async def handle_inbound_agent(
     *,
     user_match: dict[str, Any],
     user_text: str,
@@ -260,7 +260,7 @@ async def handle_inbound_anita(
     # Idempotency: bail if we've already recorded this inbound.
     if external_message_id:
         dup = (
-            db.table("anita_messages")
+            db.table("agent_messages")
             .select("id")
             .eq("external_message_id", external_message_id)
             .eq("source", "whatsapp")
@@ -273,9 +273,9 @@ async def handle_inbound_anita(
 
     session = _ensure_whatsapp_session(tenant_id, user_id, external_thread_id)
 
-    # Tag the inbound message with source/external id BEFORE Anita runs,
+    # Tag the inbound message with source/external id BEFORE Agent runs,
     # so unique index protects against double-processing.
-    db.table("anita_messages").insert(
+    db.table("agent_messages").insert(
         {
             "tenant_id": tenant_id,
             "session_id": session["id"],
@@ -301,9 +301,9 @@ async def handle_inbound_anita(
 
     try:
         resp = await kapso_client.send_text(phone_e164, assistant_text)
-        _record_outbound_anita(tenant_id, session["id"], assistant_text, resp)
+        _record_outbound_agent(tenant_id, session["id"], assistant_text, resp)
     except Exception as exc:  # noqa: BLE001
-        logger.exception("anita_whatsapp_send_failed", event_type="kapso", error=str(exc))
+        logger.exception("agent_whatsapp_send_failed", event_type="kapso", error=str(exc))
 
 
 def _ensure_whatsapp_session(
@@ -311,17 +311,17 @@ def _ensure_whatsapp_session(
     user_id: str,
     external_thread_id: str | None,
 ) -> dict[str, Any]:
-    """Resolve the Anita session for an inbound WhatsApp from a broker.
+    """Resolve the Agent session for an inbound WhatsApp from a broker.
 
     Reuse the most recent OPEN ``source='whatsapp'`` session whose
-    ``last_activity_at`` is within ``ANITA_SESSION_INACTIVITY_HOURS`` (default
+    ``last_activity_at`` is within ``AGENT_SESSION_INACTIVITY_HOURS`` (default
     4h). Older sessions are left as-is (still OPEN, but a new one starts so
     bursts of messages don't pile into stale threads).
     """
     db = get_supabase_client()
-    cutoff = (datetime.now(UTC) - timedelta(hours=settings.anita_session_inactivity_hours)).isoformat()
+    cutoff = (datetime.now(UTC) - timedelta(hours=settings.agent_session_inactivity_hours)).isoformat()
     rows = (
-        db.table("anita_sessions")
+        db.table("agent_sessions")
         .select("*")
         .eq("tenant_id", tenant_id)
         .eq("user_id", user_id)
@@ -336,7 +336,7 @@ def _ensure_whatsapp_session(
     if rows:
         return rows[0]
     return (
-        db.table("anita_sessions")
+        db.table("agent_sessions")
         .insert(
             {
                 "id": str(uuid4()),
@@ -352,7 +352,7 @@ def _ensure_whatsapp_session(
     )
 
 
-def _record_outbound_anita(
+def _record_outbound_agent(
     tenant_id: str,
     session_id: str,
     text: str,
@@ -361,9 +361,9 @@ def _record_outbound_anita(
     db = get_supabase_client()
     msgs = kapso_resp.get("messages") or []
     external_id = msgs[0].get("id") if msgs else None
-    # The Anita run_chat_turn already inserted the assistant turn for SSE;
+    # The Agent run_chat_turn already inserted the assistant turn for SSE;
     # we add a sibling row tagged with channel metadata for delivery tracking.
-    db.table("anita_messages").insert(
+    db.table("agent_messages").insert(
         {
             "tenant_id": tenant_id,
             "session_id": session_id,
