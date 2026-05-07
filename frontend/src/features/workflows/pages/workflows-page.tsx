@@ -101,11 +101,28 @@ function WorkflowCard({ workflow }: { workflow: Workflow }) {
     queryKey: ["workflows", workflow.id, "steps"],
     queryFn: () => workflowsApi.listSteps(workflow.id),
   });
+  const stepsKey = ["workflows", workflow.id, "steps"] as const;
   const updateStep = useMutation({
     mutationFn: ({ stepId, status }: { stepId: string; status: string }) =>
       workflowsApi.updateStep(workflow.id, stepId, { status }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["workflows", workflow.id, "steps"] });
+    onMutate: async ({ stepId, status }) => {
+      await queryClient.cancelQueries({ queryKey: stepsKey });
+      const previous = queryClient.getQueryData<WorkflowStep[]>(stepsKey);
+      if (previous) {
+        queryClient.setQueryData<WorkflowStep[]>(
+          stepsKey,
+          previous.map((s) =>
+            s.id === stepId ? { ...s, status: status as WorkflowStep["status"] } : s,
+          ),
+        );
+      }
+      return { previous };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous) queryClient.setQueryData(stepsKey, ctx.previous);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: stepsKey });
     },
   });
 
