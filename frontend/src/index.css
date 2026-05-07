@@ -42,6 +42,9 @@
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
   --color-overlay: var(--overlay);
+  --color-modal: var(--modal);
+  --color-modal-foreground: var(--modal-foreground);
+  --color-modal-border: var(--modal-border);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -89,6 +92,9 @@
   --warning: #eab308;
   --warning-foreground: #1C1816;
   --overlay: #000000;
+  --modal: #332C28;
+  --modal-foreground: #F9F6F4;
+  --modal-border: rgba(212, 145, 155, 0.2);
   --border: rgba(158, 158, 158, 0.2);
   --input: rgba(158, 158, 158, 0.2);
   --ring: #D4919B;
@@ -125,6 +131,9 @@
   --accent-foreground: #191919;
   --destructive: #ef4444;
   --destructive-foreground: #F5F4EE;
+  --modal: #2A2724;
+  --modal-foreground: #F5F4EE;
+  --modal-border: rgba(204, 120, 92, 0.18);
   --border: rgba(245, 244, 238, 0.12);
   --input: rgba(245, 244, 238, 0.12);
   --ring: #CC785C;
@@ -161,6 +170,9 @@
   --accent-foreground: #E2E8F0;
   --destructive: #f87171;
   --destructive-foreground: #0F172A;
+  --modal: #293548;
+  --modal-foreground: #E2E8F0;
+  --modal-border: rgba(96, 165, 250, 0.22);
   --border: rgba(148, 163, 184, 0.2);
   --input: rgba(148, 163, 184, 0.2);
   --ring: #60A5FA;
@@ -198,6 +210,9 @@
   --accent-foreground: #000000;
   --destructive: #FF0000;
   --destructive-foreground: #FFFFFF;
+  --modal: #1A1A1A;
+  --modal-foreground: #FFFFFF;
+  --modal-border: #FFFFFF;
   --border: #FFFFFF;
   --input: #FFFFFF;
   --ring: #FF3D00;
@@ -234,6 +249,9 @@
   --accent-foreground: #D8D8D8;
   --destructive: #B05050;
   --destructive-foreground: #1A1A1A;
+  --modal: #262626;
+  --modal-foreground: #D8D8D8;
+  --modal-border: rgba(216, 216, 216, 0.12);
   --border: rgba(216, 216, 216, 0.08);
   --input: rgba(216, 216, 216, 0.08);
   --ring: #A0A0A0;
