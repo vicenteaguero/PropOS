@@ -29,6 +29,10 @@ class Settings(BaseSettings):
     # the most recent session instead of starting a new one. Avoids fragmenting
     # a single conversation across dozens of tiny sessions.
     agent_session_inactivity_hours: int = 4
+    # Per-user daily turn cap (0 = disabled). Protects shared Groq free-tier
+    # quota from a single noisy user. Counts user-role agent_messages in the
+    # rolling 24h via the agent_user_turns_today RPC.
+    agent_turns_per_user_per_day: int = 50
 
     # Kapso (WhatsApp BSP)
     kapso_api_key: str = ""
