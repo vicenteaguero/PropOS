@@ -4,8 +4,11 @@ import type { ClientConversation, ClientMessage, ConversationStatus } from "../t
 const BASE = "/v1/client-chat";
 
 export const clientChatApi = {
-  listConversations: (status?: ConversationStatus) => {
-    const qs = status ? `?status=${status}` : "";
+  listConversations: (status?: ConversationStatus, archived = false) => {
+    const params = new URLSearchParams();
+    if (status) params.set("status", status);
+    if (archived) params.set("archived", "true");
+    const qs = params.toString() ? `?${params.toString()}` : "";
     return apiRequest<ClientConversation[]>(`${BASE}/conversations${qs}`);
   },
 
@@ -18,7 +21,10 @@ export const clientChatApi = {
       body: { text },
     }),
 
-  patch: (conversationId: string, body: { ai_enabled?: boolean; status?: ConversationStatus }) =>
+  patch: (
+    conversationId: string,
+    body: { ai_enabled?: boolean; status?: ConversationStatus; archived?: boolean },
+  ) =>
     apiRequest<ClientConversation>(`${BASE}/conversations/${conversationId}`, {
       method: "PATCH",
       body,
