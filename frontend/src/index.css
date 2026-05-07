@@ -179,6 +179,79 @@
   --sidebar-ring: #60A5FA;
 }
 
+/* Brutalist — sharp, high contrast, zero-radius */
+[data-palette="brutalist"] {
+  --radius: 0px;
+  --background: #000000;
+  --foreground: #FFFFFF;
+  --card: #0A0A0A;
+  --card-foreground: #FFFFFF;
+  --popover: #000000;
+  --popover-foreground: #FFFFFF;
+  --primary: #FF3D00;
+  --primary-foreground: #000000;
+  --secondary: #1A1A1A;
+  --secondary-foreground: #FFFFFF;
+  --muted: #1A1A1A;
+  --muted-foreground: #B0B0B0;
+  --accent: #FFFFFF;
+  --accent-foreground: #000000;
+  --destructive: #FF0000;
+  --destructive-foreground: #FFFFFF;
+  --border: #FFFFFF;
+  --input: #FFFFFF;
+  --ring: #FF3D00;
+  --chart-1: #FF3D00;
+  --chart-2: #FFFFFF;
+  --chart-3: #B0B0B0;
+  --chart-4: #FF8800;
+  --chart-5: #1A1A1A;
+  --sidebar: #000000;
+  --sidebar-foreground: #FFFFFF;
+  --sidebar-primary: #FF3D00;
+  --sidebar-primary-foreground: #000000;
+  --sidebar-accent: #1A1A1A;
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-border: #FFFFFF;
+  --sidebar-ring: #FF3D00;
+}
+
+/* Minimalist — desaturated, low contrast, calm */
+[data-palette="minimalist"] {
+  --background: #1A1A1A;
+  --foreground: #D8D8D8;
+  --card: #1F1F1F;
+  --card-foreground: #D8D8D8;
+  --popover: #1F1F1F;
+  --popover-foreground: #D8D8D8;
+  --primary: #A0A0A0;
+  --primary-foreground: #1A1A1A;
+  --secondary: #242424;
+  --secondary-foreground: #D8D8D8;
+  --muted: #242424;
+  --muted-foreground: #888888;
+  --accent: #2A2A2A;
+  --accent-foreground: #D8D8D8;
+  --destructive: #B05050;
+  --destructive-foreground: #1A1A1A;
+  --border: rgba(216, 216, 216, 0.08);
+  --input: rgba(216, 216, 216, 0.08);
+  --ring: #A0A0A0;
+  --chart-1: #A0A0A0;
+  --chart-2: #C0C0C0;
+  --chart-3: #888888;
+  --chart-4: #D8D8D8;
+  --chart-5: #2A2A2A;
+  --sidebar: #161616;
+  --sidebar-foreground: #D8D8D8;
+  --sidebar-primary: #A0A0A0;
+  --sidebar-primary-foreground: #1A1A1A;
+  --sidebar-accent: rgba(160, 160, 160, 0.08);
+  --sidebar-accent-foreground: #D8D8D8;
+  --sidebar-border: rgba(216, 216, 216, 0.06);
+  --sidebar-ring: #A0A0A0;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -232,7 +305,7 @@
   border-color: var(--card);
 }
 
-@keyframes anita-progress-bar {
+@keyframes agent-progress-bar {
   0% {
     transform: translateX(-100%);
   }
@@ -241,6 +314,6 @@
   }
 }
 
-.anita-progress-bar {
-  animation: anita-progress-bar 1.4s ease-in-out infinite;
+.agent-progress-bar {
+  animation: agent-progress-bar 1.4s ease-in-out infinite;
 }
