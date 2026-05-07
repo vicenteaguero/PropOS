@@ -20,11 +20,11 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from app.features.anita.chat import run_chat_turn
-from app.features.anita.transcribe import transcribe_audio
+from app.features.agent.chat import run_chat_turn
+from app.features.agent.transcribe import transcribe_audio
 from app.core.supabase.client import get_supabase_client
 
-from .seed_anita import SeedHandles
+from .seed_agent import SeedHandles
 
 pytestmark = pytest.mark.integration
 
@@ -96,7 +96,7 @@ def _log_result(record: dict[str, Any]) -> None:
 def _open_session(handles: SeedHandles) -> UUID:
     client = get_supabase_client()
     sid = uuid4()
-    client.table("anita_sessions").insert(
+    client.table("agent_sessions").insert(
         {
             "id": str(sid),
             "tenant_id": str(handles.tenant_id),
