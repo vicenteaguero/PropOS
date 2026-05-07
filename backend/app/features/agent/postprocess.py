@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import re
 
-from app.features.anita.classifier import Action
+from app.features.agent.classifier import Action
 
 # Intents that imply a structured write to a domain entity. If any of
 # them is present, ``add_note`` is redundant.
