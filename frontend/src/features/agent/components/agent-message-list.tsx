@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, Loader2 } from "lucide-react";
-import { AnitaInlineProposalCard } from "./anita-inline-proposal-card";
-import type { AnitaMessage } from "../types";
+import { AgentInlineProposalCard } from "./agent-inline-proposal-card";
+import { useAgentName } from "@core/branding/agent-branding";
+import type { AgentMessage } from "../types";
 
 export interface PendingAudioMessage {
   id: string;
@@ -12,7 +13,7 @@ export interface PendingAudioMessage {
 }
 
 interface Props {
-  messages: AnitaMessage[];
+  messages: AgentMessage[];
   liveText: string;
   isStreaming: boolean;
   isThinking: boolean;
@@ -150,7 +151,7 @@ function AudioBubble({
   );
 }
 
-export function AnitaMessageList({
+export function AgentMessageList({
   messages,
   liveText,
   isStreaming,
@@ -160,6 +161,7 @@ export function AnitaMessageList({
   liveProposals,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const agentName = useAgentName();
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -225,7 +227,7 @@ export function AnitaMessageList({
               <span className="size-1.5 rounded-full bg-muted-foreground animate-pulse [animation-delay:150ms]" />
               <span className="size-1.5 rounded-full bg-muted-foreground animate-pulse [animation-delay:300ms]" />
             </span>
-            <span className="text-xs text-muted-foreground">Anita está pensando…</span>
+            <span className="text-xs text-muted-foreground">{agentName} está pensando…</span>
           </div>
         )}
 
@@ -239,7 +241,7 @@ export function AnitaMessageList({
         {liveProposals.length > 0 && (
           <div className="space-y-2 mr-6">
             {liveProposals.map((id) => (
-              <AnitaInlineProposalCard key={id} proposalId={id} />
+              <AgentInlineProposalCard key={id} proposalId={id} />
             ))}
           </div>
         )}
