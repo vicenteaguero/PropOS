@@ -1,11 +1,11 @@
 import { apiRequest } from "@features/documents/api/http";
 import { ENV } from "@core/config/env";
 import { supabase } from "@core/supabase/client";
-import type { AnitaMessage, AnitaSession, AnitaTranscript, ChatStreamEvent } from "../types";
+import type { AgentMessage, AgentSession, AgentTranscript, ChatStreamEvent } from "../types";
 
-const BASE = "/v1/anita";
+const BASE = "/v1/agent";
 
-export interface AnitaSessionListItem {
+export interface AgentSessionListItem {
   id: string;
   status: "OPEN" | "CLOSED";
   started_at: string;
@@ -14,38 +14,38 @@ export interface AnitaSessionListItem {
   preview: string;
 }
 
-export const anitaApi = {
+export const agentApi = {
   createOrResumeSession: (opts?: { forceNew?: boolean }) =>
-    apiRequest<AnitaSession>(`${BASE}/sessions${opts?.forceNew ? "?force_new=true" : ""}`, {
+    apiRequest<AgentSession>(`${BASE}/sessions${opts?.forceNew ? "?force_new=true" : ""}`, {
       method: "POST",
       body: {},
     }),
 
-  listSessions: () => apiRequest<AnitaSessionListItem[]>(`${BASE}/sessions`),
+  listSessions: () => apiRequest<AgentSessionListItem[]>(`${BASE}/sessions`),
 
   listMessages: (sessionId: string) =>
-    apiRequest<AnitaMessage[]>(`${BASE}/sessions/${sessionId}/messages`),
+    apiRequest<AgentMessage[]>(`${BASE}/sessions/${sessionId}/messages`),
 
-  /** Server-side transcription. Audio multipart → POST /anita/transcripts. */
+  /** Server-side transcription. Audio multipart → POST /agent/transcripts. */
   createTranscript: (blob: Blob, sessionId?: string, mediaFileId?: string) => {
     const fd = new FormData();
-    fd.append("audio", blob, "anita-audio.webm");
+    fd.append("audio", blob, "agent-audio.webm");
     if (sessionId) fd.append("session_id", sessionId);
     if (mediaFileId) fd.append("media_file_id", mediaFileId);
-    return apiRequest<AnitaTranscript>(`${BASE}/transcripts`, {
+    return apiRequest<AgentTranscript>(`${BASE}/transcripts`, {
       method: "POST",
       formData: fd,
     });
   },
 
   updateSession: (sessionId: string, body: { status?: "OPEN" | "CLOSED"; title?: string }) =>
-    apiRequest<AnitaSession>(`${BASE}/sessions/${sessionId}`, {
+    apiRequest<AgentSession>(`${BASE}/sessions/${sessionId}`, {
       method: "PATCH",
       body,
     }),
 };
 
-/** SSE message stream. POST /anita/sessions/{id}/messages. */
+/** SSE message stream. POST /agent/sessions/{id}/messages. */
 export async function streamMessage(
   sessionId: string,
   body: { user_text?: string; transcript_id?: string },
