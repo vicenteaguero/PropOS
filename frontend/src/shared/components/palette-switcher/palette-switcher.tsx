@@ -19,18 +19,19 @@ import {
   type Palette,
 } from "@core/theme/palette";
 
-function Swatch({ palette }: { palette: Palette }) {
+function Swatch({ palette, size = 4 }: { palette: Palette; size?: 3 | 4 }) {
   const [bg, primary, accent] = PALETTE_SWATCHES[palette];
+  const cls = size === 3 ? "block size-3" : "block size-4";
   return (
     <span className="inline-flex shrink-0 overflow-hidden rounded border border-border">
-      <span style={{ background: bg }} className="block size-4" />
-      <span style={{ background: primary }} className="block size-4" />
-      <span style={{ background: accent }} className="block size-4" />
+      <span style={{ background: bg }} className={cls} />
+      <span style={{ background: primary }} className={cls} />
+      <span style={{ background: accent }} className={cls} />
     </span>
   );
 }
 
-export function PaletteSwitcher() {
+export function PaletteSwitcher({ className }: { className?: string }) {
   const { user } = useAuth();
   const { state, isMobile } = useSidebar();
   const [current, setCurrent] = useState<Palette>(() => getStoredPalette());
@@ -46,10 +47,10 @@ export function PaletteSwitcher() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <SidebarMenuButton tooltip="Tema">
+        <SidebarMenuButton tooltip="Tema" className={className}>
           <PaletteIcon />
-          <span className="flex-1 truncate text-left">Tema: {PALETTE_LABELS[current]}</span>
-          <Swatch palette={current} />
+          <span className="flex-1 truncate text-left">{PALETTE_LABELS[current]}</span>
+          <Swatch palette={current} size={3} />
         </SidebarMenuButton>
       </DropdownMenuTrigger>
       <DropdownMenuContent side="top" align="start" className="min-w-56">
