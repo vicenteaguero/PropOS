@@ -72,16 +72,16 @@ def _apply_status(item: dict[str, Any], event_type: str) -> None:
         if err:
             payload["failure_reason"] = str(err)[:500]
     db.table("client_messages").update(payload).eq("external_message_id", external_id).execute()
-    db.table("anita_messages").update(payload).eq("external_message_id", external_id).execute()
+    db.table("agent_messages").update(payload).eq("external_message_id", external_id).execute()
 
 
 async def _handle_message_batch(items: list[dict[str, Any]]) -> None:
     """Handle a batch of inbound messages grouped by conversation.
 
-    Hands the raw items list to the right adapter (Anita vs Client Agent).
+    Hands the raw items list to the right adapter (Agent vs Client Agent).
     Per-message multimodal handling (text/audio/image, transcription,
     media buffer) lives inside the adapters since the resolution depends
-    on whether the sender is an internal user (Anita session + media buffer)
+    on whether the sender is an internal user (Agent session + media buffer)
     or an external contact (client_messages).
     """
     if not items:
@@ -99,9 +99,9 @@ async def _handle_message_batch(items: list[dict[str, Any]]) -> None:
     user_match = _match_internal_user(phone_e164)
 
     if user_match:
-        from app.features.channels.anita_adapter import handle_inbound_anita_batch
+        from app.features.channels.agent_adapter import handle_inbound_agent_batch
 
-        await handle_inbound_anita_batch(
+        await handle_inbound_agent_batch(
             user_match=user_match,
             items=items,
             phone_e164=phone_e164,
