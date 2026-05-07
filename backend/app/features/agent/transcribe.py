@@ -13,7 +13,7 @@ from uuid import UUID
 
 from app.core.config.settings import settings
 
-logger = logging.getLogger("ANITA_TRANSCRIBE")
+logger = logging.getLogger("AGENT_TRANSCRIBE")
 
 
 class TranscriptionError(Exception):
@@ -35,7 +35,7 @@ def transcribe_audio(
 
     Returns: {text, language, duration, source, raw}
     """
-    provider = settings.anita_transcribe_provider
+    provider = settings.agent_transcribe_provider
     if vocab is None:
         vocab = build_whisper_vocab(tenant_id)
 
@@ -162,7 +162,7 @@ def _transcribe_groq(file: IO[bytes], filename: str, vocab: str | None = None) -
     except ImportError as exc:
         raise TranscriptionError("openai package not installed") from exc
 
-    from app.features.anita.rate_limiter import get_rate_limiter
+    from app.features.agent.rate_limiter import get_rate_limiter
 
     get_rate_limiter().acquire_sync("groq", "whisper-large-v3", est_tokens=0)
 
