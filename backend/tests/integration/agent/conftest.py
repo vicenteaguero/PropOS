@@ -15,7 +15,7 @@ from collections.abc import Generator
 
 import pytest
 
-from .seed_anita import SeedHandles, cleanup, seed
+from .seed_agent import SeedHandles, cleanup, seed
 
 
 def pytest_configure(config: pytest.Config) -> None:  # noqa: D401
