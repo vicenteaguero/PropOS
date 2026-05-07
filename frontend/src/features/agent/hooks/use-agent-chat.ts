@@ -1,10 +1,10 @@
 import { useCallback, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { anitaApi, streamMessage } from "../api/anita-api";
+import { agentApi, streamMessage } from "../api/agent-api";
 import type { ChatStreamEvent } from "../types";
-import type { PendingAudioMessage } from "../components/anita-message-list";
+import type { PendingAudioMessage } from "../components/agent-message-list";
 
-interface AnitaChatState {
+interface AgentChatState {
   isStreaming: boolean;
   isThinking: boolean;
   pendingUserText: string | null;
@@ -15,7 +15,7 @@ interface AnitaChatState {
   error: string | null;
 }
 
-const INITIAL: AnitaChatState = {
+const INITIAL: AgentChatState = {
   isStreaming: false,
   isThinking: false,
   pendingUserText: null,
@@ -31,12 +31,12 @@ const INITIAL: AnitaChatState = {
  *
  * Audio flow: composer calls `submitAudio(blob, url)` immediately on
  * stop. We push a transient audio bubble (so it's visible as a sent
- * message), POST /anita/transcripts in background, and once the text
+ * message), POST /agent/transcripts in background, and once the text
  * arrives we kick off a normal `send`. The audio bubble stays in the
  * UI with a collapsible "Ver transcripción" affordance.
  */
-export function useAnitaChat(sessionId: string | undefined) {
-  const [state, setState] = useState<AnitaChatState>(INITIAL);
+export function useAgentChat(sessionId: string | undefined) {
+  const [state, setState] = useState<AgentChatState>(INITIAL);
   const abortRef = useRef<AbortController | null>(null);
   const thinkingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const queryClient = useQueryClient();
@@ -106,7 +106,7 @@ export function useAnitaChat(sessionId: string | undefined) {
       }
 
       await queryClient.invalidateQueries({
-        queryKey: ["anita", "messages", sessionId],
+        queryKey: ["agent", "messages", sessionId],
       });
       queryClient.invalidateQueries({ queryKey: ["pending"] });
 
@@ -127,7 +127,7 @@ export function useAnitaChat(sessionId: string | undefined) {
         ],
       }));
       try {
-        const result = await anitaApi.createTranscript(blob, sessionId);
+        const result = await agentApi.createTranscript(blob, sessionId);
         setState((s) => ({
           ...s,
           pendingAudio: s.pendingAudio.map((a) =>
