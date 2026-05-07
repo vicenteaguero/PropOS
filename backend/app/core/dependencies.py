@@ -39,6 +39,7 @@ async def get_current_user(
         "role": profile["role"],
         "tenant_id": profile["tenant_id"],
         "full_name": profile.get("full_name"),
+        "admin_scope": profile.get("admin_scope") or [],
     }
 
 
@@ -54,6 +55,23 @@ def require_role(*roles: str) -> Callable:
         return current_user
 
     return role_checker
+
+
+def require_scope(scope: str) -> Callable:
+    """Allow when user has empty admin_scope (full admin) or scope is whitelisted."""
+
+    async def scope_checker(
+        current_user: dict[str, Any] = Depends(get_current_user),
+    ) -> dict[str, Any]:
+        admin_scope: list[str] = current_user.get("admin_scope") or []
+        if admin_scope and scope not in admin_scope:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=FORBIDDEN_MESSAGE,
+            )
+        return current_user
+
+    return scope_checker
 
 
 async def get_tenant_id(
