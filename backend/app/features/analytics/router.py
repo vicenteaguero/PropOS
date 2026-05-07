@@ -127,9 +127,9 @@ async def entity_timeline(
     )
 
 
-@router.get("/anita-cost")
-async def anita_cost(tenant_id: UUID = Depends(get_tenant_id)) -> dict[str, Any]:
-    """Anita usage stats: tokens + cost per session, per day."""
+@router.get("/agent-cost")
+async def agent_cost(tenant_id: UUID = Depends(get_tenant_id)) -> dict[str, Any]:
+    """Agent usage stats: tokens + cost per session, per day."""
     from datetime import UTC, datetime, timedelta
 
     client = get_supabase_client()
@@ -137,7 +137,7 @@ async def anita_cost(tenant_id: UUID = Depends(get_tenant_id)) -> dict[str, Any]
     since = (now - timedelta(days=30)).isoformat()
 
     rows = (
-        client.table("anita_messages")
+        client.table("agent_messages")
         .select("session_id,created_at,tokens_in,tokens_out,cost_cents,provider,model")
         .eq("tenant_id", str(tenant_id))
         .gte("created_at", since)
