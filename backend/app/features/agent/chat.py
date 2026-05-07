@@ -1,4 +1,4 @@
-"""Anita conversation orchestrator (v2).
+"""Agent conversation orchestrator (v2).
 
 Pipeline: classify → resolve → dispatch.
 
@@ -22,15 +22,15 @@ from uuid import UUID
 
 from app.core.logging.logger import get_logger
 from app.core.supabase.client import get_supabase_client
-from app.features.anita.classifier import classify, extract_details
-from app.features.anita.context import load_snapshot
-from app.features.anita.dispatcher import dispatch
-from app.features.anita.intent_registry import get as get_intent_spec
-from app.features.anita.intent_registry import needs_pass_two, normalize_fields, real_captures
-from app.features.anita.postprocess import dedupe_actions, expand_money_units, normalize_rut
-from app.features.anita.resolver import resolve
+from app.features.agent.classifier import classify, extract_details
+from app.features.agent.context import load_snapshot
+from app.features.agent.dispatcher import dispatch
+from app.features.agent.intent_registry import get as get_intent_spec
+from app.features.agent.intent_registry import needs_pass_two, normalize_fields, real_captures
+from app.features.agent.postprocess import dedupe_actions, expand_money_units, normalize_rut
+from app.features.agent.resolver import resolve
 
-logger = get_logger("ANITA_CHAT")
+logger = get_logger("AGENT_CHAT")
 
 
 async def run_chat_turn(
@@ -170,7 +170,7 @@ async def run_chat_turn(
 
     from datetime import UTC, datetime
 
-    client.table("anita_sessions").update({"last_activity_at": datetime.now(UTC).isoformat()}).eq(
+    client.table("agent_sessions").update({"last_activity_at": datetime.now(UTC).isoformat()}).eq(
         "id", str(session_id)
     ).eq("tenant_id", str(tenant_id)).execute()
 
@@ -293,4 +293,4 @@ def _save_message(
         "tokens_in": tokens_in,
         "tokens_out": tokens_out,
     }
-    return client.table("anita_messages").insert(row).execute().data[0]["id"]
+    return client.table("agent_messages").insert(row).execute().data[0]["id"]
