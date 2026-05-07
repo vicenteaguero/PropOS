@@ -15,11 +15,11 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from app.features.anita.intent_registry import _is_falsy
-from app.features.anita.intent_registry import get as get_intent_spec
-from app.features.anita.intent_registry import missing_required
-from app.features.anita.resolver import ResolvedFields
-from app.features.anita.tools.executors import ACCEPTOR_BY_KIND, _create_proposal
+from app.features.agent.intent_registry import _is_falsy
+from app.features.agent.intent_registry import get as get_intent_spec
+from app.features.agent.intent_registry import missing_required
+from app.features.agent.resolver import ResolvedFields
+from app.features.agent.tools.executors import ACCEPTOR_BY_KIND, _create_proposal
 
 
 def _build_payload(intent: str, resolved: ResolvedFields) -> dict[str, Any]:
@@ -227,7 +227,7 @@ def _consume_media_buffer(session_id: UUID, *, max_age_min: int = 60) -> list[di
     """Return the current "pack" of unprocessed media for the session.
 
     A pack = photos that arrived AFTER the last assistant turn (so previous
-    packs that Anita already responded to don't leak into the next intent),
+    packs that Agent already responded to don't leak into the next intent),
     within ``max_age_min`` (1h default). Same-session only — no cross-session
     bleed since the query is keyed to ``session_id``.
     """
@@ -239,7 +239,7 @@ def _consume_media_buffer(session_id: UUID, *, max_age_min: int = 60) -> list[di
     cutoff = (datetime.now(UTC) - timedelta(minutes=max_age_min)).isoformat()
 
     last_assistant = (
-        db.table("anita_messages")
+        db.table("agent_messages")
         .select("created_at")
         .eq("session_id", str(session_id))
         .eq("role", "assistant")
@@ -252,7 +252,7 @@ def _consume_media_buffer(session_id: UUID, *, max_age_min: int = 60) -> list[di
     floor = max(pack_floor, cutoff)
 
     rows = (
-        db.table("anita_messages")
+        db.table("agent_messages")
         .select("id, media_url, media_mime, media_kapso_id")
         .eq("session_id", str(session_id))
         .eq("media_status", "unprocessed")
@@ -271,7 +271,7 @@ def _dispatch_query(intent: str, resolved: ResolvedFields, tenant_id: UUID) -> d
     second LLM call (text-to-SQL) which is the only place outside the
     classifier where we touch a model.
     """
-    from app.features.anita.tools.query_data import run_query
+    from app.features.agent.tools.query_data import run_query
 
     if intent == "query_count":
         view = resolved.extras.get("view")
@@ -287,7 +287,7 @@ def _dispatch_query(intent: str, resolved: ResolvedFields, tenant_id: UUID) -> d
     # wrapper that drives the LLM via httpx).
     import asyncio
 
-    from app.features.anita.tools.text_to_sql import generate_and_run_sql
+    from app.features.agent.tools.text_to_sql import generate_and_run_sql
 
     question = (
         resolved.extras.get("intent_text") or resolved.extras.get("summary") or resolved.extras.get("question") or ""
