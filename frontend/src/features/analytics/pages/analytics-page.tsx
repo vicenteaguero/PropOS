@@ -7,6 +7,7 @@ import { formatCLP } from "@/lib/locale-cl";
 import { PageLayout } from "@shared/components/page-layout";
 import { PageHeader } from "@shared/components/page-header";
 import { CHART_COLORS, CHART_HEIGHT } from "@shared/lib/chart-config";
+import { useAgentName } from "@core/branding/agent-branding";
 import {
   Bar,
   BarChart,
@@ -68,6 +69,7 @@ const STAGE_COLORS = [
 
 export function AnalyticsPage() {
   const queryClient = useQueryClient();
+  const agentName = useAgentName();
 
   const revenue = useQuery({
     queryKey: ["analytics", "revenue"],
@@ -131,7 +133,10 @@ export function AnalyticsPage() {
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <KpiCard label="Ingresos totales" value={formatCLP(totalIn / 100)} />
           <KpiCard label="Gastos totales" value={formatCLP(totalOut / 100)} tone="destructive" />
-          <KpiCard label="Pendientes Anita" value={String(pending.data?.pending_count ?? 0)} />
+          <KpiCard
+            label={`Pendientes ${agentName}`}
+            value={String(pending.data?.pending_count ?? 0)}
+          />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
