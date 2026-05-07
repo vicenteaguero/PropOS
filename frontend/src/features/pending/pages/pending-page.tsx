@@ -2,10 +2,11 @@ import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AnitaInlineProposalCard } from "@features/anita/components/anita-inline-proposal-card";
+import { AgentInlineProposalCard } from "@features/agent/components/agent-inline-proposal-card";
 import { PageLayout } from "@shared/components/page-layout";
 import { PageHeader } from "@shared/components/page-header";
 import { usePendingProposals } from "../hooks/use-pending";
+import { useAgentName } from "@core/branding/agent-branding";
 import { Loader2 } from "lucide-react";
 
 const TABS = [
@@ -16,13 +17,14 @@ const TABS = [
 
 export function PendingPage() {
   const [tab, setTab] = useState<string>("pending");
+  const agentName = useAgentName();
   const { data, isLoading, isError } = usePendingProposals(tab);
 
   return (
     <PageLayout width="md">
       <PageHeader
-        title="Pendientes de Anita"
-        description="Revisa y acepta las propuestas que Anita generó desde audio o chat."
+        title={`Pendientes de ${agentName}`}
+        description={`Revisa y acepta las propuestas que ${agentName} generó desde audio o chat.`}
       />
       <div className="space-y-4">
         <div className="flex flex-wrap gap-2">
@@ -58,7 +60,7 @@ export function PendingPage() {
 
         <div className="space-y-3">
           {data?.map((p) => (
-            <AnitaInlineProposalCard key={p.id} proposalId={p.id} />
+            <AgentInlineProposalCard key={p.id} proposalId={p.id} />
           ))}
         </div>
       </div>
