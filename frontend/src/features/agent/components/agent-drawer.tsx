@@ -2,37 +2,39 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { useAnitaSession, useAnitaMessages } from "../hooks/use-anita-session";
-import { useAnitaChat } from "../hooks/use-anita-chat";
-import { anitaApi } from "../api/anita-api";
-import { AnitaComposer } from "./anita-composer";
-import { AnitaMessageList } from "./anita-message-list";
+import { useAgentSession, useAgentMessages } from "../hooks/use-agent-session";
+import { useAgentChat } from "../hooks/use-agent-chat";
+import { agentApi } from "../api/agent-api";
+import { AgentComposer } from "./agent-composer";
+import { AgentMessageList } from "./agent-message-list";
 import { Sparkles, Loader2, PlusCircle } from "lucide-react";
+import { useAgentName } from "@core/branding/agent-branding";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function AnitaDrawer({ open, onOpenChange }: Props) {
-  const sessionQuery = useAnitaSession();
+export function AgentDrawer({ open, onOpenChange }: Props) {
+  const sessionQuery = useAgentSession();
   const sessionId = sessionQuery.data?.id;
-  const messagesQuery = useAnitaMessages(sessionId);
-  const chat = useAnitaChat(sessionId);
+  const messagesQuery = useAgentMessages(sessionId);
+  const chat = useAgentChat(sessionId);
   const [closing, setClosing] = useState(false);
   const queryClient = useQueryClient();
+  const agentName = useAgentName();
 
   const handleNewConversation = async () => {
     if (!sessionId || closing) return;
     setClosing(true);
     try {
-      await anitaApi.updateSession(sessionId, { status: "CLOSED" });
+      await agentApi.updateSession(sessionId, { status: "CLOSED" });
     } catch {
       /* even if close fails, force-resume */
     }
     chat.reset();
-    await queryClient.invalidateQueries({ queryKey: ["anita", "session"] });
-    queryClient.removeQueries({ queryKey: ["anita", "messages"] });
+    await queryClient.invalidateQueries({ queryKey: ["agent", "session"] });
+    queryClient.removeQueries({ queryKey: ["agent", "messages"] });
     setClosing(false);
   };
 
@@ -43,7 +45,7 @@ export function AnitaDrawer({ open, onOpenChange }: Props) {
           <div className="flex items-center justify-between gap-2">
             <SheetTitle className="flex items-center gap-2">
               <Sparkles className="size-5 text-primary" />
-              Anita
+              {agentName}
             </SheetTitle>
             <Button
               type="button"
@@ -78,7 +80,7 @@ export function AnitaDrawer({ open, onOpenChange }: Props) {
         ) : (
           <>
             <div className="flex-1 min-h-0 overflow-hidden px-4">
-              <AnitaMessageList
+              <AgentMessageList
                 messages={messagesQuery.data ?? []}
                 liveText={chat.liveText}
                 isStreaming={chat.isStreaming}
@@ -90,7 +92,7 @@ export function AnitaDrawer({ open, onOpenChange }: Props) {
             </div>
             {chat.error && <p className="px-4 text-xs text-destructive">{chat.error}</p>}
             <div className="p-4 border-t border-border shrink-0">
-              <AnitaComposer
+              <AgentComposer
                 onSend={chat.send}
                 onAudio={chat.submitAudio}
                 isStreaming={chat.isStreaming}
