@@ -13,13 +13,15 @@ import { SharePublicPage } from "@features/documents/pages/share-public-page";
 import { PortalPublicPage } from "@features/documents/pages/portal-public-page";
 import { PendingPage } from "@features/pending/pages/pending-page";
 import { AnalyticsPage } from "@features/analytics/pages/analytics-page";
-import { AnitaCostPage } from "@features/analytics/pages/anita-cost-page";
+import { AgentCostPage } from "@features/analytics/pages/agent-cost-page";
 import { EntityTimelinePage } from "@features/analytics/pages/entity-timeline-page";
 import { WorkflowsPage } from "@features/workflows/pages/workflows-page";
-import { AnitaChatPage } from "@features/anita/pages/anita-chat-page";
+import { AgentChatPage } from "@features/agent/pages/agent-chat-page";
 import { AdminHomePage } from "@features/home/pages/admin-home-page";
 import { ClientInboxPage } from "@features/client-chat/pages/client-inbox-page";
 import { AdminPhonesPage } from "@features/admin-phones/pages/admin-phones-page";
+import { NovedadesPage } from "@features/novedades/pages/novedades-page";
+import { SettingsPage } from "@features/settings/pages/settings-page";
 import type { UserRole } from "@shared/types/auth";
 
 const ROLE_HOME_PATHS: Record<UserRole, string> = {
@@ -66,24 +68,107 @@ export function AppRouter() {
         >
           <Route index element={role === "ADMIN" ? <AdminHomePage /> : <EmptyDashboard />} />
 
-          {role === "ADMIN" && <Route path="anita" element={<AnitaChatPage />} />}
+          {role === "ADMIN" && (
+            <Route
+              path="agent"
+              element={
+                <ProtectedRoute requiredScope="agent">
+                  <AgentChatPage />
+                </ProtectedRoute>
+              }
+            />
+          )}
 
-          <Route path="pendientes" element={<PendingPage />} />
-          <Route path="client-inbox" element={<ClientInboxPage />} />
-          {role === "ADMIN" && <Route path="phones" element={<AdminPhonesPage />} />}
+          <Route
+            path="pendientes"
+            element={
+              <ProtectedRoute requiredScope="pendientes">
+                <PendingPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="client-inbox"
+            element={
+              <ProtectedRoute requiredScope="inbox">
+                <ClientInboxPage />
+              </ProtectedRoute>
+            }
+          />
+          {role === "ADMIN" && (
+            <Route
+              path="phones"
+              element={
+                <ProtectedRoute requiredScope="phones">
+                  <AdminPhonesPage />
+                </ProtectedRoute>
+              }
+            />
+          )}
 
-          <Route path="documents" element={<DocumentsPage />} />
-          <Route path="documents/portals" element={<PortalAdminPage />} />
-          <Route path="documents/:id" element={<DocumentDetailPage />} />
-          <Route path="documents/:id/edit" element={<DocumentEditorPage />} />
+          <Route
+            path="documents"
+            element={
+              <ProtectedRoute requiredScope="documents">
+                <DocumentsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="documents/portals"
+            element={
+              <ProtectedRoute requiredScope="documents">
+                <PortalAdminPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="documents/:id"
+            element={
+              <ProtectedRoute requiredScope="documents">
+                <DocumentDetailPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="documents/:id/edit"
+            element={
+              <ProtectedRoute requiredScope="documents">
+                <DocumentEditorPage />
+              </ProtectedRoute>
+            }
+          />
 
-          <Route path="workflows" element={<WorkflowsPage />} />
+          <Route
+            path="workflows"
+            element={
+              <ProtectedRoute requiredScope="workflows">
+                <WorkflowsPage />
+              </ProtectedRoute>
+            }
+          />
           <Route path="timeline/:table/:id" element={<EntityTimelinePage />} />
+          {role === "ADMIN" && <Route path="novedades" element={<NovedadesPage />} />}
+          {role === "ADMIN" && <Route path="settings" element={<SettingsPage />} />}
 
           {role === "ADMIN" && (
             <>
-              <Route path="analytics" element={<AnalyticsPage />} />
-              <Route path="analytics/anita-cost" element={<AnitaCostPage />} />
+              <Route
+                path="analytics"
+                element={
+                  <ProtectedRoute requiredScope="analytics">
+                    <AnalyticsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="analytics/agent-cost"
+                element={
+                  <ProtectedRoute requiredScope="analytics">
+                    <AgentCostPage />
+                  </ProtectedRoute>
+                }
+              />
             </>
           )}
         </Route>
