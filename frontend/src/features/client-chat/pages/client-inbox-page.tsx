@@ -15,13 +15,22 @@ const TABS: { value: ConversationStatus | "all"; label: string }[] = [
   { value: "all", label: "Todas" },
 ];
 
+const VIEW_TABS: { value: "active" | "archived"; label: string }[] = [
+  { value: "active", label: "Activas" },
+  { value: "archived", label: "Archivadas" },
+];
+
 const THIRTY_DAYS_MS = 30 * 24 * 3600 * 1000;
 
 export function ClientInboxPage() {
   // Default filter: active/open conversations.
+  const [view, setView] = useState<"active" | "archived">("active");
   const [tab, setTab] = useState<ConversationStatus | "all">("open");
   const [query, setQuery] = useState("");
-  const { data: conversations = [], isLoading } = useConversations(tab === "all" ? undefined : tab);
+  const { data: conversations = [], isLoading } = useConversations(
+    tab === "all" ? undefined : tab,
+    view === "archived",
+  );
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   // Default time-window: last 30 days (filter client-side).
@@ -57,6 +66,19 @@ export function ClientInboxPage() {
               placeholder="Buscar teléfono..."
               className="pl-8"
             />
+          </div>
+          <div className="flex gap-1.5">
+            {VIEW_TABS.map((v) => (
+              <Button
+                key={v.value}
+                size="sm"
+                variant={view === v.value ? "default" : "outline"}
+                onClick={() => setView(v.value)}
+                className="h-7 rounded-full px-3 text-xs"
+              >
+                {v.label}
+              </Button>
+            ))}
           </div>
           <div className="flex flex-wrap gap-1.5">
             {TABS.map((t) => (
