@@ -22,7 +22,7 @@ const KIND_LABELS: Record<string, string> = {
   propose_add_note: "Agregar nota",
 };
 
-export function AnitaInlineProposalCard({ proposalId }: Props) {
+export function AgentInlineProposalCard({ proposalId }: Props) {
   const [editing, setEditing] = useState(false);
   const [picks, setPicks] = useState<Record<string, string>>({});
   const accept = useAcceptProposal();
