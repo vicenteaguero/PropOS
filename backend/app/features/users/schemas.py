@@ -21,6 +21,12 @@ class UserBase(BaseModel):
     is_active: bool = True
     email: str | None = None
     rut: str | None = None
+    avatar_url: str | None = None
+    admin_scope: list[str] = []
+
+
+class AvatarUpdate(BaseModel):
+    avatar_url: str | None = None
 
 
 class UserCreate(BaseModel):
@@ -37,6 +43,8 @@ class UserUpdate(BaseModel):
     role: UserRole | None = None
     is_active: bool | None = None
     rut: str | None = None
+    avatar_url: str | None = None
+    admin_scope: list[str] | None = None
 
 
 class UserResponse(UserBase):
