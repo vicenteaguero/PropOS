@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import { PageLayout } from "@shared/components/page-layout";
 import { PageHeader } from "@shared/components/page-header";
 import { userPhonesApi, type AppUser, type UserPhone } from "../api/user-phones-api";
+import { useAgentName } from "@core/branding/agent-branding";
 
 const ROLES = ["ADMIN", "AGENT", "LANDOWNER", "BUYER", "CONTENT"];
 
 export function AdminPhonesPage() {
+  const agentName = useAgentName();
   const [users, setUsers] = useState<AppUser[]>([]);
   const [phones, setPhones] = useState<UserPhone[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -112,7 +114,7 @@ export function AdminPhonesPage() {
     <PageLayout width="md">
       <PageHeader
         title="Usuarios y teléfonos"
-        description="Crea usuarios internos y asigna sus números E.164. Mensajes desde números asignados se rutean a Anita; el resto va al Client Agent."
+        description={`Crea usuarios internos y asigna sus números E.164. Mensajes desde números asignados se rutean a ${agentName}; el resto va al Client Agent.`}
       />
       <div className="space-y-8">
         <section className="space-y-3 border rounded-lg p-4">
