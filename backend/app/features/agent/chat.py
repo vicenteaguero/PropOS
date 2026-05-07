@@ -20,6 +20,7 @@ from collections.abc import AsyncIterator
 from typing import Any
 from uuid import UUID
 
+from app.core.config.settings import settings
 from app.core.logging.logger import get_logger
 from app.core.supabase.client import get_supabase_client
 from app.features.agent.classifier import classify, extract_details
@@ -42,6 +43,20 @@ async def run_chat_turn(
     """Run one turn end-to-end. Streams events for the frontend."""
     client = get_supabase_client()
     t0 = time.perf_counter()
+
+    cap = settings.agent_turns_per_user_per_day
+    if cap > 0:
+        used = client.rpc("agent_user_turns_today", {"p_user_id": str(user_id)}).execute().data or 0
+        if isinstance(used, list):
+            used = used[0] if used else 0
+        if int(used) >= cap:
+            logger.info("turn_quota_exceeded", event_type="quota", user_id=str(user_id), cap=cap, used=int(used))
+            yield {
+                "type": "text",
+                "text": (f"Llegaste al tope diario ({cap} turnos). Probá de nuevo mañana o bajá el ritmo. 🙏"),
+            }
+            yield {"type": "done"}
+            return
 
     _save_message(client, tenant_id, session_id, "user", user_text)
 
