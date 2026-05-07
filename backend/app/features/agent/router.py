@@ -9,25 +9,25 @@ from fastapi.responses import StreamingResponse
 
 from app.core.dependencies import get_current_user, get_tenant_id
 from app.core.supabase.client import get_supabase_client
-from app.features.anita.chat import run_chat_turn
-from app.features.anita.schemas import (
-    AnitaSessionResponse,
-    AnitaSessionUpdate,
+from app.features.agent.chat import run_chat_turn
+from app.features.agent.schemas import (
+    AgentSessionResponse,
+    AgentSessionUpdate,
     ChatRequest,
     TranscribeResponse,
 )
-from app.features.anita.transcribe import TranscriptionError, transcribe_audio
+from app.features.agent.transcribe import TranscriptionError, transcribe_audio
 
-router = APIRouter(prefix="/anita")
+router = APIRouter(prefix="/agent")
 
 # ──────────────────────────── sessions ────────────────────────────
 
 
 @router.post(
     "/sessions",
-    response_model=AnitaSessionResponse,
+    response_model=AgentSessionResponse,
     status_code=201,
-    tags=["anita-sessions"],
+    tags=["agent-sessions"],
 )
 async def create_or_resume_session(
     force_new: bool = False,
@@ -41,7 +41,7 @@ async def create_or_resume_session(
 
     Otherwise we resume the most recent OPEN session (any ``source``,
     including ``whatsapp``) whose ``last_activity_at`` is within
-    ``ANITA_SESSION_INACTIVITY_HOURS``. This lets a broker continue on web
+    ``AGENT_SESSION_INACTIVITY_HOURS``. This lets a broker continue on web
     a thread they started on WhatsApp, and vice versa. If nothing recent
     exists we open a new session.
     """
@@ -53,13 +53,13 @@ async def create_or_resume_session(
     user_id = current_user["id"]
 
     if force_new:
-        client.table("anita_sessions").update({"status": "CLOSED", "closed_at": datetime.now(UTC).isoformat()}).eq(
+        client.table("agent_sessions").update({"status": "CLOSED", "closed_at": datetime.now(UTC).isoformat()}).eq(
             "user_id", user_id
         ).eq("tenant_id", str(tenant_id)).eq("status", "OPEN").execute()
     else:
-        cutoff = (datetime.now(UTC) - timedelta(hours=settings.anita_session_inactivity_hours)).isoformat()
+        cutoff = (datetime.now(UTC) - timedelta(hours=settings.agent_session_inactivity_hours)).isoformat()
         existing = (
-            client.table("anita_sessions")
+            client.table("agent_sessions")
             .select("*")
             .eq("user_id", user_id)
             .eq("tenant_id", str(tenant_id))
@@ -74,7 +74,7 @@ async def create_or_resume_session(
             return existing[0]
 
     return (
-        client.table("anita_sessions")
+        client.table("agent_sessions")
         .insert(
             {
                 "id": str(uuid4()),
@@ -90,7 +90,7 @@ async def create_or_resume_session(
 
 @router.get(
     "/sessions",
-    tags=["anita-sessions"],
+    tags=["agent-sessions"],
 )
 async def list_sessions(
     limit: int = 30,
@@ -103,7 +103,7 @@ async def list_sessions(
     user_id = current_user["id"]
 
     sessions = (
-        client.table("anita_sessions")
+        client.table("agent_sessions")
         .select("id, status, started_at, last_activity_at, closed_at")
         .eq("user_id", user_id)
         .eq("tenant_id", str(tenant_id))
@@ -118,7 +118,7 @@ async def list_sessions(
 
     ids = [s["id"] for s in sessions]
     previews = (
-        client.table("anita_messages")
+        client.table("agent_messages")
         .select("session_id, content, created_at, role")
         .in_("session_id", ids)
         .eq("role", "user")
@@ -150,12 +150,12 @@ async def list_sessions(
 
 @router.patch(
     "/sessions/{session_id}",
-    response_model=AnitaSessionResponse,
-    tags=["anita-sessions"],
+    response_model=AgentSessionResponse,
+    tags=["agent-sessions"],
 )
 async def update_session(
     session_id: UUID,
-    payload: AnitaSessionUpdate,
+    payload: AgentSessionUpdate,
     tenant_id: UUID = Depends(get_tenant_id),
 ) -> dict:
     from datetime import UTC, datetime
@@ -168,7 +168,7 @@ async def update_session(
 
     client = get_supabase_client()
     rows = (
-        client.table("anita_sessions")
+        client.table("agent_sessions")
         .update(data)
         .eq("id", str(session_id))
         .eq("tenant_id", str(tenant_id))
@@ -183,7 +183,7 @@ async def update_session(
 # ──────────────────────────── messages ────────────────────────────
 
 
-@router.get("/sessions/{session_id}/messages", tags=["anita-messages"])
+@router.get("/sessions/{session_id}/messages", tags=["agent-messages"])
 async def list_messages(
     session_id: UUID,
     tenant_id: UUID = Depends(get_tenant_id),
@@ -191,7 +191,7 @@ async def list_messages(
 ) -> list[dict]:
     client = get_supabase_client()
     return (
-        client.table("anita_messages")
+        client.table("agent_messages")
         .select("*")
         .eq("session_id", str(session_id))
         .eq("tenant_id", str(tenant_id))
@@ -202,7 +202,7 @@ async def list_messages(
     )
 
 
-@router.post("/sessions/{session_id}/messages", tags=["anita-messages"])
+@router.post("/sessions/{session_id}/messages", tags=["agent-messages"])
 async def post_message(
     session_id: UUID,
     payload: ChatRequest,
@@ -214,7 +214,7 @@ async def post_message(
     user_text = payload.user_text or ""
     if payload.transcript_id and not user_text:
         transcript = (
-            client.table("anita_transcripts")
+            client.table("agent_transcripts")
             .select("text")
             .eq("id", str(payload.transcript_id))
             .eq("tenant_id", str(tenant_id))
@@ -246,7 +246,7 @@ async def post_message(
     "/transcripts",
     response_model=TranscribeResponse,
     status_code=201,
-    tags=["anita-transcripts"],
+    tags=["agent-transcripts"],
 )
 async def create_transcript(
     audio: UploadFile = File(...),
@@ -267,7 +267,7 @@ async def create_transcript(
 
     client = get_supabase_client()
     row = (
-        client.table("anita_transcripts")
+        client.table("agent_transcripts")
         .insert(
             {
                 "tenant_id": str(tenant_id),
