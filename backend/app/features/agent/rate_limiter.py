@@ -30,9 +30,9 @@ from functools import lru_cache
 from collections.abc import Iterable
 
 from app.core.logging.logger import get_logger
-from app.features.anita.rate_limits import ModelLimits, get_limits
+from app.features.agent.rate_limits import ModelLimits, get_limits
 
-logger = get_logger("ANITA_RATE_LIMIT")
+logger = get_logger("AGENT_RATE_LIMIT")
 
 _MIN = 60.0
 _DAY = 86_400.0
