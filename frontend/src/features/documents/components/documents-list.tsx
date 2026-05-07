@@ -1,6 +1,7 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useRef } from "react";
-import { FileText } from "lucide-react";
+import { FileText, WifiOff } from "lucide-react";
+import { formatBytes } from "@shared/lib/format";
 import type { DocumentItem } from "../types";
 
 interface Props {
@@ -38,10 +39,14 @@ export function DocumentsList({ documents, onOpen }: Props) {
             >
               <FileText className="size-5 shrink-0 text-primary/70" strokeWidth={1.4} />
               <div className="min-w-0 flex-1">
-                <div className="truncate font-medium">{doc.display_name}</div>
+                <div className="flex items-center gap-1.5 truncate font-medium">
+                  {doc.pin_offline && <WifiOff className="size-3 shrink-0 text-primary" />}
+                  <span className="truncate">{doc.display_name}</span>
+                </div>
                 <div className="truncate text-xs text-muted-foreground">
                   {doc.kind} · v{doc.current_version?.version_number ?? "?"} ·{" "}
-                  {doc.assignments?.length ?? 0} vínculos
+                  {formatBytes(doc.current_version?.size_bytes)} · {doc.assignments?.length ?? 0}{" "}
+                  vínculos
                 </div>
               </div>
               <div className="shrink-0 text-xs text-muted-foreground">
