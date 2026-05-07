@@ -1,11 +1,11 @@
 """Client Agent — B2C AI for inbound WhatsApp from external contacts.
 
-Differs from Anita:
+Differs from Agent:
 - Sender is the *contact*, not a broker. No propose-pending — direct DB
   writes (lead capture, visit requests) are fine because the contact is
   the actor.
 - Conversation lives in ``client_conversations`` / ``client_messages``,
-  not ``anita_*``.
+  not ``agent_*``.
 - Single LLM call per turn (no two-pass), short reply, Spanish, polite.
 - Hand-off: if conversation ``ai_enabled=false`` or ``status='assigned'``,
   do not auto-reply.
@@ -19,7 +19,7 @@ from typing import Any
 from app.core.config.settings import settings
 from app.core.logging.logger import get_logger
 from app.core.supabase.client import get_supabase_client
-from app.features.anita.rate_limiter import get_rate_limiter
+from app.features.agent.rate_limiter import get_rate_limiter
 from app.features.integrations.kapso import client as kapso_client
 
 
