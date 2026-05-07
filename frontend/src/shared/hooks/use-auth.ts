@@ -25,12 +25,14 @@ interface ProfileRow {
   role: UserRole;
   tenant_id: string;
   is_active: boolean;
+  avatar_url: string | null;
+  admin_scope: string[] | null;
 }
 
 async function fetchProfile(userId: string): Promise<UserProfile | null> {
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, full_name, role, tenant_id, is_active")
+    .select("id, full_name, role, tenant_id, is_active, avatar_url, admin_scope")
     .eq("id", userId)
     .single();
 
@@ -47,6 +49,8 @@ async function fetchProfile(userId: string): Promise<UserProfile | null> {
     role: row.role,
     tenantId: row.tenant_id,
     isActive: row.is_active,
+    avatarUrl: row.avatar_url,
+    adminScope: row.admin_scope ?? [],
   };
 }
 
