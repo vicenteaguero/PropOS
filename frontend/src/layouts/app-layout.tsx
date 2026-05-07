@@ -1,7 +1,7 @@
 import { Outlet } from "react-router-dom";
 import { LogOut } from "lucide-react";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,8 +11,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { AppSidebar } from "@layouts/app-sidebar";
+import { ViewAsBanner } from "@layouts/view-as-banner";
+import { ViewAsPicker } from "@layouts/view-as-picker";
 import { useAuth } from "@shared/hooks/use-auth";
-import { AnitaFAB } from "@features/anita/components/anita-fab";
+import { AgentFAB } from "@features/agent/components/agent-fab";
+import { InstallNudge } from "@shared/components/install-nudge/install-nudge";
+import { useUfDailyRefresh } from "@features/uf/hooks/use-uf";
 
 function getInitials(name: string): string {
   return name
@@ -25,11 +29,13 @@ function getInitials(name: string): string {
 
 export function AppLayout() {
   const { user, signOut } = useAuth();
+  useUfDailyRefresh();
 
   return (
     <SidebarProvider defaultOpen={false}>
       <AppSidebar />
       <SidebarInset>
+        <ViewAsBanner />
         <header className="sticky top-0 z-10 flex h-[var(--app-header-h)] shrink-0 items-center gap-2 border-b border-border bg-background px-4">
           <SidebarTrigger className="-ml-1 md:hidden" />
           <div className="flex-1" />
@@ -38,11 +44,12 @@ export function AppLayout() {
               <DropdownMenuTrigger asChild>
                 <button className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring">
                   <Avatar size="sm">
+                    {user?.avatarUrl && <AvatarImage src={user.avatarUrl} alt={user.fullName} />}
                     <AvatarFallback>{user ? getInitials(user.fullName) : "?"}</AvatarFallback>
                   </Avatar>
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuContent align="end" className="w-56">
                 {user && (
                   <>
                     <DropdownMenuLabel className="font-normal">
@@ -52,6 +59,11 @@ export function AppLayout() {
                       </p>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
+                    {user.role === "ADMIN" && (user.adminScope?.length ?? 0) === 0 && (
+                      <div className="px-1 py-1">
+                        <ViewAsPicker />
+                      </div>
+                    )}
                   </>
                 )}
                 <DropdownMenuItem onClick={signOut}>
@@ -65,7 +77,12 @@ export function AppLayout() {
         <main className="flex-1">
           <Outlet />
         </main>
-        <AnitaFAB />
+        {(() => {
+          const scope = user?.adminScope ?? [];
+          if (scope.length > 0 && !scope.includes("agent")) return null;
+          return <AgentFAB />;
+        })()}
+        <InstallNudge />
       </SidebarInset>
     </SidebarProvider>
   );
