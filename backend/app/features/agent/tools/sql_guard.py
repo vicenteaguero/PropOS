@@ -1,11 +1,11 @@
-"""SQL allowlist for Anita's text-to-SQL tool.
+"""SQL allowlist for Agent's text-to-SQL tool.
 
 Defense in depth (the first two layers; the third is Postgres):
 1. **Parse with sqlglot** — must be a single `SELECT` AST. No DDL, DML, CTE
    that writes, no `pg_*` system catalog reads, no `COPY`, no functions
    outside the whitelist below.
 2. **Inject `LIMIT 200`** if absent.
-3. **Postgres role** (`anita_readonly`, see migration) only has `SELECT`
+3. **Postgres role** (`agent_readonly`, see migration) only has `SELECT`
    on `public.*`; RLS is enforced via `set_config('request.jwt.claims', ...)`
    when the connection is opened.
 """
