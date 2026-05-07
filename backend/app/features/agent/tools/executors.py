@@ -1,4 +1,4 @@
-"""Anita proposal writers + accept-side dispatchers.
+"""Agent proposal writers + accept-side dispatchers.
 
 The v2 pipeline (``classifier`` → ``resolver`` → ``dispatcher``) calls
 ``_create_proposal`` directly. The pending-review feature (when a human
@@ -15,7 +15,7 @@ from uuid import UUID, uuid4
 from app.core.logging.logger import get_logger
 from app.core.supabase.client import get_supabase_client
 
-logger = get_logger("ANITA_TOOLS")
+logger = get_logger("AGENT_TOOLS")
 
 PENDING_TABLE = "pending_proposals"
 
@@ -39,7 +39,7 @@ def _create_proposal(
     row = {
         "id": str(uuid4()),
         "tenant_id": str(tenant_id),
-        "anita_session_id": str(session_id),
+        "agent_session_id": str(session_id),
         "proposed_by_user": str(user_id),
         "kind": kind,
         "target_table": target_table,
@@ -67,7 +67,7 @@ def _create_proposal(
 # ---------- Accept dispatchers (registered with pending/service.py) ----------
 
 
-def _accept_create_person(payload, tenant_id, user_id, anita_session_id):
+def _accept_create_person(payload, tenant_id, user_id, agent_session_id):
     client = get_supabase_client()
     payload = {k: v for k, v in payload.items() if k not in ("summary_es",)}
     payload["tenant_id"] = str(tenant_id)
@@ -78,7 +78,7 @@ def _accept_create_person(payload, tenant_id, user_id, anita_session_id):
     return ("contacts", UUID(row["id"]))
 
 
-def _accept_log_interaction(payload, tenant_id, user_id, anita_session_id):
+def _accept_log_interaction(payload, tenant_id, user_id, agent_session_id):
     client = get_supabase_client()
     participants = payload.pop("participant_person_ids", []) or []
     property_id = payload.pop("property_id", None)
@@ -86,7 +86,7 @@ def _accept_log_interaction(payload, tenant_id, user_id, anita_session_id):
     payload = {k: v for k, v in payload.items() if k not in ("summary_es",)}
     payload["tenant_id"] = str(tenant_id)
     payload["created_by"] = str(user_id)
-    payload["source"] = "anita"
+    payload["source"] = "agent"
     if not payload.get("occurred_at"):
         payload["occurred_at"] = datetime.now(UTC).isoformat()
     row = client.table("interactions").insert(payload).execute().data[0]
@@ -125,22 +125,22 @@ def _accept_log_interaction(payload, tenant_id, user_id, anita_session_id):
     return ("interactions", UUID(row["id"]))
 
 
-def _accept_create_task(payload, tenant_id, user_id, anita_session_id):
+def _accept_create_task(payload, tenant_id, user_id, agent_session_id):
     client = get_supabase_client()
     payload = {k: v for k, v in payload.items() if k not in ("summary_es",)}
     payload["tenant_id"] = str(tenant_id)
     payload["created_by"] = str(user_id)
-    payload["source"] = "anita"
+    payload["source"] = "agent"
     row = client.table("tasks").insert(payload).execute().data[0]
     return ("tasks", UUID(row["id"]))
 
 
-def _accept_log_transaction(payload, tenant_id, user_id, anita_session_id):
+def _accept_log_transaction(payload, tenant_id, user_id, agent_session_id):
     client = get_supabase_client()
     payload = {k: v for k, v in payload.items() if k not in ("summary_es", "amount")}
     payload["tenant_id"] = str(tenant_id)
     payload["created_by"] = str(user_id)
-    payload["source"] = "anita"
+    payload["source"] = "agent"
     if not payload.get("occurred_at"):
         payload["occurred_at"] = datetime.now(UTC).isoformat()
     if "amount_cents" not in payload:
@@ -149,17 +149,17 @@ def _accept_log_transaction(payload, tenant_id, user_id, anita_session_id):
     return ("transactions", UUID(row["id"]))
 
 
-def _accept_create_campaign(payload, tenant_id, user_id, anita_session_id):
+def _accept_create_campaign(payload, tenant_id, user_id, agent_session_id):
     client = get_supabase_client()
     payload = {k: v for k, v in payload.items() if k not in ("summary_es", "budget")}
     payload["tenant_id"] = str(tenant_id)
     payload["created_by"] = str(user_id)
-    payload["source"] = "anita"
+    payload["source"] = "agent"
     row = client.table("campaigns").insert(payload).execute().data[0]
     return ("campaigns", UUID(row["id"]))
 
 
-def _accept_create_organization(payload, tenant_id, user_id, anita_session_id):
+def _accept_create_organization(payload, tenant_id, user_id, agent_session_id):
     client = get_supabase_client()
     payload = {k: v for k, v in payload.items() if k not in ("summary_es",)}
     payload["tenant_id"] = str(tenant_id)
@@ -168,7 +168,7 @@ def _accept_create_organization(payload, tenant_id, user_id, anita_session_id):
     return ("organizations", UUID(row["id"]))
 
 
-def _accept_create_property(payload, tenant_id, user_id, anita_session_id):
+def _accept_create_property(payload, tenant_id, user_id, agent_session_id):
     client = get_supabase_client()
     payload = {k: v for k, v in payload.items() if k not in ("summary_es",)}
     payload["tenant_id"] = str(tenant_id)
@@ -189,13 +189,13 @@ def _materialize_media(
     tenant_id: UUID,
     user_id: UUID,
 ) -> list[UUID]:
-    """For each anita_messages id, lift its media into media_files (one row
+    """For each agent_messages id, lift its media into media_files (one row
     per file) and mark the message consumed. Returns the new media_files ids."""
     if not media_message_ids:
         return []
     client = get_supabase_client()
     msgs = (
-        client.table("anita_messages").select("id, media_url, media_mime").in_("id", media_message_ids).execute().data
+        client.table("agent_messages").select("id, media_url, media_mime").in_("id", media_message_ids).execute().data
         or []
     )
     file_ids: list[UUID] = []
@@ -221,11 +221,11 @@ def _materialize_media(
         )
         file_ids.append(UUID(file_row["id"]))
     if msgs:
-        client.table("anita_messages").update({"media_status": "consumed"}).in_("id", [m["id"] for m in msgs]).execute()
+        client.table("agent_messages").update({"media_status": "consumed"}).in_("id", [m["id"] for m in msgs]).execute()
     return file_ids
 
 
-def _accept_attach_photos_to_property(payload, tenant_id, user_id, anita_session_id):
+def _accept_attach_photos_to_property(payload, tenant_id, user_id, agent_session_id):
     client = get_supabase_client()
     property_id = payload.get("property_id")
     if not property_id:
@@ -249,7 +249,7 @@ def _accept_attach_photos_to_property(payload, tenant_id, user_id, anita_session
     return ("media_assets", UUID(property_id))
 
 
-def _accept_create_document_from_photos(payload, tenant_id, user_id, anita_session_id):
+def _accept_create_document_from_photos(payload, tenant_id, user_id, agent_session_id):
     client = get_supabase_client()
     media_message_ids = payload.get("media_message_ids") or []
     file_ids = _materialize_media(media_message_ids, tenant_id=tenant_id, user_id=user_id)
@@ -260,7 +260,7 @@ def _accept_create_document_from_photos(payload, tenant_id, user_id, anita_sessi
                 "tenant_id": str(tenant_id),
                 "display_name": payload.get("title") or "Documento",
                 "kind": "OTHER",
-                "origin": "ANITA",
+                "origin": "GENERATED",
                 "created_by": str(user_id),
             }
         )
@@ -284,12 +284,12 @@ def _accept_create_document_from_photos(payload, tenant_id, user_id, anita_sessi
     return ("documents", UUID(doc_row["id"]))
 
 
-def _accept_add_note(payload, tenant_id, user_id, anita_session_id):
+def _accept_add_note(payload, tenant_id, user_id, agent_session_id):
     client = get_supabase_client()
     payload = {k: v for k, v in payload.items() if k not in ("summary_es",)}
     payload["tenant_id"] = str(tenant_id)
     payload["created_by"] = str(user_id)
-    payload["source"] = "anita"
+    payload["source"] = "agent"
     row = client.table("notes").insert(payload).execute().data[0]
     return ("notes", UUID(row["id"]))
 
