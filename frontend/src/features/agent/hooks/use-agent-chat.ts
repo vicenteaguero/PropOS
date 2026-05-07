@@ -42,14 +42,14 @@ export function useAgentChat(sessionId: string | undefined) {
   const queryClient = useQueryClient();
 
   const send = useCallback(
-    async (userText: string) => {
+    async (userText: string, opts?: { silent?: boolean }) => {
       if (!sessionId || !userText.trim()) return;
 
       setState((s) => ({
         ...s,
         isStreaming: true,
         isThinking: false,
-        pendingUserText: userText,
+        pendingUserText: opts?.silent ? null : userText,
         liveText: "",
         toolEvents: [],
         proposalsCreated: [],
@@ -135,7 +135,7 @@ export function useAgentChat(sessionId: string | undefined) {
           ),
         }));
         if (result.text.trim()) {
-          await send(result.text.trim());
+          await send(result.text.trim(), { silent: true });
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : "transcripción falló";
