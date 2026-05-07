@@ -10,8 +10,8 @@ from collections.abc import Iterator
 
 import pytest
 
-from app.features.anita import rate_limiter as rl
-from app.features.anita.rate_limits import ModelLimits
+from app.features.agent import rate_limiter as rl
+from app.features.agent.rate_limits import ModelLimits
 
 
 @pytest.fixture
