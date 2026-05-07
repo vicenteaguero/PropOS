@@ -23,7 +23,7 @@ class TenantSnapshot:
 
 
 def load_snapshot(tenant_id: UUID) -> TenantSnapshot:
-    """Load tenant context for Anita's system prompt.
+    """Load tenant context for Agent's system prompt.
 
     Cached in-process per session in chat.py (one snapshot per session, not turn).
     """
