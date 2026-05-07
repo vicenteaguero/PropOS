@@ -1,11 +1,10 @@
 import { useState } from "react";
-import { Palette as PaletteIcon } from "lucide-react";
+import { Check, Palette as PaletteIcon } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -14,15 +13,23 @@ import { useAuth } from "@shared/hooks/use-auth";
 import {
   PALETTES,
   PALETTE_LABELS,
+  PALETTE_SWATCHES,
   getStoredPalette,
   setPalette,
   type Palette,
 } from "@core/theme/palette";
 
-/**
- * Admin-only theme palette picker. Renders inside the sidebar footer.
- * Always-dark palettes; only swaps accent/surface CSS variables.
- */
+function Swatch({ palette }: { palette: Palette }) {
+  const [bg, primary, accent] = PALETTE_SWATCHES[palette];
+  return (
+    <span className="inline-flex shrink-0 overflow-hidden rounded border border-border">
+      <span style={{ background: bg }} className="block size-4" />
+      <span style={{ background: primary }} className="block size-4" />
+      <span style={{ background: accent }} className="block size-4" />
+    </span>
+  );
+}
+
 export function PaletteSwitcher() {
   const { user } = useAuth();
   const { state, isMobile } = useSidebar();
@@ -31,8 +38,7 @@ export function PaletteSwitcher() {
   if (user?.role !== "ADMIN") return null;
   if (state === "collapsed" && !isMobile) return null;
 
-  const handleChange = (value: string) => {
-    const next = value as Palette;
+  const handleSelect = (next: Palette) => {
     setPalette(next);
     setCurrent(next);
   };
@@ -42,19 +48,24 @@ export function PaletteSwitcher() {
       <DropdownMenuTrigger asChild>
         <SidebarMenuButton tooltip="Tema">
           <PaletteIcon />
-          <span>Tema: {PALETTE_LABELS[current]}</span>
+          <span className="flex-1 truncate text-left">Tema: {PALETTE_LABELS[current]}</span>
+          <Swatch palette={current} />
         </SidebarMenuButton>
       </DropdownMenuTrigger>
-      <DropdownMenuContent side="top" align="start" className="min-w-44">
+      <DropdownMenuContent side="top" align="start" className="min-w-56">
         <DropdownMenuLabel>Paleta</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuRadioGroup value={current} onValueChange={handleChange}>
-          {PALETTES.map((p) => (
-            <DropdownMenuRadioItem key={p} value={p}>
-              {PALETTE_LABELS[p]}
-            </DropdownMenuRadioItem>
-          ))}
-        </DropdownMenuRadioGroup>
+        {PALETTES.map((p) => (
+          <DropdownMenuItem
+            key={p}
+            onSelect={() => handleSelect(p)}
+            className="flex items-center gap-2"
+          >
+            <Swatch palette={p} />
+            <span className="flex-1">{PALETTE_LABELS[p]}</span>
+            {p === current && <Check className="size-4 text-primary" />}
+          </DropdownMenuItem>
+        ))}
       </DropdownMenuContent>
     </DropdownMenu>
   );
