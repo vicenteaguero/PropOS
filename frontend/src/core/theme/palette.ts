@@ -5,13 +5,23 @@
  * Persisted client-side in localStorage; restored on app boot.
  */
 
-export const PALETTES = ["default", "anthropic", "slate"] as const;
+export const PALETTES = ["default", "anthropic", "slate", "brutalist", "minimalist"] as const;
 export type Palette = (typeof PALETTES)[number];
 
 export const PALETTE_LABELS: Record<Palette, string> = {
   default: "Por defecto",
   anthropic: "Anthropic",
   slate: "Slate",
+  brutalist: "Brutalista",
+  minimalist: "Minimalista",
+};
+
+export const PALETTE_SWATCHES: Record<Palette, [string, string, string]> = {
+  default: ["#1C1816", "#D4919B", "#F0D8DA"],
+  anthropic: ["#191919", "#CC785C", "#E8E4D8"],
+  slate: ["#0F172A", "#60A5FA", "#334155"],
+  brutalist: ["#000000", "#FFFFFF", "#FF3D00"],
+  minimalist: ["#1A1A1A", "#A0A0A0", "#2A2A2A"],
 };
 
 const STORAGE_KEY = "propos:palette";
