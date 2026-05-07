@@ -1,0 +1,54 @@
+name: Keep alive
+
+# Pings the backend /health endpoint and the Supabase REST root every 5 days
+# so neither service auto-pauses on the free tier. Free tier Supabase pauses
+# projects after 7 days of inactivity, which would silently break the Kapso
+# webhook. Cloud Run scales to zero on its own; this just keeps the cold-start
+# latency from biting at random demo moments.
+#
+# Schedule uses cron syntax in UTC. "0 12 */5 * *" = 12:00 UTC every 5 days.
+
+on:
+  schedule:
+    - cron: "0 12 */5 * *"
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Ping Cloud Run /health
+        run: |
+          set -e
+          for i in 1 2 3; do
+            code=$(curl -s -o /tmp/body -w "%{http_code}" https://propos-api-blfjtiyx4q-uc.a.run.app/health || true)
+            echo "attempt $i → http=$code"
+            if [ "$code" = "200" ]; then
+              cat /tmp/body
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "health check failed"
+          exit 1
+
+      - name: Ping Supabase REST
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          set -e
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "missing SUPABASE_URL or SUPABASE_ANON_KEY secret — skipping"
+            exit 0
+          fi
+          code=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            "$SUPABASE_URL/rest/v1/?select=tenants" || true)
+          echo "supabase rest → http=$code"
+          # 200 OK or 401/406 still proves the project is awake.
+          case "$code" in
+            200|401|404|406) exit 0 ;;
+            *) echo "supabase ping failed"; exit 1 ;;
+          esac
