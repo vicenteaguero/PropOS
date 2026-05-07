@@ -53,6 +53,7 @@ export interface DocumentItem {
   tag: string | null;
   current_version_id: string | null;
   sort_order: number;
+  pin_offline?: boolean;
   created_by: string | null;
   created_at: string;
   updated_at: string;
