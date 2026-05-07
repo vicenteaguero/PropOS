@@ -16,6 +16,7 @@ export interface ClientConversation {
   ai_enabled: boolean;
   last_inbound_at: string | null;
   last_message_at: string;
+  archived_at: string | null;
   created_at: string;
   metadata: Record<string, unknown>;
 }
