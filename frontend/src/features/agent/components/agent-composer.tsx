@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Mic, Square, Send, Loader2 } from "lucide-react";
+import { useAgentName } from "@core/branding/agent-branding";
 
 interface Props {
   onSend: (text: string) => void;
@@ -17,7 +18,8 @@ interface Props {
  * While recording we render a live AnalyserNode-backed waveform on a
  * canvas so the user can see input is being captured.
  */
-export function AnitaComposer({ onSend, onAudio, isStreaming }: Props) {
+export function AgentComposer({ onSend, onAudio, isStreaming }: Props) {
+  const agentName = useAgentName();
   const [text, setText] = useState("");
   const [recording, setRecording] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -180,7 +182,7 @@ export function AnitaComposer({ onSend, onAudio, isStreaming }: Props) {
                 handleSend();
               }
             }}
-            placeholder="Habla o escribe a Anita…"
+            placeholder={`Habla o escribe a ${agentName}…`}
             disabled={isStreaming}
             className="flex-1"
           />
