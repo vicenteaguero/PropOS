@@ -1,4 +1,4 @@
-"""LLM-driven text-to-SQL for Anita's `query_freeform` intent.
+"""LLM-driven text-to-SQL for Agent's `query_freeform` intent.
 
 Pipeline: load schema → ask Groq for a single SELECT → validate via
 ``sql_guard`` → execute via ``query_sql``. Returns rows + the SQL the
@@ -14,9 +14,9 @@ from uuid import UUID
 
 from app.core.config.settings import settings
 from app.core.logging.logger import get_logger
-from app.features.anita.tools.query_sql import run_query_sql
+from app.features.agent.tools.query_sql import run_query_sql
 
-logger = get_logger("ANITA_TEXT_SQL")
+logger = get_logger("AGENT_TEXT_SQL")
 
 # Tables we expose to the model. Keep tight — every table costs prompt
 # tokens and increases the chance of writing a confused JOIN.
@@ -49,7 +49,7 @@ def _load_schema_hint() -> str:
     if _SCHEMA_CACHE["text"] and (now - _SCHEMA_CACHE["at"]) < _SCHEMA_TTL_SECONDS:
         return _SCHEMA_CACHE["text"]
 
-    db_url = os.environ.get("ANITA_READONLY_DB_URL")
+    db_url = os.environ.get("AGENT_READONLY_DB_URL")
     if not db_url:
         return ""
     try:
@@ -129,7 +129,7 @@ async def generate_and_run_sql(
     )
     try:
         completion = await client.chat.completions.create(
-            model=settings.anita_model,
+            model=settings.agent_model,
             messages=[
                 {"role": "system", "content": system},
                 {"role": "user", "content": user_msg},
