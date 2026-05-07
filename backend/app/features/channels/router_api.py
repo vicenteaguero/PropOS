@@ -27,6 +27,7 @@ class SendMessage(BaseModel):
 class TakeoverPayload(BaseModel):
     ai_enabled: bool | None = None
     status: str | None = Field(default=None, pattern="^(open|assigned|closed)$")
+    archived: bool | None = None
 
 
 class ConsentPayload(BaseModel):
@@ -40,6 +41,7 @@ class ConsentPayload(BaseModel):
 async def list_conversations(
     tenant_id: UUID = Depends(get_tenant_id),
     status: str | None = None,
+    archived: bool = False,
 ) -> list[dict]:
     db = get_supabase_client()
     q = (
@@ -51,6 +53,10 @@ async def list_conversations(
     )
     if status:
         q = q.eq("status", status)
+    if archived:
+        q = q.not_.is_("archived_at", "null")
+    else:
+        q = q.is_("archived_at", "null")
     return q.execute().data or []
 
 
@@ -115,6 +121,8 @@ async def update_conversation(
         updates["status"] = payload.status
         if payload.status == "assigned":
             updates["assigned_user_id"] = current_user["id"]
+    if payload.archived is not None:
+        updates["archived_at"] = _now() if payload.archived else None
     if not updates:
         raise HTTPException(status_code=400, detail="empty patch")
     rows = (
