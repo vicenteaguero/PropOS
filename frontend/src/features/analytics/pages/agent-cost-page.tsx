@@ -6,8 +6,9 @@ import { PageLayout } from "@shared/components/page-layout";
 import { PageHeader } from "@shared/components/page-header";
 import { CHART_COLORS, CHART_HEIGHT } from "@shared/lib/chart-config";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { useAgentName } from "@core/branding/agent-branding";
 
-interface AnitaCost {
+interface AgentCost {
   totals: {
     tokens_in: number;
     tokens_out: number;
@@ -29,10 +30,11 @@ interface AnitaCost {
 
 const fmtUSD = (cents: number) => `$${(cents / 100).toFixed(4)}`;
 
-export function AnitaCostPage() {
+export function AgentCostPage() {
+  const agentName = useAgentName();
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["analytics", "anita-cost"],
-    queryFn: () => apiRequest<AnitaCost>("/v1/analytics/anita-cost"),
+    queryKey: ["analytics", "agent-cost"],
+    queryFn: () => apiRequest<AgentCost>("/v1/analytics/agent-cost"),
   });
 
   if (isLoading) {
@@ -55,7 +57,7 @@ export function AnitaCostPage() {
   return (
     <PageLayout width="lg">
       <PageHeader
-        title="Costo Anita (últimos 30 días)"
+        title={`Costo ${agentName} (últimos 30 días)`}
         description="Tokens consumidos + USD acumulados (estimado en cents)."
       />
       <div className="space-y-4">
