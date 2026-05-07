@@ -123,6 +123,12 @@ class UserService:
         return response.data[0]
 
     @staticmethod
+    async def update_avatar(user_id: UUID, avatar_url: str | None) -> dict:
+        client = get_supabase_client()
+        response = client.table(PROFILES_TABLE).update({"avatar_url": avatar_url}).eq("id", str(user_id)).execute()
+        return response.data[0]
+
+    @staticmethod
     async def delete_user(user_id: UUID, tenant_id: UUID) -> None:
         client = get_supabase_client()
         logger.info(
