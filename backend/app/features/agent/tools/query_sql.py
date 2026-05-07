@@ -31,7 +31,7 @@ def run_query_sql(args: dict[str, Any], tenant_id: UUID) -> dict[str, Any]:
     except GuardError as exc:
         return {"error": "sql_rejected", "reason": str(exc), "intent": intent}
 
-    db_url = os.environ.get("AGENT_READONLY_DB_URL")
+    db_url = os.environ.get("AGENT_READONLY_DB_URL") or os.environ.get("ANITA_READONLY_DB_URL")
     if db_url:
         return _exec_psycopg(db_url, sql, tenant_id, intent)
     return _exec_supabase_fallback(sql, tenant_id, intent)
