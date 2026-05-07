@@ -93,6 +93,7 @@ class DocumentUpdate(BaseModel):
     display_name: str | None = None
     sort_order: int | None = None
     tag: str | None = None
+    pin_offline: bool | None = None
 
 
 class DocumentResponse(DocumentBase):
@@ -100,6 +101,7 @@ class DocumentResponse(DocumentBase):
     tenant_id: UUID
     current_version_id: UUID | None = None
     sort_order: int
+    pin_offline: bool = False
     created_by: UUID | None = None
     created_at: datetime
     updated_at: datetime
