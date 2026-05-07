@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { documentsApi, type ListDocumentsParams } from "../api/documents-api";
-import type { AssignmentTarget } from "../types";
+import type { AssignmentTarget, DocumentItem } from "../types";
+import { toast } from "sonner";
 
 export const documentsKeys = {
   all: ["documents"] as const,
@@ -56,8 +57,12 @@ export function useCreateDocument() {
 export function useUpdateDocument(id: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: { display_name?: string; sort_order?: number }) =>
-      documentsApi.update(id, body),
+    mutationFn: (body: {
+      display_name?: string;
+      sort_order?: number;
+      tag?: string | null;
+      pin_offline?: boolean;
+    }) => documentsApi.update(id, body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: documentsKeys.all });
       qc.invalidateQueries({ queryKey: documentsKeys.detail(id) });
@@ -69,7 +74,28 @@ export function useDeleteDocument() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => documentsApi.remove(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: documentsKeys.all }),
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: documentsKeys.all });
+      const snapshots: Array<{ key: readonly unknown[]; data: DocumentItem[] | undefined }> = [];
+      const queries = qc.getQueriesData<DocumentItem[]>({ queryKey: ["documents", "list"] });
+      for (const [key, data] of queries) {
+        snapshots.push({ key, data });
+        if (data) {
+          qc.setQueryData<DocumentItem[]>(
+            key,
+            data.filter((d) => d.id !== id),
+          );
+        }
+      }
+      return { snapshots };
+    },
+    onError: (_err, _id, ctx) => {
+      ctx?.snapshots.forEach(({ key, data }) => {
+        if (data) qc.setQueryData(key, data);
+      });
+      toast.error("No se pudo eliminar el documento");
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: documentsKeys.all }),
   });
 }
 
