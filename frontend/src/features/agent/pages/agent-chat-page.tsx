@@ -4,14 +4,15 @@ import { History, Loader2, PlusCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import {
-  useAnitaMessages,
-  useAnitaSessionList,
+  useAgentMessages,
+  useAgentSessionList,
   useStartFreshSession,
-} from "../hooks/use-anita-session";
-import { useAnitaChat } from "../hooks/use-anita-chat";
-import { anitaApi } from "../api/anita-api";
-import { AnitaComposer } from "../components/anita-composer";
-import { AnitaMessageList } from "../components/anita-message-list";
+} from "../hooks/use-agent-session";
+import { useAgentChat } from "../hooks/use-agent-chat";
+import { agentApi } from "../api/agent-api";
+import { AgentComposer } from "../components/agent-composer";
+import { AgentMessageList } from "../components/agent-message-list";
+import { useAgentName } from "@core/branding/agent-branding";
 
 function relativeTime(iso: string): string {
   const t = new Date(iso).getTime();
@@ -29,13 +30,14 @@ function deriveTitle(text: string): string {
   return `${compact.slice(0, 40).trimEnd()}…`;
 }
 
-export function AnitaChatPage() {
+export function AgentChatPage() {
+  const agentName = useAgentName();
   const [sessionId, setSessionId] = useState<string | undefined>();
   const [historyOpen, setHistoryOpen] = useState(false);
   const startFresh = useStartFreshSession();
-  const sessionsQuery = useAnitaSessionList();
-  const messagesQuery = useAnitaMessages(sessionId);
-  const chat = useAnitaChat(sessionId);
+  const sessionsQuery = useAgentSessionList();
+  const messagesQuery = useAgentMessages(sessionId);
+  const chat = useAgentChat(sessionId);
   const [bootError, setBootError] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const titledSessionsRef = useRef<Set<string>>(new Set());
@@ -46,15 +48,15 @@ export function AnitaChatPage() {
     let cancelled = false;
     (async () => {
       try {
-        const s = await anitaApi.createOrResumeSession({ forceNew: true });
+        const s = await agentApi.createOrResumeSession({ forceNew: true });
         if (!cancelled) {
           setSessionId(s.id);
           if (s.title) titledSessionsRef.current.add(s.id);
-          queryClient.invalidateQueries({ queryKey: ["anita", "sessions"] });
+          queryClient.invalidateQueries({ queryKey: ["agent", "sessions"] });
         }
       } catch (err) {
         if (!cancelled) {
-          setBootError(err instanceof Error ? err.message : "no se pudo abrir Anita");
+          setBootError(err instanceof Error ? err.message : `no se pudo abrir ${agentName}`);
         }
       }
     })();
@@ -79,9 +81,9 @@ export function AnitaChatPage() {
     const title = deriveTitle(raw);
     if (!title) return;
     titledSessionsRef.current.add(sessionId);
-    void anitaApi
+    void agentApi
       .updateSession(sessionId, { title })
-      .then(() => queryClient.invalidateQueries({ queryKey: ["anita", "sessions"] }))
+      .then(() => queryClient.invalidateQueries({ queryKey: ["agent", "sessions"] }))
       .catch(() => {
         titledSessionsRef.current.delete(sessionId);
       });
@@ -175,7 +177,9 @@ export function AnitaChatPage() {
       </div>
 
       {bootError ? (
-        <p className="p-4 text-sm text-destructive">No pude abrir Anita: {bootError}</p>
+        <p className="p-4 text-sm text-destructive">
+          No pude abrir {agentName}: {bootError}
+        </p>
       ) : !sessionId ? (
         <div className="flex flex-1 items-center justify-center">
           <Loader2 className="size-5 animate-spin text-muted-foreground" />
@@ -184,7 +188,7 @@ export function AnitaChatPage() {
         <>
           <div className="min-h-0 flex-1 overflow-hidden px-4">
             <div className="mx-auto h-full max-w-3xl">
-              <AnitaMessageList
+              <AgentMessageList
                 messages={messagesQuery.data ?? []}
                 liveText={chat.liveText}
                 isStreaming={chat.isStreaming}
@@ -198,7 +202,7 @@ export function AnitaChatPage() {
           {chat.error && <p className="px-4 text-xs text-destructive">{chat.error}</p>}
           <div className="shrink-0 border-t border-border p-4">
             <div className="mx-auto max-w-3xl">
-              <AnitaComposer
+              <AgentComposer
                 onSend={chat.send}
                 onAudio={chat.submitAudio}
                 isStreaming={chat.isStreaming}
