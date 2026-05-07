@@ -1,11 +1,11 @@
-"""Execute LLM-generated SELECTs through `anita_readonly` Postgres role.
+"""Execute LLM-generated SELECTs through `agent_readonly` Postgres role.
 
 Connection is opened per-call (not pooled) so we can scope:
 - statement_timeout = 3s
 - session-level GUC `request.jwt.claims` carrying the tenant_id, which
   the RLS policies on every domain table check via `get_my_tenant_id()`.
 
-If `ANITA_READONLY_DB_URL` is unset (e.g. local dev w/o role), the tool
+If `AGENT_READONLY_DB_URL` is unset (e.g. local dev w/o role), the tool
 falls back to the supabase service-role client and we skip RLS — only
 acceptable in test env.
 """
@@ -17,7 +17,7 @@ import os
 from typing import Any
 from uuid import UUID
 
-from app.features.anita.tools.sql_guard import GuardError, validate_and_normalize
+from app.features.agent.tools.sql_guard import GuardError, validate_and_normalize
 
 
 def run_query_sql(args: dict[str, Any], tenant_id: UUID) -> dict[str, Any]:
@@ -31,7 +31,7 @@ def run_query_sql(args: dict[str, Any], tenant_id: UUID) -> dict[str, Any]:
     except GuardError as exc:
         return {"error": "sql_rejected", "reason": str(exc), "intent": intent}
 
-    db_url = os.environ.get("ANITA_READONLY_DB_URL")
+    db_url = os.environ.get("AGENT_READONLY_DB_URL")
     if db_url:
         return _exec_psycopg(db_url, sql, tenant_id, intent)
     return _exec_supabase_fallback(sql, tenant_id, intent)
@@ -67,11 +67,11 @@ def _exec_supabase_fallback(sql: str, tenant_id: UUID, intent: str) -> dict[str,
 
     We don't have a generic SELECT RPC, so this fallback just returns a
     stub explaining that the readonly role isn't configured. Tests in
-    integration suite expect ANITA_READONLY_DB_URL set.
+    integration suite expect AGENT_READONLY_DB_URL set.
     """
     return {
         "error": "readonly_role_not_configured",
-        "reason": "Set ANITA_READONLY_DB_URL to enable text-to-SQL.",
+        "reason": "Set AGENT_READONLY_DB_URL to enable text-to-SQL.",
         "sql_validated": sql,
         "intent": intent,
     }
