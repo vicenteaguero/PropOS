@@ -1,4 +1,4 @@
-"""Server-side schema registry for Anita intents.
+"""Server-side schema registry for Agent intents.
 
 The classifier prompt is intentionally minimal — it knows the *names* of
 intents and a *universal* field vocabulary (person, property, amount,
