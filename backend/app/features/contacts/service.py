@@ -142,7 +142,7 @@ class ContactService:
             .execute()
         )
 
-    # --- Aliases (used by Anita find_person fuzzy matching) ---
+    # --- Aliases (used by Agent find_person fuzzy matching) ---
 
     @staticmethod
     def _set_aliases(person_id: UUID, tenant_id: UUID, aliases: list[str]) -> None:
@@ -192,7 +192,7 @@ class ContactService:
     async def search_fuzzy(tenant_id: UUID, query: str, limit: int = 10) -> list[dict]:
         """Fuzzy person search using pg_trgm against full_name + aliases.
 
-        Used by Anita's find_person tool. Returns candidates with score.
+        Used by Agent's find_person tool. Returns candidates with score.
         """
         client = get_supabase_client()
         # Simple ilike for now; trgm-scored search via RPC added in Phase D.
