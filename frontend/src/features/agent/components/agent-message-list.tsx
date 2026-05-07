@@ -169,7 +169,14 @@ export function AgentMessageList({
     el.scrollTop = el.scrollHeight;
   }, [messages, liveText, liveProposals, pendingUserText, pendingAudio, isThinking]);
 
-  const renderable = messages.filter((m) => m.role === "user" || m.role === "assistant");
+  const audioTranscripts = new Set(
+    pendingAudio.map((a) => (a.transcript || "").trim()).filter(Boolean),
+  );
+  const renderable = messages.filter((m) => {
+    if (m.role !== "user" && m.role !== "assistant") return false;
+    if (m.role === "user" && audioTranscripts.has(extractText(m.content).trim())) return false;
+    return true;
+  });
 
   return (
     <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto pr-2 -mr-2">
