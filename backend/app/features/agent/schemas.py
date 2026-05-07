@@ -17,7 +17,7 @@ MessageRole = Literal["user", "assistant", "tool", "system"]
 TranscriptSource = Literal["browser_speech", "groq_whisper", "openai_whisper", "manual_text"]
 
 
-class AnitaSessionResponse(BaseModel):
+class AgentSessionResponse(BaseModel):
     id: UUID
     tenant_id: UUID
     user_id: UUID
@@ -31,7 +31,7 @@ class AnitaSessionResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class AnitaSessionUpdate(BaseModel):
+class AgentSessionUpdate(BaseModel):
     status: SessionStatus | None = None
     title: str | None = None
 
@@ -76,7 +76,7 @@ ChatMessageBlock = Annotated[
 ]
 
 
-class AnitaMessageResponse(BaseModel):
+class AgentMessageResponse(BaseModel):
     id: UUID
     session_id: UUID
     role: MessageRole
