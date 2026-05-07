@@ -14,6 +14,26 @@ export function useUfToday() {
   });
 }
 
+interface MindicadorSerie {
+  serie: Array<{ fecha: string; valor: number }>;
+}
+
+export function useUsdToday() {
+  return useQuery({
+    queryKey: ["fx", "usd-clp", "today"],
+    queryFn: async () => {
+      const res = await fetch("https://mindicador.cl/api/dolar");
+      if (!res.ok) throw new Error(`mindicador ${res.status}`);
+      const json = (await res.json()) as MindicadorSerie;
+      const point = json.serie?.[0];
+      if (!point) throw new Error("no usd point");
+      return { date: point.fecha.slice(0, 10), value_clp: point.valor };
+    },
+    staleTime: 60 * 60_000,
+    retry: false,
+  });
+}
+
 /**
  * Single-flight per browser per day. The first authenticated user on each
  * device hits POST /uf/refresh, which idempotently upserts today's value
