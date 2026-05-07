@@ -1,8 +1,23 @@
 import { PDFDocument, type PDFImage } from "pdf-lib";
 import { stripIdentityMetadata } from "./pdf-engine";
 
-const LETTER = { w: 612, h: 792 };
-const A4 = { w: 595.28, h: 841.89 };
+// Common paper sizes in points (72 dpi).
+export const PAPER_SIZES = {
+  LETTER: { w: 612, h: 792 }, // 8.5 × 11 in (US Letter / Carta CL = same)
+  A4: { w: 595.28, h: 841.89 }, // 210 × 297 mm
+  LEGAL: { w: 612, h: 1008 }, // 8.5 × 14 in
+  OFICIO_CL: { w: 612, h: 935.43 }, // 216 × 330 mm (CL Oficio)
+} as const;
+
+export type PaperSizeId = keyof typeof PAPER_SIZES;
+
+export const PAPER_SIZE_LABELS: Record<PaperSizeId, string> = {
+  LETTER: "Carta (8.5×11 in)",
+  A4: "A4 (210×297 mm)",
+  LEGAL: "Legal (8.5×14 in)",
+  OFICIO_CL: "Oficio CL (216×330 mm)",
+};
+
 const MARGIN_PT = 28.35; // 1 cm
 const ID_CARD_WIDTH_PT = 283.46; // ≈ 10cm at 72dpi.
 
@@ -13,6 +28,15 @@ export interface PdfPageOptions {
   pageHeight?: number;
   marginPt?: number;
   mode?: PdfMode;
+  paperSize?: PaperSizeId;
+}
+
+function resolveSize(opts: PdfPageOptions, fallback: PaperSizeId) {
+  if (opts.pageWidth && opts.pageHeight) {
+    return { w: opts.pageWidth, h: opts.pageHeight };
+  }
+  const size = PAPER_SIZES[opts.paperSize ?? fallback];
+  return { w: size.w, h: size.h };
 }
 
 export async function imagesToPdf(blobs: Blob[], opts: PdfPageOptions = {}): Promise<Uint8Array> {
@@ -22,8 +46,7 @@ export async function imagesToPdf(blobs: Blob[], opts: PdfPageOptions = {}): Pro
 }
 
 async function imagesToDocumentPdf(blobs: Blob[], opts: PdfPageOptions): Promise<Uint8Array> {
-  const pageW = opts.pageWidth ?? LETTER.w;
-  const pageH = opts.pageHeight ?? LETTER.h;
+  const { w: pageW, h: pageH } = resolveSize(opts, "LETTER");
   const margin = opts.marginPt ?? MARGIN_PT;
 
   const pdf = await PDFDocument.create();
@@ -53,8 +76,7 @@ async function imagesToDocumentPdf(blobs: Blob[], opts: PdfPageOptions): Promise
  * upstream in the warp.
  */
 async function imagesToIdPdf(blobs: Blob[], opts: PdfPageOptions): Promise<Uint8Array> {
-  const pageW = opts.pageWidth ?? A4.w;
-  const pageH = opts.pageHeight ?? A4.h;
+  const { w: pageW, h: pageH } = resolveSize(opts, "A4");
   const margin = opts.marginPt ?? MARGIN_PT;
 
   const pdf = await PDFDocument.create();
