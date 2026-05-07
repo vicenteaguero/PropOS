@@ -16,6 +16,8 @@ import {
   ScanText,
   Share2,
   Trash2,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -29,7 +31,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { PageLayout } from "@shared/components/page-layout";
 import { useAuth } from "@shared/hooks/use-auth";
-import { useAddVersion, useDeleteDocument, useDocument } from "../hooks/use-documents";
+import {
+  useAddVersion,
+  useDeleteDocument,
+  useDocument,
+  useUpdateDocument,
+} from "../hooks/use-documents";
 import { documentsApi } from "../api/documents-api";
 import {
   CameraCaptureDocument,
@@ -55,6 +62,28 @@ export function DocumentDetailPage() {
 
   const { data: doc, isLoading, error } = useDocument(id);
   const deleteMutation = useDeleteDocument();
+  const updateMutation = useUpdateDocument(id ?? "");
+
+  const togglePinOffline = async () => {
+    if (!doc) return;
+    const next = !doc.pin_offline;
+    await updateMutation.mutateAsync({ pin_offline: next });
+    if (next && doc.current_version?.normalized_path) {
+      // Warm Workbox cache: fetch the signed URL so the SW caches the blob.
+      try {
+        const { url } = await documentsApi.versionDownloadUrl(doc.id, doc.current_version.id);
+        await fetch(url, { mode: "cors" }).catch(() => {});
+        if (doc.current_version.thumbnail_url) {
+          await fetch(doc.current_version.thumbnail_url, { mode: "cors" }).catch(() => {});
+        }
+        toast.success("Disponible sin conexión");
+      } catch {
+        toast.warning("Marcado, pero no pude pre-descargar el blob");
+      }
+    } else {
+      toast.success(next ? "Disponible sin conexión" : "Pin offline desactivado");
+    }
+  };
 
   const currentVersion = doc?.current_version ?? doc?.versions?.[0] ?? null;
   const blobState = useDocumentBlob(id, currentVersion);
@@ -306,6 +335,17 @@ export function DocumentDetailPage() {
           <DropdownMenuContent align="end" className="min-w-48">
             <DropdownMenuItem onClick={() => setShareLinkOpen(true)}>
               <LinkIcon className="size-4" /> Shortlink
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={togglePinOffline} disabled={updateMutation.isPending}>
+              {doc?.pin_offline ? (
+                <>
+                  <Wifi className="size-4" /> Quitar offline
+                </>
+              ) : (
+                <>
+                  <WifiOff className="size-4" /> Disponible sin conexión
+                </>
+              )}
             </DropdownMenuItem>
             <DropdownMenuItem disabled>
               <ScanText className="size-4" /> OCR · Próximamente
