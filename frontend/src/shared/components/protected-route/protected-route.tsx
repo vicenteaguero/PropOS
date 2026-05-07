@@ -7,9 +7,19 @@ import type { UserRole } from "@shared/types/auth";
 interface ProtectedRouteProps {
   children: ReactNode;
   requiredRole?: UserRole;
+  requiredScope?: string;
 }
 
-export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
+function Forbidden() {
+  return (
+    <div className="flex h-screen flex-col items-center justify-center bg-background px-4 text-center">
+      <h1 className="mb-2 text-2xl font-bold text-primary">403</h1>
+      <p className="text-muted-foreground">No tienes permisos para acceder a esta sección.</p>
+    </div>
+  );
+}
+
+export function ProtectedRoute({ children, requiredRole, requiredScope }: ProtectedRouteProps) {
   const { isAuthenticated, isLoading, user } = useAuth();
 
   if (isLoading) {
@@ -25,12 +35,14 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
   }
 
   if (requiredRole && user?.role !== requiredRole) {
-    return (
-      <div className="flex h-screen flex-col items-center justify-center bg-background px-4 text-center">
-        <h1 className="mb-2 text-2xl font-bold text-primary">403</h1>
-        <p className="text-muted-foreground">No tienes permisos para acceder a esta sección.</p>
-      </div>
-    );
+    return <Forbidden />;
+  }
+
+  if (requiredScope && user) {
+    const scope = user.adminScope ?? [];
+    if (scope.length > 0 && !scope.includes(requiredScope)) {
+      return <Forbidden />;
+    }
   }
 
   return <>{children}</>;
