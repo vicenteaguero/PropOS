@@ -19,7 +19,7 @@ class ProposalStatus(str, Enum):
 class PendingProposalResponse(BaseModel):
     id: UUID
     tenant_id: UUID
-    anita_session_id: UUID
+    agent_session_id: UUID
     proposed_by_user: UUID
     kind: str
     target_table: str | None = None
