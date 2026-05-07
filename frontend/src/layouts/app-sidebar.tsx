@@ -31,31 +31,21 @@ import {
   SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
-  SidebarSeparator,
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@shared/hooks/use-auth";
 import { useEffectiveUser } from "@core/view-as/view-as";
 import { useAgentName } from "@core/branding/agent-branding";
 import { PaletteSwitcher } from "@shared/components/palette-switcher/palette-switcher";
-import { WhatsAppIcon } from "@shared/components/icons/whatsapp-icon";
 import { apiRequest } from "@features/documents/api/http";
 import type { UserRole } from "@shared/types/auth";
-import type { ComponentType, SVGProps } from "react";
-
-type IconLike = LucideIcon | ComponentType<SVGProps<SVGSVGElement>>;
 
 interface NavItem {
   label: string;
   path: string;
-  icon: IconLike;
+  icon: LucideIcon;
   end?: boolean;
-  trailingIcon?: IconLike;
   badge?: "pending";
-  children?: NavItem[];
   scope?: string;
 }
 
@@ -64,20 +54,12 @@ interface NavGroup {
   items: NavItem[];
 }
 
-const APP_VERSION = (import.meta.env.VITE_APP_VERSION as string | undefined) ?? "dev";
-
 function filterByScope(groups: NavGroup[], adminScope: string[]): NavGroup[] {
   if (adminScope.length === 0) return groups;
   const allowed = new Set(adminScope);
   const visible = (item: NavItem) => !item.scope || allowed.has(item.scope);
   return groups
-    .map((g) => ({
-      ...g,
-      items: g.items.filter(visible).map((item) => ({
-        ...item,
-        children: item.children?.filter(visible),
-      })),
-    }))
+    .map((g) => ({ ...g, items: g.items.filter(visible) }))
     .filter((g) => g.items.length > 0);
 }
 
@@ -85,35 +67,23 @@ function buildGroups(role: UserRole, agentName: string): NavGroup[] {
   switch (role) {
     case "ADMIN":
       return [
+        { items: [{ label: "Inicio", path: "/admin", icon: Home, end: true }] },
         {
+          label: agentName,
           items: [
-            { label: "Inicio", path: "/admin", icon: Home, end: true },
-            { label: "Novedades", path: "/admin/novedades", icon: Newspaper },
-          ],
-        },
-        {
-          label: "IA",
-          items: [
+            { label: agentName, path: "/admin/agent", icon: Sparkles, scope: "agent" },
             {
-              label: agentName,
-              path: "/admin/agent",
-              icon: Sparkles,
-              scope: "agent",
-              children: [
-                {
-                  label: "Pendientes",
-                  path: "/admin/pendientes",
-                  icon: Inbox,
-                  badge: "pending",
-                  scope: "pendientes",
-                },
-                {
-                  label: "Costo",
-                  path: "/admin/analytics/agent-cost",
-                  icon: Receipt,
-                  scope: "analytics",
-                },
-              ],
+              label: "Pendientes",
+              path: "/admin/pendientes",
+              icon: Inbox,
+              badge: "pending",
+              scope: "pendientes",
+            },
+            {
+              label: "Costo",
+              path: "/admin/analytics/agent-cost",
+              icon: Receipt,
+              scope: "analytics",
             },
           ],
         },
@@ -121,19 +91,12 @@ function buildGroups(role: UserRole, agentName: string): NavGroup[] {
           label: "Comunicación",
           items: [
             {
-              label: "Inbox clientes",
+              label: "Inbox WA",
               path: "/admin/client-inbox",
               icon: MessageCircle,
-              trailingIcon: WhatsAppIcon,
               scope: "inbox",
             },
-            {
-              label: "Teléfonos",
-              path: "/admin/phones",
-              icon: Phone,
-              trailingIcon: WhatsAppIcon,
-              scope: "phones",
-            },
+            { label: "Teléfonos", path: "/admin/phones", icon: Phone, scope: "phones" },
           ],
         },
         {
@@ -141,7 +104,7 @@ function buildGroups(role: UserRole, agentName: string): NavGroup[] {
           items: [
             { label: "Documentos", path: "/admin/documents", icon: FileText, scope: "documents" },
             {
-              label: "Enlaces de subida",
+              label: "Enlaces",
               path: "/admin/documents/portals",
               icon: Folder,
               scope: "documents",
@@ -153,13 +116,6 @@ function buildGroups(role: UserRole, agentName: string): NavGroup[] {
           items: [
             { label: "Workflows", path: "/admin/workflows", icon: ListChecks, scope: "workflows" },
             { label: "Analítica", path: "/admin/analytics", icon: BarChart3, scope: "analytics" },
-          ],
-        },
-        {
-          label: "Sistema",
-          items: [
-            { label: "Novedades", path: "/admin/novedades", icon: Newspaper },
-            { label: "Configuración", path: "/admin/settings", icon: Settings },
           ],
         },
       ];
@@ -179,42 +135,43 @@ function buildGroups(role: UserRole, agentName: string): NavGroup[] {
           items: [
             { label: "Personas", path: "/agent/personas", icon: Users },
             { label: "Interacciones", path: "/agent/interacciones", icon: MessageSquare },
-            {
-              label: "Inbox clientes",
-              path: "/agent/client-inbox",
-              icon: MessageCircle,
-              trailingIcon: WhatsAppIcon,
-            },
+            { label: "Inbox WA", path: "/agent/client-inbox", icon: MessageCircle },
           ],
         },
         {
           label: "Datos",
           items: [
             { label: "Documentos", path: "/agent/documents", icon: FileText },
-            { label: "Enlaces de subida", path: "/agent/documents/portals", icon: Folder },
+            { label: "Enlaces", path: "/agent/documents/portals", icon: Folder },
           ],
         },
       ];
     case "LANDOWNER":
       return [
-        { items: [{ label: "Inicio", path: "/landowner", icon: Home, end: true }] },
         {
-          label: "Datos",
-          items: [{ label: "Documentos", path: "/landowner/documents", icon: FileText }],
+          items: [
+            { label: "Inicio", path: "/landowner", icon: Home, end: true },
+            { label: "Documentos", path: "/landowner/documents", icon: FileText },
+          ],
         },
       ];
     case "BUYER":
       return [
-        { items: [{ label: "Inicio", path: "/buyer", icon: Home, end: true }] },
         {
-          label: "Datos",
-          items: [{ label: "Documentos", path: "/buyer/documents", icon: FileText }],
+          items: [
+            { label: "Inicio", path: "/buyer", icon: Home, end: true },
+            { label: "Documentos", path: "/buyer/documents", icon: FileText },
+          ],
         },
       ];
     case "CONTENT":
       return [
-        { items: [{ label: "Inicio", path: "/content", icon: Home, end: true }] },
-        { label: "IA", items: [{ label: agentName, path: "/content/pendientes", icon: Sparkles }] },
+        {
+          items: [
+            { label: "Inicio", path: "/content", icon: Home, end: true },
+            { label: agentName, path: "/content/pendientes", icon: Sparkles },
+          ],
+        },
       ];
     default:
       return [];
@@ -231,96 +188,91 @@ function usePendingCount(): number {
   return query.data?.pending_count ?? 0;
 }
 
-function NavItemRow({ item, onNavigate }: { item: NavItem; onNavigate: () => void }) {
-  const pendingCount = usePendingCount();
+const ITEM_CLASS =
+  "h-8 px-2 text-[13px] [&>svg]:size-[18px] group-data-[collapsible=icon]:[&>svg]:size-5";
+
+function NavItemRow({
+  item,
+  pendingCount,
+  onNavigate,
+}: {
+  item: NavItem;
+  pendingCount: number;
+  onNavigate: () => void;
+}) {
   const Icon = item.icon;
-  const Trailing = item.trailingIcon;
+  const showBadge = item.badge === "pending" && pendingCount > 0;
   return (
     <SidebarMenuItem>
-      <SidebarMenuButton asChild tooltip={item.label}>
+      <SidebarMenuButton asChild tooltip={item.label} className={ITEM_CLASS}>
         <NavLink
           to={item.path}
           end={item.end}
           onClick={onNavigate}
-          className={({ isActive }) => (isActive ? "text-sidebar-primary bg-sidebar-accent" : "")}
+          className={({ isActive }) => (isActive ? "bg-sidebar-accent text-sidebar-primary" : "")}
         >
           <Icon />
           <span>{item.label}</span>
-          {Trailing && <Trailing className="ml-auto size-3.5 opacity-60" />}
         </NavLink>
       </SidebarMenuButton>
-      {item.badge === "pending" && pendingCount > 0 && (
-        <SidebarMenuBadge>{pendingCount}</SidebarMenuBadge>
-      )}
-      {item.children && item.children.length > 0 && (
-        <SidebarMenuSub>
-          {item.children.map((child) => (
-            <SubItemRow key={child.path} item={child} onNavigate={onNavigate} />
-          ))}
-        </SidebarMenuSub>
-      )}
+      {showBadge && <SidebarMenuBadge className="top-1">{pendingCount}</SidebarMenuBadge>}
     </SidebarMenuItem>
-  );
-}
-
-function SubItemRow({ item, onNavigate }: { item: NavItem; onNavigate: () => void }) {
-  const pendingCount = usePendingCount();
-  const Icon = item.icon;
-  return (
-    <SidebarMenuSubItem>
-      <SidebarMenuSubButton asChild>
-        <NavLink
-          to={item.path}
-          end={item.end}
-          onClick={onNavigate}
-          className={({ isActive }) => (isActive ? "text-sidebar-primary bg-sidebar-accent" : "")}
-        >
-          <Icon />
-          <span>{item.label}</span>
-        </NavLink>
-      </SidebarMenuSubButton>
-      {item.badge === "pending" && pendingCount > 0 && (
-        <SidebarMenuBadge>{pendingCount}</SidebarMenuBadge>
-      )}
-    </SidebarMenuSubItem>
   );
 }
 
 export function AppSidebar() {
   const { signOut } = useAuth();
   const user = useEffectiveUser();
-  const { setOpenMobile, isMobile } = useSidebar();
+  const { state, setOpenMobile, isMobile } = useSidebar();
   const agentName = useAgentName();
+  const pendingCount = usePendingCount();
 
   if (!user) return null;
 
+  const collapsed = state === "collapsed" && !isMobile;
   const groups = filterByScope(buildGroups(user.role, agentName), user.adminScope ?? []);
   const onNavigate = () => {
     if (isMobile) setOpenMobile(false);
   };
 
+  const isAdmin = user.role === "ADMIN";
+
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader className="flex-row items-center gap-3 px-4 py-4">
+      <SidebarHeader className="flex-row items-center gap-2.5 px-2.5 py-2.5">
         <img
           src="/icon.svg"
           alt="PropOS"
-          className="size-8 md:size-10 shrink-0 rounded-lg ring-2 ring-primary/20 shadow-lg shadow-primary/10"
+          className="size-8 shrink-0 rounded-lg ring-2 ring-primary/20 shadow-md shadow-primary/10"
         />
-        <div className="grid flex-1 text-left text-sm leading-tight">
-          <span className="truncate font-semibold">PropOS</span>
-          <span className="truncate text-xs text-muted-foreground">{user.fullName}</span>
-        </div>
+        {!collapsed && (
+          <div className="grid min-w-0 flex-1 text-left leading-tight">
+            <span className="truncate text-[13px] font-semibold">PropOS</span>
+            <span className="truncate text-[11px] text-muted-foreground">{user.fullName}</span>
+          </div>
+        )}
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent className="gap-0">
         {groups.map((group, idx) => (
-          <SidebarGroup key={group.label ?? `group-${idx}`}>
-            {group.label && <SidebarGroupLabel>{group.label}</SidebarGroupLabel>}
+          <SidebarGroup
+            key={group.label ?? `group-${idx}`}
+            className="px-2 py-1 group-data-[collapsible=icon]:px-1.5 group-data-[collapsible=icon]:py-0.5"
+          >
+            {group.label && !collapsed && (
+              <SidebarGroupLabel className="h-6 px-2 text-[10px] uppercase tracking-wider">
+                {group.label}
+              </SidebarGroupLabel>
+            )}
             <SidebarGroupContent>
-              <SidebarMenu>
+              <SidebarMenu className="gap-0.5">
                 {group.items.map((item) => (
-                  <NavItemRow key={item.path} item={item} onNavigate={onNavigate} />
+                  <NavItemRow
+                    key={item.path}
+                    item={item}
+                    pendingCount={pendingCount}
+                    onNavigate={onNavigate}
+                  />
                 ))}
               </SidebarMenu>
             </SidebarGroupContent>
@@ -328,11 +280,42 @@ export function AppSidebar() {
         ))}
       </SidebarContent>
 
-      <SidebarSeparator />
-      <SidebarFooter className="pb-4">
-        <SidebarMenu>
+      <SidebarFooter className="gap-0.5 border-t border-sidebar-border px-2 py-2">
+        <SidebarMenu className="gap-0.5">
+          {isAdmin && (
+            <>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip="Novedades" className={ITEM_CLASS}>
+                  <NavLink
+                    to="/admin/novedades"
+                    onClick={onNavigate}
+                    className={({ isActive }) =>
+                      isActive ? "bg-sidebar-accent text-sidebar-primary" : ""
+                    }
+                  >
+                    <Newspaper />
+                    <span>Novedades</span>
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip="Configuración" className={ITEM_CLASS}>
+                  <NavLink
+                    to="/admin/settings"
+                    onClick={onNavigate}
+                    className={({ isActive }) =>
+                      isActive ? "bg-sidebar-accent text-sidebar-primary" : ""
+                    }
+                  >
+                    <Settings />
+                    <span>Configuración</span>
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </>
+          )}
           <SidebarMenuItem>
-            <PaletteSwitcher />
+            <PaletteSwitcher className={ITEM_CLASS} />
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton
@@ -341,13 +324,13 @@ export function AppSidebar() {
                 signOut();
               }}
               tooltip="Cerrar sesión"
+              className={ITEM_CLASS}
             >
               <LogOut />
               <span>Cerrar sesión</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
-        <p className="px-2 pt-2 text-[10px] text-muted-foreground/70">v{APP_VERSION}</p>
       </SidebarFooter>
     </Sidebar>
   );
