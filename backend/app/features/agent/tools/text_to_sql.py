@@ -49,7 +49,7 @@ def _load_schema_hint() -> str:
     if _SCHEMA_CACHE["text"] and (now - _SCHEMA_CACHE["at"]) < _SCHEMA_TTL_SECONDS:
         return _SCHEMA_CACHE["text"]
 
-    db_url = os.environ.get("AGENT_READONLY_DB_URL") or os.environ.get("ANITA_READONLY_DB_URL")
+    db_url = os.environ.get("AGENT_READONLY_DB_URL")
     if not db_url:
         return ""
     try:
