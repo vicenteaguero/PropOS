@@ -74,10 +74,7 @@ export function Backdrop({
   closeOnEsc = true,
   zIndex = 60,
 }: BackdropProps) {
-  const textArr = React.useMemo(
-    () => (typeof texts === "string" ? [texts] : texts),
-    [texts],
-  );
+  const textArr = React.useMemo(() => (typeof texts === "string" ? [texts] : texts), [texts]);
   const currentText = useRotatingText(textArr, textIntervalMs, random);
 
   React.useEffect(() => {
@@ -124,9 +121,7 @@ export function Backdrop({
           onClick={(e) => e.stopPropagation()}
           className="pointer-events-none flex flex-col items-center gap-3 px-6 text-center"
         >
-          {loading && (
-            <Loader2 className="size-8 animate-spin text-primary" aria-hidden />
-          )}
+          {loading && <Loader2 className="size-8 animate-spin text-primary" aria-hidden />}
           {currentText && (
             <p
               key={currentText}
