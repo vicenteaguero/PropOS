@@ -233,10 +233,7 @@ export function UfDialog({ open, onOpenChange }: Props) {
                   Monto
                 </span>
                 <div className="flex items-baseline gap-1.5 truncate">
-                  <span
-                    className="truncate text-4xl font-light tracking-tight"
-                    title={display}
-                  >
+                  <span className="truncate text-4xl font-light tracking-tight" title={display}>
                     {display}
                   </span>
                   <span className="text-lg font-medium text-primary">{from}</span>
