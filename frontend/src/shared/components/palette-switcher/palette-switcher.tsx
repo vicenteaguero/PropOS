@@ -8,7 +8,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { SidebarMenuButton, useSidebar } from "@/components/ui/sidebar";
+import { SidebarMenuButton } from "@/components/ui/sidebar";
 import { useAuth } from "@shared/hooks/use-auth";
 import {
   PALETTES,
@@ -33,11 +33,9 @@ function Swatch({ palette, size = 4 }: { palette: Palette; size?: 3 | 4 }) {
 
 export function PaletteSwitcher({ className }: { className?: string }) {
   const { user } = useAuth();
-  const { state, isMobile } = useSidebar();
   const [current, setCurrent] = useState<Palette>(() => getStoredPalette());
 
   if (user?.role !== "ADMIN") return null;
-  if (state === "collapsed" && !isMobile) return null;
 
   const handleSelect = (next: Palette) => {
     setPalette(next);
