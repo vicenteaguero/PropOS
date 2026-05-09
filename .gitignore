@@ -224,3 +224,4 @@ backend/tests/integration/scanner/output/*.pdf
 backend/tests/integration/scanner/docscanner/
 backend/tests/integration/scanner/output/
 backend/tests/integration/scanner/output_docscanner/
+.vercel
