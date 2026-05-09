@@ -8,10 +8,19 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from app.core.dependencies import get_current_user, get_tenant_id
+from app.core.dependencies import (
+    get_current_user,
+    get_tenant_id,
+    require_role,
+    require_scope,
+)
 from app.core.supabase.client import get_supabase_client
 
-router = APIRouter(prefix="/user-phones", tags=["user-phones"])
+router = APIRouter(
+    prefix="/user-phones",
+    tags=["user-phones"],
+    dependencies=[Depends(require_role("ADMIN")), Depends(require_scope("phones"))],
+)
 
 E164 = re.compile(r"^\+[1-9]\d{6,14}$")
 
