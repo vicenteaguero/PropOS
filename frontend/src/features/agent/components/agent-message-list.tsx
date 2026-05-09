@@ -169,14 +169,13 @@ export function AgentMessageList({
     el.scrollTop = el.scrollHeight;
   }, [messages, liveText, liveProposals, pendingUserText, pendingAudio, isThinking]);
 
-  const audioTranscripts = new Set(
-    pendingAudio.map((a) => (a.transcript || "").trim()).filter(Boolean),
-  );
-  const renderable = messages.filter((m) => {
-    if (m.role !== "user" && m.role !== "assistant") return false;
-    if (m.role === "user" && audioTranscripts.has(extractText(m.content).trim())) return false;
-    return true;
-  });
+  const audioByTranscript = new Map<string, PendingAudioMessage>();
+  for (const a of pendingAudio) {
+    const t = (a.transcript || "").trim();
+    if (t) audioByTranscript.set(t, a);
+  }
+  const consumedAudioIds = new Set<string>();
+  const renderable = messages.filter((m) => m.role === "user" || m.role === "assistant");
 
   return (
     <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto pr-2 -mr-2">
@@ -184,6 +183,21 @@ export function AgentMessageList({
         {renderable.map((m) => {
           const text = extractText(m.content);
           const tools = extractTools(m.content);
+          if (m.role === "user") {
+            const audio = audioByTranscript.get(text.trim());
+            if (audio) {
+              consumedAudioIds.add(audio.id);
+              return (
+                <AudioBubble
+                  key={m.id}
+                  url={audio.url}
+                  transcribing={audio.transcribing}
+                  transcript={audio.transcript}
+                  error={audio.error}
+                />
+              );
+            }
+          }
           if (!text && tools.length === 0) return null;
           return (
             <div
@@ -211,15 +225,17 @@ export function AgentMessageList({
           );
         })}
 
-        {pendingAudio.map((a) => (
-          <AudioBubble
-            key={a.id}
-            url={a.url}
-            transcribing={a.transcribing}
-            transcript={a.transcript}
-            error={a.error}
-          />
-        ))}
+        {pendingAudio
+          .filter((a) => !consumedAudioIds.has(a.id))
+          .map((a) => (
+            <AudioBubble
+              key={a.id}
+              url={a.url}
+              transcribing={a.transcribing}
+              transcript={a.transcript}
+              error={a.error}
+            />
+          ))}
 
         {pendingUserText && (
           <div className="rounded-lg bg-primary/10 px-3 py-2 ml-6 text-sm whitespace-pre-wrap break-words">
