@@ -63,6 +63,17 @@ seed:
 	@bash scripts/log.sh MAKE "📝" "Seeding dev data"
 	supabase db reset
 
+seed-admins:
+	@bash scripts/log.sh MAKE "👤" "Seeding admin users + sample property/grant/doc"
+	$(.ANITA_ENV) && cd backend && poetry run python -m scripts.seed_admins
+
+db-nuke:
+	@bash scripts/log.sh MAKE "💣" "Full DB nuke (TRUNCATE auth.users CASCADE)"
+	@read -p "WIPES ALL AUTH USERS + dependent rows. Type 'nuke' to confirm: " ans; \
+	if [ "$$ans" != "nuke" ]; then echo "aborted"; exit 1; fi
+	cd backend && poetry run python -m scripts.db_query --write "TRUNCATE TABLE auth.users CASCADE"
+	@echo "Done. Tenants table preserved. Run 'make seed-admins' to repopulate."
+
 define python-preformat
 	cd backend && poetry run python scripts/format/remove_inline_comments.py
 	cd backend && poetry run python scripts/format/remove_double_blanks.py
