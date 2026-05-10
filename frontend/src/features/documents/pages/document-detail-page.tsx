@@ -53,6 +53,8 @@ import { AssignmentPicker } from "../components/assignment-picker";
 import { ShareLinkDialog } from "../components/share-link-dialog";
 import { ShareViaDialog } from "../components/share-via-dialog";
 import { VersionHistoryDrawer } from "../components/version-history-drawer";
+import { DocumentSharePanel } from "../components/share-panel";
+import { Users } from "lucide-react";
 
 export function DocumentDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -92,6 +94,7 @@ export function DocumentDetailPage() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [shareLinkOpen, setShareLinkOpen] = useState(false);
   const [shareViaOpen, setShareViaOpen] = useState(false);
+  const [audienceShareOpen, setAudienceShareOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
@@ -336,6 +339,11 @@ export function DocumentDetailPage() {
             <DropdownMenuItem onClick={() => setShareLinkOpen(true)}>
               <LinkIcon className="size-4" /> Shortlink
             </DropdownMenuItem>
+            {user?.role === "ADMIN" && (
+              <DropdownMenuItem onClick={() => setAudienceShareOpen(true)}>
+                <Users className="size-4" /> Compartir con audiencia
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem onClick={togglePinOffline} disabled={updateMutation.isPending}>
               {doc?.pin_offline ? (
                 <>
@@ -442,6 +450,12 @@ export function DocumentDetailPage() {
         onOpenChange={setShareViaOpen}
         url={shareUrl}
         title={doc.display_name}
+      />
+      <DocumentSharePanel
+        documentId={doc.id}
+        initialCaps={(doc as unknown as { audience_caps?: Record<string, string[]> }).audience_caps}
+        open={audienceShareOpen}
+        onOpenChange={setAudienceShareOpen}
       />
       <DeleteDocumentConfirm
         open={deleteOpen}
