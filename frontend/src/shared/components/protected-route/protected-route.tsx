@@ -2,12 +2,14 @@ import type { ReactNode } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@shared/hooks/use-auth";
 import { LoadingSpinner } from "@shared/components/loading-spinner/loading-spinner";
-import type { UserRole } from "@shared/types/auth";
+import type { UserRole, UserView } from "@shared/types/auth";
 
 interface ProtectedRouteProps {
   children: ReactNode;
   requiredRole?: UserRole;
   requiredScope?: string;
+  requiredView?: UserView | UserView[];
+  requiredDevAdmin?: boolean;
 }
 
 function Forbidden() {
@@ -19,7 +21,13 @@ function Forbidden() {
   );
 }
 
-export function ProtectedRoute({ children, requiredRole, requiredScope }: ProtectedRouteProps) {
+export function ProtectedRoute({
+  children,
+  requiredRole,
+  requiredScope,
+  requiredView,
+  requiredDevAdmin,
+}: ProtectedRouteProps) {
   const { isAuthenticated, isLoading, user } = useAuth();
 
   if (isLoading) {
@@ -35,6 +43,17 @@ export function ProtectedRoute({ children, requiredRole, requiredScope }: Protec
   }
 
   if (requiredRole && user?.role !== requiredRole) {
+    return <Forbidden />;
+  }
+
+  if (requiredView && user) {
+    const allowed = Array.isArray(requiredView) ? requiredView : [requiredView];
+    if (!allowed.includes(user.view)) {
+      return <Forbidden />;
+    }
+  }
+
+  if (requiredDevAdmin && !user?.isDevAdmin) {
     return <Forbidden />;
   }
 
