@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { Link } from "react-router-dom";
 import { useLogin } from "@features/auth/hooks/use-login";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -61,6 +62,10 @@ export function LoginForm() {
       <Button type="submit" disabled={isLoading} className="w-full">
         {isLoading ? <LoadingSpinner size="sm" /> : "Iniciar Sesión"}
       </Button>
+
+      <Link to="/forgot-password" className="text-center text-sm text-muted-foreground underline">
+        ¿Olvidaste tu contraseña?
+      </Link>
     </form>
   );
 }
