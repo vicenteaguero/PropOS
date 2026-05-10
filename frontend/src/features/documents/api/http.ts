@@ -2,11 +2,36 @@ import { ENV } from "@core/config/env";
 import { supabase } from "@core/supabase/client";
 
 const API_BASE = `${ENV.API_URL}/api`;
+const ACTIVE_TENANT_KEY = "propos.active_tenant_id";
+
+export function getActiveTenantId(): string | null {
+  try {
+    return localStorage.getItem(ACTIVE_TENANT_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setActiveTenantId(tenantId: string | null): void {
+  try {
+    if (tenantId) {
+      localStorage.setItem(ACTIVE_TENANT_KEY, tenantId);
+    } else {
+      localStorage.removeItem(ACTIVE_TENANT_KEY);
+    }
+  } catch {
+    /* ignore (private browsing etc.) */
+  }
+}
 
 async function authHeaders(): Promise<Record<string, string>> {
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  const headers: Record<string, string> = {};
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const tenant = getActiveTenantId();
+  if (tenant) headers["X-Tenant-Id"] = tenant;
+  return headers;
 }
 
 export interface RequestOptions {
