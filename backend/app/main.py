@@ -17,6 +17,8 @@ from app.features.channels.phones_api import router as user_phones_router
 from app.features.channels.router_api import router as client_chat_router
 from app.features.integrations.kapso.webhook import router as kapso_webhook_router
 from app.features.campaigns.router import router as campaigns_router
+from app.features.compliance.router import admin_router as compliance_admin_router
+from app.features.compliance.router import router as compliance_router
 from app.features.contacts.router import router as contacts_router
 from app.features.documents.router import public_router as documents_public_router
 from app.features.documents.router import router as documents_router
@@ -34,6 +36,12 @@ from app.features.publications.router import router as publications_router
 from app.features.taggings.router import router as taggings_router
 from app.features.tags.router import router as tags_router
 from app.features.tasks.router import router as tasks_router
+from app.features.grants.router import admin_router as grants_admin_router
+from app.features.grants.router import router as grants_router
+from app.features.memberships.router import admin_router as memberships_admin_router
+from app.features.memberships.router import router as memberships_router
+from app.features.sharing.router import router as sharing_router
+from app.features.tenants.router import admin_router as tenants_admin_router
 from app.features.tenants.router import router as tenants_router
 from app.features.transactions.router import router as transactions_router
 from app.features.uf.router import router as uf_router
@@ -77,10 +85,18 @@ def create_app() -> FastAPI:
     versioned_prefix = f"{API_PREFIX}/{API_VERSION}"
     application.include_router(users_router, prefix=versioned_prefix)
     application.include_router(tenants_router, prefix=versioned_prefix)
+    application.include_router(memberships_router, prefix=versioned_prefix)
+    application.include_router(memberships_admin_router, prefix=versioned_prefix)
+    application.include_router(grants_router, prefix=versioned_prefix)
+    application.include_router(grants_admin_router, prefix=versioned_prefix)
+    application.include_router(sharing_router, prefix=versioned_prefix)
+    application.include_router(tenants_admin_router, prefix=versioned_prefix)
     application.include_router(uf_router, prefix=versioned_prefix)
     application.include_router(notifications_router, prefix=versioned_prefix)
     application.include_router(properties_router, prefix=versioned_prefix)
     application.include_router(contacts_router, prefix=versioned_prefix)
+    application.include_router(compliance_router, prefix=versioned_prefix)
+    application.include_router(compliance_admin_router, prefix=versioned_prefix)
     application.include_router(internal_areas_router, prefix=versioned_prefix)
     application.include_router(documents_router, prefix=versioned_prefix)
     application.include_router(pending_router, prefix=versioned_prefix)
