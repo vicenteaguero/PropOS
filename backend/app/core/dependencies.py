@@ -8,6 +8,7 @@ from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.core.supabase.auth import get_user_profile, verify_token
+from app.core.tenant import resolve_active_tenant
 
 bearer_scheme = HTTPBearer()
 
@@ -40,6 +41,8 @@ async def get_current_user(
         "tenant_id": profile["tenant_id"],
         "full_name": profile.get("full_name"),
         "admin_scope": profile.get("admin_scope") or [],
+        "is_dev_admin": bool(profile.get("is_dev_admin")),
+        "view": profile.get("view") or "agent",
     }
 
 
@@ -74,10 +77,26 @@ def require_scope(scope: str) -> Callable:
     return scope_checker
 
 
+async def require_dev_admin(
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Gate destructive operations: only ADMIN with is_dev_admin=true."""
+    if current_user.get("role") != "ADMIN" or not current_user.get("is_dev_admin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Dev admin required",
+        )
+    return current_user
+
+
 async def get_tenant_id(
     request: Request,
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> UUID:
-    tenant_id = UUID(current_user["tenant_id"])
-    request.state.tenant_id = tenant_id
-    return tenant_id
+    """Resolve the active tenant for this request.
+
+    Reads X-Tenant-Id header → validates membership → calls activate_tenant
+    RPC if it differs from the user's current snapshot. Existing RLS policies
+    keep working off `profiles.*` (kept in sync by the RPC).
+    """
+    return resolve_active_tenant(request, current_user)
