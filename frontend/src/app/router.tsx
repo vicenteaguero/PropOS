@@ -2,6 +2,8 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { ProtectedRoute } from "@shared/components/protected-route/protected-route";
 import { useAuth } from "@shared/hooks/use-auth";
 import { LoginPage } from "@features/auth/pages/login-page";
+import { AuthSetupPage } from "@features/auth/pages/auth-setup-page";
+import { ForgotPasswordPage } from "@features/auth/pages/forgot-password-page";
 import { AppLayout } from "@layouts/app-layout";
 import { EmptyDashboard } from "@shared/components/empty-dashboard/empty-dashboard";
 import { LoadingSpinner } from "@shared/components/loading-spinner/loading-spinner";
@@ -22,17 +24,27 @@ import { ClientInboxPage } from "@features/client-chat/pages/client-inbox-page";
 import { AdminPhonesPage } from "@features/admin-phones/pages/admin-phones-page";
 import { NovedadesPage } from "@features/novedades/pages/novedades-page";
 import { SettingsPage } from "@features/settings/pages/settings-page";
-import type { UserRole } from "@shared/types/auth";
+import { PrivacyPage } from "@features/legal/pages/privacy-page";
+import { DataRightsPage } from "@features/legal/pages/data-rights-page";
+import { OwnerHomePage } from "@features/owner/pages/owner-home-page";
+import { OwnerPropertyDetailPage } from "@features/owner/pages/owner-property-detail-page";
+import { AdminUsersPage } from "@features/admin-users/pages/admin-users-page";
+import { AdminUserDetailPage } from "@features/admin-users/pages/admin-user-detail-page";
+import { AdminTenantsPage } from "@features/admin-tenants/pages/admin-tenants-page";
+import { AdminPropertiesPage } from "@features/admin-properties/pages/admin-properties-page";
+import { AdminPropertyDetailPage } from "@features/admin-properties/pages/admin-property-detail-page";
+import type { UserRole, UserView } from "@shared/types/auth";
 
-const ROLE_HOME_PATHS: Record<UserRole, string> = {
-  ADMIN: "/admin",
-  AGENT: "/agent",
-  LANDOWNER: "/landowner",
-  BUYER: "/buyer",
-  CONTENT: "/content",
+const VIEW_HOME_PATHS: Record<UserView, string> = {
+  admin: "/admin",
+  "admin-dev": "/admin",
+  agent: "/agent",
+  owner: "/owner",
+  buyer: "/buyer",
+  content: "/content",
 };
 
-function RoleRedirect() {
+function ViewRedirect() {
   const { user, isLoading } = useAuth();
   if (isLoading) {
     return (
@@ -42,7 +54,7 @@ function RoleRedirect() {
     );
   }
   if (!user) return <Navigate to="/login" replace />;
-  return <Navigate to={ROLE_HOME_PATHS[user.role]} replace />;
+  return <Navigate to={VIEW_HOME_PATHS[user.view] ?? "/admin"} replace />;
 }
 
 const ROLE_ROUTES: UserRole[] = ["ADMIN", "AGENT", "LANDOWNER", "BUYER", "CONTENT"];
@@ -51,10 +63,15 @@ export function AppRouter() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/" element={<RoleRedirect />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/auth/setup" element={<AuthSetupPage />} />
+      <Route path="/auth/recovery" element={<AuthSetupPage />} />
+      <Route path="/" element={<ViewRedirect />} />
 
       <Route path="/r/:slug" element={<SharePublicPage />} />
       <Route path="/p/:slug" element={<PortalPublicPage />} />
+      <Route path="/privacidad" element={<PrivacyPage />} />
+      <Route path="/derechos" element={<DataRightsPage />} />
 
       {ROLE_ROUTES.map((role) => (
         <Route
@@ -169,10 +186,34 @@ export function AppRouter() {
                   </ProtectedRoute>
                 }
               />
+              <Route path="users" element={<AdminUsersPage />} />
+              <Route path="users/:id" element={<AdminUserDetailPage />} />
+              <Route
+                path="tenants"
+                element={
+                  <ProtectedRoute requiredDevAdmin>
+                    <AdminTenantsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="properties" element={<AdminPropertiesPage />} />
+              <Route path="properties/:id" element={<AdminPropertyDetailPage />} />
             </>
           )}
         </Route>
       ))}
+
+      <Route
+        path="/owner"
+        element={
+          <ProtectedRoute requiredView={["owner", "admin-dev"]}>
+            <AppLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<OwnerHomePage />} />
+        <Route path="properties/:id" element={<OwnerPropertyDetailPage />} />
+      </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
