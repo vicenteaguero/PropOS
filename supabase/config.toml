@@ -9,3 +9,62 @@ port = 54322
 [studio]
 enabled = true
 port = 54323
+
+# Auth — applied to remote project via `supabase config push`.
+# SMTP must still be set in the Supabase Dashboard (CLI only pushes a
+# subset of auth config; SMTP secret is not safe in a tracked file).
+[auth]
+site_url = "https://prop-os-delta.vercel.app"
+additional_redirect_urls = [
+  "https://prop-os-delta.vercel.app/auth/setup",
+  "https://prop-os-delta.vercel.app/auth/recovery",
+  "https://prop-os-edge.vercel.app/auth/setup",
+  "https://prop-os-edge.vercel.app/auth/recovery",
+  "http://localhost:5173/auth/setup",
+  "http://localhost:5173/auth/recovery",
+  "https://192.168.0.62:5443/auth/setup",
+  "https://192.168.0.62:5443/auth/recovery",
+]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = false
+enable_confirmations = false
+secure_password_change = false
+
+# Custom SMTP via Resend. Activate when RESEND_API_KEY is set in .env.
+# Push command:
+#   set -a && . ./.env && set +a && \
+#   SUPABASE_AUTH_SMTP_PASS="$RESEND_API_KEY" supabase config push --yes
+# Until then, leave enabled = false (Supabase default SMTP, with "powered by Supabase" footer).
+[auth.email.smtp]
+enabled = true
+host = "smtp.resend.com"
+port = 465
+user = "resend"
+pass = "env(SUPABASE_AUTH_SMTP_PASS)"
+admin_email = "onboarding@resend.dev"
+sender_name = "PropOS"
+
+[auth.email.template.invite]
+subject = "Tu invitación a PropOS"
+content_path = "./supabase/email-templates/invite.html"
+
+[auth.email.template.recovery]
+subject = "Restablecer tu contraseña en PropOS"
+content_path = "./supabase/email-templates/recovery.html"
+
+[auth.email.template.magic_link]
+subject = "Tu link mágico para PropOS"
+content_path = "./supabase/email-templates/magic_link.html"
+
+[auth.email.template.email_change]
+subject = "Confirmá tu nuevo correo en PropOS"
+content_path = "./supabase/email-templates/email_change.html"
+
+[auth.email.template.confirmation]
+subject = "Confirmá tu correo en PropOS"
+content_path = "./supabase/email-templates/confirmation.html"
