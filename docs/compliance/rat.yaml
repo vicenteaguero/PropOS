@@ -1,0 +1,123 @@
+# Registro de Actividades de Tratamiento (RAT)
+# Ley N° 21.719 (Chile), Art. 15 ter.
+# Aplica a las marcas operadas en PropOS: CETER y ANAIDA.
+# Versión 1.0 — 2026-05-10. Mantener actualizado a mano cuando se agregue un nuevo tratamiento.
+
+responsables:
+  ceter:
+    nombre: "CETER Propiedades"
+    rut: "TBD"
+    domicilio: "Chile"
+    contacto_privacidad: "privacidad@propos.cl"
+  anaida:
+    nombre: "ANAIDA"
+    rut: "TBD"
+    domicilio: "Chile"
+    contacto_privacidad: "privacidad@propos.cl"
+
+encargado:
+  nombre: "PropOS"
+  rol: "Encargado del tratamiento"
+  contacto: "privacidad@propos.cl"
+
+tratamientos:
+
+  - id: captacion_leads
+    nombre: "Captación de leads e interesados"
+    finalidad: "Registrar y dar seguimiento a personas interesadas en propiedades para ofrecer servicios de corretaje."
+    categorias_titulares: [leads, prospectos, visitantes]
+    categorias_datos: [identificacion, contacto, preferencias_propiedad]
+    base_licitud: consentimiento
+    destinatarios_internos: [equipo_corredor]
+    sub_encargados: [Supabase, Vercel, Resend]
+    transferencia_internacional:
+      destino: "Estados Unidos"
+      mecanismo: "Cláusulas Contractuales Tipo del proveedor"
+    retencion: "24 meses desde el último contacto activo"
+    medidas_seguridad: [cifrado_reposo_AES256, TLS, RLS_por_tenant, audit_log, MFA_admins]
+
+  - id: gestion_propietarios
+    nombre: "Gestión de propietarios y propiedades cedidas"
+    finalidad: "Administrar la relación con propietarios que ceden propiedades para corretaje."
+    categorias_titulares: [propietarios]
+    categorias_datos: [identificacion, contacto, propiedad, condiciones_comerciales]
+    base_licitud: contrato
+    destinatarios_internos: [equipo_corredor, contabilidad]
+    sub_encargados: [Supabase, Vercel]
+    transferencia_internacional:
+      destino: "Estados Unidos"
+      mecanismo: "SCC del proveedor"
+    retencion: "6 años desde término de la relación (obligación tributaria)"
+    medidas_seguridad: [cifrado_reposo_AES256, TLS, RLS_por_tenant, audit_log]
+
+  - id: documentos_sensibles
+    nombre: "Recepción y custodia de documentos sensibles"
+    finalidad: "Procesos de arriendo o compraventa que requieren validar capacidad financiera (cédula, F22, liquidaciones, Dicom)."
+    categorias_titulares: [arrendatarios, compradores]
+    categorias_datos: [identificacion, financieros_sensibles]
+    base_licitud: contrato
+    destinatarios_internos: [equipo_corredor, propietario_destinatario]
+    sub_encargados: [Supabase]
+    transferencia_internacional:
+      destino: "Estados Unidos"
+      mecanismo: "SCC del proveedor"
+    retencion: "30 días si el proceso falla; 6 años si concluye"
+    medidas_seguridad: [cifrado_reposo, signed_urls_efimeras, audit_log_lecturas, bucket_privado]
+
+  - id: ia_anita
+    nombre: "Asistente IA Anita"
+    finalidad: "Apoyar al corredor en consultas sobre el CRM, redacción de mensajes y propuestas de acciones (que el humano siempre aprueba antes de ejecutar)."
+    categorias_titulares: [usuarios_internos, contactos_referenciados_en_prompts]
+    categorias_datos: [identificacion, contacto, mensajes, contexto_crm]
+    base_licitud: contrato
+    destinatarios_internos: [usuarios_anita]
+    sub_encargados: [Anthropic, Cerebras]
+    transferencia_internacional:
+      destino: "Estados Unidos"
+      mecanismo: "DPA + SCC del proveedor LLM"
+    retencion: "90 días"
+    medidas_seguridad: [pending_proposals_con_aprobacion_humana, audit_log, opt_out_training_provider]
+    nota: "Audio biométrico (Groq Whisper STT) deshabilitado hasta tener DPA explícito con Groq. Flag ANITA_STT_ENABLED=false."
+
+  - id: whatsapp_kapso
+    nombre: "Comunicación WhatsApp vía Kapso (BSP)"
+    finalidad: "Mantener conversaciones 1-a-1 con leads y propietarios usando WhatsApp Business."
+    categorias_titulares: [contactos_externos, usuarios_internos]
+    categorias_datos: [identificacion, telefono, mensajes]
+    base_licitud: consentimiento (opt-in WhatsApp)
+    destinatarios_internos: [equipo_corredor]
+    sub_encargados: [Kapso, Meta_WhatsApp]
+    transferencia_internacional:
+      destino: "Estados Unidos / Internacional"
+      mecanismo: "DPA + SCC con Kapso; Meta opera bajo sus propios términos"
+    retencion: "24 meses; webhooks crudos 60 días"
+    medidas_seguridad: [HMAC_webhook, RLS_por_tenant, audit_log]
+    nota: "Broadcast/marketing masivo deshabilitado por flag WHATSAPP_BROADCAST_ENABLED=false hasta validar consentimientos."
+
+  - id: marketing_email
+    nombre: "Comunicaciones de marketing por email"
+    finalidad: "Enviar a contactos que dieron consentimiento explícito información comercial relevante."
+    categorias_titulares: [leads_consentidos, clientes]
+    categorias_datos: [identificacion, contacto]
+    base_licitud: consentimiento (granular, revocable)
+    destinatarios_internos: [equipo_marketing]
+    sub_encargados: [Resend]
+    transferencia_internacional:
+      destino: "Estados Unidos"
+      mecanismo: "SCC del proveedor"
+    retencion: "Hasta revocación + 30 días"
+    medidas_seguridad: [unsubscribe_link, audit_log_envios]
+
+  - id: auditoria
+    nombre: "Registro de auditoría de la plataforma"
+    finalidad: "Trazabilidad de acciones de usuarios y agentes IA para seguridad y cumplimiento."
+    categorias_titulares: [usuarios_internos, agentes_IA]
+    categorias_datos: [accion, timestamp, source, payload_resumido]
+    base_licitud: obligacion_legal
+    destinatarios_internos: [admin_propos]
+    sub_encargados: [Supabase]
+    transferencia_internacional:
+      destino: "Estados Unidos"
+      mecanismo: "SCC del proveedor"
+    retencion: "5 años (alineado con plazo APDP)"
+    medidas_seguridad: [tabla_inmutable_via_trigger, RLS_admin_only]
