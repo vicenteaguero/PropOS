@@ -21,6 +21,9 @@ def mock_user():
         "role": "ADMIN",
         "tenant_id": TENANT_ID,
         "full_name": "Test Admin",
+        "admin_scope": [],
+        "is_dev_admin": True,
+        "view": "admin-dev",
     }
 
 
