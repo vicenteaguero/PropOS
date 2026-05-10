@@ -36,6 +36,10 @@ def _mock_execute(data):
 
 
 def _build_table_mock(execute_return):
+    """Mocks Supabase client. `single()` returns single object via .data,
+    chains without single() return a list."""
+    is_single = {"flag": False}
+
     table_mock = MagicMock()
     table_mock.select.return_value = table_mock
     table_mock.insert.return_value = table_mock
@@ -44,8 +48,23 @@ def _build_table_mock(execute_return):
     table_mock.eq.return_value = table_mock
     table_mock.ilike.return_value = table_mock
     table_mock.limit.return_value = table_mock
-    table_mock.single.return_value = table_mock
-    table_mock.execute.return_value = _mock_execute(execute_return)
+    table_mock.order.return_value = table_mock
+
+    def _single():
+        is_single["flag"] = True
+        return table_mock
+
+    table_mock.single.side_effect = _single
+
+    def _execute(*_a, **_k):
+        if is_single["flag"]:
+            is_single["flag"] = False
+            data = execute_return if isinstance(execute_return, dict) else (execute_return[0] if execute_return else None)
+        else:
+            data = execute_return if isinstance(execute_return, list) else [execute_return] if execute_return else []
+        return _mock_execute(data)
+
+    table_mock.execute.side_effect = _execute
     return table_mock
 
 
