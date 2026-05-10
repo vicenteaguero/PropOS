@@ -1,7 +1,10 @@
 import { NavLink } from "react-router-dom";
 import {
   BarChart3,
+  Building2,
+  Check,
   CheckSquare,
+  ChevronsUpDown,
   FileText,
   Folder,
   Home,
@@ -14,6 +17,7 @@ import {
   Phone,
   Receipt,
   Settings,
+  Shield,
   Sparkles,
   Users,
 } from "lucide-react";
@@ -33,12 +37,18 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useAuth } from "@shared/hooks/use-auth";
 import { useEffectiveUser } from "@core/view-as/view-as";
 import { useAgentName } from "@core/branding/agent-branding";
 import { PaletteSwitcher } from "@shared/components/palette-switcher/palette-switcher";
 import { apiRequest } from "@features/documents/api/http";
-import type { UserRole } from "@shared/types/auth";
+import type { UserView } from "@shared/types/auth";
 
 interface NavItem {
   label: string;
@@ -47,6 +57,7 @@ interface NavItem {
   end?: boolean;
   badge?: "pending";
   scope?: string;
+  devOnly?: boolean;
 }
 
 interface NavGroup {
@@ -63,63 +74,83 @@ function filterByScope(groups: NavGroup[], adminScope: string[]): NavGroup[] {
     .filter((g) => g.items.length > 0);
 }
 
-function buildGroups(role: UserRole, agentName: string): NavGroup[] {
-  switch (role) {
-    case "ADMIN":
-      return [
-        { items: [{ label: "Inicio", path: "/admin", icon: Home, end: true }] },
+function filterByDev(groups: NavGroup[], isDevAdmin: boolean): NavGroup[] {
+  if (isDevAdmin) return groups;
+  return groups
+    .map((g) => ({ ...g, items: g.items.filter((i) => !i.devOnly) }))
+    .filter((g) => g.items.length > 0);
+}
+
+function buildAdminGroups(agentName: string): NavGroup[] {
+  return [
+    { items: [{ label: "Inicio", path: "/admin", icon: Home, end: true }] },
+    {
+      label: agentName,
+      items: [
+        { label: agentName, path: "/admin/agent", icon: Sparkles, scope: "agent" },
         {
-          label: agentName,
-          items: [
-            { label: agentName, path: "/admin/agent", icon: Sparkles, scope: "agent" },
-            {
-              label: "Pendientes",
-              path: "/admin/pendientes",
-              icon: Inbox,
-              badge: "pending",
-              scope: "pendientes",
-            },
-            {
-              label: "Costo",
-              path: "/admin/analytics/agent-cost",
-              icon: Receipt,
-              scope: "analytics",
-            },
-          ],
+          label: "Pendientes",
+          path: "/admin/pendientes",
+          icon: Inbox,
+          badge: "pending",
+          scope: "pendientes",
         },
         {
-          label: "Comunicación",
-          items: [
-            {
-              label: "Inbox WA",
-              path: "/admin/client-inbox",
-              icon: MessageCircle,
-              scope: "inbox",
-            },
-            { label: "Teléfonos", path: "/admin/phones", icon: Phone, scope: "phones" },
-          ],
+          label: "Costo",
+          path: "/admin/analytics/agent-cost",
+          icon: Receipt,
+          scope: "analytics",
+          devOnly: true,
         },
-        {
-          label: "Datos",
-          items: [
-            { label: "Documentos", path: "/admin/documents", icon: FileText, scope: "documents" },
-            {
-              label: "Enlaces",
-              path: "/admin/documents/portals",
-              icon: Folder,
-              scope: "documents",
-            },
-          ],
-        },
-        {
-          label: "Operación",
-          items: [
-            { label: "Workflows", path: "/admin/workflows", icon: ListChecks, scope: "workflows" },
-            { label: "Analítica", path: "/admin/analytics", icon: BarChart3, scope: "analytics" },
-          ],
-        },
-      ];
-    case "AGENT":
+      ],
+    },
+    {
+      label: "Comunicación",
+      items: [
+        { label: "Inbox WA", path: "/admin/client-inbox", icon: MessageCircle, scope: "inbox" },
+        { label: "Teléfonos", path: "/admin/phones", icon: Phone, scope: "phones" },
+      ],
+    },
+    {
+      label: "CRM",
+      items: [
+        { label: "Propiedades", path: "/admin/properties", icon: Building2 },
+        { label: "Documentos", path: "/admin/documents", icon: FileText, scope: "documents" },
+        { label: "Enlaces", path: "/admin/documents/portals", icon: Folder, scope: "documents" },
+      ],
+    },
+    {
+      label: "Operación",
+      items: [
+        { label: "Workflows", path: "/admin/workflows", icon: ListChecks, scope: "workflows" },
+        { label: "Analítica", path: "/admin/analytics", icon: BarChart3, scope: "analytics" },
+      ],
+    },
+    {
+      label: "Administración",
+      items: [{ label: "Usuarios", path: "/admin/users", icon: Users }],
+    },
+    {
+      label: "Sistema",
+      items: [{ label: "Tenants", path: "/admin/tenants", icon: Shield, devOnly: true }],
+    },
+  ];
+}
+
+function buildOwnerGroups(): NavGroup[] {
+  return [
+    {
+      items: [{ label: "Mis propiedades", path: "/owner", icon: Home, end: true }],
+    },
+  ];
+}
+
+function buildGroups(view: UserView, agentName: string, isDevAdmin: boolean): NavGroup[] {
+  switch (view) {
+    case "admin":
+    case "admin-dev":
+      return filterByDev(buildAdminGroups(agentName), isDevAdmin);
+    case "agent":
       return [
         { items: [{ label: "Inicio", path: "/agent", icon: Home, end: true }] },
         {
@@ -146,16 +177,9 @@ function buildGroups(role: UserRole, agentName: string): NavGroup[] {
           ],
         },
       ];
-    case "LANDOWNER":
-      return [
-        {
-          items: [
-            { label: "Inicio", path: "/landowner", icon: Home, end: true },
-            { label: "Documentos", path: "/landowner/documents", icon: FileText },
-          ],
-        },
-      ];
-    case "BUYER":
+    case "owner":
+      return buildOwnerGroups();
+    case "buyer":
       return [
         {
           items: [
@@ -164,7 +188,7 @@ function buildGroups(role: UserRole, agentName: string): NavGroup[] {
           ],
         },
       ];
-    case "CONTENT":
+    case "content":
       return [
         {
           items: [
@@ -220,8 +244,45 @@ function NavItemRow({
   );
 }
 
+function TenantSwitcher() {
+  const { memberships, user, switchTenant } = useAuth();
+  if (!user || memberships.length <= 1) {
+    const current = memberships.find((m) => m.tenantId === user?.tenantId);
+    return (
+      <div className="truncate text-[11px] text-muted-foreground">
+        {current?.tenantName ?? user?.fullName ?? ""}
+      </div>
+    );
+  }
+  const current = memberships.find((m) => m.tenantId === user.tenantId);
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger className="flex w-full min-w-0 items-center gap-1 rounded text-left text-[11px] text-muted-foreground hover:text-foreground">
+        <span className="truncate">{current?.tenantName ?? "—"}</span>
+        <ChevronsUpDown className="size-3 shrink-0" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="min-w-[200px]">
+        {memberships.map((m) => (
+          <DropdownMenuItem
+            key={m.tenantId}
+            onSelect={() => {
+              if (m.tenantId !== user.tenantId) {
+                void switchTenant(m.tenantId);
+              }
+            }}
+            className="flex items-center justify-between gap-2"
+          >
+            <span className="truncate">{m.tenantName ?? m.tenantSlug ?? m.tenantId}</span>
+            {m.tenantId === user.tenantId && <Check className="size-3.5" />}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 export function AppSidebar() {
-  const { signOut } = useAuth();
+  const { signOut, user: authUser } = useAuth();
   const user = useEffectiveUser();
   const { setOpenMobile, isMobile } = useSidebar();
   const agentName = useAgentName();
@@ -229,12 +290,14 @@ export function AppSidebar() {
 
   if (!user) return null;
 
-  const groups = filterByScope(buildGroups(user.role, agentName), user.adminScope ?? []);
+  const view: UserView = (authUser?.view as UserView | undefined) ?? "agent";
+  const isDevAdmin = !!authUser?.isDevAdmin;
+  const groups = filterByScope(buildGroups(view, agentName, isDevAdmin), user.adminScope ?? []);
   const onNavigate = () => {
     if (isMobile) setOpenMobile(false);
   };
 
-  const isAdmin = user.role === "ADMIN";
+  const isAdminView = view === "admin" || view === "admin-dev";
 
   return (
     <Sidebar collapsible="icon">
@@ -245,8 +308,15 @@ export function AppSidebar() {
           className="size-8 shrink-0 rounded-lg ring-2 ring-primary/20 shadow-md shadow-primary/10"
         />
         <div className="grid min-w-0 flex-1 text-left leading-tight group-data-[collapsible=icon]:hidden">
-          <span className="truncate text-[13px] font-semibold">PropOS</span>
-          <span className="truncate text-[11px] text-muted-foreground">{user.fullName}</span>
+          <div className="flex items-center gap-1.5">
+            <span className="truncate text-[13px] font-semibold">PropOS</span>
+            {isDevAdmin && (
+              <span className="rounded bg-amber-500/20 px-1.5 py-0 text-[9px] font-bold uppercase tracking-wide text-amber-400">
+                DEV
+              </span>
+            )}
+          </div>
+          <TenantSwitcher />
         </div>
       </SidebarHeader>
 
@@ -279,7 +349,7 @@ export function AppSidebar() {
 
       <SidebarFooter className="gap-0.5 border-t border-sidebar-border px-2 py-2">
         <SidebarMenu className="gap-0.5">
-          {isAdmin && (
+          {isAdminView && (
             <>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild tooltip="Novedades" className={ITEM_CLASS}>
