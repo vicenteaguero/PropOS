@@ -47,6 +47,11 @@ class Settings(BaseSettings):
     client_agent_max_history: int = 12
     client_agent_business_name: str = "PropOS"
 
+    # Resend (transactional email)
+    resend_api_key: str = ""
+    resend_from_email: str = "PropOS <no-reply@propos.dev>"
+    app_base_url: str = "https://prop-os-delta.vercel.app"
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 
