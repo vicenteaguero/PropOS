@@ -12,12 +12,17 @@ TENANT_ID = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
 USER_ID = "11111111-1111-1111-1111-111111111111"
 
 
-def _make_user(role: str) -> dict:
+def _make_user(role: str, *, is_dev_admin: bool | None = None) -> dict:
+    if is_dev_admin is None:
+        is_dev_admin = role == "ADMIN"
     return {
         "id": USER_ID,
         "role": role,
         "tenant_id": TENANT_ID,
         "full_name": f"Test {role.title()}",
+        "admin_scope": [],
+        "is_dev_admin": is_dev_admin,
+        "view": "admin-dev" if is_dev_admin else role.lower(),
     }
 
 
