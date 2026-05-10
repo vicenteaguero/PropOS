@@ -73,6 +73,9 @@ instance/
 # Sphinx documentation
 docs/_build/
 
+# Internal plans (private to author, not for repo)
+docs/internal-plans/
+
 # PyBuilder
 .pybuilder/
 target/
@@ -140,6 +143,7 @@ celerybeat.pid
 .env
 .envrc
 .venv
+DEV_USERS.local.md
 env/
 venv/
 ENV/
