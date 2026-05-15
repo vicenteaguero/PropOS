@@ -22,10 +22,16 @@ Aceptamos los DPA + SCC publicados por cada proveedor. No negociamos contratos i
 
 ## Acciones pendientes
 
-- [ ] Confirmar que Supabase, Vercel, GCP, Anthropic, Resend tienen el DPA aceptado (revisar dashboards).
-- [ ] Verificar/firmar DPA con Cerebras antes de pasar Anita a producción con su modelo.
-- [ ] Solicitar DPA explícito a Groq antes de reactivar `ANITA_STT_ENABLED=true`.
-- [ ] Solicitar DPA a Kapso antes de habilitar `WHATSAPP_BROADCAST_ENABLED=true`.
+Checklist por vendor — marcar cuando se acepte/archive el DPA. Evidencia (screenshot del dashboard o email de confirmación) en `docs/compliance/dpa-evidence/<vendor>.{png,eml}` (gitignored si contiene PII).
+
+- [ ] **Supabase** — Dashboard → Organization → Settings → Legal → Accept DPA.
+- [ ] **Vercel** — Team Settings → Legal → Data Processing Agreement.
+- [ ] **Google Cloud (GCP)** — IAM & Admin → Settings → Data Processing Addendum.
+- [ ] **Anthropic** — Console → Settings → Privacy → DPA.
+- [ ] **Resend** — Dashboard → Settings → Legal → DPA.
+- [ ] **Cerebras** — No expone DPA en dashboard; enviar email a `legal@cerebras.ai` solicitando DPA estándar. Archivar respuesta. Requerido antes de pasar Anita a producción con su modelo.
+- [ ] **Groq** — Idem `legal@groq.com`. Requerido antes de reactivar `ANITA_STT_ENABLED=true`.
+- [ ] **Kapso** — Verificar DPA bilateral en contrato BSP existente; si falta, solicitar a contacto comercial. Requerido antes de habilitar `WHATSAPP_BROADCAST_ENABLED=true`.
 
 ## Política de cambio
 
