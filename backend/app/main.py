@@ -20,6 +20,8 @@ from app.features.campaigns.router import router as campaigns_router
 from app.features.compliance.router import admin_router as compliance_admin_router
 from app.features.compliance.router import router as compliance_router
 from app.features.contacts.router import router as contacts_router
+from app.features.visitor_invitations.router import admin_router as visitor_invitations_admin_router
+from app.features.visitor_invitations.router import public_router as visitor_invitations_public_router
 from app.features.documents.router import public_router as documents_public_router
 from app.features.documents.router import router as documents_router
 from app.features.interactions.router import router as interactions_router
@@ -97,6 +99,8 @@ def create_app() -> FastAPI:
     application.include_router(contacts_router, prefix=versioned_prefix)
     application.include_router(compliance_router, prefix=versioned_prefix)
     application.include_router(compliance_admin_router, prefix=versioned_prefix)
+    application.include_router(visitor_invitations_admin_router, prefix=versioned_prefix)
+    application.include_router(visitor_invitations_public_router, prefix=versioned_prefix)
     application.include_router(internal_areas_router, prefix=versioned_prefix)
     application.include_router(documents_router, prefix=versioned_prefix)
     application.include_router(pending_router, prefix=versioned_prefix)
