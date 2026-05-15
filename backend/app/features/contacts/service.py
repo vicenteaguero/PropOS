@@ -96,6 +96,9 @@ class ContactService:
         client = get_supabase_client()
         data = payload.model_dump()
         aliases: list[str] = data.pop("aliases", [])
+        consent_evidence = data.pop("consent_evidence", None)
+        consent_purposes: list[str] = data.pop("consent_purposes", ["operacional"])
+        consent_version: str = data.pop("consent_version", "1.0")
         data["type"] = data["type"].value if hasattr(data["type"], "value") else data["type"]
         data["tenant_id"] = str(tenant_id)
         data["created_by"] = str(created_by)
@@ -107,6 +110,31 @@ class ContactService:
 
         if aliases:
             ContactService._set_aliases(UUID(contact["id"]), tenant_id, aliases)
+
+        if consent_evidence is not None:
+            try:
+                from app.features.compliance.schemas import ConsentEvidence, ConsentGrantRequest
+                from app.features.compliance.service import ComplianceService
+
+                evidence_model = (
+                    consent_evidence
+                    if isinstance(consent_evidence, ConsentEvidence)
+                    else ConsentEvidence(**consent_evidence)
+                )
+                grant = ConsentGrantRequest(
+                    purposes=consent_purposes,
+                    evidence=evidence_model,
+                    version=consent_version,
+                )
+                await ComplianceService.record_consent(UUID(contact["id"]), tenant_id, grant)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "consent_record_failed",
+                    event_type="write",
+                    contact_id=contact["id"],
+                    error=str(exc),
+                )
+
         logger.info("created", event_type="write", contact_id=contact["id"])
         return contact
 

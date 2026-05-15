@@ -19,6 +19,7 @@ import {
   Settings,
   Shield,
   Sparkles,
+  UserPlus,
   Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -44,7 +45,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@shared/hooks/use-auth";
-import { useEffectiveUser } from "@core/view-as/view-as";
 import { useAgentName } from "@core/branding/agent-branding";
 import { PaletteSwitcher } from "@shared/components/palette-switcher/palette-switcher";
 import { apiRequest } from "@features/documents/api/http";
@@ -128,7 +128,10 @@ function buildAdminGroups(agentName: string): NavGroup[] {
     },
     {
       label: "Administración",
-      items: [{ label: "Usuarios", path: "/admin/users", icon: Users }],
+      items: [
+        { label: "Usuarios", path: "/admin/users", icon: Users },
+        { label: "Visitantes", path: "/admin/visitantes", icon: UserPlus },
+      ],
     },
     {
       label: "Sistema",
@@ -282,16 +285,15 @@ function TenantSwitcher() {
 }
 
 export function AppSidebar() {
-  const { signOut, user: authUser } = useAuth();
-  const user = useEffectiveUser();
+  const { signOut, user } = useAuth();
   const { setOpenMobile, isMobile } = useSidebar();
   const agentName = useAgentName();
   const pendingCount = usePendingCount();
 
   if (!user) return null;
 
-  const view: UserView = (authUser?.view as UserView | undefined) ?? "agent";
-  const isDevAdmin = !!authUser?.isDevAdmin;
+  const view: UserView = (user.view as UserView | undefined) ?? "agent";
+  const isDevAdmin = !!user.isDevAdmin;
   const groups = filterByScope(buildGroups(view, agentName, isDevAdmin), user.adminScope ?? []);
   const onNavigate = () => {
     if (isMobile) setOpenMobile(false);

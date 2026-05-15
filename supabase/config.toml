@@ -46,7 +46,7 @@ host = "smtp.resend.com"
 port = 465
 user = "resend"
 pass = "env(SUPABASE_AUTH_SMTP_PASS)"
-admin_email = "onboarding@resend.dev"
+admin_email = "no-reply@anaida.cl"
 sender_name = "PropOS"
 
 [auth.email.template.invite]

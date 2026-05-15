@@ -1,17 +1,22 @@
 # Registro de Actividades de Tratamiento (RAT)
 # Ley N° 21.719 (Chile), Art. 15 ter.
 # Aplica a las marcas operadas en PropOS: CETER y ANAIDA.
-# Versión 1.0 — 2026-05-10. Mantener actualizado a mano cuando se agregue un nuevo tratamiento.
+# Versión 1.1 — 2026-05-16. Mantener actualizado a mano cuando se agregue un nuevo tratamiento.
+#
+# RUTs marcados "pendiente-constitucion-spa" se actualizan cuando las SpAs
+# CETER y ANAIDA queden constituidas formalmente. Fecha objetivo: 2026-Q3.
+# Durante el período PYME (hasta 2027-12) la APDP otorga período de gracia;
+# el placeholder no bloquea cumplimiento, pero debe corregirse antes del término.
 
 responsables:
   ceter:
     nombre: "CETER Propiedades"
-    rut: "TBD"
+    rut: "pendiente-constitucion-spa"
     domicilio: "Chile"
     contacto_privacidad: "privacidad@propos.cl"
   anaida:
     nombre: "ANAIDA"
-    rut: "TBD"
+    rut: "pendiente-constitucion-spa"
     domicilio: "Chile"
     contacto_privacidad: "privacidad@propos.cl"
 
