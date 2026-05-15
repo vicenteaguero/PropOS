@@ -223,8 +223,6 @@ class UserService:
                 "maternal_surname": payload.maternal_surname,
                 "role": snapshot["role"],
                 "admin_scope": snapshot["admin_scope"],
-                "is_dev_admin": snapshot["is_dev_admin"],
-                "view": snapshot["view"],
                 "is_active": payload.is_active,
                 "email": email,
                 "rut": rut,
@@ -303,8 +301,6 @@ class UserService:
                 "maternal_surname": payload.maternal_surname,
                 "role": snapshot["role"],
                 "admin_scope": snapshot["admin_scope"],
-                "is_dev_admin": snapshot["is_dev_admin"],
-                "view": snapshot["view"],
                 "is_active": True,
                 "email": email,
                 "rut": rut,
@@ -345,12 +341,14 @@ class UserService:
             data["rut"] = _validate_rut_or_raise(data["rut"])
         _strip_full_name(data)
 
-        # Update profile snapshot.
+        # is_dev_admin and view live only on tenant_memberships; strip from profile patch.
+        membership_patch = {k: data.pop(k) for k in ("is_dev_admin", "view") if k in data}
+        membership_patch.update({k: data[k] for k in ("role", "admin_scope") if k in data})
+
+        # Update profile snapshot (role/admin_scope still mirrored for legacy RLS).
         resp = (
             client.table(PROFILES_TABLE).update(data).eq("id", str(user_id)).eq("tenant_id", str(tenant_id)).execute()
         )
-        # Sync the active membership too (so future activate_tenant() preserves the change).
-        membership_patch = {k: data[k] for k in ("role", "admin_scope", "is_dev_admin", "view") if k in data}
         if membership_patch:
             client.table(MEMBERSHIPS_TABLE).update(membership_patch).eq("user_id", str(user_id)).eq(
                 "tenant_id", str(tenant_id)
