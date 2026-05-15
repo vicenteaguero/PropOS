@@ -6,7 +6,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "sonner";
 import { ENV } from "@core/config/env";
 import { AgentBrandingProvider } from "@core/branding/agent-branding";
-import { ViewAsProvider } from "@core/view-as/view-as";
 
 // Warm up backend — triggers Cloud Run cold start while user sees login screen
 fetch(`${ENV.API_URL}/health`).catch(() => {});
@@ -36,21 +35,19 @@ export function Providers({ children }: ProvidersProps) {
       <BrowserRouter>
         <AuthProvider>
           <AgentBrandingProvider>
-            <ViewAsProvider>
-              <TooltipProvider>
-                {children}
-                <Toaster
-                  theme="dark"
-                  toastOptions={{
-                    style: {
-                      background: "var(--card)",
-                      border: "1px solid var(--border)",
-                      color: "var(--card-foreground)",
-                    },
-                  }}
-                />
-              </TooltipProvider>
-            </ViewAsProvider>
+            <TooltipProvider>
+              {children}
+              <Toaster
+                theme="dark"
+                toastOptions={{
+                  style: {
+                    background: "var(--card)",
+                    border: "1px solid var(--border)",
+                    color: "var(--card-foreground)",
+                  },
+                }}
+              />
+            </TooltipProvider>
           </AgentBrandingProvider>
         </AuthProvider>
       </BrowserRouter>
