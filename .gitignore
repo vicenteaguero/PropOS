@@ -76,6 +76,8 @@ docs/_build/
 
 # Internal plans (private to author, not for repo)
 docs/internal-plans/
+docs/internal/
+docs/compliance/dpa-evidence/
 
 # PyBuilder
 .pybuilder/
