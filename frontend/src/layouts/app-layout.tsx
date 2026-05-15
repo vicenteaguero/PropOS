@@ -11,8 +11,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { AppSidebar } from "@layouts/app-sidebar";
-import { ViewAsBanner } from "@layouts/view-as-banner";
-import { ViewAsPicker } from "@layouts/view-as-picker";
 import { useAuth } from "@shared/hooks/use-auth";
 import { AgentFAB } from "@features/agent/components/agent-fab";
 import { InstallNudge } from "@shared/components/install-nudge/install-nudge";
@@ -35,7 +33,6 @@ export function AppLayout() {
     <SidebarProvider defaultOpen={false}>
       <AppSidebar />
       <SidebarInset>
-        <ViewAsBanner />
         <header className="sticky top-0 z-10 flex h-[var(--app-header-h)] shrink-0 items-center gap-2 border-b border-border bg-background px-4">
           <SidebarTrigger className="-ml-1 md:hidden" />
           <div className="flex-1" />
@@ -59,11 +56,6 @@ export function AppLayout() {
                       </p>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    {user.role === "ADMIN" && (user.adminScope?.length ?? 0) === 0 && (
-                      <div className="px-1 py-1">
-                        <ViewAsPicker />
-                      </div>
-                    )}
                   </>
                 )}
                 <DropdownMenuItem onClick={signOut}>
