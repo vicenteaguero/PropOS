@@ -7,7 +7,7 @@ Multi-tenant real estate operations platform. PWA-first, Spanish UI, dark theme 
 - **Frontend**: React 19 + TypeScript + Vite 6 + Tailwind v4 + shadcn/ui + TanStack Query + react-router 7 + vite-plugin-pwa. Path aliases: `@/`, `@shared`, `@features`, `@core`, `@layouts`.
 - **Backend**: FastAPI + Poetry + structlog + pydantic-settings + Supabase Python client. Feature pattern: `router.py`, `service.py`, `schemas.py`.
 - **DB**: Supabase Postgres (project `tlbkwrjzraaikdrajwqh`, us-east-2). Migrations in `supabase/migrations/` (sequential SQL).
-- **Deploy**: GCP Cloud Run (backend), Vercel (frontend).
+- **Deploy**: GCP Cloud Run (backend), Vercel (frontend). **Two Vercel projects, one per branch**: `main` → `prop-os` (prod, `prop-os-delta.vercel.app`); `dev` → `prop-os-edge` (preview, `prop-os-edge.vercel.app`). Both `.vercel/project.json` (root + frontend) point to the same `prop-os-edge` link locally; pushing the branch is what selects the target project on Vercel's side. Env vars are per-project — keep them in sync (e.g. `VITE_VAPID_PUBLIC_KEY` was missing from prod).
 
 ## Repo layout
 
