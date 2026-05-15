@@ -26,6 +26,8 @@ import { NovedadesPage } from "@features/novedades/pages/novedades-page";
 import { SettingsPage } from "@features/settings/pages/settings-page";
 import { PrivacyPage } from "@features/legal/pages/privacy-page";
 import { DataRightsPage } from "@features/legal/pages/data-rights-page";
+import { VisitorRegistrationPage } from "@features/visitor-registration/pages/visitor-registration-page";
+import { AdminVisitorInvitationsPage } from "@features/admin-visitor-invitations/pages/admin-visitor-invitations-page";
 import { OwnerHomePage } from "@features/owner/pages/owner-home-page";
 import { OwnerPropertyDetailPage } from "@features/owner/pages/owner-property-detail-page";
 import { AdminUsersPage } from "@features/admin-users/pages/admin-users-page";
@@ -72,6 +74,7 @@ export function AppRouter() {
       <Route path="/p/:slug" element={<PortalPublicPage />} />
       <Route path="/privacidad" element={<PrivacyPage />} />
       <Route path="/derechos" element={<DataRightsPage />} />
+      <Route path="/invitacion/:slug" element={<VisitorRegistrationPage />} />
 
       {ROLE_ROUTES.map((role) => (
         <Route
@@ -198,6 +201,7 @@ export function AppRouter() {
               />
               <Route path="properties" element={<AdminPropertiesPage />} />
               <Route path="properties/:id" element={<AdminPropertyDetailPage />} />
+              <Route path="visitantes" element={<AdminVisitorInvitationsPage />} />
             </>
           )}
         </Route>
