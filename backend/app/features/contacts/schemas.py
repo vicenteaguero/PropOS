@@ -7,6 +7,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, EmailStr
 
+from app.features.compliance.schemas import ConsentEvidence
+
 
 class ContactType(str, Enum):
     BUYER = "BUYER"
@@ -36,6 +38,9 @@ class ContactBase(BaseModel):
 
 class ContactCreate(ContactBase):
     aliases: list[str] = []
+    consent_evidence: ConsentEvidence | None = None
+    consent_purposes: list[str] = ["operacional"]
+    consent_version: str = "1.0"
 
 
 class ContactUpdate(BaseModel):
