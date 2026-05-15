@@ -77,6 +77,49 @@ def recovery(*, full_name: str, recovery_url: str) -> tuple[str, str]:
     return ("Restablecer tu contraseña en PropOS", html)
 
 
+def visitor_invitation(*, invite_url: str, property_title: str, brand: str) -> tuple[str, str]:
+    """Plan v4: invitation email sent to a visitor with a registration link."""
+    body = f"""
+        <p style="margin:0 0 12px;color:#d4d4d4;line-height:1.6;font-size:15px;">
+          Te invitamos a registrarte para gestionar tu visita a
+          <strong style="color:#fafafa;">{property_title}</strong>.
+        </p>
+        <p style="margin:0 0 16px;color:#d4d4d4;line-height:1.6;font-size:15px;">
+          Toma menos de 2 minutos. Necesitarás escanear tu cédula con el botón del formulario.
+        </p>
+        {_button(invite_url, "Registrarme")}
+        <p style="margin:16px 0 0;color:#737373;line-height:1.5;font-size:13px;">
+          El link expira en 7 días.
+        </p>
+    """
+    html = _BASE.format(
+        title=f"{brand} — Registro de visita",
+        heading=f"{brand}: registro de visita",
+        body=body,
+    )
+    return (f"{brand}: te invitamos a registrarte para visitar {property_title}", html)
+
+
+def visitor_existing_login(*, login_url: str, reset_url: str, brand: str) -> tuple[str, str]:
+    """Plan v4: informative email when admin invites someone with an existing account."""
+    body = f"""
+        <p style="margin:0 0 12px;color:#d4d4d4;line-height:1.6;font-size:15px;">
+          Tienes una cuenta previa con nosotros. Para vincular esta nueva propiedad
+          a tu perfil, ingresá con tu contraseña.
+        </p>
+        {_button(login_url, "Ingresar")}
+        <p style="margin:16px 0 0;color:#737373;line-height:1.5;font-size:13px;">
+          ¿Olvidaste tu contraseña? <a href="{reset_url}" style="color:#fafafa;">Restablecela acá</a>.
+        </p>
+    """
+    html = _BASE.format(
+        title=f"{brand} — Ingresa a tu cuenta",
+        heading=f"{brand}: ingresa a tu cuenta",
+        body=body,
+    )
+    return (f"{brand}: ingresa a tu cuenta para vincular tu nueva visita", html)
+
+
 def email_change(*, full_name: str, confirm_url: str, new_email: str) -> tuple[str, str]:
     name = full_name.strip() or "Hola"
     body = f"""
