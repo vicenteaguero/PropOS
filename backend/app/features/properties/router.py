@@ -8,7 +8,10 @@ from fastapi import APIRouter, Depends, Query
 from app.core.dependencies import get_current_user, get_tenant_id, require_dev_admin, require_role
 from app.features.grants.schemas import PropertyGrantResponse
 from app.features.grants.service import GrantService
+from app.features.properties.describe import generate_description
 from app.features.properties.schemas import (
+    GeneratedDescription,
+    GenerateDescriptionRequest,
     PropertyCreate,
     PropertyResponse,
     PropertyUpdate,
@@ -76,6 +79,19 @@ async def delete_property(
     tenant_id: UUID = Depends(get_tenant_id),
 ):
     await PropertyService.delete_property(property_id, tenant_id)
+
+
+@router.post(
+    "/{property_id}/generate-description",
+    response_model=GeneratedDescription,
+    dependencies=[Depends(require_role("ADMIN", "AGENT", "CONTENT"))],
+)
+async def generate_property_description(
+    property_id: UUID,
+    payload: GenerateDescriptionRequest,
+    tenant_id: UUID = Depends(get_tenant_id),
+) -> dict:
+    return await generate_description(property_id, tenant_id, payload.tone, payload.portal, payload.max_words)
 
 
 @router.get(
