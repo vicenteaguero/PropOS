@@ -19,6 +19,7 @@ import {
   Settings,
   Shield,
   Sparkles,
+  Target,
   UserPlus,
   Users,
 } from "lucide-react";
@@ -114,6 +115,9 @@ function buildAdminGroups(agentName: string): NavGroup[] {
     {
       label: "CRM",
       items: [
+        { label: "Personas", path: "/admin/personas", icon: Users, scope: "crm" },
+        { label: "Interacciones", path: "/admin/interacciones", icon: MessageSquare, scope: "crm" },
+        { label: "Oportunidades", path: "/admin/oportunidades", icon: Target, scope: "crm" },
         { label: "Propiedades", path: "/admin/properties", icon: Building2 },
         { label: "Documentos", path: "/admin/documents", icon: FileText, scope: "documents" },
         { label: "Enlaces", path: "/admin/documents/portals", icon: Folder, scope: "documents" },
@@ -169,6 +173,7 @@ function buildGroups(view: UserView, agentName: string, isDevAdmin: boolean): Na
           items: [
             { label: "Personas", path: "/agent/personas", icon: Users },
             { label: "Interacciones", path: "/agent/interacciones", icon: MessageSquare },
+            { label: "Oportunidades", path: "/agent/oportunidades", icon: Target },
             { label: "Inbox WA", path: "/agent/client-inbox", icon: MessageCircle },
           ],
         },
