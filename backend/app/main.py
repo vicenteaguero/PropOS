@@ -27,6 +27,7 @@ from app.features.documents.router import router as documents_router
 from app.features.interactions.router import router as interactions_router
 from app.features.email_sync.router import router as email_sync_router
 from app.features.events.router import router as events_router
+from app.features.finance.router import router as finance_router
 from app.features.internal_areas.router import router as internal_areas_router
 from app.features.jobs.router import router as jobs_router
 from app.features.reminders.router import router as reminders_router
@@ -113,6 +114,7 @@ def create_app() -> FastAPI:
     application.include_router(events_router, prefix=versioned_prefix)
     application.include_router(reminders_router, prefix=versioned_prefix)
     application.include_router(email_sync_router, prefix=versioned_prefix)
+    application.include_router(finance_router, prefix=versioned_prefix)
     application.include_router(transactions_router, prefix=versioned_prefix)
     application.include_router(organizations_router, prefix=versioned_prefix)
     application.include_router(places_router, prefix=versioned_prefix)
