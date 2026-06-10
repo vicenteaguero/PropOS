@@ -71,6 +71,9 @@ export default defineConfig({
       workbox: {
         skipWaiting: true,
         clientsClaim: true,
+        // Layer custom web-push handlers onto the generated worker. The file
+        // lives in public/ so it ships to the dist root at /push-sw.js.
+        importScripts: ["push-sw.js"],
         maximumFileSizeToCacheInBytes: 12 * 1024 * 1024,
         globPatterns: ["**/*.{js,css,html,ico,png,svg,webp,woff,woff2,mjs}"],
         globIgnores: ["logo.png"],
