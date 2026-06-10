@@ -99,14 +99,16 @@ export function AppRouter() {
             />
           )}
 
-          <Route
-            path="pendientes"
-            element={
-              <ProtectedRoute requiredScope="pendientes">
-                <PendingPage />
-              </ProtectedRoute>
-            }
-          />
+          {(role === "ADMIN" || role === "AGENT" || role === "CONTENT") && (
+            <Route
+              path="pendientes"
+              element={
+                <ProtectedRoute requiredScope="pendientes">
+                  <PendingPage />
+                </ProtectedRoute>
+              }
+            />
+          )}
           <Route
             path="client-inbox"
             element={
