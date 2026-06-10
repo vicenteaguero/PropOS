@@ -64,6 +64,11 @@ def _build_payload(intent: str, resolved: ResolvedFields) -> dict[str, Any]:
         payload.setdefault("kind", "OTHER")
         payload.setdefault("summary_es", f"crear contacto {payload.get('full_name', '?')}")
 
+    elif intent == "update_person":
+        if resolved.person and resolved.person.resolved_id:
+            payload["id"] = str(resolved.person.resolved_id)
+        payload.setdefault("summary_es", f"actualizar {payload.get('full_name', 'contacto')}")
+
     elif intent == "create_task":
         title = payload.pop("task_title", None) or payload.pop("title", None) or extras.get("summary") or "tarea"
         payload["title"] = title
@@ -196,6 +201,14 @@ def dispatch(
                 "candidates": [],
             }
         payload["media_message_ids"] = [m["id"] for m in media_msgs]
+
+    # update_person needs an existing match to update. No id → ask the user.
+    if intent == "update_person" and not payload.get("id"):
+        return {
+            "kind": "clarify",
+            "reason": "No encontré a esa persona. ¿Podés confirmar el nombre exacto?",
+            "candidates": [],
+        }
 
     # Required-field guard: if any required key is still missing after the
     # 2-pass + defaults, ask the user instead of writing a broken proposal.
