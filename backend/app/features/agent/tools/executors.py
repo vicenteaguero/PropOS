@@ -125,14 +125,61 @@ def _accept_log_interaction(payload, tenant_id, user_id, agent_session_id):
     return ("interactions", UUID(row["id"]))
 
 
+def _create_reminder_row(client, *, tenant_id, user_id, target_table, target_row_id, remind_at, message):
+    client.table("reminders").insert(
+        {
+            "tenant_id": str(tenant_id),
+            "target_table": target_table,
+            "target_row_id": str(target_row_id),
+            "user_id": str(user_id),
+            "remind_at": remind_at,
+            "message": message,
+            "source": "agent",
+            "created_by": str(user_id),
+        }
+    ).execute()
+
+
 def _accept_create_task(payload, tenant_id, user_id, agent_session_id):
     client = get_supabase_client()
-    payload = {k: v for k, v in payload.items() if k not in ("summary_es",)}
+    remind_at = payload.get("remind_at")
+    payload = {k: v for k, v in payload.items() if k not in ("summary_es", "remind_at")}
     payload["tenant_id"] = str(tenant_id)
     payload["created_by"] = str(user_id)
     payload["source"] = "agent"
     row = client.table("tasks").insert(payload).execute().data[0]
+    if remind_at:
+        _create_reminder_row(
+            client,
+            tenant_id=tenant_id,
+            user_id=user_id,
+            target_table="tasks",
+            target_row_id=row["id"],
+            remind_at=remind_at,
+            message=payload.get("title"),
+        )
     return ("tasks", UUID(row["id"]))
+
+
+def _accept_create_event(payload, tenant_id, user_id, agent_session_id):
+    client = get_supabase_client()
+    remind_at = payload.get("remind_at")
+    payload = {k: v for k, v in payload.items() if k not in ("summary_es", "remind_at")}
+    payload["tenant_id"] = str(tenant_id)
+    payload["created_by"] = str(user_id)
+    payload["source"] = "agent"
+    row = client.table("events").insert(payload).execute().data[0]
+    if remind_at:
+        _create_reminder_row(
+            client,
+            tenant_id=tenant_id,
+            user_id=user_id,
+            target_table="events",
+            target_row_id=row["id"],
+            remind_at=remind_at,
+            message=payload.get("title"),
+        )
+    return ("events", UUID(row["id"]))
 
 
 def _accept_log_transaction(payload, tenant_id, user_id, agent_session_id):
@@ -300,6 +347,7 @@ ACCEPTOR_BY_KIND: dict[str, Any] = {
     "propose_create_person": _accept_create_person,
     "propose_log_interaction": _accept_log_interaction,
     "propose_create_task": _accept_create_task,
+    "propose_create_event": _accept_create_event,
     "propose_log_transaction": _accept_log_transaction,
     "propose_create_campaign": _accept_create_campaign,
     "propose_create_organization": _accept_create_organization,
