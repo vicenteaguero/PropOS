@@ -69,6 +69,17 @@ def _build_payload(intent: str, resolved: ResolvedFields) -> dict[str, Any]:
         payload["title"] = title
         payload.setdefault("kind", "TODO")
         payload.setdefault("summary_es", title)
+        # Wire resolved entities into the task's polymorphic `related` JSONB so a
+        # task created for "la propiedad de Apoquindo" stays linked to it.
+        related: dict[str, list[str]] = {}
+        if resolved.property and resolved.property.resolved_id:
+            related["properties"] = [str(resolved.property.resolved_id)]
+        if resolved.person and resolved.person.resolved_id:
+            related["people"] = [str(resolved.person.resolved_id)]
+        if resolved.project and resolved.project.resolved_id:
+            related["projects"] = [str(resolved.project.resolved_id)]
+        if related:
+            payload["related"] = related
 
     elif intent == "log_transaction":
         payload.setdefault("currency", "CLP")
@@ -86,6 +97,17 @@ def _build_payload(intent: str, resolved: ResolvedFields) -> dict[str, Any]:
     elif intent == "add_note":
         payload.setdefault("body", payload.pop("body", None) or extras.get("summary") or "nota")
         payload.setdefault("summary_es", payload["body"][:80])
+        # Attach the note to the single resolved entity (property > person >
+        # project), matching `notes.target_table`/`target_row_id`.
+        if resolved.property and resolved.property.resolved_id:
+            payload["target_table"] = "properties"
+            payload["target_row_id"] = str(resolved.property.resolved_id)
+        elif resolved.person and resolved.person.resolved_id:
+            payload["target_table"] = "contacts"
+            payload["target_row_id"] = str(resolved.person.resolved_id)
+        elif resolved.project and resolved.project.resolved_id:
+            payload["target_table"] = "projects"
+            payload["target_row_id"] = str(resolved.project.resolved_id)
 
     elif intent == "create_property":
         if "title" not in payload and resolved.property:
