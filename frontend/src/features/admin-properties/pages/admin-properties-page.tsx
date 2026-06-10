@@ -1,35 +1,46 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Plus } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@shared/components/loading-spinner/loading-spinner";
 import { Badge } from "@/components/ui/badge";
-import { apiRequest } from "@features/documents/api/http";
-
-interface ApiProperty {
-  id: string;
-  title: string;
-  address: string | null;
-  status: string;
-  is_draft: boolean;
-  created_at: string;
-}
+import { toast } from "sonner";
+import { propertiesApi, type PropertyInput } from "../api/properties-api";
+import { PropertyFormDialog } from "../components/property-form-dialog";
 
 export function AdminPropertiesPage() {
+  const qc = useQueryClient();
+  const [dialogOpen, setDialogOpen] = useState(false);
   const { data, isLoading } = useQuery({
     queryKey: ["admin", "properties"],
-    queryFn: () => apiRequest<ApiProperty[]>("/v1/properties"),
+    queryFn: () => propertiesApi.list(),
+  });
+  const create = useMutation({
+    mutationFn: (body: PropertyInput) => propertiesApi.create(body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "properties"] }),
+    onError: (err) => toast.error(err instanceof Error ? err.message : "No se pudo crear"),
   });
 
   return (
     <div className="mx-auto w-full max-w-5xl p-4 sm:p-6">
       <header className="mb-4 flex items-center justify-between">
         <h1 className="text-2xl font-bold">Propiedades</h1>
-        <Button size="sm" disabled title="Crear/editar desde el dashboard de Anita por ahora">
+        <Button size="sm" onClick={() => setDialogOpen(true)}>
           <Plus className="mr-1.5 size-4" /> Crear
         </Button>
       </header>
+
+      <PropertyFormDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        pending={create.isPending}
+        onSubmit={async (input) => {
+          await create.mutateAsync(input);
+          toast.success("Propiedad creada");
+        }}
+      />
 
       {isLoading && (
         <div className="flex justify-center py-12">
