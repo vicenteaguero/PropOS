@@ -73,6 +73,24 @@ cd frontend && npm run typecheck
 cd frontend && npm run build
 ```
 
+## Notebooks (Jupyter MCP)
+
+Análisis exploratorio vive en `notebooks/`. Claude Code corre celdas + ve outputs (incl. matplotlib PNGs, DataFrames) via Jupyter MCP server.
+
+Setup:
+1. Arrancar Jupyter: `make jupyter` (puerto 8888, token `propos-dev`, root = `./notebooks`). Mantener corriendo.
+2. `.mcp.json` ya configurado → al abrir Claude Code en el repo, MCP `jupyter` aparece. `/mcp` para verificar.
+3. Crear o abrir `.ipynb` en `notebooks/`. Pedir a Claude algo como "abre `scratch.ipynb`, agrega celda que plotee X, ejecuta".
+
+Tools MCP disponibles (no `NotebookEdit` — esa NO ejecuta kernel):
+- `list_notebooks`, `read_notebook`, `read_cell`, `append_markdown_cell`, `append_execute_code_cell`, `execute_cell`, `insert_cell`, `overwrite_cell_source`, `delete_cell`, `restart_kernel`.
+
+Workflow recomendado: append celda → execute → leer output (Claude ve PNG inline) → ajustar. No editar `.ipynb` manualmente con `Write`/`Edit`; corrompe JSON. Usar tools MCP.
+
+Notebook smoke test: `notebooks/scratch.ipynb`. Borrar cuando agregues análisis reales.
+
+Datos: para Supabase, `pd.read_sql(...)` contra pooler URL (no commitear credenciales — leer de env). Para datos locales/sintéticos no hace falta DB.
+
 ## DB
 
 ```bash
@@ -101,32 +119,28 @@ UUIDs: hex only (0-9, a-f). `pppp` invalid, use `dddd`.
 
 ## Features status
 
-### Anita (AI assistant) — complete 2026-05-01
+### Agent / "Propo" (AI assistant) — shipped, lives in `backend/app/features/agent/`
 
-End-to-end shipped. All 15 migrations 0020-0034 applied. Frontend `tsc --noEmit` exit 0.
+The assistant was renamed **anita → agent** (migration `20240601000011`); code, tables (`agent_sessions`/`agent_messages`/`agent_transcripts`), and routes use `agent`. The product PDF calls it "Propo", the `tenants.settings.ai_assistant_name` default is "Anita" — all the same assistant. Admin-only (router gated `require_role("ADMIN")` + `require_scope("agent")`).
 
-- **Provider** abstracted via `LLMClient` Protocol (`backend/app/features/anita/llm.py`). Switch by env `ANITA_PROVIDER`.
-  - DEV: Cerebras free (Llama 3.3 70B, 1M tok/día, 30 req/min, OpenAI-compatible). Fallback: Groq `llama-3.3-70b-versatile`.
-  - PROD: Anthropic Claude Sonnet 4.6 (~98% tool use vs Llama ~85%).
-  - Claude OAuth tokens (`sk-ant-oat01-`) only work with `claude` CLI, NOT Messages API/Agent SDK. ToS violation in third-party apps.
-- **Audio**: Web Speech API browser-native primary (free, es-CL). Groq Whisper free tier server-side fallback. Audio blob always persisted to `media_files`.
-- **Mutation flow**: propose → `pending_proposals` → accept/reject. Never write directly to domain tables from AI tool calls. Read-only tools (`find_*`, `query_data`, `clarify`) hit live data. Accept handler in `backend/app/features/pending/service.py` runs target service in transaction with `SET LOCAL app.anita_session_id = ?` + `SET LOCAL app.action_source = 'anita'` so universal audit trigger stamps `source='anita'`.
-- **Tool definitions** canonical in `tools/definitions.py`; `llm.py` adapters translate to provider format (OpenAI tool format for Cerebras/Groq/OpenAI; Anthropic native).
-- **UI**: inline `<AnitaInlineProposalCard>` in chat (accept/edit/reject without leaving chat). `<ProposalDisambiguationPicker>` shown when `pending_proposals.ambiguity[<field>].candidates.length >= 2`.
-- **Pages**: `/admin/analytics`, `/admin/analytics/anita-cost`, `/<role>/timeline/:table/:id` (renders `v_entity_timeline`), `/<role>/workflows`.
-- **Pending user actions** (not code): real `CEREBRAS_API_KEY` + `GROQ_API_KEY` in `.env`; 50-phrase test suite for Llama tool use quality.
+- **Architecture is a classifier pipeline, NOT native tool-calling.** Flow: `classifier` (single LLM call → KV intent) → `resolver` (local rapidfuzz entity match, zero LLM) → `dispatcher` (deterministic branch). Files: `agent/{classifier,resolver,dispatcher,intent_registry,chat}.py`. There is **no** `llm.py` Protocol and **no** `tools/definitions.py` — adding a capability = new `IntentSpec` in `intent_registry.py` + classifier prompt example + dispatcher branch + `_accept_*` in `tools/executors.py` + `ACCEPTOR_BY_KIND`.
+- **Provider is Groq-only** (`https://api.groq.com/openai/v1`, hardcoded in `classifier.py`/`tools/text_to_sql.py`/`transcribe.py`). `settings.agent_provider` only selects the rate-limit window. The Cerebras-dev / Anthropic-prod swap is **not** implemented (deferred post-v0.1.0).
+- **Audio**: MediaRecorder (frontend) → server-side Groq Whisper (`agent/transcribe.py`). No Web Speech API. Audio persisted to `media_files`.
+- **Mutation flow**: propose → `pending_proposals` → accept/reject; low-stakes intents `auto_commit=True` write directly. Accept handler in `pending/service.py` stamps audit via PostgREST headers `X-Agent-Session-Id` + `X-Action-Source='agent'` (the universal audit trigger reads `app.action_source`). Read path: `query_data` (whitelisted views) + `text_to_sql` (sqlglot-guarded SELECT via `agent_readonly` role).
+- **UI**: inline `<AgentInlineProposalCard>` (accept/edit/reject in chat) + `<ProposalDisambiguationPicker>` when `pending_proposals.ambiguity[<field>].candidates.length >= 2`.
+- **Pages**: `/admin/agent`, `/admin/analytics`, `/admin/analytics/agent-cost`, `/<role>/timeline/:table/:id`, `/<role>/workflows`.
 
 ### Kapso/WhatsApp channel — shipped 2026-05-03
 
 Bidirectional WhatsApp via Kapso BSP (chosen over Twilio/360dialog for cost + AI agent flexibility). Kapso Proxy provisions number, HMAC-SHA256 webhooks, REST send API.
 
 Two flows share one number:
-- Internal user (broker phone in `user_phones`) → existing Anita pipeline (`anita_sessions.source='whatsapp'`).
+- Internal user (broker phone in `user_phones`) → existing agent pipeline (`agent_sessions.source='whatsapp'`, driven via `channels/agent_adapter.py` → `run_chat_turn`, bypassing the gated agent router).
 - External contact → new Client Agent (B2C) using `client_conversations` / `client_messages`.
 
 Critical files:
 - `backend/app/features/integrations/kapso/{client,signature,webhook}.py`
-- `backend/app/features/channels/{router,anita_adapter,client_agent,router_api}.py`
+- `backend/app/features/channels/{router,agent_adapter,client_agent,router_api}.py`
 - `backend/app/features/notifications/whatsapp/{templates,dispatcher}.py`
 - `frontend/src/features/client-chat/`
 - Migration `20240601000003_kapso_channels.sql`
