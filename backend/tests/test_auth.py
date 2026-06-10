@@ -170,3 +170,64 @@ async def test_agent_cannot_send_notification():
     async with client:
         response = await client.post("/api/v1/notifications/send", json={"body": "test"})
         assert response.status_code == 403
+
+
+# --- Conversational agent is ADMIN-only (spec) ---
+
+
+@pytest.mark.asyncio
+async def test_agent_role_cannot_access_agent_chat():
+    # The AGENT *role* is not the conversational agent; only ADMIN reaches it.
+    client = await _client_for_role("AGENT")
+    async with client:
+        response = await client.get("/api/v1/agent/sessions")
+        assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_buyer_cannot_access_agent_chat():
+    client = await _client_for_role("BUYER")
+    async with client:
+        response = await client.get("/api/v1/agent/sessions")
+        assert response.status_code == 403
+
+
+# --- Pending proposals limited to ADMIN/AGENT/CONTENT ---
+
+
+@pytest.mark.asyncio
+async def test_buyer_cannot_list_pending():
+    client = await _client_for_role("BUYER")
+    async with client:
+        response = await client.get("/api/v1/pending")
+        assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_landowner_cannot_accept_pending():
+    client = await _client_for_role("LANDOWNER")
+    async with client:
+        response = await client.post(
+            "/api/v1/pending/00000000-0000-0000-0000-000000000001/accept",
+            json={},
+        )
+        assert response.status_code == 403
+
+
+# --- CRM routers limited to ADMIN/AGENT ---
+
+
+@pytest.mark.asyncio
+async def test_buyer_cannot_list_contacts():
+    client = await _client_for_role("BUYER")
+    async with client:
+        response = await client.get("/api/v1/contacts")
+        assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_landowner_cannot_list_transactions():
+    client = await _client_for_role("LANDOWNER")
+    async with client:
+        response = await client.get("/api/v1/transactions")
+        assert response.status_code == 403
