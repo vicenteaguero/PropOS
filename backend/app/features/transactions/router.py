@@ -28,10 +28,11 @@ async def list_transactions(
     project_id: UUID | None = Query(default=None),
     campaign_id: UUID | None = Query(default=None),
     property_id: UUID | None = Query(default=None),
+    status: str | None = Query(default=None),
     limit: int = Query(default=200, le=500),
 ) -> list[dict]:
     return await TransactionService.list_transactions(
-        tenant_id, direction, category, project_id, campaign_id, property_id, limit
+        tenant_id, direction, category, project_id, campaign_id, property_id, status, limit
     )
 
 
@@ -56,6 +57,11 @@ async def update_transaction(
     tenant_id: UUID = Depends(get_tenant_id),
 ) -> dict:
     return await TransactionService.update_transaction(tx_id, payload, tenant_id)
+
+
+@router.post("/{tx_id}/complete", response_model=TransactionResponse)
+async def complete_transaction(tx_id: UUID, tenant_id: UUID = Depends(get_tenant_id)) -> dict:
+    return await TransactionService.complete_transaction(tx_id, tenant_id)
 
 
 @router.delete("/{tx_id}", status_code=204)
