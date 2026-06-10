@@ -5,7 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 
-from app.core.dependencies import get_current_user, get_tenant_id
+from app.core.dependencies import get_current_user, get_tenant_id, require_role
 from app.features.organizations.schemas import (
     OrganizationCreate,
     OrganizationResponse,
@@ -13,7 +13,11 @@ from app.features.organizations.schemas import (
 )
 from app.features.organizations.service import OrganizationService
 
-router = APIRouter(prefix="/organizations", tags=["organizations"])
+router = APIRouter(
+    prefix="/organizations",
+    tags=["organizations"],
+    dependencies=[Depends(require_role("ADMIN", "AGENT"))],
+)
 
 
 @router.get("", response_model=list[OrganizationResponse])
