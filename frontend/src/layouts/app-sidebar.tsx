@@ -2,6 +2,7 @@ import { NavLink } from "react-router-dom";
 import {
   BarChart3,
   Building2,
+  CalendarDays,
   Check,
   CheckSquare,
   ChevronsUpDown,
@@ -124,6 +125,18 @@ function buildAdminGroups(agentName: string): NavGroup[] {
       ],
     },
     {
+      label: "Productividad",
+      items: [
+        { label: "Tareas", path: "/admin/tareas", icon: CheckSquare, scope: "productividad" },
+        {
+          label: "Calendario",
+          path: "/admin/calendario",
+          icon: CalendarDays,
+          scope: "productividad",
+        },
+      ],
+    },
+    {
       label: "Operación",
       items: [
         { label: "Workflows", path: "/admin/workflows", icon: ListChecks, scope: "workflows" },
@@ -165,6 +178,7 @@ function buildGroups(view: UserView, agentName: string, isDevAdmin: boolean): Na
           items: [
             { label: "Pendientes", path: "/agent/pendientes", icon: Inbox, badge: "pending" },
             { label: "Tareas", path: "/agent/tareas", icon: CheckSquare },
+            { label: "Calendario", path: "/agent/calendario", icon: CalendarDays },
             { label: "Workflows", path: "/agent/workflows", icon: ListChecks },
           ],
         },
