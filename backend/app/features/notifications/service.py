@@ -1,3 +1,5 @@
+import json
+
 from pywebpush import webpush, WebPushException
 
 from app.core.config.settings import settings
@@ -14,17 +16,19 @@ async def save_subscription(
     p256dh: str,
     auth_key: str,
 ) -> dict:
+    """Idempotent on endpoint: a device re-subscribes on every load."""
     client = get_supabase_client()
     result = (
         client.table("notification_subscriptions")
-        .insert(
+        .upsert(
             {
                 "user_id": user_id,
                 "tenant_id": tenant_id,
                 "endpoint": endpoint,
                 "p256dh": p256dh,
                 "auth_key": auth_key,
-            }
+            },
+            on_conflict="endpoint",
         )
         .execute()
     )
@@ -59,11 +63,21 @@ async def send_push(
     title: str,
     body: str,
     user_id: str | None = None,
+    url: str | None = None,
 ) -> int:
     subscriptions = await get_subscriptions(tenant_id, user_id)
     sent = 0
-    payload = f'{{"title": "{title}", "body": "{body}", "icon": "/pwa-192x192.png"}}'
+    payload = json.dumps(
+        {
+            "title": title,
+            "body": body,
+            "icon": "/pwa-192x192.png",
+            # The service worker deep-links here on notification click.
+            "url": url or "/",
+        }
+    )
 
+    dead_endpoints: list[str] = []
     for sub in subscriptions:
         try:
             webpush(
@@ -80,12 +94,23 @@ async def send_push(
             )
             sent += 1
         except WebPushException as e:
+            status_code = getattr(getattr(e, "response", None), "status_code", None)
+            # 404/410 mean the subscription is permanently gone — prune it so we
+            # stop fanning out to dead endpoints.
+            if status_code in (404, 410):
+                dead_endpoints.append(sub["endpoint"])
             logger.warning(
                 "Push failed",
                 event_type="push_failed",
                 endpoint=sub["endpoint"],
+                status_code=status_code,
                 error=str(e),
             )
+
+    if dead_endpoints:
+        client = get_supabase_client()
+        client.table("notification_subscriptions").delete().in_("endpoint", dead_endpoints).execute()
+
     return sent
 
 
