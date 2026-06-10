@@ -18,7 +18,11 @@ from app.features.properties.service import PropertyService
 router = APIRouter(prefix="/properties", tags=["properties"])
 
 
-@router.get("", response_model=list[PropertyResponse])
+@router.get(
+    "",
+    response_model=list[PropertyResponse],
+    dependencies=[Depends(require_role("ADMIN", "AGENT", "LANDOWNER", "CONTENT"))],
+)
 async def list_properties(
     tenant_id: UUID = Depends(get_tenant_id),
     q: str | None = Query(default=None),
@@ -27,7 +31,11 @@ async def list_properties(
     return await PropertyService.list_properties(tenant_id, q, include_drafts)
 
 
-@router.get("/{property_id}", response_model=PropertyResponse)
+@router.get(
+    "/{property_id}",
+    response_model=PropertyResponse,
+    dependencies=[Depends(require_role("ADMIN", "AGENT", "LANDOWNER", "CONTENT"))],
+)
 async def get_property(
     property_id: UUID,
     tenant_id: UUID = Depends(get_tenant_id),
@@ -35,7 +43,12 @@ async def get_property(
     return await PropertyService.get_property(property_id, tenant_id)
 
 
-@router.post("", response_model=PropertyResponse, status_code=201)
+@router.post(
+    "",
+    response_model=PropertyResponse,
+    status_code=201,
+    dependencies=[Depends(require_role("ADMIN", "AGENT", "CONTENT"))],
+)
 async def create_property(
     payload: PropertyCreate,
     tenant_id: UUID = Depends(get_tenant_id),
@@ -44,7 +57,11 @@ async def create_property(
     return await PropertyService.create_property(payload, tenant_id, UUID(current_user["id"]))
 
 
-@router.patch("/{property_id}", response_model=PropertyResponse)
+@router.patch(
+    "/{property_id}",
+    response_model=PropertyResponse,
+    dependencies=[Depends(require_role("ADMIN", "AGENT", "CONTENT"))],
+)
 async def update_property(
     property_id: UUID,
     payload: PropertyUpdate,
