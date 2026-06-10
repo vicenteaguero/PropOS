@@ -5,7 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 
-from app.core.dependencies import get_current_user, get_tenant_id
+from app.core.dependencies import get_current_user, get_tenant_id, require_role
 from app.features.contacts.schemas import (
     ContactCreate,
     ContactResponse,
@@ -14,7 +14,11 @@ from app.features.contacts.schemas import (
 )
 from app.features.contacts.service import ContactService
 
-router = APIRouter(prefix="/contacts", tags=["contacts"])
+router = APIRouter(
+    prefix="/contacts",
+    tags=["contacts"],
+    dependencies=[Depends(require_role("ADMIN", "AGENT"))],
+)
 
 
 @router.get("", response_model=list[ContactResponse])
