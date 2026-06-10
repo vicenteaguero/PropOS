@@ -5,7 +5,12 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.core.dependencies import get_current_user, get_tenant_id
+from app.core.dependencies import (
+    get_current_user,
+    get_tenant_id,
+    require_role,
+    require_scope,
+)
 from app.features.pending.schemas import (
     AcceptProposalRequest,
     BulkAcceptRequest,
@@ -14,7 +19,16 @@ from app.features.pending.schemas import (
 )
 from app.features.pending.service import PendingService
 
-router = APIRouter(prefix="/pending", tags=["pending"])
+# Reviewing/accepting agent proposals is limited to the roles that can act on
+# the broker's behalf. LANDOWNER/BUYER have no pending queue.
+router = APIRouter(
+    prefix="/pending",
+    tags=["pending"],
+    dependencies=[
+        Depends(require_role("ADMIN", "AGENT", "CONTENT")),
+        Depends(require_scope("pendientes")),
+    ],
+)
 
 
 @router.get("", response_model=list[PendingProposalResponse])
