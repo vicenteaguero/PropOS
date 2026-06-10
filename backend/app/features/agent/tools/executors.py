@@ -78,6 +78,21 @@ def _accept_create_person(payload, tenant_id, user_id, agent_session_id):
     return ("contacts", UUID(row["id"]))
 
 
+def _accept_update_person(payload, tenant_id, user_id, agent_session_id):
+    client = get_supabase_client()
+    row_id = payload.get("id")
+    if not row_id:
+        raise ValueError("missing contact id for update")
+    # full_name is the match key, not necessarily a change; id locates the row.
+    updates = {k: v for k, v in payload.items() if k not in ("summary_es", "id", "full_name")}
+    if "kind" in updates:
+        updates["type"] = updates.pop("kind")
+    if not updates:
+        raise ValueError("no fields to update")
+    client.table("contacts").update(updates).eq("id", str(row_id)).eq("tenant_id", str(tenant_id)).execute()
+    return ("contacts", UUID(row_id))
+
+
 def _accept_log_interaction(payload, tenant_id, user_id, agent_session_id):
     client = get_supabase_client()
     participants = payload.pop("participant_person_ids", []) or []
@@ -345,6 +360,7 @@ def _accept_add_note(payload, tenant_id, user_id, agent_session_id):
 # auto-commit path. Map proposal_kind -> writer fn.
 ACCEPTOR_BY_KIND: dict[str, Any] = {
     "propose_create_person": _accept_create_person,
+    "propose_update_person": _accept_update_person,
     "propose_log_interaction": _accept_log_interaction,
     "propose_create_task": _accept_create_task,
     "propose_create_event": _accept_create_event,
