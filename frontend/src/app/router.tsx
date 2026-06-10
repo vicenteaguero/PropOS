@@ -42,6 +42,7 @@ import { OpportunitiesPage } from "@features/opportunities/pages/opportunities-p
 import { TasksPage } from "@features/tasks/pages/tasks-page";
 import { CalendarPage } from "@features/calendar/pages/calendar-page";
 import { EmailInboxPage } from "@features/email/pages/email-inbox-page";
+import { FinancePage } from "@features/finance/pages/finance-page";
 import type { UserRole, UserView } from "@shared/types/auth";
 
 const VIEW_HOME_PATHS: Record<UserView, string> = {
@@ -256,6 +257,14 @@ export function AppRouter() {
                 element={
                   <ProtectedRoute requiredScope="analytics">
                     <AgentCostPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="finanzas"
+                element={
+                  <ProtectedRoute requiredScope="finanzas">
+                    <FinancePage />
                   </ProtectedRoute>
                 }
               />
