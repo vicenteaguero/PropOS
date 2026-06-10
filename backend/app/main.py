@@ -25,8 +25,10 @@ from app.features.visitor_invitations.router import public_router as visitor_inv
 from app.features.documents.router import public_router as documents_public_router
 from app.features.documents.router import router as documents_router
 from app.features.interactions.router import router as interactions_router
+from app.features.events.router import router as events_router
 from app.features.internal_areas.router import router as internal_areas_router
 from app.features.jobs.router import router as jobs_router
+from app.features.reminders.router import router as reminders_router
 from app.features.notes.router import router as notes_router
 from app.features.notifications.router import router as notifications_router
 from app.features.opportunities.router import router as opportunities_router
@@ -107,6 +109,8 @@ def create_app() -> FastAPI:
     application.include_router(pending_router, prefix=versioned_prefix)
     application.include_router(interactions_router, prefix=versioned_prefix)
     application.include_router(tasks_router, prefix=versioned_prefix)
+    application.include_router(events_router, prefix=versioned_prefix)
+    application.include_router(reminders_router, prefix=versioned_prefix)
     application.include_router(transactions_router, prefix=versioned_prefix)
     application.include_router(organizations_router, prefix=versioned_prefix)
     application.include_router(places_router, prefix=versioned_prefix)
