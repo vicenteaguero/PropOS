@@ -5,7 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 
-from app.core.dependencies import get_current_user, get_tenant_id
+from app.core.dependencies import get_current_user, get_tenant_id, require_role
 from app.features.publications.schemas import (
     PublicationCreate,
     PublicationResponse,
@@ -13,7 +13,12 @@ from app.features.publications.schemas import (
 )
 from app.features.publications.service import PublicationService
 
-router = APIRouter(prefix="/publications", tags=["publications"])
+# CONTENT manages portal publications (Feature 6 content package).
+router = APIRouter(
+    prefix="/publications",
+    tags=["publications"],
+    dependencies=[Depends(require_role("ADMIN", "AGENT", "CONTENT"))],
+)
 
 
 @router.get("", response_model=list[PublicationResponse])
