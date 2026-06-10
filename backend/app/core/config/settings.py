@@ -57,6 +57,15 @@ class Settings(BaseSettings):
     # scheduler. Empty value disables the endpoints (returns 503).
     internal_jobs_secret: str = ""
 
+    # Email sync (single Titan mailbox in v0.1.0; creds via env/secrets only).
+    email_sync_enabled: bool = False
+    email_imap_host: str = "imap.titan.email"
+    email_imap_port: int = 993
+    email_imap_user: str = ""
+    email_imap_password: str = ""
+    # Tenant that owns the synced mailbox.
+    email_sync_tenant_id: str = ""
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 
