@@ -54,5 +54,6 @@ async def send_notification(
         title=payload.title,
         body=payload.body,
         user_id=payload.user_id,
+        url=payload.url,
     )
     return {"status": "sent", "count": sent}
