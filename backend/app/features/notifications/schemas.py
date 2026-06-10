@@ -7,6 +7,10 @@ class PushSubscriptionCreate(BaseModel):
     auth_key: str
 
 
+class PushUnsubscribe(BaseModel):
+    endpoint: str
+
+
 class SendNotificationRequest(BaseModel):
     title: str = "PropOS"
     body: str
