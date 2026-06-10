@@ -142,6 +142,7 @@ function buildAdminGroups(agentName: string): NavGroup[] {
       label: "Operación",
       items: [
         { label: "Workflows", path: "/admin/workflows", icon: ListChecks, scope: "workflows" },
+        { label: "Finanzas", path: "/admin/finanzas", icon: Receipt, scope: "finanzas" },
         { label: "Analítica", path: "/admin/analytics", icon: BarChart3, scope: "analytics" },
       ],
     },
