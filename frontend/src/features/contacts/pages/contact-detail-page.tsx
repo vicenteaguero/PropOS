@@ -21,6 +21,7 @@ import { useAuth } from "@shared/hooks/use-auth";
 import { toast } from "sonner";
 import { InteractionsList } from "@features/interactions/components/interactions-list";
 import { NotesList } from "@features/notes/components/notes-list";
+import { ContactEmails } from "@features/email/components/contact-emails";
 import { useContact, useDeleteContact, useUpdateContact } from "../hooks/use-contacts";
 import { ContactFormDialog } from "../components/contact-form-dialog";
 import { ContactOpportunities } from "../components/contact-opportunities";
@@ -118,7 +119,7 @@ export function ContactDetailPage() {
           <NotesList targetTable="contacts" targetRowId={contact.id} />
         </TabsContent>
         <TabsContent value="correos" className="mt-4">
-          <p className="py-6 text-center text-sm text-muted-foreground">Disponible próximamente.</p>
+          <ContactEmails contactId={contact.id} />
         </TabsContent>
       </Tabs>
 
