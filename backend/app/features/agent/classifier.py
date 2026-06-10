@@ -26,6 +26,7 @@ INTENTS = (
     "log_interaction",
     "create_person",
     "create_task",
+    "create_event",
     "log_transaction",
     "create_organization",
     "create_property",
@@ -46,10 +47,14 @@ Output: UNA línea por acción con `key=value` separados por espacios.
 Si hay varias acciones, una por línea (sin bullets ni numeración).
 
 Intents válidos (campo `intent`):
-  log_interaction, create_person, create_task, log_transaction,
+  log_interaction, create_person, create_task, create_event, log_transaction,
   create_organization, create_property, create_campaign, add_note,
   attach_photos_to_property, create_document_from_photos,
   query_count, query_freeform, ambiguous, out_of_scope
+
+create_event = agenda futura (visita, reunión, fecha límite). Distinto de
+log_interaction (que registra algo YA ocurrido). Usa `when=ISO` para el inicio
+y `remind_at=ISO` si pide recordatorio ("recuérdame 1h antes").
 
 Vocabulario universal (usa los que apliquen):
   kind=...           sub-tipo (VISIT/BUYER/TODO/IN/OUT/NOTARY/casa/etc.)
@@ -122,6 +127,9 @@ Ejemplos:
 
   in:  hazme un documento con esas fotos llamado tasación Apoquindo
   out: intent=create_document_from_photos title="tasación Apoquindo"
+
+  in:  agéndame visita con Juan mañana a las 4 en Apoquindo, recuérdame 1h antes
+  out: intent=create_event kind=VISIT title="visita Apoquindo" person="Juan" when="<ISO>" remind_at="<ISO -1h>"
 """
 
 
@@ -193,10 +201,22 @@ async def classify(user_text: str) -> ClassifierResult:
         base_url="https://api.groq.com/openai/v1",
     )
 
+    # Anchor relative dates ("mañana", "el viernes", "en 1 hora") so the model
+    # can emit absolute ISO 8601 for due/when/remind_at fields.
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    now_scl = datetime.now(ZoneInfo("America/Santiago"))
+    date_ctx = (
+        f"Fecha y hora actual (America/Santiago): {now_scl.isoformat(timespec='minutes')} "
+        f"({now_scl.strftime('%A')}). Convierte fechas relativas a ISO 8601."
+    )
+
     raw_response = await client.chat.completions.with_raw_response.create(
         model=settings.agent_model,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": date_ctx},
             {"role": "user", "content": user_text.strip()},
         ],
         temperature=0,
