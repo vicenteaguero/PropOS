@@ -20,6 +20,9 @@ const KIND_LABELS: Record<string, string> = {
   propose_create_campaign: "Crear campaña",
   propose_create_organization: "Crear organización",
   propose_add_note: "Agregar nota",
+  propose_create_property: "Crear propiedad",
+  propose_attach_photos_to_property: "Adjuntar fotos a propiedad",
+  propose_create_document_from_photos: "Crear documento con fotos",
 };
 
 export function AgentInlineProposalCard({ proposalId }: Props) {
