@@ -7,7 +7,12 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 
-from app.core.dependencies import get_current_user, get_tenant_id
+from app.core.dependencies import (
+    get_current_user,
+    get_tenant_id,
+    require_role,
+    require_scope,
+)
 from app.core.supabase.client import get_supabase_client
 from app.features.agent.chat import run_chat_turn
 from app.features.agent.schemas import (
@@ -18,7 +23,14 @@ from app.features.agent.schemas import (
 )
 from app.features.agent.transcribe import TranscriptionError, transcribe_audio
 
-router = APIRouter(prefix="/agent")
+# Conversational agent is admin-only (spec: "solamente los administradores
+# tendrán acceso al agente"). The Kapso/WhatsApp inbound path drives
+# run_chat_turn directly via channels and does not pass through this router,
+# so phone access stays gated by user_phones, not by these dependencies.
+router = APIRouter(
+    prefix="/agent",
+    dependencies=[Depends(require_role("ADMIN")), Depends(require_scope("agent"))],
+)
 
 # ──────────────────────────── sessions ────────────────────────────
 
