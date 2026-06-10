@@ -52,6 +52,11 @@ class Settings(BaseSettings):
     resend_from_email: str = "PropOS <no-reply@propos.dev>"
     app_base_url: str = "https://prop-os-delta.vercel.app"
 
+    # Internal cron endpoints (Cloud Scheduler → POST /internal/jobs/*).
+    # Shared-secret header gate; Cloud Run scales to zero so no in-process
+    # scheduler. Empty value disables the endpoints (returns 503).
+    internal_jobs_secret: str = ""
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 
