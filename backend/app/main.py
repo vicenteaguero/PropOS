@@ -26,6 +26,7 @@ from app.features.documents.router import public_router as documents_public_rout
 from app.features.documents.router import router as documents_router
 from app.features.interactions.router import router as interactions_router
 from app.features.internal_areas.router import router as internal_areas_router
+from app.features.jobs.router import router as jobs_router
 from app.features.notes.router import router as notes_router
 from app.features.notifications.router import router as notifications_router
 from app.features.opportunities.router import router as opportunities_router
@@ -122,6 +123,7 @@ def create_app() -> FastAPI:
     application.include_router(analytics_router, prefix=versioned_prefix)
     application.include_router(client_chat_router, prefix=versioned_prefix)
     application.include_router(user_phones_router, prefix=versioned_prefix)
+    application.include_router(jobs_router, prefix=versioned_prefix)
     application.include_router(documents_public_router)
     # Public webhook (no JWT). Mounted under versioned prefix; HMAC-verified.
     application.include_router(kapso_webhook_router, prefix=versioned_prefix)
