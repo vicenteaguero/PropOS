@@ -22,6 +22,7 @@ import {
   Shield,
   Sparkles,
   Target,
+  Upload,
   UserPlus,
   Users,
 } from "lucide-react";
@@ -151,6 +152,7 @@ function buildAdminGroups(agentName: string): NavGroup[] {
       items: [
         { label: "Usuarios", path: "/admin/users", icon: Users },
         { label: "Visitantes", path: "/admin/visitantes", icon: UserPlus },
+        { label: "Importar", path: "/admin/datos/importar", icon: Upload, scope: "datos" },
       ],
     },
     {
