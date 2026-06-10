@@ -28,7 +28,7 @@ async def test_save_subscription(mock_client):
     mock_response = MagicMock()
     mock_response.data = [MOCK_SUBSCRIPTION]
     table_mock = MagicMock()
-    table_mock.insert.return_value = table_mock
+    table_mock.upsert.return_value = table_mock
     table_mock.execute.return_value = mock_response
     mock_client.return_value.table.return_value = table_mock
 

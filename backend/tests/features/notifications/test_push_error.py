@@ -42,3 +42,29 @@ async def test_send_push_webpush_exception(mock_client, mock_webpush):
 
     assert count == 0
     mock_webpush.assert_called_once()
+
+
+@pytest.mark.asyncio
+@patch("app.features.notifications.service.webpush")
+@patch("app.features.notifications.service.get_supabase_client")
+async def test_send_push_prunes_gone_subscription(mock_client, mock_webpush):
+    mock_response = MagicMock()
+    mock_response.data = [MOCK_SUBSCRIPTION]
+    table_mock = MagicMock()
+    table_mock.select.return_value = table_mock
+    table_mock.eq.return_value = table_mock
+    table_mock.delete.return_value = table_mock
+    table_mock.in_.return_value = table_mock
+    table_mock.execute.return_value = mock_response
+    mock_client.return_value.table.return_value = table_mock
+
+    # 410 Gone → subscription is dead and should be pruned.
+    gone = WebPushException("gone")
+    gone.response = MagicMock(status_code=410)
+    mock_webpush.side_effect = gone
+
+    count = await send_push(tenant_id=MOCK_TENANT_ID, title="t", body="b")
+
+    assert count == 0
+    table_mock.delete.assert_called_once()
+    table_mock.in_.assert_called_once_with("endpoint", [MOCK_SUBSCRIPTION["endpoint"]])
