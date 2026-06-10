@@ -33,6 +33,7 @@ class TransactionService:
         project_id: UUID | None = None,
         campaign_id: UUID | None = None,
         property_id: UUID | None = None,
+        status: str | None = None,
         limit: int = 200,
     ) -> list[dict]:
         client = get_supabase_client()
@@ -48,6 +49,8 @@ class TransactionService:
             builder = builder.eq("direction", direction)
         if category:
             builder = builder.eq("category", category)
+        if status:
+            builder = builder.eq("status", status)
         if project_id is not None:
             builder = builder.eq("related_project_id", str(project_id))
         if campaign_id is not None:
@@ -73,7 +76,7 @@ class TransactionService:
     async def create_transaction(payload, tenant_id: UUID, created_by: UUID) -> dict:
         client = get_supabase_client()
         data = payload.model_dump()
-        for k in ("direction", "category"):
+        for k in ("direction", "category", "status"):
             if data.get(k) and hasattr(data[k], "value"):
                 data[k] = data[k].value
         data["tenant_id"] = str(tenant_id)
@@ -94,12 +97,24 @@ class TransactionService:
     async def update_transaction(tx_id: UUID, payload, tenant_id: UUID) -> dict:
         client = get_supabase_client()
         data = payload.model_dump(exclude_unset=True)
-        for k in ("direction", "category"):
+        for k in ("direction", "category", "status"):
             if data.get(k) and hasattr(data[k], "value"):
                 data[k] = data[k].value
         data = _serialize(data)
         response = client.table(TX_TABLE).update(data).eq("id", str(tx_id)).eq("tenant_id", str(tenant_id)).execute()
         return response.data[0]
+
+    @staticmethod
+    async def complete_transaction(tx_id: UUID, tenant_id: UUID) -> dict:
+        client = get_supabase_client()
+        return (
+            client.table(TX_TABLE)
+            .update({"status": "COMPLETED", "settled_at": datetime.now(UTC).isoformat()})
+            .eq("id", str(tx_id))
+            .eq("tenant_id", str(tenant_id))
+            .execute()
+            .data[0]
+        )
 
     @staticmethod
     async def delete_transaction(tx_id: UUID, tenant_id: UUID) -> None:
