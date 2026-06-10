@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import date, datetime
+from typing import Any
 from uuid import UUID
 
 from app.core.logging.logger import get_logger
@@ -8,6 +10,20 @@ from app.core.supabase.client import get_supabase_client
 PROPERTIES_TABLE = "properties"
 
 logger = get_logger("PROPERTIES")
+
+
+def _serialize(data: dict[str, Any]) -> dict[str, Any]:
+    out: dict[str, Any] = {}
+    for k, v in data.items():
+        if isinstance(v, datetime | date):
+            out[k] = v.isoformat()
+        elif isinstance(v, UUID):
+            out[k] = str(v)
+        elif hasattr(v, "value"):
+            out[k] = v.value
+        else:
+            out[k] = v
+    return out
 
 
 class PropertyService:
@@ -44,8 +60,7 @@ class PropertyService:
     @staticmethod
     async def create_property(payload, tenant_id: UUID, created_by: UUID) -> dict:
         client = get_supabase_client()
-        data = payload.model_dump()
-        data["status"] = data["status"].value
+        data = _serialize(payload.model_dump())
         data["tenant_id"] = str(tenant_id)
         data["created_by"] = str(created_by)
         logger.info("creating", event_type="write", tenant_id=str(tenant_id))
@@ -55,9 +70,7 @@ class PropertyService:
     @staticmethod
     async def update_property(property_id: UUID, payload, tenant_id: UUID) -> dict:
         client = get_supabase_client()
-        data = payload.model_dump(exclude_unset=True)
-        if "status" in data and data["status"] is not None:
-            data["status"] = data["status"].value
+        data = _serialize(payload.model_dump(exclude_unset=True))
         response = (
             client.table(PROPERTIES_TABLE)
             .update(data)
