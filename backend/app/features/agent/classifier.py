@@ -25,6 +25,7 @@ logger = get_logger("AGENT_CLASSIFY")
 INTENTS = (
     "log_interaction",
     "create_person",
+    "update_person",
     "create_task",
     "create_event",
     "log_transaction",
@@ -47,7 +48,7 @@ Output: UNA línea por acción con `key=value` separados por espacios.
 Si hay varias acciones, una por línea (sin bullets ni numeración).
 
 Intents válidos (campo `intent`):
-  log_interaction, create_person, create_task, create_event, log_transaction,
+  log_interaction, create_person, update_person, create_task, create_event, log_transaction,
   create_organization, create_property, create_campaign, add_note,
   attach_photos_to_property, create_document_from_photos,
   query_count, query_freeform, ambiguous, out_of_scope
@@ -130,6 +131,9 @@ Ejemplos:
 
   in:  agéndame visita con Juan mañana a las 4 en Apoquindo, recuérdame 1h antes
   out: intent=create_event kind=VISIT title="visita Apoquindo" person="Juan" when="<ISO>" remind_at="<ISO -1h>"
+
+  in:  cambia el teléfono de Pedro Soto a +56 9 8743 2110
+  out: intent=update_person full_name="Pedro Soto" phone="+56987432110"
 """
 
 
