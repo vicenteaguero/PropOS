@@ -12,6 +12,7 @@ import {
   Inbox,
   ListChecks,
   LogOut,
+  Mail,
   MessageCircle,
   MessageSquare,
   Newspaper,
@@ -110,6 +111,7 @@ function buildAdminGroups(agentName: string): NavGroup[] {
       label: "Comunicación",
       items: [
         { label: "Inbox WA", path: "/admin/client-inbox", icon: MessageCircle, scope: "inbox" },
+        { label: "Correos", path: "/admin/correos", icon: Mail, scope: "email" },
         { label: "Teléfonos", path: "/admin/phones", icon: Phone, scope: "phones" },
       ],
     },
@@ -189,6 +191,7 @@ function buildGroups(view: UserView, agentName: string, isDevAdmin: boolean): Na
             { label: "Interacciones", path: "/agent/interacciones", icon: MessageSquare },
             { label: "Oportunidades", path: "/agent/oportunidades", icon: Target },
             { label: "Inbox WA", path: "/agent/client-inbox", icon: MessageCircle },
+            { label: "Correos", path: "/agent/correos", icon: Mail },
           ],
         },
         {
