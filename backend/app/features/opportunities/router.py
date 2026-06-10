@@ -5,7 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 
-from app.core.dependencies import get_current_user, get_tenant_id
+from app.core.dependencies import get_current_user, get_tenant_id, require_role
 from app.features.opportunities.schemas import (
     OpportunityCreate,
     OpportunityResponse,
@@ -14,7 +14,11 @@ from app.features.opportunities.schemas import (
 )
 from app.features.opportunities.service import OpportunityService
 
-router = APIRouter(prefix="/opportunities", tags=["opportunities"])
+router = APIRouter(
+    prefix="/opportunities",
+    tags=["opportunities"],
+    dependencies=[Depends(require_role("ADMIN", "AGENT"))],
+)
 
 
 @router.get("", response_model=list[OpportunityResponse])
