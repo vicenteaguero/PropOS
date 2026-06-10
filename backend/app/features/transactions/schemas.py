@@ -31,12 +31,21 @@ class TransactionCategory(str, Enum):
     OTHER = "OTHER"
 
 
+class TransactionStatus(str, Enum):
+    PENDING = "PENDING"
+    COMPLETED = "COMPLETED"
+    CANCELLED = "CANCELLED"
+
+
 class TransactionBase(BaseModel):
     direction: TransactionDirection
     category: TransactionCategory = TransactionCategory.OTHER
     amount_cents: int
     currency: str = "CLP"
+    status: TransactionStatus = TransactionStatus.COMPLETED
     occurred_at: datetime | None = None
+    due_at: datetime | None = None
+    settled_at: datetime | None = None
     description: str | None = None
     vendor_org_id: UUID | None = None
     payer_person_id: UUID | None = None
@@ -56,7 +65,10 @@ class TransactionUpdate(BaseModel):
     category: TransactionCategory | None = None
     amount_cents: int | None = None
     currency: str | None = None
+    status: TransactionStatus | None = None
     occurred_at: datetime | None = None
+    due_at: datetime | None = None
+    settled_at: datetime | None = None
     description: str | None = None
     vendor_org_id: UUID | None = None
     payer_person_id: UUID | None = None
