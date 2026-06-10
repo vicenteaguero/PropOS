@@ -15,3 +15,4 @@ class SendNotificationRequest(BaseModel):
     title: str = "PropOS"
     body: str
     user_id: str | None = None
+    url: str | None = None
