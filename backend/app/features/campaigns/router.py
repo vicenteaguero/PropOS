@@ -5,7 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 
-from app.core.dependencies import get_current_user, get_tenant_id
+from app.core.dependencies import get_current_user, get_tenant_id, require_role
 from app.features.campaigns.schemas import (
     AdResponse,
     CampaignCreate,
@@ -14,7 +14,11 @@ from app.features.campaigns.schemas import (
 )
 from app.features.campaigns.service import AdService, CampaignService
 
-router = APIRouter(prefix="/campaigns", tags=["campaigns"])
+router = APIRouter(
+    prefix="/campaigns",
+    tags=["campaigns"],
+    dependencies=[Depends(require_role("ADMIN", "AGENT"))],
+)
 
 
 @router.get("", response_model=list[CampaignResponse])
