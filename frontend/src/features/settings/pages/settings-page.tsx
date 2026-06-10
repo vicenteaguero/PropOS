@@ -11,6 +11,7 @@ import { PageLayout } from "@shared/components/page-layout";
 import { PageHeader } from "@shared/components/page-header";
 import { settingsApi } from "../api/settings-api";
 import { AvatarUploader } from "../components/avatar-uploader";
+import { NotificationsCard } from "../components/notifications-card";
 
 const PAPER_OPTIONS = [
   { value: "A4", label: "A4 (210×297 mm)" },
@@ -110,6 +111,8 @@ export function SettingsPage() {
             </div>
           </CardContent>
         </Card>
+
+        <NotificationsCard />
 
         <Card>
           <CardHeader>
