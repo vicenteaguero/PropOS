@@ -16,6 +16,7 @@ const KIND_LABELS: Record<string, string> = {
   propose_create_person: "Crear persona",
   propose_log_interaction: "Registrar interacción",
   propose_create_task: "Crear tarea",
+  propose_create_event: "Agendar evento",
   propose_log_transaction: "Registrar transacción",
   propose_create_campaign: "Crear campaña",
   propose_create_organization: "Crear organización",
