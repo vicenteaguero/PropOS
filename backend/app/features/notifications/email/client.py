@@ -27,14 +27,22 @@ async def send_email(
     html: str,
     text: str | None = None,
     reply_to: str | None = None,
+    headers: dict[str, str] | None = None,
+    from_override: str | None = None,
 ) -> str:
-    """Send a transactional email via Resend. Returns the Resend message id."""
+    """Send a transactional email via Resend. Returns the Resend message id.
+
+    ``headers`` carries RFC threading headers (In-Reply-To / References) so
+    email replies stitch into the original conversation. ``from_override``
+    lets a reply send from the tenant's verified mailbox instead of the
+    default transactional sender.
+    """
     api_key = settings.resend_api_key
     if not api_key:
         raise ResendError("RESEND_API_KEY not configured")
 
     payload: dict = {
-        "from": settings.resend_from_email,
+        "from": from_override or settings.resend_from_email,
         "to": [to],
         "subject": subject,
         "html": html,
@@ -43,6 +51,8 @@ async def send_email(
         payload["text"] = text
     if reply_to:
         payload["reply_to"] = reply_to
+    if headers:
+        payload["headers"] = headers
 
     async with httpx.AsyncClient(timeout=15.0) as http:
         resp = await http.post(
