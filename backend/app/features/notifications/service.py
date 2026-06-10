@@ -31,6 +31,20 @@ async def save_subscription(
     return result.data[0] if result.data else {}
 
 
+async def delete_subscription(user_id: str, tenant_id: str, endpoint: str) -> int:
+    """Remove a push subscription by endpoint for the current user."""
+    client = get_supabase_client()
+    result = (
+        client.table("notification_subscriptions")
+        .delete()
+        .eq("tenant_id", tenant_id)
+        .eq("user_id", user_id)
+        .eq("endpoint", endpoint)
+        .execute()
+    )
+    return len(result.data or [])
+
+
 async def get_subscriptions(tenant_id: str, user_id: str | None = None) -> list[dict]:
     client = get_supabase_client()
     query = client.table("notification_subscriptions").select("*").eq("tenant_id", tenant_id)
