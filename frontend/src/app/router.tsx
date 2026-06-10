@@ -41,6 +41,7 @@ import { InteractionsPage } from "@features/interactions/pages/interactions-page
 import { OpportunitiesPage } from "@features/opportunities/pages/opportunities-page";
 import { TasksPage } from "@features/tasks/pages/tasks-page";
 import { CalendarPage } from "@features/calendar/pages/calendar-page";
+import { EmailInboxPage } from "@features/email/pages/email-inbox-page";
 import type { UserRole, UserView } from "@shared/types/auth";
 
 const VIEW_HOME_PATHS: Record<UserView, string> = {
@@ -214,6 +215,14 @@ export function AppRouter() {
                 element={
                   <ProtectedRoute requiredScope="productividad">
                     <CalendarPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="correos"
+                element={
+                  <ProtectedRoute requiredScope="email">
+                    <EmailInboxPage />
                   </ProtectedRoute>
                 }
               />
