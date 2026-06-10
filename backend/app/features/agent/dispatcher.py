@@ -81,6 +81,17 @@ def _build_payload(intent: str, resolved: ResolvedFields) -> dict[str, Any]:
         if related:
             payload["related"] = related
 
+    elif intent == "create_event":
+        payload.setdefault("title", extras.get("summary") or "evento")
+        payload.setdefault("kind", "VISIT")
+        if resolved.person and resolved.person.resolved_id:
+            payload["contact_id"] = str(resolved.person.resolved_id)
+        if resolved.property and resolved.property.resolved_id:
+            payload["property_id"] = str(resolved.property.resolved_id)
+        if resolved.project and resolved.project.resolved_id:
+            payload["project_id"] = str(resolved.project.resolved_id)
+        payload.setdefault("summary_es", f"agendar {payload.get('title', 'evento')}")
+
     elif intent == "log_transaction":
         payload.setdefault("currency", "CLP")
         payload.setdefault("summary_es", f"transacción {payload.get('direction', '?')} {payload.get('amount', '?')}")
