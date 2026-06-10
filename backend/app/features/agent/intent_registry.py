@@ -73,6 +73,14 @@ REGISTRY: dict[str, IntentSpec] = {
         aliases={"task_title": "title", "due": "due_at"},
         defaults={"kind": "TODO"},
     ),
+    "update_person": IntentSpec(
+        name="update_person",
+        proposal_kind="propose_update_person",
+        target_table="contacts",
+        required=("full_name",),
+        optional=("phone", "email", "rut", "notes", "kind"),
+        auto_commit=False,
+    ),
     "create_event": IntentSpec(
         name="create_event",
         proposal_kind="propose_create_event",
