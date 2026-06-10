@@ -35,6 +35,10 @@ import { AdminUserDetailPage } from "@features/admin-users/pages/admin-user-deta
 import { AdminTenantsPage } from "@features/admin-tenants/pages/admin-tenants-page";
 import { AdminPropertiesPage } from "@features/admin-properties/pages/admin-properties-page";
 import { AdminPropertyDetailPage } from "@features/admin-properties/pages/admin-property-detail-page";
+import { ContactsPage } from "@features/contacts/pages/contacts-page";
+import { ContactDetailPage } from "@features/contacts/pages/contact-detail-page";
+import { InteractionsPage } from "@features/interactions/pages/interactions-page";
+import { OpportunitiesPage } from "@features/opportunities/pages/opportunities-page";
 import type { UserRole, UserView } from "@shared/types/auth";
 
 const VIEW_HOME_PATHS: Record<UserView, string> = {
@@ -160,6 +164,43 @@ export function AppRouter() {
               </ProtectedRoute>
             }
           />
+
+          {(role === "ADMIN" || role === "AGENT") && (
+            <>
+              <Route
+                path="personas"
+                element={
+                  <ProtectedRoute requiredScope="crm">
+                    <ContactsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="personas/:id"
+                element={
+                  <ProtectedRoute requiredScope="crm">
+                    <ContactDetailPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="interacciones"
+                element={
+                  <ProtectedRoute requiredScope="crm">
+                    <InteractionsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="oportunidades"
+                element={
+                  <ProtectedRoute requiredScope="crm">
+                    <OpportunitiesPage />
+                  </ProtectedRoute>
+                }
+              />
+            </>
+          )}
 
           <Route
             path="workflows"
