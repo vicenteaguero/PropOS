@@ -1,5 +1,11 @@
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
-router = APIRouter(prefix="/tasks", tags=["tasks"])
+from app.core.dependencies import require_role
+
+router = APIRouter(
+    prefix="/tasks",
+    tags=["tasks"],
+    dependencies=[Depends(require_role("ADMIN", "AGENT"))],
+)
