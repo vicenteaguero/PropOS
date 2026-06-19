@@ -1,12 +1,12 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@core/supabase/client";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { AuthShell } from "@features/auth/components/auth-shell/auth-shell";
+import { AuthError } from "@features/auth/components/auth-error/auth-error";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@shared/components/loading-spinner/loading-spinner";
-import { PageLayout } from "@shared/components/page-layout";
 import { toast } from "sonner";
 
 export function AuthSetupPage() {
@@ -53,62 +53,56 @@ export function AuthSetupPage() {
   }
 
   return (
-    <PageLayout width="sm" centered>
-      <Card className="mx-auto max-w-sm">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold text-primary">PropOS</CardTitle>
-          <CardDescription>Activá tu cuenta creando una contraseña</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {!isReady && !error && (
-            <div className="flex justify-center py-8">
-              <LoadingSpinner size="md" />
-            </div>
-          )}
+    <AuthShell subtitle="Activá tu cuenta creando una contraseña">
+      {!isReady && !error && (
+        <div className="flex justify-center py-8">
+          <LoadingSpinner size="md" />
+        </div>
+      )}
 
-          {error && (
-            <div
-              className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive"
-              role="alert"
-            >
-              {error}
-            </div>
-          )}
+      {error && !isReady && <AuthError message={error} />}
 
-          {isReady && (
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="setup-password">Nueva contraseña</Label>
-                <Input
-                  id="setup-password"
-                  type="password"
-                  required
-                  autoComplete="new-password"
-                  placeholder="Mínimo 8 caracteres"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={isSubmitting}
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="setup-password-confirm">Confirmar contraseña</Label>
-                <Input
-                  id="setup-password-confirm"
-                  type="password"
-                  required
-                  autoComplete="new-password"
-                  value={confirm}
-                  onChange={(e) => setConfirm(e.target.value)}
-                  disabled={isSubmitting}
-                />
-              </div>
-              <Button type="submit" disabled={isSubmitting} className="w-full">
-                {isSubmitting ? <LoadingSpinner size="sm" /> : "Activar cuenta"}
-              </Button>
-            </form>
-          )}
-        </CardContent>
-      </Card>
-    </PageLayout>
+      {isReady && (
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="setup-password" className="text-muted-foreground">
+              Nueva contraseña
+            </Label>
+            <Input
+              id="setup-password"
+              type="password"
+              required
+              autoComplete="new-password"
+              placeholder="Mínimo 8 caracteres"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={isSubmitting}
+              className="h-12 rounded-xl px-4 text-base"
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="setup-password-confirm" className="text-muted-foreground">
+              Confirmar contraseña
+            </Label>
+            <Input
+              id="setup-password-confirm"
+              type="password"
+              required
+              autoComplete="new-password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              disabled={isSubmitting}
+              className="h-12 rounded-xl px-4 text-base"
+            />
+          </div>
+
+          {error && <AuthError message={error} />}
+
+          <Button type="submit" variant="ink" size="block" disabled={isSubmitting} className="mt-1">
+            {isSubmitting ? <LoadingSpinner size="sm" /> : "Activar cuenta"}
+          </Button>
+        </form>
+      )}
+    </AuthShell>
   );
 }
