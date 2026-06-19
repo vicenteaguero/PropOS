@@ -1,5 +1,5 @@
 import { LayoutGrid, List } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { RoundButton } from "@shared/ui";
 import type { ViewMode } from "../types";
 
 interface Props {
@@ -9,25 +9,25 @@ interface Props {
 
 export function ViewModeToggle({ value, onChange }: Props) {
   return (
-    <div className="inline-flex rounded-md border border-border bg-background p-0.5">
-      <Button
-        size="sm"
-        variant={value === "grid" ? "secondary" : "ghost"}
-        className="h-8 px-2"
+    <div className="inline-flex shrink-0 gap-1">
+      <RoundButton
+        size={36}
+        tone={value === "grid" ? "ink" : "muted"}
         onClick={() => onChange("grid")}
         aria-label="Vista en grilla"
+        aria-pressed={value === "grid"}
       >
-        <LayoutGrid className="size-4" />
-      </Button>
-      <Button
-        size="sm"
-        variant={value === "list" ? "secondary" : "ghost"}
-        className="h-8 px-2"
+        <LayoutGrid className="size-4" strokeWidth={1.8} />
+      </RoundButton>
+      <RoundButton
+        size={36}
+        tone={value === "list" ? "ink" : "muted"}
         onClick={() => onChange("list")}
         aria-label="Vista en lista"
+        aria-pressed={value === "list"}
       >
-        <List className="size-4" />
-      </Button>
+        <List className="size-4" strokeWidth={1.8} />
+      </RoundButton>
     </div>
   );
 }
