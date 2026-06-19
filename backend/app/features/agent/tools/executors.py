@@ -199,6 +199,10 @@ def _accept_create_event(payload, tenant_id, user_id, agent_session_id):
 
 def _accept_log_transaction(payload, tenant_id, user_id, agent_session_id):
     client = get_supabase_client()
+    # The classifier/registry emit money under `amount` (whole pesos); the DB
+    # column is `amount_cents` (BIGINT). Convert before stripping `amount`,
+    # otherwise every agent-logged transaction fails on accept.
+    amount = payload.get("amount")
     payload = {k: v for k, v in payload.items() if k not in ("summary_es", "amount")}
     payload["tenant_id"] = str(tenant_id)
     payload["created_by"] = str(user_id)
@@ -206,7 +210,9 @@ def _accept_log_transaction(payload, tenant_id, user_id, agent_session_id):
     if not payload.get("occurred_at"):
         payload["occurred_at"] = datetime.now(UTC).isoformat()
     if "amount_cents" not in payload:
-        raise ValueError("missing amount_cents in resolved payload")
+        if amount is None:
+            raise ValueError("missing amount in resolved payload")
+        payload["amount_cents"] = int(round(float(amount) * 100))
     row = client.table("transactions").insert(payload).execute().data[0]
     return ("transactions", UUID(row["id"]))
 
