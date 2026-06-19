@@ -86,6 +86,17 @@ function extractTools(content: unknown): ToolBlock[] {
   return [];
 }
 
+/** Normalize an utterance so a text bubble can be matched to its audio bubble
+ *  even when the server lightly rewrites the transcript (casing, spacing,
+ *  trailing punctuation). Both sides must be normalized identically. */
+function normalizeUtterance(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .replace(/[\s.,;:!?¿¡…]+$/u, "")
+    .trim();
+}
+
 function summarizeToolOutput(output: unknown): string {
   if (output == null) return "(sin resultados)";
   if (typeof output === "string") {
@@ -171,7 +182,7 @@ export function AgentMessageList({
 
   const audioByTranscript = new Map<string, PendingAudioMessage>();
   for (const a of pendingAudio) {
-    const t = (a.transcript || "").trim();
+    const t = normalizeUtterance(a.transcript || "");
     if (t) audioByTranscript.set(t, a);
   }
   const consumedAudioIds = new Set<string>();
@@ -184,7 +195,7 @@ export function AgentMessageList({
           const text = extractText(m.content);
           const tools = extractTools(m.content);
           if (m.role === "user") {
-            const audio = audioByTranscript.get(text.trim());
+            const audio = audioByTranscript.get(normalizeUtterance(text));
             if (audio) {
               consumedAudioIds.add(audio.id);
               return (
