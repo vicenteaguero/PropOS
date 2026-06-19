@@ -28,14 +28,14 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      registerType: "prompt",
+      registerType: "autoUpdate",
       devOptions: { enabled: devPwa },
       manifest: {
         name: "PropOS",
         short_name: "PropOS",
         display: "standalone",
-        background_color: "#1C1816",
-        theme_color: "#1C1816",
+        background_color: "#000000",
+        theme_color: "#000000",
         start_url: "/",
         icons: [
           { src: "/pwa-192x192.png", sizes: "192x192", type: "image/png" },
