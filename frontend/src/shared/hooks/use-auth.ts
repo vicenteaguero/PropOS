@@ -41,8 +41,6 @@ interface ProfileRow {
   is_active: boolean;
   avatar_url: string | null;
   admin_scope: string[] | null;
-  is_dev_admin: boolean | null;
-  view: UserView | null;
 }
 
 interface MembershipApiRow {
@@ -69,12 +67,13 @@ interface GrantApiRow {
   granted_by: string | null;
 }
 
-async function fetchProfile(userId: string): Promise<UserProfile | null> {
+async function fetchProfile(
+  userId: string,
+  active?: TenantMembership | null,
+): Promise<UserProfile | null> {
   const { data, error } = await supabase
     .from("profiles")
-    .select(
-      "id, full_name, role, tenant_id, is_active, avatar_url, admin_scope, is_dev_admin, view",
-    )
+    .select("id, full_name, role, tenant_id, is_active, avatar_url, admin_scope")
     .eq("id", userId)
     .single();
 
@@ -85,16 +84,18 @@ async function fetchProfile(userId: string): Promise<UserProfile | null> {
 
   const row = data as ProfileRow;
 
+  // `view` + `is_dev_admin` live on tenant_memberships — migration 032 dropped
+  // the profiles snapshot of them — so derive from the active membership.
   return {
     id: row.id,
     fullName: row.full_name,
-    role: row.role,
-    tenantId: row.tenant_id,
+    role: active?.role ?? row.role,
+    tenantId: active?.tenantId ?? row.tenant_id,
     isActive: row.is_active,
     avatarUrl: row.avatar_url,
-    adminScope: row.admin_scope ?? [],
-    isDevAdmin: !!row.is_dev_admin,
-    view: row.view ?? "agent",
+    adminScope: active?.adminScope ?? row.admin_scope ?? [],
+    isDevAdmin: active?.isDevAdmin ?? false,
+    view: active?.view ?? "agent",
   };
 }
 
@@ -182,7 +183,11 @@ export function useAuthProvider(): AuthContextValue {
     }
 
     // 3) Profile (now reflects the active tenant snapshot) + grants.
-    const [profile, grants] = await Promise.all([fetchProfile(session.user.id), fetchGrants()]);
+    const active = memberships.find((m) => m.tenantId === initialTenant) ?? null;
+    const [profile, grants] = await Promise.all([
+      fetchProfile(session.user.id, active),
+      fetchGrants(),
+    ]);
     if (profile) {
       logger.info("auth", "User authenticated", { role: profile.role, view: profile.view });
       setState({
@@ -238,12 +243,14 @@ export function useAuthProvider(): AuthContextValue {
     }
     const { data } = await supabase.auth.getSession();
     if (data.session?.user) {
+      const memberships = await fetchMemberships();
+      const active = memberships.find((m) => m.tenantId === tenantId) ?? null;
       const [profile, grants] = await Promise.all([
-        fetchProfile(data.session.user.id),
+        fetchProfile(data.session.user.id, active),
         fetchGrants(),
       ]);
       if (profile) {
-        setState((prev) => ({ ...prev, user: profile, grants }));
+        setState((prev) => ({ ...prev, user: profile, memberships, grants }));
       }
     }
   }, []);
