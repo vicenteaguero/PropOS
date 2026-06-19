@@ -53,7 +53,6 @@ export function IdScanCapture({ trigger, onComplete, disabled }: Props) {
       camera.stopCamera();
       camera.clearPhoto();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   function handleFlip() {
