@@ -1,14 +1,14 @@
 import { useState } from "react";
-import { Loader2, Plus } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Pill, Row, SectionLabel, type PillTone } from "@shared/ui";
 import { toast } from "sonner";
 import {
   useCreateOpportunity,
   useOpportunities,
 } from "@features/opportunities/hooks/use-opportunities";
 import { OpportunityFormDialog } from "@features/opportunities/components/opportunity-form-dialog";
-import { STAGE_LABELS } from "@features/opportunities/types";
+import { STAGE_LABELS, type OpportunityStatus } from "@features/opportunities/types";
 
 function formatClp(cents: number | null): string {
   if (!cents) return "";
@@ -19,19 +19,28 @@ function formatClp(cents: number | null): string {
   }).format(cents / 100);
 }
 
+const STATUS_TONE: Record<OpportunityStatus, PillTone> = {
+  WON: "success",
+  LOST: "destructive",
+  OPEN: "neutral",
+};
+
+const STATUS_LABEL: Record<OpportunityStatus, string> = {
+  WON: "Ganada",
+  LOST: "Perdida",
+  OPEN: "Abierta",
+};
+
 export function ContactOpportunities({ personId }: { personId: string }) {
   const { data, isLoading, error, refetch } = useOpportunities({ person_id: personId, limit: 100 });
   const create = useCreateOpportunity();
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="space-y-3">
-      <div className="flex justify-end">
-        <Button size="sm" variant="outline" onClick={() => setOpen(true)} className="gap-2">
-          <Plus className="size-4" />
-          Nueva
-        </Button>
-      </div>
+    <div>
+      <SectionLabel action="Nueva" onAction={() => setOpen(true)} className="px-0">
+        Oportunidades
+      </SectionLabel>
 
       {isLoading && (
         <div className="flex justify-center py-8">
@@ -39,7 +48,7 @@ export function ContactOpportunities({ personId }: { personId: string }) {
         </div>
       )}
       {error && (
-        <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+        <div className="mt-3 rounded-2xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
           Error al cargar.
           <Button variant="ghost" size="sm" className="ml-2" onClick={() => refetch()}>
             Reintentar
@@ -50,36 +59,28 @@ export function ContactOpportunities({ personId }: { personId: string }) {
         <p className="py-6 text-center text-sm text-muted-foreground">Sin oportunidades.</p>
       )}
       {!isLoading && !error && data && data.length > 0 && (
-        <ul className="space-y-2">
-          {data.map((o) => (
-            <li
+        <div className="mt-2 overflow-hidden rounded-2xl bg-card">
+          {data.map((o, i) => (
+            <Row
               key={o.id}
-              className="flex items-center justify-between rounded-md border p-3 text-sm"
-            >
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-[10px]">
-                  {STAGE_LABELS[o.pipeline_stage] ?? o.pipeline_stage}
-                </Badge>
-                <Badge
-                  variant="outline"
-                  className={
-                    o.status === "WON"
-                      ? "bg-emerald-500/15 text-emerald-500"
-                      : o.status === "LOST"
-                        ? "bg-destructive/15 text-destructive"
-                        : ""
-                  }
-                >
-                  {o.status === "WON" ? "Ganada" : o.status === "LOST" ? "Perdida" : "Abierta"}
-                </Badge>
-                {o.notes && <span className="text-muted-foreground">{o.notes}</span>}
-              </div>
-              {o.expected_value_cents != null && (
-                <span className="text-muted-foreground">{formatClp(o.expected_value_cents)}</span>
-              )}
-            </li>
+              divider={i < data.length - 1}
+              title={
+                <span className="flex items-center gap-2">
+                  <Pill tone="accent">{STAGE_LABELS[o.pipeline_stage] ?? o.pipeline_stage}</Pill>
+                  <Pill tone={STATUS_TONE[o.status]}>{STATUS_LABEL[o.status]}</Pill>
+                </span>
+              }
+              sub={o.notes || undefined}
+              right={
+                o.expected_value_cents != null ? (
+                  <span className="shrink-0 text-sm font-semibold text-foreground">
+                    {formatClp(o.expected_value_cents)}
+                  </span>
+                ) : undefined
+              }
+            />
           ))}
-        </ul>
+        </div>
       )}
 
       <OpportunityFormDialog
