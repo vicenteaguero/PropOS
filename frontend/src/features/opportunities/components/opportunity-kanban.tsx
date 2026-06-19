@@ -8,8 +8,7 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { Check, X } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Pill } from "@shared/ui";
 import { PIPELINE_STAGES, STAGE_LABELS, type Opportunity } from "../types";
 
 interface Props {
@@ -21,6 +20,16 @@ interface Props {
   onEdit: (opp: Opportunity) => void;
 }
 
+// Per-stage accent dot. Semantic tokens only (resolved to CSS vars at runtime).
+const STAGE_DOT: Record<string, string> = {
+  LEAD: "var(--muted-foreground)",
+  QUALIFIED: "var(--accent-brand)",
+  VISIT: "var(--primary)",
+  OFFER: "var(--warning)",
+  RESERVATION: "var(--warning)",
+  CLOSED: "var(--success)",
+};
+
 function formatClp(cents: number | null): string {
   if (!cents) return "";
   return new Intl.NumberFormat("es-CL", {
@@ -28,6 +37,14 @@ function formatClp(cents: number | null): string {
     currency: "CLP",
     maximumFractionDigits: 0,
   }).format(cents / 100);
+}
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "·";
+  const first = parts[0]?.[0] ?? "";
+  const last = parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? "") : "";
+  return (first + last).toUpperCase();
 }
 
 function Card({
@@ -41,42 +58,51 @@ function Card({
   const style = transform
     ? { transform: `translate(${transform.x}px, ${transform.y}px)` }
     : undefined;
+  const name = nameFor(opp.person_id);
+  const value = formatClp(opp.expected_value_cents);
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`rounded-md border bg-card p-2.5 text-sm shadow-sm ${isDragging ? "opacity-50" : ""}`}
+      className={`rounded-2xl border border-border bg-card p-3 transition-shadow ${
+        isDragging ? "opacity-50 shadow-lg" : "shadow-sm"
+      }`}
     >
       <div {...listeners} {...attributes} className="cursor-grab touch-none">
-        <button onClick={() => onEdit(opp)} className="block w-full text-left font-medium">
-          {nameFor(opp.person_id)}
+        <button onClick={() => onEdit(opp)} className="flex w-full items-center gap-2.5 text-left">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-semibold text-foreground">
+            {initials(name)}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-semibold leading-tight text-foreground">
+              {name}
+            </span>
+            {value && (
+              <span className="mt-0.5 block truncate text-[13px] text-muted-foreground">
+                {value}
+              </span>
+            )}
+          </span>
         </button>
-        {opp.expected_value_cents != null && (
-          <div className="mt-0.5 text-xs text-muted-foreground">
-            {formatClp(opp.expected_value_cents)}
-          </div>
-        )}
         {opp.notes && (
-          <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{opp.notes}</p>
+          <p className="mt-2 line-clamp-2 text-[13px] leading-snug text-muted-foreground">
+            {opp.notes}
+          </p>
         )}
       </div>
-      <div className="mt-2 flex gap-1">
-        <Button
-          size="sm"
-          variant="ghost"
-          className="h-6 gap-1 px-1.5 text-[11px] text-emerald-500"
+      <div className="mt-2.5 flex gap-1.5">
+        <button
           onClick={() => onWon(opp)}
+          className="inline-flex h-7 items-center gap-1 rounded-full bg-success/15 px-2.5 text-[11px] font-semibold text-success transition active:scale-95"
         >
-          <Check className="size-3" /> Ganada
-        </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          className="h-6 gap-1 px-1.5 text-[11px] text-destructive"
+          <Check className="size-3" strokeWidth={1.8} /> Ganada
+        </button>
+        <button
           onClick={() => onLost(opp)}
+          className="inline-flex h-7 items-center gap-1 rounded-full bg-destructive/15 px-2.5 text-[11px] font-semibold text-destructive transition active:scale-95"
         >
-          <X className="size-3" /> Perdida
-        </Button>
+          <X className="size-3" strokeWidth={1.8} /> Perdida
+        </button>
       </div>
     </div>
   );
@@ -89,16 +115,22 @@ function Column({
 }: { stage: string; opps: Opportunity[] } & Omit<Props, "opportunities" | "onMove">) {
   const { setNodeRef, isOver } = useDroppable({ id: stage });
   return (
-    <div className="flex w-64 shrink-0 flex-col">
-      <div className="mb-2 flex items-center justify-between px-1">
-        <span className="text-sm font-medium">{STAGE_LABELS[stage] ?? stage}</span>
-        <Badge variant="outline" className="text-[10px]">
-          {opps.length}
-        </Badge>
+    <div className="flex w-72 shrink-0 flex-col">
+      <div className="mb-2.5 flex items-center justify-between px-1">
+        <div className="flex items-center gap-2">
+          <span
+            className="size-2 shrink-0 rounded-full"
+            style={{ background: STAGE_DOT[stage] ?? "var(--muted-foreground)" }}
+          />
+          <span className="text-base font-bold tracking-tight text-foreground">
+            {STAGE_LABELS[stage] ?? stage}
+          </span>
+        </div>
+        <Pill tone="neutral">{opps.length}</Pill>
       </div>
       <div
         ref={setNodeRef}
-        className={`flex min-h-24 flex-1 flex-col gap-2 rounded-lg border border-dashed p-2 transition-colors ${
+        className={`flex min-h-24 flex-1 flex-col gap-2.5 rounded-2xl border border-dashed p-2.5 transition-colors ${
           isOver ? "border-primary bg-primary/5" : "border-border"
         }`}
       >
