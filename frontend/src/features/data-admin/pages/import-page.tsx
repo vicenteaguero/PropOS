@@ -101,7 +101,7 @@ export function ImportPage() {
         <Card>
           <CardContent className="space-y-3 pt-6">
             <div className="flex flex-wrap gap-2">
-              <Badge variant="outline" className="bg-emerald-500/15 text-emerald-500">
+              <Badge variant="outline" className="bg-success/15 text-success">
                 {preview.valid_rows} válidos
               </Badge>
               {preview.invalid_rows > 0 && (
