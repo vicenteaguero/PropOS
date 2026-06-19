@@ -1,0 +1,47 @@
+import type { ReactNode } from "react";
+import { Sheet, SheetContent, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { cn } from "@/lib/utils";
+
+interface BottomSheetProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  /** Accessible title (required by Radix Dialog). Pass `srOnlyTitle` to hide it. */
+  title?: ReactNode;
+  srOnlyTitle?: string;
+  description?: ReactNode;
+  children: ReactNode;
+  className?: string;
+}
+
+/** Rounded bottom sheet with a drag handle. Built on the shadcn Sheet (side=bottom). */
+export function BottomSheet({
+  open,
+  onOpenChange,
+  title,
+  srOnlyTitle,
+  description,
+  children,
+  className,
+}: BottomSheetProps) {
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="bottom"
+        showCloseButton={false}
+        className={cn(
+          "max-h-[92dvh] gap-0 overflow-y-auto rounded-t-3xl border-border px-5 pt-3 pb-[max(2rem,env(safe-area-inset-bottom))]",
+          className,
+        )}
+      >
+        <div className="mx-auto mb-3 h-1.5 w-10 shrink-0 rounded-full bg-line-strong" />
+        {title ? (
+          <SheetTitle className="text-xl font-bold tracking-tight">{title}</SheetTitle>
+        ) : (
+          <SheetTitle className="sr-only">{srOnlyTitle ?? "Detalle"}</SheetTitle>
+        )}
+        {description && <SheetDescription className="mt-1">{description}</SheetDescription>}
+        {children}
+      </SheetContent>
+    </Sheet>
+  );
+}
