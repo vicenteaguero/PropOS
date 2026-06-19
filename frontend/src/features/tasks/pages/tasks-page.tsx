@@ -7,12 +7,16 @@ import { Label } from "@/components/ui/label";
 import { PageLayout } from "@shared/components/page-layout";
 import { PageHeader } from "@shared/components/page-header";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
-import { BottomSheet, Chip, Chips, Pill, Row, RoundButton, SectionLabel } from "@shared/ui";
+import { Chip, Chips, Pill, ResponsiveSheet, Row, RoundButton, SectionLabel } from "@shared/ui";
 import { toast } from "sonner";
 import { useCreateTask, useDeleteTask, useTasks, useUpdateTask } from "../hooks/use-tasks";
 import type { Task } from "../api/tasks-api";
 
 type Bucket = "Hoy" | "Esta semana" | "Más adelante" | "Sin fecha";
+
+/** Desktop split: near-term buckets on the left, later ones on the right. */
+const LEFT_BUCKETS: Bucket[] = ["Hoy", "Esta semana"];
+const RIGHT_BUCKETS: Bucket[] = ["Más adelante", "Sin fecha"];
 
 function bucketOf(t: Task): Bucket {
   if (!t.due_at) return "Sin fecha";
@@ -43,6 +47,64 @@ function dueLabel(due: string): { text: string; tone: "neutral" | "warning" } {
   const d = new Date(due);
   const text = d.toLocaleString("es-CL", { dateStyle: "medium", timeStyle: "short" });
   return { text, tone: isPast(d) && !isToday(d) ? "warning" : "neutral" };
+}
+
+/** One bucket: heading + its task rows. Same markup on mobile and desktop. */
+function BucketSection({
+  bucket,
+  tasks,
+  onComplete,
+  onDelete,
+}: {
+  bucket: Bucket;
+  tasks: Task[];
+  onComplete: (id: string) => void;
+  onDelete: (id: string) => void;
+}) {
+  return (
+    <section>
+      <SectionLabel className="mb-2">{bucket}</SectionLabel>
+      <div className="overflow-hidden">
+        {tasks.map((t, i) => {
+          const due = t.due_at ? dueLabel(t.due_at) : null;
+          return (
+            <Row
+              key={t.id}
+              divider={i < tasks.length - 1}
+              left={
+                <button
+                  type="button"
+                  onClick={() => onComplete(t.id)}
+                  className="flex size-6 shrink-0 items-center justify-center rounded-full border-2 border-line-strong text-transparent transition-colors hover:border-success hover:text-success"
+                  aria-label="Completar"
+                />
+              }
+              title={t.title}
+              sub={
+                due || priorityPill(t.priority) ? (
+                  <span className="flex flex-wrap items-center gap-1.5">
+                    {due && <Pill tone={due.tone}>{due.text}</Pill>}
+                    {priorityPill(t.priority)}
+                  </span>
+                ) : undefined
+              }
+              right={
+                <RoundButton
+                  tone="ghost"
+                  size={32}
+                  onClick={() => onDelete(t.id)}
+                  aria-label="Eliminar"
+                  className="text-muted-foreground"
+                >
+                  <Trash2 className="size-4" strokeWidth={1.8} />
+                </RoundButton>
+              }
+            />
+          );
+        })}
+      </div>
+    </section>
+  );
 }
 
 export function TasksPage() {
@@ -85,9 +147,17 @@ export function TasksPage() {
     toast.success("Tarea creada");
   };
 
+  const complete = (id: string) => update.mutate({ id, body: { status: "DONE" } });
+  const remove = (id: string) => del.mutate(id);
+
+  // Desktop arranges the visible buckets into two columns; mobile stays flat.
+  const leftCol = visibleBuckets.filter((b) => LEFT_BUCKETS.includes(b));
+  const rightCol = visibleBuckets.filter((b) => RIGHT_BUCKETS.includes(b));
+
   return (
-    <PageLayout width="md" noPadding>
-      <div className="px-5 pt-4 pb-5">
+    // Mobile keeps the capped (md) centered column; desktop widens to the app surface.
+    <PageLayout width="app" noPadding className="max-w-4xl lg:max-w-none">
+      <div className="px-5 pt-4 pb-5 lg:px-8 lg:pt-7">
         <PageHeader
           title="Tareas"
           description="Pendientes, recordatorios y metas del equipo."
@@ -107,7 +177,7 @@ export function TasksPage() {
         </div>
       )}
       {error && (
-        <div className="mx-5 rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+        <div className="mx-5 rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive lg:mx-8">
           No se pudieron cargar las tareas.
           <Button variant="ghost" size="sm" className="ml-2" onClick={() => refetch()}>
             Reintentar
@@ -125,7 +195,7 @@ export function TasksPage() {
 
       {!isLoading && !error && (data?.length ?? 0) > 0 && (
         <>
-          <Chips className="px-5 pb-5">
+          <Chips className="px-5 pb-5 lg:px-8">
             {FILTERS.filter((f) => f.id === "all" || grouped.has(f.id)).map((f) => (
               <Chip
                 key={f.id}
@@ -138,59 +208,48 @@ export function TasksPage() {
             ))}
           </Chips>
 
-          <div className="space-y-7 pb-6">
-            {visibleBuckets.map((bucket) => {
-              const tasks = grouped.get(bucket)!;
-              return (
-                <section key={bucket}>
-                  <SectionLabel className="mb-2">{bucket}</SectionLabel>
-                  <div className="overflow-hidden">
-                    {tasks.map((t, i) => {
-                      const due = t.due_at ? dueLabel(t.due_at) : null;
-                      return (
-                        <Row
-                          key={t.id}
-                          divider={i < tasks.length - 1}
-                          left={
-                            <button
-                              type="button"
-                              onClick={() => update.mutate({ id: t.id, body: { status: "DONE" } })}
-                              className="flex size-6 shrink-0 items-center justify-center rounded-full border-2 border-line-strong text-transparent transition-colors hover:border-success hover:text-success"
-                              aria-label="Completar"
-                            />
-                          }
-                          title={t.title}
-                          sub={
-                            due || priorityPill(t.priority) ? (
-                              <span className="flex flex-wrap items-center gap-1.5">
-                                {due && <Pill tone={due.tone}>{due.text}</Pill>}
-                                {priorityPill(t.priority)}
-                              </span>
-                            ) : undefined
-                          }
-                          right={
-                            <RoundButton
-                              tone="ghost"
-                              size={32}
-                              onClick={() => del.mutate(t.id)}
-                              aria-label="Eliminar"
-                              className="text-muted-foreground"
-                            >
-                              <Trash2 className="size-4" strokeWidth={1.8} />
-                            </RoundButton>
-                          }
-                        />
-                      );
-                    })}
-                  </div>
-                </section>
-              );
-            })}
+          {/* Mobile: single flat column (unchanged). */}
+          <div className="space-y-7 pb-6 lg:hidden">
+            {visibleBuckets.map((bucket) => (
+              <BucketSection
+                key={bucket}
+                bucket={bucket}
+                tasks={grouped.get(bucket)!}
+                onComplete={complete}
+                onDelete={remove}
+              />
+            ))}
+          </div>
+
+          {/* Desktop: two columns — near-term left, later right. */}
+          <div className="hidden gap-x-8 px-8 pb-6 lg:grid lg:grid-cols-2">
+            <div className="space-y-7">
+              {leftCol.map((bucket) => (
+                <BucketSection
+                  key={bucket}
+                  bucket={bucket}
+                  tasks={grouped.get(bucket)!}
+                  onComplete={complete}
+                  onDelete={remove}
+                />
+              ))}
+            </div>
+            <div className="space-y-7">
+              {rightCol.map((bucket) => (
+                <BucketSection
+                  key={bucket}
+                  bucket={bucket}
+                  tasks={grouped.get(bucket)!}
+                  onComplete={complete}
+                  onDelete={remove}
+                />
+              ))}
+            </div>
           </div>
         </>
       )}
 
-      <BottomSheet open={open} onOpenChange={setOpen} title="Nueva tarea">
+      <ResponsiveSheet open={open} onOpenChange={setOpen} title="Nueva tarea">
         <div className="mt-4 space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="t-title">Título</Label>
@@ -220,7 +279,7 @@ export function TasksPage() {
             </Button>
           </div>
         </div>
-      </BottomSheet>
+      </ResponsiveSheet>
     </PageLayout>
   );
 }
