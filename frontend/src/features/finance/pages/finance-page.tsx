@@ -1,10 +1,18 @@
-import { useState } from "react";
-import { Check, Loader2, Plus } from "lucide-react";
+import { useMemo, useState } from "react";
+import {
+  ArrowDownLeft,
+  ArrowUpRight,
+  Check,
+  Loader2,
+  Megaphone,
+  Plus,
+  Receipt,
+  Wallet,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -13,7 +21,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { PageLayout } from "@shared/components/page-layout";
-import { PageHeader } from "@shared/components/page-header";
+import { Chip, Chips, Pill, Row, type PillTone } from "@shared/ui";
 import { toast } from "sonner";
 import {
   useCompleteTransaction,
@@ -21,7 +29,7 @@ import {
   useFinanceSummary,
   useTransactions,
 } from "../hooks/use-finance";
-import { TX_CATEGORIES, type TxDirection } from "../api/finance-api";
+import { TX_CATEGORIES, type Transaction, type TxDirection } from "../api/finance-api";
 import { CommissionCalculator } from "../components/commission-calculator";
 
 function clp(cents: number): string {
@@ -32,11 +40,49 @@ function clp(cents: number): string {
   }).format(cents / 100);
 }
 
-const STATUS_BADGE: Record<string, string> = {
-  PENDING: "bg-amber-500/15 text-amber-500",
-  COMPLETED: "bg-emerald-500/15 text-emerald-500",
-  CANCELLED: "bg-muted text-muted-foreground",
+const STATUS_META: Record<string, { label: string; tone: PillTone }> = {
+  PENDING: { label: "Pendiente", tone: "warning" },
+  COMPLETED: { label: "Completado", tone: "success" },
+  CANCELLED: { label: "Anulado", tone: "neutral" },
 };
+
+/** Leading icon per transaction (by category/direction). */
+function txIcon(t: Transaction): LucideIcon {
+  if (t.receipt_document_id) return Receipt;
+  if (t.category === "COMMISSION") return Wallet;
+  if (t.category === "AD_SPEND" || t.category === "MARKETING") return Megaphone;
+  return t.direction === "IN" ? ArrowDownLeft : ArrowUpRight;
+}
+
+/** Short stable code from the transaction id (presentational). */
+function txCode(id: string): string {
+  return id.replace(/-/g, "").slice(0, 6).toUpperCase();
+}
+
+type KindFilter = "ALL" | "COMMISSION" | "EXPENSE" | "RECEIPT" | "PAYMENT";
+
+const KIND_FILTERS: { id: KindFilter; label: string }[] = [
+  { id: "ALL", label: "Todo" },
+  { id: "COMMISSION", label: "Comisiones" },
+  { id: "EXPENSE", label: "Gastos" },
+  { id: "RECEIPT", label: "Boletas" },
+  { id: "PAYMENT", label: "Pagos" },
+];
+
+function matchesKind(t: Transaction, kind: KindFilter): boolean {
+  switch (kind) {
+    case "COMMISSION":
+      return t.category === "COMMISSION";
+    case "EXPENSE":
+      return t.direction === "OUT";
+    case "RECEIPT":
+      return t.receipt_document_id != null;
+    case "PAYMENT":
+      return t.status === "PENDING";
+    default:
+      return true;
+  }
+}
 
 export function FinancePage() {
   const { data: summary } = useFinanceSummary();
@@ -44,12 +90,18 @@ export function FinancePage() {
   const create = useCreateTransaction();
   const complete = useCompleteTransaction();
 
+  const [kind, setKind] = useState<KindFilter>("ALL");
   const [open, setOpen] = useState(false);
   const [direction, setDirection] = useState<TxDirection>("IN");
   const [category, setCategory] = useState<string>("COMMISSION");
   const [amount, setAmount] = useState("");
   const [pending, setPending] = useState(false);
   const [dueAt, setDueAt] = useState("");
+
+  const filtered = useMemo(
+    () => (txs ?? []).filter((t) => matchesKind(t, kind)),
+    [txs, kind],
+  );
 
   const submit = async () => {
     if (!amount) {
@@ -70,39 +122,63 @@ export function FinancePage() {
   };
 
   return (
-    <PageLayout width="lg">
-      <PageHeader
-        title="Finanzas"
-        description="Ingresos, gastos, comisiones y pagos por cobrar."
-        actions={
-          <Button onClick={() => setOpen(true)} className="gap-2">
-            <Plus className="size-4" />
-            Nueva
-          </Button>
-        }
-      />
-
-      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {[
-          { label: "Ingresos", value: summary?.income_cents ?? 0, cls: "text-emerald-500" },
-          { label: "Gastos", value: summary?.expense_cents ?? 0, cls: "text-destructive" },
-          { label: "Por cobrar", value: summary?.receivable_cents ?? 0, cls: "text-amber-500" },
-          { label: "Por pagar", value: summary?.payable_cents ?? 0, cls: "text-amber-500" },
-        ].map((c) => (
-          <Card key={c.label}>
-            <CardHeader className="pb-1">
-              <CardTitle className="text-xs font-medium text-muted-foreground">{c.label}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className={`text-lg font-semibold ${c.cls}`}>{clp(c.value)}</div>
-            </CardContent>
-          </Card>
-        ))}
+    <PageLayout width="md" noPadding className="pb-6">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-3">
+        <div>
+          <h1 className="text-[26px] font-bold leading-tight tracking-tight text-foreground">
+            Finanzas
+          </h1>
+          <p className="mt-0.5 text-[13px] text-muted-foreground">
+            Comisiones, gastos y pagos por cobrar
+          </p>
+        </div>
+        <Button
+          variant="ink"
+          size="icon-lg"
+          className="rounded-full"
+          aria-label="Nueva transacción"
+          onClick={() => setOpen(true)}
+        >
+          <Plus className="size-5" strokeWidth={1.8} />
+        </Button>
       </div>
 
-      <div className="mb-4">
+      {/* Ink summary card */}
+      <div className="px-5 pb-4">
+        <div className="rounded-2xl bg-foreground p-5 text-background">
+          <p className="text-[13px] font-medium text-background/60">Ingresos del mes</p>
+          <p className="mt-1 text-[34px] font-bold leading-none tracking-tight">
+            {clp(summary?.income_cents ?? 0)}
+          </p>
+          <div className="mt-5 grid grid-cols-3 gap-3">
+            {[
+              { label: "Por cobrar", value: summary?.receivable_cents ?? 0 },
+              { label: "Gastos", value: summary?.expense_cents ?? 0 },
+              { label: "Por pagar", value: summary?.payable_cents ?? 0 },
+            ].map((s) => (
+              <div key={s.label}>
+                <p className="text-[11px] font-medium text-background/60">{s.label}</p>
+                <p className="mt-0.5 text-[15px] font-semibold tabular-nums">{clp(s.value)}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Commission calculator */}
+      <div className="px-5 pb-4">
         <CommissionCalculator />
       </div>
+
+      {/* Kind filter */}
+      <Chips className="px-5 pb-4">
+        {KIND_FILTERS.map((f) => (
+          <Chip key={f.id} active={kind === f.id} onClick={() => setKind(f.id)}>
+            {f.label}
+          </Chip>
+        ))}
+      </Chips>
 
       {isLoading && (
         <div className="flex justify-center py-12">
@@ -110,62 +186,82 @@ export function FinancePage() {
         </div>
       )}
       {error && (
-        <div className="rounded-md border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+        <div className="mx-5 rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
           No se pudieron cargar las transacciones.
           <Button variant="ghost" size="sm" className="ml-2" onClick={() => refetch()}>
             Reintentar
           </Button>
         </div>
       )}
-      {!isLoading && !error && (txs?.length ?? 0) === 0 && (
+      {!isLoading && !error && filtered.length === 0 && (
         <p className="py-8 text-center text-sm text-muted-foreground">Sin transacciones.</p>
       )}
-      {!isLoading && !error && txs && txs.length > 0 && (
-        <div className="divide-y rounded-lg border">
-          {txs.map((t) => {
-            const overdue = t.status === "PENDING" && t.due_at && new Date(t.due_at) < new Date();
+      {!isLoading && !error && filtered.length > 0 && (
+        <div>
+          {filtered.map((t, i) => {
+            const Icon = txIcon(t);
+            const status = STATUS_META[t.status] ?? STATUS_META.COMPLETED;
+            const occurred = t.occurred_at ?? t.due_at;
+            const dateLabel = occurred
+              ? new Date(occurred).toLocaleDateString("es-CL", { day: "2-digit", month: "short" })
+              : null;
+            const overdue =
+              t.status === "PENDING" && t.due_at && new Date(t.due_at) < new Date();
             return (
-              <div key={t.id} className="flex items-center gap-3 px-3 py-2.5 text-sm">
-                <div className="min-w-0 flex-1">
-                  <div className="truncate">{t.description || t.category}</div>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Badge variant="outline" className={STATUS_BADGE[t.status]}>
-                      {t.status === "PENDING"
-                        ? "Pendiente"
-                        : t.status === "COMPLETED"
-                          ? "Completado"
-                          : "Anulado"}
-                    </Badge>
-                    {overdue && <span className="text-destructive">vencido</span>}
+              <Row
+                key={t.id}
+                divider={i < filtered.length - 1}
+                left={
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-secondary text-foreground">
+                    <Icon className="size-[18px]" strokeWidth={1.8} />
+                  </span>
+                }
+                title={t.description || t.category}
+                sub={
+                  <span className="flex items-center gap-2">
+                    <Pill tone={status?.tone ?? "neutral"}>{status?.label ?? t.status}</Pill>
+                    <span className="truncate">
+                      {txCode(t.id)}
+                      {dateLabel ? ` · ${dateLabel}` : ""}
+                    </span>
+                    {overdue && <span className="font-medium text-destructive">vencido</span>}
+                  </span>
+                }
+                right={
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    <span
+                      className={`text-[15px] font-bold tabular-nums ${
+                        t.direction === "IN" ? "text-success" : "text-destructive"
+                      }`}
+                    >
+                      {t.direction === "IN" ? "+" : "−"}
+                      {clp(t.amount_cents)}
+                    </span>
+                    {t.status === "PENDING" && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 text-success"
+                        title="Marcar pagado"
+                        onClick={() => complete.mutate(t.id)}
+                      >
+                        <Check className="size-4" strokeWidth={2} />
+                      </Button>
+                    )}
                   </div>
-                </div>
-                <div
-                  className={`shrink-0 font-medium ${t.direction === "IN" ? "text-emerald-500" : "text-destructive"}`}
-                >
-                  {t.direction === "IN" ? "+" : "−"}
-                  {clp(t.amount_cents)}
-                </div>
-                {t.status === "PENDING" && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-7 text-emerald-500"
-                    title="Marcar pagado"
-                    onClick={() => complete.mutate(t.id)}
-                  >
-                    <Check className="size-4" />
-                  </Button>
-                )}
-              </div>
+                }
+              />
             );
           })}
         </div>
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
+        <DialogContent className="rounded-2xl">
           <DialogHeader>
-            <DialogTitle>Nueva transacción</DialogTitle>
+            <DialogTitle className="text-xl font-bold tracking-tight">
+              Nueva transacción
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
@@ -174,7 +270,7 @@ export function FinancePage() {
                 <select
                   value={direction}
                   onChange={(e) => setDirection(e.target.value as TxDirection)}
-                  className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm"
                 >
                   <option value="IN">Ingreso</option>
                   <option value="OUT">Gasto</option>
@@ -185,7 +281,7 @@ export function FinancePage() {
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm"
                 >
                   {TX_CATEGORIES.map((c) => (
                     <option key={c} value={c}>
