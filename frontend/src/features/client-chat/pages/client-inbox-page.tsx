@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
 import { Loader2, Search } from "lucide-react";
-import { BrandMark, Chip, Chips, Segmented, type SegmentedItem } from "@shared/ui";
+import { BrandMark, Chip, Chips, MasterDetail, Segmented, type SegmentedItem } from "@shared/ui";
 import { useConversations } from "../hooks/use-client-chat";
 import { ConversationList } from "../components/conversation-list";
+import { ConversationAside } from "../components/conversation-aside";
 import { MessageThread } from "../components/message-thread";
 import type { ConversationStatus } from "../types";
 
@@ -48,81 +49,76 @@ export function ClientInboxPage() {
     [filtered, selectedId],
   );
 
-  return (
-    <div
-      className="grid grid-cols-1 md:grid-cols-[22rem_1fr]"
-      style={{ height: "calc(100dvh - var(--app-header-h))" }}
-    >
-      {/* Left column: filters + conversation list. Hidden on mobile while a thread is open. */}
-      <aside
-        className={`min-h-0 flex-col border-r border-border bg-background ${
-          selected ? "hidden md:flex" : "flex"
-        }`}
-      >
-        <div className="flex items-center gap-2 px-5 pt-4 pb-3">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-secondary">
-            <BrandMark brand="whatsapp" size={22} />
-          </span>
-          <h1 className="text-[25px] font-bold leading-tight tracking-tight text-foreground">
-            WhatsApp
-          </h1>
-        </div>
+  // Left column: filters + conversation list.
+  const list = (
+    <div className="flex h-full min-h-0 flex-col bg-background">
+      <div className="flex items-center gap-2 px-5 pt-4 pb-3">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-secondary">
+          <BrandMark brand="whatsapp" size={22} />
+        </span>
+        <h1 className="text-[25px] font-bold leading-tight tracking-tight text-foreground">
+          WhatsApp
+        </h1>
+      </div>
 
-        <div className="space-y-3 px-5 pb-3">
-          <div className="relative">
-            <Search
-              className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-              strokeWidth={1.8}
-            />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Buscar teléfono..."
-              className="h-11 w-full rounded-full border border-border bg-secondary pl-10 pr-4 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-line-strong"
-            />
+      <div className="space-y-3 px-5 pb-3">
+        <div className="relative">
+          <Search
+            className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+            strokeWidth={1.8}
+          />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Buscar teléfono..."
+            className="h-11 w-full rounded-full border border-border bg-secondary pl-10 pr-4 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-line-strong"
+          />
+        </div>
+        <Chips>
+          {VIEW_CHIPS.map((v) => (
+            <Chip key={v.value} active={view === v.value} onClick={() => setView(v.value)}>
+              {v.label}
+            </Chip>
+          ))}
+        </Chips>
+      </div>
+
+      <Segmented
+        items={STATUS_TABS}
+        value={tab}
+        onChange={(id) => setTab(id as ConversationStatus | "all")}
+      />
+
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        {isLoading ? (
+          <div className="flex justify-center p-10">
+            <Loader2 className="size-5 animate-spin text-muted-foreground" />
           </div>
-          <Chips>
-            {VIEW_CHIPS.map((v) => (
-              <Chip key={v.value} active={view === v.value} onClick={() => setView(v.value)}>
-                {v.label}
-              </Chip>
-            ))}
-          </Chips>
-        </div>
+        ) : (
+          <ConversationList
+            conversations={filtered}
+            selectedId={selectedId}
+            onSelect={setSelectedId}
+          />
+        )}
+      </div>
+    </div>
+  );
 
-        <Segmented
-          items={STATUS_TABS}
-          value={tab}
-          onChange={(id) => setTab(id as ConversationStatus | "all")}
-        />
-
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          {isLoading ? (
-            <div className="flex justify-center p-10">
-              <Loader2 className="size-5 animate-spin text-muted-foreground" />
-            </div>
-          ) : (
-            <ConversationList
-              conversations={filtered}
-              selectedId={selectedId}
-              onSelect={setSelectedId}
-            />
-          )}
-        </div>
-      </aside>
-
-      {/* Right column: active chat. On mobile it takes over the full surface. */}
-      <section
-        className={`min-h-0 min-w-0 flex-col bg-background ${selected ? "flex" : "hidden md:flex"}`}
-      >
-        {selected ? (
+  return (
+    <MasterDetail
+      selected={!!selected}
+      list={list}
+      detail={
+        selected ? (
           <MessageThread conversation={selected} onBack={() => setSelectedId(null)} />
         ) : (
-          <div className="flex flex-1 items-center justify-center p-6 text-sm text-muted-foreground">
+          <div className="flex h-full items-center justify-center p-6 text-sm text-muted-foreground">
             Seleccioná una conversación.
           </div>
-        )}
-      </section>
-    </div>
+        )
+      }
+      aside={selected ? <ConversationAside conversation={selected} /> : undefined}
+    />
   );
 }
