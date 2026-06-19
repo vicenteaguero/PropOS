@@ -101,7 +101,7 @@ export function VisitorRegistrationPage() {
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
-        <Loader2 className="size-6 animate-spin text-primary" />
+        <Loader2 className="size-6 animate-spin text-muted-foreground" strokeWidth={1.8} />
       </div>
     );
   }
@@ -109,15 +109,17 @@ export function VisitorRegistrationPage() {
   if (error || !invitation) {
     return (
       <div className="flex min-h-screen flex-col bg-background text-foreground">
-        <main className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center gap-3 px-4 py-10 text-center">
-          <AlertTriangle className="size-10 text-destructive" />
-          <h1 className="text-xl font-semibold">No se pudo cargar la invitación</h1>
-          <p className="text-sm text-muted-foreground">
+        <main className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center gap-4 px-5 py-10 text-center">
+          <span className="flex size-14 items-center justify-center rounded-full bg-destructive/15 text-destructive">
+            <AlertTriangle className="size-7" strokeWidth={1.8} />
+          </span>
+          <h1 className="text-xl font-bold tracking-tight">No se pudo cargar la invitación</h1>
+          <p className="text-[15px] text-muted-foreground">
             {error ?? "El link puede haber expirado o ya fue completado."}
           </p>
-          <Link to="/" className="text-sm text-primary hover:underline">
-            Volver al inicio
-          </Link>
+          <Button variant="outline" size="block" asChild className="mt-2 max-w-xs">
+            <Link to="/">Volver al inicio</Link>
+          </Button>
         </main>
         <PublicFooter />
       </div>
@@ -127,13 +129,15 @@ export function VisitorRegistrationPage() {
   if (submitted) {
     return (
       <div className="flex min-h-screen flex-col bg-background text-foreground">
-        <main className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center gap-3 px-4 py-10 text-center">
-          <CheckCircle2 className="size-10 text-primary" />
-          <h1 className="text-xl font-semibold">¡Listo!</h1>
-          <p className="text-sm text-muted-foreground">{submitted.message}</p>
+        <main className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center gap-4 px-5 py-10 text-center">
+          <span className="flex size-14 items-center justify-center rounded-full bg-success/15 text-success">
+            <CheckCircle2 className="size-7" strokeWidth={1.8} />
+          </span>
+          <h1 className="text-2xl font-bold tracking-tight">¡Listo!</h1>
+          <p className="text-[15px] text-muted-foreground">{submitted.message}</p>
           {submitted.requiresEmail && (
-            <p className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Mail className="size-4" /> Revisa tu casilla de email.
+            <p className="flex items-center gap-2 text-[15px] text-muted-foreground">
+              <Mail className="size-4" strokeWidth={1.8} /> Revisa tu casilla de email.
             </p>
           )}
         </main>
@@ -147,130 +151,136 @@ export function VisitorRegistrationPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
-      <header className="border-b border-border bg-background/80 backdrop-blur">
-        <div className="mx-auto flex max-w-2xl items-center justify-between px-4 py-4">
-          <span className="text-xs uppercase tracking-widest text-muted-foreground">
+      <header className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur">
+        <div className="mx-auto flex max-w-2xl items-center justify-between px-5 py-4">
+          <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
             {invitation.tenant_slug.toUpperCase()}
           </span>
-          <Link to="/privacidad" className="text-xs text-muted-foreground hover:underline">
+          <Link
+            to="/privacidad"
+            className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+          >
             Privacidad
           </Link>
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-8">
-        <h1 className="mb-1 text-2xl font-bold">Registro de visita</h1>
-        <p className="mb-6 text-sm text-muted-foreground">
+      <main className="mx-auto w-full max-w-2xl flex-1 px-5 py-8">
+        <h1 className="mb-1 text-[26px] font-bold leading-tight tracking-tight">
+          Registro de visita
+        </h1>
+        <p className="mb-7 text-[15px] text-muted-foreground">
           {invitation.property_title}
           {invitation.property_address ? ` · ${invitation.property_address}` : ""}
         </p>
 
         {showLoginPath ? (
-          <div className="rounded-lg border border-border bg-card p-4">
-            <p className="mb-3 text-sm">
-              Ya tienes una cuenta. Para vincular esta propiedad a tu perfil, ingresá con tu contraseña.
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <p className="mb-4 text-[15px]">
+              Ya tienes una cuenta. Para vincular esta propiedad a tu perfil, ingresá con tu
+              contraseña.
             </p>
-            <Link to={`/login?email=${encodeURIComponent(invitation.email)}`}>
-              <Button>Ingresar</Button>
-            </Link>
+            <Button variant="ink" size="block" asChild>
+              <Link to={`/login?email=${encodeURIComponent(invitation.email)}`}>Ingresar</Link>
+            </Button>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-5">
             {invitation.existing_in_this_tenant && (
-              <div className="rounded-md border border-primary/40 bg-primary/10 p-3 text-sm">
+              <div className="rounded-2xl border border-primary/30 bg-primary/10 p-4 text-[15px]">
                 Hola de nuevo. Confirma tus datos para esta nueva propiedad.
               </div>
             )}
 
-            <section className="space-y-3">
-              <Label>Email</Label>
-              <Input value={invitation.email} readOnly className="bg-muted" />
-            </section>
+            <div className="space-y-5 rounded-2xl border border-border bg-card p-5">
+              <div className="space-y-1.5">
+                <Label>Email</Label>
+                <Input value={invitation.email} readOnly className="bg-muted" />
+              </div>
 
-            <section className="space-y-3">
-              <Label htmlFor="full_name">Nombre completo</Label>
-              <Input
-                id="full_name"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="Juan Pérez González"
-                autoComplete="name"
-              />
-            </section>
+              <div className="space-y-1.5">
+                <Label htmlFor="full_name">Nombre completo</Label>
+                <Input
+                  id="full_name"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Juan Pérez González"
+                  autoComplete="name"
+                />
+              </div>
 
-            <section className="space-y-3">
-              <Label htmlFor="rut">RUT</Label>
-              <Input
-                id="rut"
-                value={rut}
-                onChange={(e) => setRut(formatRut(e.target.value))}
-                placeholder="12.345.678-K"
-                inputMode="text"
-              />
-              {rut && !rutOk && (
-                <p className="text-xs text-destructive">RUT inválido</p>
+              <div className="space-y-1.5">
+                <Label htmlFor="rut">RUT</Label>
+                <Input
+                  id="rut"
+                  value={rut}
+                  onChange={(e) => setRut(formatRut(e.target.value))}
+                  placeholder="12.345.678-K"
+                  inputMode="text"
+                />
+                {rut && !rutOk && <p className="text-xs text-destructive">RUT inválido</p>}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="phone">Teléfono (opcional)</Label>
+                <Input
+                  id="phone"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="+56 9 1234 5678"
+                  autoComplete="tel"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="address">Dirección (opcional)</Label>
+                <Input
+                  id="address"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="Av. Las Condes 123, Santiago"
+                  autoComplete="street-address"
+                />
+              </div>
+
+              {isAuthMode && (
+                <>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="password">Contraseña</Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Mínimo 8 caracteres"
+                      autoComplete="new-password"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="password_confirm">Confirmar contraseña</Label>
+                    <Input
+                      id="password_confirm"
+                      type="password"
+                      value={passwordConfirm}
+                      onChange={(e) => setPasswordConfirm(e.target.value)}
+                      autoComplete="new-password"
+                    />
+                    {passwordConfirm && password !== passwordConfirm && (
+                      <p className="text-xs text-destructive">Las contraseñas no coinciden</p>
+                    )}
+                  </div>
+                </>
               )}
-            </section>
+            </div>
 
-            <section className="space-y-3">
-              <Label htmlFor="phone">Teléfono (opcional)</Label>
-              <Input
-                id="phone"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+56 9 1234 5678"
-                autoComplete="tel"
-              />
-            </section>
-
-            <section className="space-y-3">
-              <Label htmlFor="address">Dirección (opcional)</Label>
-              <Input
-                id="address"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                placeholder="Av. Las Condes 123, Santiago"
-                autoComplete="street-address"
-              />
-            </section>
-
-            {isAuthMode && (
-              <>
-                <section className="space-y-3">
-                  <Label htmlFor="password">Contraseña</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Mínimo 8 caracteres"
-                    autoComplete="new-password"
-                  />
-                </section>
-                <section className="space-y-3">
-                  <Label htmlFor="password_confirm">Confirmar contraseña</Label>
-                  <Input
-                    id="password_confirm"
-                    type="password"
-                    value={passwordConfirm}
-                    onChange={(e) => setPasswordConfirm(e.target.value)}
-                    autoComplete="new-password"
-                  />
-                  {passwordConfirm && password !== passwordConfirm && (
-                    <p className="text-xs text-destructive">Las contraseñas no coinciden</p>
-                  )}
-                </section>
-              </>
-            )}
-
-            <section className="space-y-3">
+            <div className="space-y-3 rounded-2xl border border-border bg-card p-5">
               <Label>Cédula de identidad (frente y reverso)</Label>
               {idUploaded ? (
-                <div className="flex items-center gap-2 text-sm text-primary">
-                  <CheckCircle2 className="size-4" /> Cédula registrada
+                <div className="flex items-center gap-2 text-[15px] font-medium text-success">
+                  <CheckCircle2 className="size-[18px]" strokeWidth={1.8} /> Cédula registrada
                   <button
                     type="button"
-                    className="ml-2 text-xs text-muted-foreground underline"
+                    className="ml-2 text-[13px] font-medium text-muted-foreground underline underline-offset-4"
                     onClick={() => setIdUploaded(false)}
                   >
                     Volver a escanear
@@ -279,23 +289,23 @@ export function VisitorRegistrationPage() {
               ) : (
                 <IdScanCapture onComplete={handleUploadId} />
               )}
-            </section>
+            </div>
 
-            <section className="space-y-2">
+            <div className="rounded-2xl border border-border bg-card p-5">
               <ConsentCheckbox
                 purposes={["operacional", "registro_visitante"]}
                 onChange={setConsent}
                 channel="visitor_registration"
               />
-            </section>
+            </div>
 
             <Button
-              size="lg"
-              className="w-full"
+              variant="ink"
+              size="block"
               disabled={!formOk || submitting}
               onClick={handleSubmit}
             >
-              {submitting ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
+              {submitting ? <Loader2 className="size-4 animate-spin" strokeWidth={1.8} /> : null}
               Enviar registro
             </Button>
           </div>
