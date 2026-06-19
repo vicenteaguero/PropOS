@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { FileText, FileImage, FileType2, FileQuestion, WifiOff } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatBytes } from "@shared/lib/format";
+import { DocumentKindPill } from "./document-kind-pill";
 import type { DocumentItem } from "../types";
 
 interface Props {
@@ -33,11 +32,12 @@ export function DocumentCard({ doc, onOpen }: Props) {
   const showThumb = Boolean(thumbUrl) && !thumbFailed;
 
   return (
-    <Card
-      className="group cursor-pointer p-3 transition-colors hover:bg-accent"
+    <button
+      type="button"
       onClick={() => onOpen(doc)}
+      className="group flex flex-col overflow-hidden rounded-2xl bg-card text-left transition active:scale-[0.98]"
     >
-      <div className="relative flex aspect-[3/4] items-center justify-center overflow-hidden rounded-md bg-muted/50">
+      <div className="relative flex aspect-[3/4] items-center justify-center overflow-hidden bg-secondary">
         {showThumb ? (
           <>
             {!thumbLoaded && <Skeleton className="absolute inset-0 h-full w-full" />}
@@ -54,40 +54,36 @@ export function DocumentCard({ doc, onOpen }: Props) {
             />
           </>
         ) : (
-          <Icon className="size-12 text-primary/70" strokeWidth={1.2} />
+          <Icon className="size-12 text-muted-foreground" strokeWidth={1.4} />
         )}
         {v?.size_bytes ? (
-          <span className="absolute bottom-1 right-1 rounded bg-black/55 px-1.5 py-0.5 text-[10px] font-medium text-white backdrop-blur-sm">
+          <span className="absolute bottom-2 right-2 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
             {formatBytes(v.size_bytes)}
           </span>
         ) : null}
         {doc.pin_offline && (
           <span
-            className="absolute top-1 right-1 inline-flex items-center rounded bg-primary/90 p-1 text-primary-foreground"
+            className="absolute right-2 top-2 inline-flex items-center rounded-full bg-primary p-1.5 text-primary-foreground"
             title="Disponible sin conexión"
           >
-            <WifiOff className="size-3" />
+            <WifiOff className="size-3" strokeWidth={2} />
           </span>
         )}
       </div>
-      <div className="mt-3 space-y-1">
-        <div className="line-clamp-2 text-sm font-medium leading-tight">{doc.display_name}</div>
+      <div className="space-y-2 p-3">
+        <div className="line-clamp-2 text-[15px] font-semibold leading-tight text-foreground">
+          {doc.display_name}
+        </div>
         <div className="flex flex-wrap items-center gap-1.5">
-          <Badge variant="outline" className="text-[10px]">
-            {doc.kind}
-          </Badge>
-          {v && (
-            <Badge variant="outline" className="text-[10px]">
-              v{v.version_number}
-            </Badge>
-          )}
+          <DocumentKindPill doc={doc} />
+          {v && <span className="text-xs text-muted-foreground">v{v.version_number}</span>}
           {doc.assignments && doc.assignments.length > 0 && (
-            <Badge variant="secondary" className="text-[10px]">
-              {doc.assignments.length} vínc.
-            </Badge>
+            <span className="text-xs text-muted-foreground">
+              · {doc.assignments.length} vínc.
+            </span>
           )}
         </div>
       </div>
-    </Card>
+    </button>
   );
 }
