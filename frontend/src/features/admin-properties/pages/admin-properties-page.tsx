@@ -109,7 +109,7 @@ export function AdminPropertiesPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [view, setView] = useState<"lista" | "mapa">("lista");
   const [selId, setSelId] = useState<string | null>(null);
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["admin", "properties"],
     queryFn: () => propertiesApi.list(),
   });
@@ -122,9 +122,9 @@ export function AdminPropertiesPage() {
   const properties = data ?? [];
 
   return (
-    <PageLayout width="md" noPadding className="pb-6">
+    <PageLayout width="md" noPadding className="pb-6 lg:max-w-none">
       {/* Header */}
-      <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-3">
+      <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-3 lg:px-8 lg:pt-7">
         <div>
           <h1 className="text-[26px] font-bold leading-tight tracking-tight text-foreground">
             Propiedades
@@ -144,8 +144,8 @@ export function AdminPropertiesPage() {
         </Button>
       </div>
 
-      {!isLoading && properties.length > 0 && (
-        <div className="mb-3">
+      {!isLoading && !error && properties.length > 0 && (
+        <div className="mb-3 px-5 lg:px-8">
           <Segmented
             items={[
               { id: "lista", label: "Lista" },
@@ -173,8 +173,19 @@ export function AdminPropertiesPage() {
         </div>
       )}
 
-      {!isLoading && properties.length === 0 && (
-        <div className="px-5 pt-2">
+      {!isLoading && error && (
+        <div className="px-5 lg:px-8">
+          <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+            No se pudieron cargar las propiedades.
+            <Button variant="ghost" size="sm" className="ml-2" onClick={() => refetch()}>
+              Reintentar
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {!isLoading && !error && properties.length === 0 && (
+        <div className="px-5 pt-2 lg:px-8">
           <EmptyState
             title="No hay propiedades"
             description="Creá tu primera propiedad para esta empresa."
@@ -184,8 +195,8 @@ export function AdminPropertiesPage() {
         </div>
       )}
 
-      {!isLoading && properties.length > 0 && view === "lista" && (
-        <div className="space-y-3 px-5">
+      {!isLoading && !error && properties.length > 0 && view === "lista" && (
+        <div className="grid grid-cols-1 gap-3 px-5 lg:grid-cols-2 lg:gap-4 lg:px-8 xl:grid-cols-3">
           {properties.map((p) => (
             <PropertyCard
               key={p.id}
@@ -197,6 +208,7 @@ export function AdminPropertiesPage() {
       )}
 
       {!isLoading &&
+        !error &&
         properties.length > 0 &&
         view === "mapa" &&
         (() => {
@@ -204,56 +216,70 @@ export function AdminPropertiesPage() {
           const sel = withAddr.find((p) => p.id === selId) ?? withAddr[0];
           if (!sel) {
             return (
-              <p className="px-5 py-10 text-center text-sm text-muted-foreground">
+              <p className="px-5 py-10 text-center text-sm text-muted-foreground lg:px-8">
                 Ninguna propiedad tiene dirección para mostrar en el mapa.
               </p>
             );
           }
-          return (
-            <div className="px-5">
-              <iframe
-                title="Mapa"
-                src={`https://maps.google.com/maps?q=${encodeURIComponent(sel.address ?? "")}&z=14&output=embed`}
-                className="h-64 w-full rounded-2xl border border-border"
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-              />
-              <button
-                type="button"
-                onClick={() => navigate(`/admin/properties/${sel.id}`)}
-                className="mt-3 flex w-full items-center justify-between rounded-2xl border border-border bg-card px-4 py-3 text-left transition active:scale-[0.99]"
-              >
-                <span className="min-w-0">
-                  <span className="block truncate font-semibold text-foreground">{sel.title}</span>
-                  <span className="block truncate text-[13px] text-muted-foreground">
-                    {sel.address}
+          const propertyList = (
+            <div className="space-y-2">
+              {withAddr.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setSelId(p.id)}
+                  className={cn(
+                    "flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition active:scale-[0.99]",
+                    p.id === sel.id ? "border-foreground" : "border-border",
+                  )}
+                >
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-secondary">
+                    <MapPin className="size-[18px] text-foreground" strokeWidth={1.8} />
                   </span>
-                </span>
-                <span className="shrink-0 text-[13px] font-semibold text-primary">Abrir ficha</span>
-              </button>
-              <div className="mt-4 space-y-2">
-                {withAddr.map((p) => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => setSelId(p.id)}
-                    className={cn(
-                      "flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition active:scale-[0.99]",
-                      p.id === sel.id ? "border-foreground" : "border-border",
-                    )}
-                  >
-                    <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-secondary">
-                      <MapPin className="size-[18px] text-foreground" strokeWidth={1.8} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-semibold text-foreground">{p.title}</span>
+                    <span className="block truncate text-[13px] text-muted-foreground">
+                      {p.address}
                     </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-semibold text-foreground">{p.title}</span>
-                      <span className="block truncate text-[13px] text-muted-foreground">
-                        {p.address}
-                      </span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          );
+          return (
+            <div className="px-5 lg:grid lg:grid-cols-[1fr_2fr] lg:items-start lg:gap-6 lg:px-8">
+              {/* Desktop: property list on the left. Mobile: map first (below). */}
+              <div className="hidden lg:block">{propertyList}</div>
+
+              <div className="min-w-0 lg:sticky lg:top-6">
+                <iframe
+                  title="Mapa"
+                  src={`https://maps.google.com/maps?q=${encodeURIComponent(sel.address ?? "")}&z=14&output=embed`}
+                  className="h-64 w-full rounded-2xl border border-border lg:h-[calc(100dvh-12rem)]"
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                />
+                <button
+                  type="button"
+                  onClick={() => navigate(`/admin/properties/${sel.id}`)}
+                  className="mt-3 flex w-full items-center justify-between rounded-2xl border border-border bg-card px-4 py-3 text-left transition active:scale-[0.99]"
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate font-semibold text-foreground">
+                      {sel.title}
                     </span>
-                  </button>
-                ))}
+                    <span className="block truncate text-[13px] text-muted-foreground">
+                      {sel.address}
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-[13px] font-semibold text-primary">
+                    Abrir ficha
+                  </span>
+                </button>
               </div>
+
+              {/* Mobile: property list below the map (desktop hides this copy). */}
+              <div className="mt-4 lg:hidden">{propertyList}</div>
             </div>
           );
         })()}
