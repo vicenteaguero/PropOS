@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { Chips, Chip } from "@shared/ui";
 
 export type GroupByMode = "all" | "property" | "contact";
 
@@ -15,18 +15,12 @@ const OPTIONS: Array<{ value: GroupByMode; label: string }> = [
 
 export function GroupByToggle({ value, onChange }: Props) {
   return (
-    <div className="inline-flex rounded-md border border-border bg-background p-0.5">
+    <Chips>
       {OPTIONS.map((opt) => (
-        <Button
-          key={opt.value}
-          size="sm"
-          variant={value === opt.value ? "secondary" : "ghost"}
-          className="h-8 px-3 text-xs"
-          onClick={() => onChange(opt.value)}
-        >
+        <Chip key={opt.value} active={value === opt.value} onClick={() => onChange(opt.value)}>
           {opt.label}
-        </Button>
+        </Chip>
       ))}
-    </div>
+    </Chips>
   );
 }
