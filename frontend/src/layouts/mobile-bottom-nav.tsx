@@ -17,7 +17,7 @@ import type { LucideIcon } from "lucide-react";
 import { useAuth } from "@shared/hooks/use-auth";
 import { useThemeMode } from "@core/theme/theme-provider";
 import { hueForTenant } from "@core/theme/tenant-accent";
-import { AgentDrawer } from "@features/agent/components/agent-drawer";
+import { AgentOverlay } from "@features/agent/components/agent-overlay";
 import { BottomSheet } from "@shared/ui";
 import { cn } from "@/lib/utils";
 import type { UserView } from "@shared/types/auth";
@@ -31,7 +31,17 @@ function initials(name: string): string {
     .slice(0, 2);
 }
 
-function NavTab({ to, end, icon: Icon, label }: { to: string; end?: boolean; icon: LucideIcon; label: string }) {
+function NavTab({
+  to,
+  end,
+  icon: Icon,
+  label,
+}: {
+  to: string;
+  end?: boolean;
+  icon: LucideIcon;
+  label: string;
+}) {
   return (
     <NavLink to={to} end={end} className="flex flex-1 flex-col items-center gap-0.5 py-1">
       {({ isActive }) => (
@@ -109,7 +119,7 @@ export function MobileBottomNav() {
         </div>
       </nav>
 
-      {canPropo && <AgentDrawer fullscreen open={propoOpen} onOpenChange={setPropoOpen} />}
+      {canPropo && propoOpen && <AgentOverlay onClose={() => setPropoOpen(false)} />}
 
       <BottomSheet open={accountOpen} onOpenChange={setAccountOpen} title="Cuenta">
         <div className="mt-3 flex items-center gap-3.5 pb-4">
@@ -158,11 +168,23 @@ export function MobileBottomNav() {
         )}
 
         <div className="border-t border-border py-1">
-          <SheetItem icon={theme === "dark" ? Moon : Sun} label={theme === "dark" ? "Modo oscuro" : "Modo claro"} onClick={toggle} />
+          <SheetItem
+            icon={theme === "dark" ? Moon : Sun}
+            label={theme === "dark" ? "Modo oscuro" : "Modo claro"}
+            onClick={toggle}
+          />
           {isAdminView && (
             <>
-              <SheetItem icon={Settings} label="Configuración" onClick={() => go("/admin/settings")} />
-              <SheetItem icon={Newspaper} label="Novedades" onClick={() => go("/admin/novedades")} />
+              <SheetItem
+                icon={Settings}
+                label="Configuración"
+                onClick={() => go("/admin/settings")}
+              />
+              <SheetItem
+                icon={Newspaper}
+                label="Novedades"
+                onClick={() => go("/admin/novedades")}
+              />
             </>
           )}
         </div>
