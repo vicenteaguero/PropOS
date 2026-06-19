@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { LoadingSpinner } from "@shared/components/loading-spinner/loading-spinner";
 import { NavMark, Pill, Row, SectionLabel, type PillTone } from "@shared/ui";
+import { PageLayout } from "@shared/components/page-layout";
 import { apiRequest } from "@features/documents/api/http";
 import { toast } from "sonner";
 import { propertiesApi, type PropertyInput } from "../api/properties-api";
@@ -79,10 +80,31 @@ export function AdminPropertyDetailPage() {
     onError: (err) => toast.error(err instanceof Error ? err.message : "No se pudo generar"),
   });
 
-  if (propQ.isLoading || !propQ.data) {
+  if (propQ.isLoading) {
     return (
       <div className="flex flex-1 items-center justify-center py-16">
         <LoadingSpinner size="md" />
+      </div>
+    );
+  }
+
+  if (propQ.error || !propQ.data) {
+    return (
+      <div className="mx-auto flex w-full max-w-md flex-col items-center justify-center gap-4 px-5 py-16 text-center">
+        <h2 className="text-lg font-semibold text-foreground">No se pudo cargar la propiedad</h2>
+        <p className="text-sm text-muted-foreground">
+          {propQ.error instanceof Error
+            ? propQ.error.message
+            : "Es posible que se haya eliminado o que el enlace sea incorrecto."}
+        </p>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => navigate("/admin/properties")}>
+            <ArrowLeft className="size-4" strokeWidth={1.8} /> Propiedades
+          </Button>
+          <Button size="sm" onClick={() => propQ.refetch()}>
+            Reintentar
+          </Button>
+        </div>
       </div>
     );
   }
@@ -106,9 +128,9 @@ export function AdminPropertyDetailPage() {
     : undefined;
 
   return (
-    <div className="mx-auto w-full max-w-2xl pb-10">
+    <PageLayout width="sm" noPadding className="pb-10 lg:max-w-none">
       {/* Header bar */}
-      <div className="flex items-center justify-between px-5 pt-4 pb-2">
+      <div className="flex items-center justify-between px-5 pt-4 pb-2 lg:px-8 lg:pt-6">
         <Link
           to="/admin/properties"
           className="inline-flex items-center gap-1.5 text-[13px] font-medium text-muted-foreground transition hover:text-foreground"
@@ -120,169 +142,173 @@ export function AdminPropertyDetailPage() {
         </Button>
       </div>
 
-      {/* Gallery placeholder */}
-      <div className="px-5">
-        <div className="relative h-52 w-full overflow-hidden rounded-2xl bg-gradient-to-br from-secondary to-muted text-foreground">
-          <div
-            className="absolute inset-0 opacity-[0.04]"
-            style={{
-              backgroundImage:
-                "repeating-linear-gradient(45deg, currentColor 0 14px, transparent 14px 28px)",
-            }}
-          />
-          <div className="absolute left-3 top-3 flex items-center gap-2">
-            <Pill tone={op.tone}>{op.label}</Pill>
-            {p.is_draft && <Pill tone="neutral">Borrador</Pill>}
+      {/* Desktop: 2-column (gallery/title/specs/tabs left · location/interesados right).
+          Mobile: single column in DOM order — unchanged. */}
+      <div className="lg:grid lg:grid-cols-[1.6fr_1fr] lg:items-start lg:gap-8 lg:px-8">
+        {/* Gallery placeholder */}
+        <div className="px-5 lg:col-start-1 lg:row-start-1 lg:px-0">
+          <div className="relative h-52 w-full overflow-hidden rounded-2xl bg-gradient-to-br from-secondary to-muted text-foreground lg:h-72">
+            <div
+              className="absolute inset-0 opacity-[0.04]"
+              style={{
+                backgroundImage:
+                  "repeating-linear-gradient(45deg, currentColor 0 14px, transparent 14px 28px)",
+              }}
+            />
+            <div className="absolute left-3 top-3 flex items-center gap-2">
+              <Pill tone={op.tone}>{op.label}</Pill>
+              {p.is_draft && <Pill tone="neutral">Borrador</Pill>}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Title + price */}
-      <div className="px-5 pt-4">
-        <h1 className="text-[24px] font-bold leading-tight tracking-tight text-foreground">
-          {p.title}
-        </h1>
-        {p.address && <p className="mt-1 text-[14px] text-muted-foreground">{p.address}</p>}
-        <div className="mt-2 text-[22px] font-bold tracking-tight text-foreground">
-          {clp(p.list_price_cents)}
-        </div>
-      </div>
-
-      {/* Specs tile */}
-      <div className="px-5 pt-4">
-        <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-4">
-          {specs.map((s) => {
-            const Icon = s.icon;
-            return (
-              <div key={s.label} className="flex flex-col gap-1 bg-card px-4 py-3.5">
-                <Icon className="size-[18px] text-muted-foreground" strokeWidth={1.8} />
-                <span className="text-base font-semibold text-foreground">{s.value}</span>
-                <span className="text-[11px] text-muted-foreground">{s.label}</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Cómo llegar */}
-      {p.address && (
-        <div className="px-5 pt-5">
-          <SectionLabel className="px-0">Cómo llegar</SectionLabel>
-          <iframe
-            title="Ubicación"
-            src={`https://maps.google.com/maps?q=${encodeURIComponent(p.address)}&z=15&output=embed`}
-            className="mt-2 h-44 w-full rounded-2xl border border-border"
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-          />
-          <div className="mt-3 grid grid-cols-2 gap-3">
-            <a
-              href={wazeHref}
-              className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 transition active:scale-[0.99]"
-            >
-              <NavMark app="waze" size={32} />
-              <span className="text-[15px] font-semibold text-foreground">Waze</span>
-            </a>
-            <a
-              href={mapsHref}
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 transition active:scale-[0.99]"
-            >
-              <NavMark app="maps" size={32} />
-              <span className="text-[15px] font-semibold text-foreground">Maps</span>
-            </a>
+        {/* Title + price */}
+        <div className="px-5 pt-4 lg:col-start-1 lg:row-start-2 lg:px-0">
+          <h1 className="text-[24px] font-bold leading-tight tracking-tight text-foreground">
+            {p.title}
+          </h1>
+          {p.address && <p className="mt-1 text-[14px] text-muted-foreground">{p.address}</p>}
+          <div className="mt-2 text-[22px] font-bold tracking-tight text-foreground">
+            {clp(p.list_price_cents)}
           </div>
         </div>
-      )}
 
-      {/* Tabs: Descripción IA + Accesos */}
-      <div className="px-5 pt-6">
-        <Tabs defaultValue="descripcion" className="w-full">
-          <TabsList>
-            <TabsTrigger value="descripcion">Descripción IA</TabsTrigger>
-            <TabsTrigger value="grants">Interesados</TabsTrigger>
-          </TabsList>
+        {/* Specs tile */}
+        <div className="px-5 pt-4 lg:col-start-1 lg:row-start-3 lg:px-0">
+          <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-4">
+            {specs.map((s) => {
+              const Icon = s.icon;
+              return (
+                <div key={s.label} className="flex flex-col gap-1 bg-card px-4 py-3.5">
+                  <Icon className="size-[18px] text-muted-foreground" strokeWidth={1.8} />
+                  <span className="text-base font-semibold text-foreground">{s.value}</span>
+                  <span className="text-[11px] text-muted-foreground">{s.label}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
 
-          <TabsContent value="descripcion" className="mt-4 space-y-3">
-            <div className="flex gap-2">
-              <Button
-                onClick={() => generate.mutate()}
-                disabled={generate.isPending}
-                className="gap-2"
+        {/* Cómo llegar */}
+        {p.address && (
+          <div className="px-5 pt-5 lg:col-start-2 lg:row-span-4 lg:row-start-1 lg:px-0 lg:pt-0">
+            <SectionLabel className="px-0">Cómo llegar</SectionLabel>
+            <iframe
+              title="Ubicación"
+              src={`https://maps.google.com/maps?q=${encodeURIComponent(p.address)}&z=15&output=embed`}
+              className="mt-2 h-44 w-full rounded-2xl border border-border lg:h-72"
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+            />
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              <a
+                href={wazeHref}
+                className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 transition active:scale-[0.99]"
               >
-                <Sparkles className="size-4" strokeWidth={1.8} />
-                {generate.isPending ? "Generando…" : "Generar con IA"}
-              </Button>
-              {(draft ?? p.description) && (
+                <NavMark app="waze" size={32} />
+                <span className="text-[15px] font-semibold text-foreground">Waze</span>
+              </a>
+              <a
+                href={mapsHref}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 transition active:scale-[0.99]"
+              >
+                <NavMark app="maps" size={32} />
+                <span className="text-[15px] font-semibold text-foreground">Maps</span>
+              </a>
+            </div>
+          </div>
+        )}
+
+        {/* Tabs: Descripción IA + Accesos */}
+        <div className="px-5 pt-6 lg:col-start-1 lg:row-start-4 lg:px-0">
+          <Tabs defaultValue="descripcion" className="w-full">
+            <TabsList>
+              <TabsTrigger value="descripcion">Descripción IA</TabsTrigger>
+              <TabsTrigger value="grants">Interesados</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="descripcion" className="mt-4 space-y-3">
+              <div className="flex gap-2">
                 <Button
-                  variant="outline"
+                  onClick={() => generate.mutate()}
+                  disabled={generate.isPending}
                   className="gap-2"
-                  onClick={() => {
-                    navigator.clipboard.writeText(draft ?? p.description ?? "");
-                    toast.success("Copiado");
+                >
+                  <Sparkles className="size-4" strokeWidth={1.8} />
+                  {generate.isPending ? "Generando…" : "Generar con IA"}
+                </Button>
+                {(draft ?? p.description) && (
+                  <Button
+                    variant="outline"
+                    className="gap-2"
+                    onClick={() => {
+                      navigator.clipboard.writeText(draft ?? p.description ?? "");
+                      toast.success("Copiado");
+                    }}
+                  >
+                    <Copy className="size-4" strokeWidth={1.8} /> Copiar
+                  </Button>
+                )}
+              </div>
+              <Textarea
+                rows={10}
+                className="rounded-2xl"
+                value={draft ?? p.description ?? ""}
+                onChange={(e) => setDraft(e.target.value)}
+                placeholder="Generá una descripción con IA o escribila acá…"
+              />
+              <div className="flex justify-end">
+                <Button
+                  variant="secondary"
+                  disabled={update.isPending || draft == null}
+                  onClick={async () => {
+                    await update.mutateAsync({ description: draft });
+                    toast.success("Descripción guardada");
                   }}
                 >
-                  <Copy className="size-4" strokeWidth={1.8} /> Copiar
+                  Guardar descripción
                 </Button>
-              )}
-            </div>
-            <Textarea
-              rows={10}
-              className="rounded-2xl"
-              value={draft ?? p.description ?? ""}
-              onChange={(e) => setDraft(e.target.value)}
-              placeholder="Generá una descripción con IA o escribila acá…"
-            />
-            <div className="flex justify-end">
-              <Button
-                variant="secondary"
-                disabled={update.isPending || draft == null}
-                onClick={async () => {
-                  await update.mutateAsync({ description: draft });
-                  toast.success("Descripción guardada");
-                }}
-              >
-                Guardar descripción
-              </Button>
-            </div>
-          </TabsContent>
+              </div>
+            </TabsContent>
 
-          <TabsContent value="grants" className="mt-4">
-            {grants.length === 0 && !grantsQ.isLoading && (
-              <div className="rounded-2xl border border-border bg-card px-5 py-8 text-center text-sm text-muted-foreground">
-                Sin accesos otorgados. Usá la sección Usuarios para otorgar.
-              </div>
-            )}
-            {grants.length > 0 && (
-              <div className="overflow-hidden rounded-2xl border border-border bg-card">
-                {grants.map((g, i) => (
-                  <Row
-                    key={g.id}
-                    onClick={() => navigate(`/admin/users/${g.user_id}`)}
-                    divider={i < grants.length - 1}
-                    left={
-                      <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-semibold text-foreground">
-                        {g.user_id.slice(0, 2).toUpperCase()}
-                      </span>
-                    }
-                    title={`${g.user_id.slice(0, 8)}…`}
-                    sub={g.view}
-                    right={
-                      <div className="flex flex-wrap justify-end gap-1.5">
-                        {g.capabilities.map((c) => (
-                          <Pill key={c} tone="neutral">
-                            {c}
-                          </Pill>
-                        ))}
-                      </div>
-                    }
-                  />
-                ))}
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
+            <TabsContent value="grants" className="mt-4">
+              {grants.length === 0 && !grantsQ.isLoading && (
+                <div className="rounded-2xl border border-border bg-card px-5 py-8 text-center text-sm text-muted-foreground">
+                  Sin accesos otorgados. Usá la sección Usuarios para otorgar.
+                </div>
+              )}
+              {grants.length > 0 && (
+                <div className="overflow-hidden rounded-2xl border border-border bg-card">
+                  {grants.map((g, i) => (
+                    <Row
+                      key={g.id}
+                      onClick={() => navigate(`/admin/users/${g.user_id}`)}
+                      divider={i < grants.length - 1}
+                      left={
+                        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-semibold text-foreground">
+                          {g.user_id.slice(0, 2).toUpperCase()}
+                        </span>
+                      }
+                      title={`${g.user_id.slice(0, 8)}…`}
+                      sub={g.view}
+                      right={
+                        <div className="flex flex-wrap justify-end gap-1.5">
+                          {g.capabilities.map((c) => (
+                            <Pill key={c} tone="neutral">
+                              {c}
+                            </Pill>
+                          ))}
+                        </div>
+                      }
+                    />
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
 
       <PropertyFormDialog
@@ -295,6 +321,6 @@ export function AdminPropertyDetailPage() {
           toast.success("Propiedad actualizada");
         }}
       />
-    </div>
+    </PageLayout>
   );
 }
