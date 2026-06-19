@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Bell, BellOff, Loader2, Send } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Bell, Loader2, Send } from "lucide-react";
+import { Row } from "@shared/ui";
 import { toast } from "sonner";
 import { usePushSubscription } from "@shared/hooks/use-push-subscription";
 
+/** Push-notification controls, rendered as settings rows (no Card wrapper). */
 export function NotificationsCard() {
   const push = usePushSubscription();
   const [testing, setTesting] = useState(false);
@@ -35,57 +35,104 @@ export function NotificationsCard() {
     }
   };
 
+  if (!push.supported) {
+    return (
+      <Row
+        left={
+          <span className="flex size-9 items-center justify-center rounded-xl bg-secondary text-muted-foreground">
+            <Bell className="size-[18px]" strokeWidth={1.8} />
+          </span>
+        }
+        title="Notificaciones push"
+        sub="No disponibles aquí. Instalá PropOS como app para habilitarlas."
+        divider={false}
+      />
+    );
+  }
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Notificaciones</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {!push.supported ? (
-          <p className="text-sm text-muted-foreground">
-            Las notificaciones push no están disponibles en este dispositivo. Instalá PropOS como
-            app para habilitarlas.
-          </p>
-        ) : (
-          <>
-            <p className="text-xs text-muted-foreground">
-              Recibí recordatorios de tareas, visitas y vencimientos en este dispositivo.
-            </p>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                onClick={toggle}
-                disabled={push.busy}
-                variant={push.subscribed ? "outline" : "default"}
-                className="gap-2"
-              >
-                {push.busy ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : push.subscribed ? (
-                  <BellOff className="size-4" />
-                ) : (
-                  <Bell className="size-4" />
-                )}
-                {push.subscribed ? "Desactivar" : "Activar"}
-              </Button>
-              {push.subscribed && (
-                <Button onClick={test} disabled={testing} variant="ghost" className="gap-2">
-                  {testing ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <Send className="size-4" />
-                  )}
-                  Probar
-                </Button>
-              )}
-            </div>
-            {push.permission === "denied" && (
-              <p className="text-xs text-destructive">
-                Permiso bloqueado en el navegador. Habilitalo en los ajustes del sitio.
-              </p>
-            )}
-          </>
-        )}
-      </CardContent>
-    </Card>
+    <>
+      <Row
+        left={
+          <span className="flex size-9 items-center justify-center rounded-xl bg-secondary text-foreground">
+            <Bell className="size-[18px]" strokeWidth={1.8} />
+          </span>
+        }
+        title="Notificaciones push"
+        sub={
+          push.permission === "denied"
+            ? "Permiso bloqueado en el navegador. Habilitalo en los ajustes del sitio."
+            : "Recordatorios de tareas, visitas y vencimientos en este dispositivo."
+        }
+        right={
+          <PushToggle
+            on={push.subscribed}
+            busy={push.busy}
+            disabled={push.permission === "denied"}
+            onToggle={toggle}
+          />
+        }
+        divider={push.subscribed}
+      />
+      {push.subscribed && (
+        <Row
+          left={
+            <span className="flex size-9 items-center justify-center rounded-xl bg-secondary text-foreground">
+              <Send className="size-[18px]" strokeWidth={1.8} />
+            </span>
+          }
+          title="Enviar prueba"
+          sub="Comprobá que las notificaciones llegan a este dispositivo."
+          onClick={() => void test()}
+          right={
+            testing ? (
+              <Loader2 className="size-4 animate-spin text-muted-foreground" strokeWidth={1.8} />
+            ) : (
+              <span className="rounded-md border border-border px-3 py-1.5 text-xs font-semibold text-foreground">
+                Probar
+              </span>
+            )
+          }
+          divider={false}
+        />
+      )}
+    </>
+  );
+}
+
+/** Pill toggle switch matching the design kit (ink when on). */
+function PushToggle({
+  on,
+  busy,
+  disabled,
+  onToggle,
+}: {
+  on: boolean;
+  busy: boolean;
+  disabled: boolean;
+  onToggle: () => void;
+}) {
+  if (busy) {
+    return <Loader2 className="size-5 animate-spin text-muted-foreground" strokeWidth={1.8} />;
+  }
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      disabled={disabled}
+      onClick={onToggle}
+      className={
+        "relative h-7 w-12 shrink-0 rounded-full transition disabled:opacity-40 " +
+        (on ? "bg-foreground" : "bg-line-strong")
+      }
+    >
+      <span
+        className={
+          "absolute top-0.5 size-6 rounded-full bg-background shadow-sm transition-all " +
+          (on ? "left-[22px]" : "left-0.5")
+        }
+      />
+    </button>
   );
 }
