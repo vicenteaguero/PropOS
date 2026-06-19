@@ -69,7 +69,7 @@ export function OpportunitiesPage() {
         </div>
       )}
       {error && (
-        <div className="rounded-md border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+        <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
           No se pudo cargar el pipeline.
           <Button variant="ghost" size="sm" className="ml-2" onClick={() => refetch()}>
             Reintentar
