@@ -1,13 +1,15 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
-import { ArrowLeft, Calendar, Download, Eye, FileText, Lock } from "lucide-react";
+import { ArrowLeft, Calendar, Download, Eye, FileText, Loader2, Lock } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@shared/components/loading-spinner/loading-spinner";
 import { Pill, Row } from "@shared/ui";
 import { apiRequest } from "@features/documents/api/http";
+import { documentsApi } from "@features/documents/api/documents-api";
 import { useGrantForProperty } from "@features/owner/hooks/use-my-grants";
 
 interface ApiDocument {
@@ -15,6 +17,7 @@ interface ApiDocument {
   display_name: string;
   kind: string;
   created_at: string;
+  current_version_id: string | null;
   audience_caps?: Record<string, string[]>;
 }
 
@@ -41,19 +44,14 @@ export function OwnerPropertyDetailPage() {
 
   const docsQ = useQuery({
     queryKey: ["owner", "docs", propertyId],
-    queryFn: () =>
-      apiRequest<ApiDocument[]>(`/v1/documents?property_id=${propertyId}`).catch(
-        () => [] as ApiDocument[],
-      ),
+    queryFn: () => apiRequest<ApiDocument[]>(`/v1/documents?property_id=${propertyId}`),
     enabled: !!propertyId && !!grant,
   });
 
   const visitsQ = useQuery({
     queryKey: ["owner", "visits", propertyId],
     queryFn: () =>
-      apiRequest<ApiInteraction[]>(`/v1/interactions?property_id=${propertyId}&kind=VISIT`).catch(
-        () => [] as ApiInteraction[],
-      ),
+      apiRequest<ApiInteraction[]>(`/v1/interactions?property_id=${propertyId}&kind=VISIT`),
     enabled: !!propertyId && !!grant,
   });
 
@@ -65,6 +63,50 @@ export function OwnerPropertyDetailPage() {
     () => grant?.capabilities.includes("view_visitor_identity") ?? false,
     [grant],
   );
+
+  // Track the document whose signed URL is currently being fetched so its
+  // buttons can show a spinner and avoid double-clicks.
+  const [busyDocId, setBusyDocId] = useState<string | null>(null);
+
+  const resolveSignedUrl = async (doc: ApiDocument): Promise<string | null> => {
+    if (!doc.current_version_id) {
+      toast.error("Este documento no tiene una versión disponible.");
+      return null;
+    }
+    const { url } = await documentsApi.versionDownloadUrl(doc.id, doc.current_version_id);
+    return url;
+  };
+
+  const handleView = async (doc: ApiDocument) => {
+    setBusyDocId(doc.id);
+    try {
+      const url = await resolveSignedUrl(doc);
+      if (url) window.open(url, "_blank", "noopener,noreferrer");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo abrir el documento.");
+    } finally {
+      setBusyDocId(null);
+    }
+  };
+
+  const handleDownload = async (doc: ApiDocument) => {
+    setBusyDocId(doc.id);
+    try {
+      const url = await resolveSignedUrl(doc);
+      if (!url) return;
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = doc.display_name;
+      a.rel = "noopener";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo descargar el documento.");
+    } finally {
+      setBusyDocId(null);
+    }
+  };
 
   if (grantLoading) {
     return (
@@ -132,12 +174,25 @@ export function OwnerPropertyDetailPage() {
                   <LoadingSpinner size="sm" />
                 </div>
               )}
-              {!docsQ.isLoading && docs.length === 0 && (
+              {docsQ.isError && (
+                <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+                  No se pudieron cargar los documentos.
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="ml-2"
+                    onClick={() => docsQ.refetch()}
+                  >
+                    Reintentar
+                  </Button>
+                </div>
+              )}
+              {!docsQ.isLoading && !docsQ.isError && docs.length === 0 && (
                 <div className="rounded-2xl border border-border bg-card px-5 py-8 text-center text-sm text-muted-foreground">
                   No hay documentos compartidos contigo todavía.
                 </div>
               )}
-              {docs.length > 0 && (
+              {!docsQ.isError && docs.length > 0 && (
                 <div className="overflow-hidden rounded-2xl border border-border bg-card">
                   {docs.map((doc, i) => {
                     const docCanDownload =
@@ -155,12 +210,34 @@ export function OwnerPropertyDetailPage() {
                         sub={`${doc.kind} · ${new Date(doc.created_at).toLocaleDateString("es-CL")}`}
                         right={
                           <div className="flex shrink-0 items-center gap-1.5">
-                            <Button variant="outline" size="xs" className="gap-1">
-                              <Eye className="size-3.5" strokeWidth={1.8} /> Ver
+                            <Button
+                              variant="outline"
+                              size="xs"
+                              className="gap-1"
+                              disabled={busyDocId === doc.id}
+                              onClick={() => handleView(doc)}
+                            >
+                              {busyDocId === doc.id ? (
+                                <Loader2 className="size-3.5 animate-spin" strokeWidth={1.8} />
+                              ) : (
+                                <Eye className="size-3.5" strokeWidth={1.8} />
+                              )}{" "}
+                              Ver
                             </Button>
                             {docCanDownload ? (
-                              <Button variant="outline" size="xs" className="gap-1">
-                                <Download className="size-3.5" strokeWidth={1.8} /> Descargar
+                              <Button
+                                variant="outline"
+                                size="xs"
+                                className="gap-1"
+                                disabled={busyDocId === doc.id}
+                                onClick={() => handleDownload(doc)}
+                              >
+                                {busyDocId === doc.id ? (
+                                  <Loader2 className="size-3.5 animate-spin" strokeWidth={1.8} />
+                                ) : (
+                                  <Download className="size-3.5" strokeWidth={1.8} />
+                                )}{" "}
+                                Descargar
                               </Button>
                             ) : (
                               <Tooltip>
@@ -187,29 +264,44 @@ export function OwnerPropertyDetailPage() {
                   <LoadingSpinner size="sm" />
                 </div>
               )}
-              {!visitsQ.isLoading && visits.length === 0 && (
+              {visitsQ.isError && (
+                <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+                  No se pudieron cargar las visitas.
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="ml-2"
+                    onClick={() => visitsQ.refetch()}
+                  >
+                    Reintentar
+                  </Button>
+                </div>
+              )}
+              {!visitsQ.isLoading && !visitsQ.isError && visits.length === 0 && (
                 <div className="rounded-2xl border border-border bg-card px-5 py-8 text-center text-sm text-muted-foreground">
                   Sin visitas compartidas todavía.
                 </div>
               )}
-              {visits.map((v) => {
-                const showVisitor =
-                  canSeeVisitors && audienceHas(v.audience_caps, "owner", "view_visitor_identity");
-                return (
-                  <div key={v.id} className="rounded-2xl border border-border bg-card p-4">
-                    <div className="flex items-center gap-2 text-[15px] font-semibold text-foreground">
-                      <Calendar className="size-4 text-muted-foreground" strokeWidth={1.8} />
-                      {new Date(v.occurred_at).toLocaleString("es-CL")}
-                      {v.duration_minutes != null && (
-                        <Pill tone="neutral">{v.duration_minutes} min</Pill>
-                      )}
+              {!visitsQ.isError &&
+                visits.map((v) => {
+                  const showVisitor =
+                    canSeeVisitors &&
+                    audienceHas(v.audience_caps, "owner", "view_visitor_identity");
+                  return (
+                    <div key={v.id} className="rounded-2xl border border-border bg-card p-4">
+                      <div className="flex items-center gap-2 text-[15px] font-semibold text-foreground">
+                        <Calendar className="size-4 text-muted-foreground" strokeWidth={1.8} />
+                        {new Date(v.occurred_at).toLocaleString("es-CL")}
+                        {v.duration_minutes != null && (
+                          <Pill tone="neutral">{v.duration_minutes} min</Pill>
+                        )}
+                      </div>
+                      <div className="mt-1.5 text-[13px] text-muted-foreground">
+                        {showVisitor ? (v.summary ?? "(sin notas)") : "Visitante (anónimo)"}
+                      </div>
                     </div>
-                    <div className="mt-1.5 text-[13px] text-muted-foreground">
-                      {showVisitor ? (v.summary ?? "(sin notas)") : "Visitante (anónimo)"}
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
             </TabsContent>
 
             <TabsContent value="detail" className="mt-4 space-y-3">
