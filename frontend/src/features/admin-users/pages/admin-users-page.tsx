@@ -1,116 +1,131 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import { Search, UserPlus } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { useNavigate } from "react-router-dom";
+import { Loader2, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { LoadingSpinner } from "@shared/components/loading-spinner/loading-spinner";
+import { PageLayout } from "@shared/components/page-layout";
+import { EmptyState } from "@shared/components/empty-state/empty-state";
+import { Pill, Row } from "@shared/ui";
 import { useAdminUsersList } from "@features/admin-users/hooks/use-admin-users";
 import { useAuth } from "@shared/hooks/use-auth";
 import { InviteUserDrawer } from "@features/admin-users/components/invite-user-drawer";
 
+function initials(name: string): string {
+  return name
+    .split(" ")
+    .map((p) => p[0] ?? "")
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+}
+
 export function AdminUsersPage() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [inviteOpen, setInviteOpen] = useState(false);
 
   const filters = useMemo(() => ({ search: search || undefined }), [search]);
   const { data, isLoading, error, refetch } = useAdminUsersList(filters);
+  const users = data ?? [];
 
   return (
-    <div className="mx-auto w-full max-w-6xl p-4 sm:p-6">
-      <header className="mb-4 flex items-center justify-between gap-2">
-        <h1 className="text-2xl font-bold">Usuarios</h1>
-        <Button onClick={() => setInviteOpen(true)} size="sm">
-          <UserPlus className="mr-1.5 size-4" /> Invitar usuario
+    <PageLayout width="md" noPadding className="pb-6">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-3">
+        <div>
+          <h1 className="text-[26px] font-bold leading-tight tracking-tight text-foreground">
+            Usuarios
+          </h1>
+          <p className="mt-0.5 text-[13px] text-muted-foreground">
+            {data ? `${users.length} usuarios` : "Usuarios de la plataforma"}
+          </p>
+        </div>
+        <Button
+          variant="ink"
+          size="icon-lg"
+          className="rounded-full"
+          aria-label="Invitar usuario"
+          onClick={() => setInviteOpen(true)}
+        >
+          <Plus className="size-5" strokeWidth={1.8} />
         </Button>
-      </header>
+      </div>
 
-      <div className="mb-4 flex items-center gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por email, nombre o RUT..."
+      {/* Search */}
+      <div className="px-5 pb-4">
+        <div className="relative">
+          <Search
+            className="pointer-events-none absolute left-4 top-1/2 size-[18px] -translate-y-1/2 text-muted-foreground"
+            strokeWidth={1.8}
+          />
+          <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-8"
+            placeholder="Buscar por email, nombre o RUT"
+            className="h-12 w-full rounded-full border border-border bg-secondary pl-11 pr-4 text-[15px] text-foreground placeholder:text-muted-foreground focus-visible:border-line-strong focus-visible:outline-none"
           />
         </div>
       </div>
 
       {isLoading && (
         <div className="flex justify-center py-12">
-          <LoadingSpinner size="md" />
+          <Loader2 className="size-5 animate-spin text-muted-foreground" />
         </div>
       )}
 
       {error && (
-        <Card>
-          <CardContent className="py-6 text-center text-sm text-destructive">
-            No pudimos cargar los usuarios.
-            <Button variant="link" size="sm" onClick={() => refetch()}>
-              Reintentar
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="mx-5 rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+          No pudimos cargar los usuarios.
+          <Button variant="ghost" size="sm" className="ml-2" onClick={() => refetch()}>
+            Reintentar
+          </Button>
+        </div>
       )}
 
-      {!isLoading && !error && (data ?? []).length === 0 && (
-        <Card>
-          <CardContent className="py-8 text-center text-sm text-muted-foreground">
-            No hay usuarios. Invitá al primero.
-          </CardContent>
-        </Card>
+      {!isLoading && !error && users.length === 0 && (
+        <div className="px-5">
+          <EmptyState
+            title="Sin usuarios"
+            description="Invitá al primer usuario de la plataforma."
+            actionLabel="Invitar usuario"
+            onAction={() => setInviteOpen(true)}
+          />
+        </div>
       )}
 
-      <div className="space-y-2">
-        {(data ?? []).map((u) => (
-          <Link
-            key={u.id}
-            to={`/admin/users/${u.id}`}
-            className="block rounded-xl border border-border bg-card px-4 py-3 transition-colors hover:bg-accent"
-          >
-            <div className="flex items-center justify-between gap-4">
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="truncate text-sm font-semibold">
-                    {u.full_name || "(sin nombre)"}
-                  </span>
-                  {u.is_dev_admin && (
-                    <Badge className="bg-warning/20 text-[10px] text-warning hover:bg-warning/20">
-                      DEV
-                    </Badge>
-                  )}
-                  {!u.is_active && (
-                    <Badge variant="destructive" className="text-[10px]">
-                      Deshabilitado
-                    </Badge>
-                  )}
-                </div>
-                <div className="truncate text-xs text-muted-foreground">{u.email}</div>
-              </div>
-              <div className="hidden items-center gap-3 text-xs text-muted-foreground sm:flex">
-                <span>{u.role}</span>
-                <span>·</span>
-                <span>{u.view}</span>
-                {u.rut && (
-                  <>
-                    <span>·</span>
-                    <span>{u.rut}</span>
-                  </>
-                )}
-              </div>
-            </div>
-          </Link>
-        ))}
-      </div>
+      {!isLoading && !error && users.length > 0 && (
+        <div>
+          {users.map((u, i) => (
+            <Row
+              key={u.id}
+              onClick={() => navigate(`/admin/users/${u.id}`)}
+              divider={i < users.length - 1}
+              left={
+                <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-secondary text-sm font-semibold text-foreground">
+                  {initials(u.full_name || u.email)}
+                </span>
+              }
+              title={
+                <span className="flex items-center gap-2">
+                  <span className="truncate">{u.full_name || "(sin nombre)"}</span>
+                  {u.is_dev_admin && <Pill tone="warning">DEV</Pill>}
+                  {!u.is_active && <Pill tone="destructive">Deshabilitado</Pill>}
+                </span>
+              }
+              sub={u.email}
+              right={
+                <Pill tone="neutral">{u.role}</Pill>
+              }
+            />
+          ))}
+        </div>
+      )}
 
       <InviteUserDrawer
         open={inviteOpen}
         onOpenChange={setInviteOpen}
         currentTenantId={user?.tenantId}
       />
-    </div>
+    </PageLayout>
   );
 }
