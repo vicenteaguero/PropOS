@@ -9,6 +9,7 @@ import {
 } from "@dnd-kit/core";
 import { Check, X } from "lucide-react";
 import { Pill } from "@shared/ui";
+import { cn } from "@/lib/utils";
 import { PIPELINE_STAGES, STAGE_LABELS, type Opportunity } from "../types";
 
 interface Props {
@@ -115,14 +116,16 @@ function Column({
 }: { stage: string; opps: Opportunity[] } & Omit<Props, "opportunities" | "onMove">) {
   const { setNodeRef, isOver } = useDroppable({ id: stage });
   return (
-    <div className="flex w-72 shrink-0 flex-col">
+    // Mobile: fixed-width column in a horizontal scroller.
+    // Desktop: equal-width (flex-1), full-height, list scrolls internally.
+    <div className="flex w-72 shrink-0 flex-col lg:h-full lg:w-auto lg:min-w-0 lg:flex-1">
       <div className="mb-2.5 flex items-center justify-between px-1">
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 items-center gap-2">
           <span
             className="size-2 shrink-0 rounded-full"
             style={{ background: STAGE_DOT[stage] ?? "var(--muted-foreground)" }}
           />
-          <span className="text-base font-bold tracking-tight text-foreground">
+          <span className="truncate text-base font-bold tracking-tight text-foreground">
             {STAGE_LABELS[stage] ?? stage}
           </span>
         </div>
@@ -130,9 +133,10 @@ function Column({
       </div>
       <div
         ref={setNodeRef}
-        className={`flex min-h-24 flex-1 flex-col gap-2.5 rounded-2xl border border-dashed p-2.5 transition-colors ${
-          isOver ? "border-primary bg-primary/5" : "border-border"
-        }`}
+        className={cn(
+          "flex min-h-24 flex-1 flex-col gap-2.5 rounded-2xl border border-dashed p-2.5 transition-colors lg:min-h-0 lg:overflow-y-auto",
+          isOver ? "border-primary bg-primary/5" : "border-border",
+        )}
       >
         {opps.map((opp) => (
           <Card key={opp.id} opp={opp} {...rest} />
@@ -155,7 +159,8 @@ export function OpportunityKanban({ opportunities, onMove, ...rest }: Props) {
 
   return (
     <DndContext sensors={sensors} onDragEnd={onDragEnd}>
-      <div className="flex gap-3 overflow-x-auto pb-4">
+      {/* Mobile: horizontal scroller. Desktop: full-height board, columns share width. */}
+      <div className="flex gap-3 overflow-x-auto pb-4 lg:h-full lg:gap-4 lg:overflow-x-hidden lg:pb-0">
         {PIPELINE_STAGES.map((stage) => (
           <Column
             key={stage}
