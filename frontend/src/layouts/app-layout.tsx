@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { AppSidebar } from "@layouts/app-sidebar";
 import { MobileBottomNav } from "@layouts/mobile-bottom-nav";
+import { CommandBar } from "@shared/components/command-bar/command-bar";
 import { useAuth } from "@shared/hooks/use-auth";
 import { useShellMode } from "@shared/hooks/use-shell-mode";
 import { AgentFAB } from "@features/agent/components/agent-fab";
@@ -51,9 +52,11 @@ export function AppLayout() {
       <AppSidebar />
       <SidebarInset>
         <header className="sticky top-0 z-10 flex h-[var(--app-header-h)] shrink-0 items-center gap-2 border-b border-border bg-background px-4">
-          <SidebarTrigger className="-ml-1 md:hidden" />
-          <div className="flex-1" />
-          <div className="hidden md:block">
+          <SidebarTrigger className="-ml-1" />
+          <div className="flex flex-1 items-center justify-center px-2">
+            <CommandBar />
+          </div>
+          <div className="block">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring">
@@ -86,11 +89,18 @@ export function AppLayout() {
         <main className="flex-1 overflow-x-hidden">
           <Outlet />
         </main>
-        {(() => {
-          const scope = user?.adminScope ?? [];
-          if (scope.length > 0 && !scope.includes("agent")) return null;
-          return <AgentFAB />;
-        })()}
+        {/* FAB on tablet/mobile-sidebar shell; desktop uses the header ⌘K bar. */}
+        <div className="lg:hidden">
+          {(() => {
+            // Propo is ADMIN-only (backend require_role ADMIN). Gate on view,
+            // not scope-emptiness, so it never renders for non-admin roles.
+            const view = user?.view;
+            const isAdmin = view === "admin" || view === "admin-dev";
+            const scope = user?.adminScope ?? [];
+            if (!isAdmin || (scope.length > 0 && !scope.includes("agent"))) return null;
+            return <AgentFAB />;
+          })()}
+        </div>
         <InstallNudge />
       </SidebarInset>
     </SidebarProvider>
