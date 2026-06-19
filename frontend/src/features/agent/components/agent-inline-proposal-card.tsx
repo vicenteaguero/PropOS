@@ -75,7 +75,7 @@ export function AgentInlineProposalCard({ proposalId }: Props) {
     <Card
       className={
         accepted
-          ? "border-emerald-500/30 bg-emerald-500/5"
+          ? "border-success/30 bg-success/5"
           : rejected
             ? "border-destructive/30 bg-destructive/5"
             : "border-primary/20"
@@ -154,7 +154,7 @@ export function AgentInlineProposalCard({ proposalId }: Props) {
           </div>
         )}
         {accepted && (
-          <p className="text-xs text-emerald-500 pt-1">
+          <p className="text-xs text-success pt-1">
             ✓ Aceptado{proposal.created_row_id ? ` → ${proposal.created_row_id.slice(0, 8)}` : ""}
           </p>
         )}
