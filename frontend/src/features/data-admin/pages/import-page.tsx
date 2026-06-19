@@ -1,17 +1,14 @@
 import { useState } from "react";
-import { Loader2, Upload } from "lucide-react";
+import { FileUp, Loader2, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { PageLayout } from "@shared/components/page-layout";
-import { PageHeader } from "@shared/components/page-header";
+import { Pill, Segmented } from "@shared/ui";
 import { toast } from "sonner";
 import { importsApi, type ImportPreview } from "../api/imports-api";
 
 const ENTITIES = [
-  { value: "contacts", label: "Contactos" },
-  { value: "transactions", label: "Transacciones" },
+  { id: "contacts", label: "Contactos" },
+  { id: "transactions", label: "Transacciones" },
 ];
 
 export function ImportPage() {
@@ -51,92 +48,130 @@ export function ImportPage() {
   };
 
   return (
-    <PageLayout width="lg">
-      <PageHeader
-        title="Importar datos"
-        description="Cargá datos históricos desde un CSV (vista previa antes de confirmar)."
+    <PageLayout width="md" noPadding className="pb-6">
+      {/* Header */}
+      <div className="px-5 pt-5 pb-3">
+        <h1 className="text-[26px] font-bold leading-tight tracking-tight text-foreground">
+          Importar datos
+        </h1>
+        <p className="mt-0.5 text-[13px] text-muted-foreground">
+          Cargá datos históricos desde un CSV y revisá antes de confirmar.
+        </p>
+      </div>
+
+      {/* Entity picker */}
+      <Segmented
+        items={ENTITIES}
+        value={entity}
+        onChange={(id) => {
+          setEntity(id);
+          setPreview(null);
+        }}
+        className="mb-5"
       />
 
-      <Card className="mb-4">
-        <CardContent className="space-y-3 pt-6">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label>Entidad</Label>
-              <select
-                value={entity}
-                onChange={(e) => {
-                  setEntity(e.target.value);
+      {/* Upload card */}
+      <div className="px-5">
+        <div className="rounded-2xl border border-border bg-card p-5">
+          <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-line-strong bg-secondary/40 px-4 py-4 transition hover:bg-secondary">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-secondary text-foreground">
+              <FileUp className="size-[18px]" strokeWidth={1.8} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[15px] font-semibold text-foreground">
+                {file ? file.name : "Elegí un archivo CSV"}
+              </span>
+              <span className="block text-[13px] text-muted-foreground">
+                {file ? `${(file.size / 1024).toFixed(0)} KB` : "Toca para seleccionar"}
+              </span>
+            </span>
+            {file && (
+              <span
+                role="button"
+                tabIndex={0}
+                aria-label="Quitar archivo"
+                className="flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setFile(null);
                   setPreview(null);
                 }}
-                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
               >
-                {ENTITIES.map((e) => (
-                  <option key={e.value} value={e.value}>
-                    {e.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Archivo CSV</Label>
-              <input
-                type="file"
-                accept=".csv,text/csv"
-                onChange={(e) => {
-                  setFile(e.target.files?.[0] ?? null);
-                  setPreview(null);
-                }}
-                className="block w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-1.5 file:text-sm"
-              />
-            </div>
-          </div>
-          <Button onClick={doPreview} disabled={busy || !file} className="gap-2">
-            {busy ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
+                <X className="size-4" strokeWidth={1.8} />
+              </span>
+            )}
+            <input
+              type="file"
+              accept=".csv,text/csv"
+              className="sr-only"
+              onChange={(e) => {
+                setFile(e.target.files?.[0] ?? null);
+                setPreview(null);
+              }}
+            />
+          </label>
+
+          <Button
+            onClick={doPreview}
+            disabled={busy || !file}
+            variant="ink"
+            size="block"
+            className="mt-4"
+          >
+            {busy && !preview ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Upload className="size-4" strokeWidth={1.8} />
+            )}
             Previsualizar
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
+      {/* Preview */}
       {preview && (
-        <Card>
-          <CardContent className="space-y-3 pt-6">
-            <div className="flex flex-wrap gap-2">
-              <Badge variant="outline" className="bg-success/15 text-success">
-                {preview.valid_rows} válidos
-              </Badge>
+        <div className="mt-4 px-5">
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="flex flex-wrap items-center gap-2">
+              <Pill tone="success">{preview.valid_rows} válidos</Pill>
               {preview.invalid_rows > 0 && (
-                <Badge variant="outline" className="bg-destructive/15 text-destructive">
-                  {preview.invalid_rows} con error
-                </Badge>
+                <Pill tone="destructive">{preview.invalid_rows} con error</Pill>
               )}
-              <Badge variant="outline">{preview.total_rows} filas</Badge>
+              <Pill tone="neutral">{preview.total_rows} filas</Pill>
             </div>
 
             {preview.errors.length > 0 && (
-              <div className="max-h-40 space-y-1 overflow-y-auto rounded-md border bg-muted/30 p-2 text-xs">
+              <div className="mt-4 max-h-44 space-y-2 overflow-y-auto rounded-xl bg-secondary/40 p-3 text-[13px]">
                 {preview.errors.map((e, i) => (
                   <div key={i} className="text-muted-foreground">
-                    Fila {e.row + 1}: {e.message}
+                    <span className="font-semibold text-foreground">Fila {e.row + 1}</span>:{" "}
+                    {e.message}
                   </div>
                 ))}
               </div>
             )}
 
-            <div className="flex justify-end gap-2">
-              <Button variant="ghost" onClick={() => setPreview(null)} disabled={busy}>
-                Cancelar
-              </Button>
+            <div className="mt-5 flex flex-col gap-2">
               <Button
                 onClick={doCommit}
                 disabled={busy || preview.valid_rows === 0}
-                className="gap-2"
+                variant="ink"
+                size="block"
               >
                 {busy && <Loader2 className="size-4 animate-spin" />}
                 Importar {preview.valid_rows} registros
               </Button>
+              <Button
+                variant="ghost"
+                size="block"
+                onClick={() => setPreview(null)}
+                disabled={busy}
+              >
+                Cancelar
+              </Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
     </PageLayout>
   );
