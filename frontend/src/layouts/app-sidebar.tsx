@@ -21,6 +21,7 @@ import {
   Settings,
   Shield,
   Sparkles,
+  StickyNote,
   Target,
   Upload,
   UserPlus,
@@ -51,6 +52,7 @@ import {
 import { useAuth } from "@shared/hooks/use-auth";
 import { useAgentName } from "@core/branding/agent-branding";
 import { PaletteSwitcher } from "@shared/components/palette-switcher/palette-switcher";
+import { ThemeToggle } from "@shared/components/theme-toggle/theme-toggle";
 import { apiRequest } from "@features/documents/api/http";
 import type { UserView } from "@shared/types/auth";
 
@@ -119,6 +121,7 @@ function buildAdminGroups(agentName: string): NavGroup[] {
     {
       label: "CRM",
       items: [
+        { label: "Bandeja", path: "/admin/bandeja", icon: Inbox, scope: "crm" },
         { label: "Personas", path: "/admin/personas", icon: Users, scope: "crm" },
         { label: "Interacciones", path: "/admin/interacciones", icon: MessageSquare, scope: "crm" },
         { label: "Oportunidades", path: "/admin/oportunidades", icon: Target, scope: "crm" },
@@ -137,6 +140,7 @@ function buildAdminGroups(agentName: string): NavGroup[] {
           icon: CalendarDays,
           scope: "productividad",
         },
+        { label: "Notas", path: "/admin/notas", icon: StickyNote, scope: "productividad" },
       ],
     },
     {
@@ -184,12 +188,14 @@ function buildGroups(view: UserView, agentName: string, isDevAdmin: boolean): Na
             { label: "Pendientes", path: "/agent/pendientes", icon: Inbox, badge: "pending" },
             { label: "Tareas", path: "/agent/tareas", icon: CheckSquare },
             { label: "Calendario", path: "/agent/calendario", icon: CalendarDays },
+            { label: "Notas", path: "/agent/notas", icon: StickyNote },
             { label: "Workflows", path: "/agent/workflows", icon: ListChecks },
           ],
         },
         {
           label: "CRM",
           items: [
+            { label: "Bandeja", path: "/agent/bandeja", icon: Inbox },
             { label: "Personas", path: "/agent/personas", icon: Users },
             { label: "Interacciones", path: "/agent/interacciones", icon: MessageSquare },
             { label: "Oportunidades", path: "/agent/oportunidades", icon: Target },
@@ -338,7 +344,7 @@ export function AppSidebar() {
           <div className="flex items-center gap-1.5">
             <span className="truncate text-[13px] font-semibold">PropOS</span>
             {isDevAdmin && (
-              <span className="rounded bg-amber-500/20 px-1.5 py-0 text-[9px] font-bold uppercase tracking-wide text-amber-400">
+              <span className="rounded bg-warning/20 px-1.5 py-0 text-[9px] font-bold uppercase tracking-wide text-warning">
                 DEV
               </span>
             )}
@@ -408,6 +414,9 @@ export function AppSidebar() {
               </SidebarMenuItem>
             </>
           )}
+          <SidebarMenuItem>
+            <ThemeToggle className={ITEM_CLASS} />
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <PaletteSwitcher className={ITEM_CLASS} />
           </SidebarMenuItem>
