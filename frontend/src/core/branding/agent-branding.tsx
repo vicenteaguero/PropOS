@@ -6,6 +6,7 @@ import { useAuth } from "@shared/hooks/use-auth";
 interface TenantBranding {
   agentName: string;
   defaultPaperSize: string;
+  brandColor: string | null;
 }
 
 interface TenantResponse {
@@ -15,12 +16,14 @@ interface TenantResponse {
   settings: {
     ai_assistant_name: string;
     default_paper_size: string;
+    brand_color?: string | null;
   };
 }
 
 const DEFAULT: TenantBranding = {
   agentName: "Anita",
   defaultPaperSize: "A4",
+  brandColor: null,
 };
 
 const AgentBrandingContext = createContext<TenantBranding>(DEFAULT);
@@ -39,6 +42,7 @@ export function AgentBrandingProvider({ children }: { children: ReactNode }) {
     return {
       agentName: query.data.settings.ai_assistant_name || DEFAULT.agentName,
       defaultPaperSize: query.data.settings.default_paper_size || DEFAULT.defaultPaperSize,
+      brandColor: query.data.settings.brand_color || null,
     };
   }, [query.data]);
 
