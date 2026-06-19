@@ -1,10 +1,17 @@
 import { useEffect, useState } from "react";
+import { Loader2, Phone, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { PageLayout } from "@shared/components/page-layout";
-import { PageHeader } from "@shared/components/page-header";
+import { Pill, Row, SectionLabel } from "@shared/ui";
 import { userPhonesApi, type AppUser, type UserPhone } from "../api/user-phones-api";
 import { useAgentName } from "@core/branding/agent-branding";
 
 const ROLES = ["ADMIN", "AGENT", "LANDOWNER", "BUYER", "CONTENT"];
+
+const SELECT_CLASS =
+  "h-10 w-full rounded-xl border border-border bg-background px-3 text-sm focus-visible:border-line-strong focus-visible:outline-none";
 
 export function AdminPhonesPage() {
   const agentName = useAgentName();
@@ -111,47 +118,56 @@ export function AdminPhonesPage() {
   };
 
   return (
-    <PageLayout width="md">
-      <PageHeader
-        title="Usuarios y teléfonos"
-        description={`Crea usuarios internos y asigna sus números E.164. Mensajes desde números asignados se rutean a ${agentName}; el resto va al Client Agent.`}
-      />
-      <div className="space-y-8">
-        <section className="space-y-3 border rounded-lg p-4">
-          <h2 className="font-medium">Crear usuario</h2>
-          <form onSubmit={onCreateUser} className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <label className="text-sm">Nombre completo *</label>
-              <input
-                className="w-full border rounded px-3 py-2 bg-background"
+    <PageLayout width="md" className="pb-10">
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-[26px] font-bold leading-tight tracking-tight text-foreground">
+          Usuarios y teléfonos
+        </h1>
+        <p className="mt-1 text-[13px] text-muted-foreground">
+          Crea usuarios internos y asigna sus números E.164. Mensajes desde números asignados se
+          rutean a {agentName}; el resto va al Client Agent.
+        </p>
+      </div>
+
+      <div className="space-y-6">
+        {/* Create user */}
+        <section className="space-y-4 rounded-2xl border border-border bg-card p-5">
+          <SectionLabel className="px-0">Crear usuario</SectionLabel>
+          <form onSubmit={onCreateUser} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="cu-name">Nombre completo *</Label>
+              <Input
+                id="cu-name"
                 value={cuName}
                 onChange={(e) => setCuName(e.target.value)}
                 placeholder="Ana Carreño"
               />
             </div>
-            <div className="space-y-1">
-              <label className="text-sm">Email *</label>
-              <input
+            <div className="space-y-1.5">
+              <Label htmlFor="cu-email">Email *</Label>
+              <Input
+                id="cu-email"
                 type="email"
-                className="w-full border rounded px-3 py-2 bg-background"
                 value={cuEmail}
                 onChange={(e) => setCuEmail(e.target.value)}
                 placeholder="ana@example.com"
               />
             </div>
-            <div className="space-y-1">
-              <label className="text-sm">RUT</label>
-              <input
-                className="w-full border rounded px-3 py-2 bg-background"
+            <div className="space-y-1.5">
+              <Label htmlFor="cu-rut">RUT</Label>
+              <Input
+                id="cu-rut"
                 value={cuRut}
                 onChange={(e) => setCuRut(e.target.value)}
                 placeholder="12.345.678-9"
               />
             </div>
-            <div className="space-y-1">
-              <label className="text-sm">Rol</label>
+            <div className="space-y-1.5">
+              <Label htmlFor="cu-role">Rol</Label>
               <select
-                className="w-full border rounded px-3 py-2 bg-background"
+                id="cu-role"
+                className={SELECT_CLASS}
                 value={cuRole}
                 onChange={(e) => setCuRole(e.target.value)}
               >
@@ -162,37 +178,43 @@ export function AdminPhonesPage() {
                 ))}
               </select>
             </div>
-            <div className="space-y-1 col-span-2">
-              <label className="text-sm">Contraseña (opcional, se autogenera)</label>
-              <input
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label htmlFor="cu-password">Contraseña (opcional, se autogenera)</Label>
+              <Input
+                id="cu-password"
                 type="text"
-                className="w-full border rounded px-3 py-2 bg-background"
                 value={cuPassword}
                 onChange={(e) => setCuPassword(e.target.value)}
                 placeholder="Si se deja vacío, se crea aleatoria"
               />
             </div>
-            {cuError && <p className="text-sm text-destructive col-span-2">{cuError}</p>}
-            {cuOk && <p className="text-sm text-success col-span-2">{cuOk}</p>}
-            <div className="col-span-2">
-              <button
-                type="submit"
-                disabled={cuLoading}
-                className="px-4 py-2 bg-primary text-primary-foreground rounded disabled:opacity-50"
-              >
-                {cuLoading ? "Creando..." : "Crear usuario"}
-              </button>
+            {cuError && (
+              <p className="rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive sm:col-span-2">
+                {cuError}
+              </p>
+            )}
+            {cuOk && (
+              <p className="rounded-xl bg-success/10 px-3 py-2 text-sm text-success sm:col-span-2">
+                {cuOk}
+              </p>
+            )}
+            <div className="sm:col-span-2">
+              <Button type="submit" variant="ink" size="block" disabled={cuLoading}>
+                {cuLoading ? <Loader2 className="size-4 animate-spin" /> : "Crear usuario"}
+              </Button>
             </div>
           </form>
         </section>
 
-        <section className="space-y-3 border rounded-lg p-4">
-          <h2 className="font-medium">Asignar teléfono</h2>
+        {/* Assign phone */}
+        <section className="space-y-4 rounded-2xl border border-border bg-card p-5">
+          <SectionLabel className="px-0">Asignar teléfono</SectionLabel>
           <form onSubmit={onAssign} className="space-y-3">
-            <div className="space-y-1">
-              <label className="text-sm font-medium">Usuario</label>
+            <div className="space-y-1.5">
+              <Label htmlFor="assign-user">Usuario</Label>
               <select
-                className="w-full border rounded px-3 py-2 bg-background"
+                id="assign-user"
+                className={SELECT_CLASS}
                 value={userId}
                 onChange={(e) => setUserId(e.target.value)}
               >
@@ -204,62 +226,69 @@ export function AdminPhonesPage() {
                 ))}
               </select>
             </div>
-            <div className="space-y-1">
-              <label className="text-sm font-medium">Teléfono (E.164)</label>
-              <input
-                className="w-full border rounded px-3 py-2 bg-background"
+            <div className="space-y-1.5">
+              <Label htmlFor="assign-phone">Teléfono (E.164)</Label>
+              <Input
+                id="assign-phone"
                 placeholder="+56912345678"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
               />
             </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded disabled:opacity-50"
-            >
-              {loading ? "Asignando..." : "Asignar"}
-            </button>
+            {error && (
+              <p className="rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                {error}
+              </p>
+            )}
+            <Button type="submit" variant="ink" size="block" disabled={loading}>
+              {loading ? <Loader2 className="size-4 animate-spin" /> : "Asignar"}
+            </Button>
           </form>
         </section>
 
-        <div className="border rounded-lg overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-muted">
-              <tr>
-                <th className="text-left px-3 py-2">Usuario</th>
-                <th className="text-left px-3 py-2">Teléfono</th>
-                <th className="text-left px-3 py-2">Verificado</th>
-                <th className="px-3 py-2"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {phones.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="px-3 py-6 text-center text-muted-foreground">
-                    Sin teléfonos asignados
-                  </td>
-                </tr>
-              )}
-              {phones.map((p) => (
-                <tr key={p.id} className="border-t">
-                  <td className="px-3 py-2">{userById(p.user_id)}</td>
-                  <td className="px-3 py-2 font-mono">{p.phone_e164}</td>
-                  <td className="px-3 py-2">{p.verified_at ? "Sí" : "No"}</td>
-                  <td className="px-3 py-2 text-right">
-                    <button
+        {/* Assigned phones */}
+        <section className="space-y-3">
+          <SectionLabel className="px-0">Teléfonos asignados</SectionLabel>
+          {phones.length === 0 ? (
+            <p className="rounded-2xl border border-border bg-card py-8 text-center text-sm text-muted-foreground">
+              Sin teléfonos asignados
+            </p>
+          ) : (
+            <div className="overflow-hidden rounded-2xl border border-border bg-card">
+              {phones.map((p, i) => (
+                <Row
+                  key={p.id}
+                  divider={i < phones.length - 1}
+                  left={
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-secondary text-foreground">
+                      <Phone className="size-[18px]" strokeWidth={1.8} />
+                    </span>
+                  }
+                  title={userById(p.user_id)}
+                  sub={
+                    <span className="flex items-center gap-2">
+                      <span className="font-mono tabular-nums">{p.phone_e164}</span>
+                      <Pill tone={p.verified_at ? "success" : "neutral"}>
+                        {p.verified_at ? "Verificado" : "Sin verificar"}
+                      </Pill>
+                    </span>
+                  }
+                  right={
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-9 text-destructive hover:bg-destructive/10"
+                      aria-label="Quitar teléfono"
                       onClick={() => onUnassign(p.id)}
-                      className="text-destructive hover:underline"
                     >
-                      Quitar
-                    </button>
-                  </td>
-                </tr>
+                      <Trash2 className="size-4" strokeWidth={1.8} />
+                    </Button>
+                  }
+                />
               ))}
-            </tbody>
-          </table>
-        </div>
+            </div>
+          )}
+        </section>
       </div>
     </PageLayout>
   );
