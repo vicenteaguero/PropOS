@@ -5,10 +5,13 @@ import { Button } from "@/components/ui/button";
 import { PageLayout } from "@shared/components/page-layout";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
 import { useAuth } from "@shared/hooks/use-auth";
-import { Chip, Chips, Pill, Row, type PillTone } from "@shared/ui";
+import { useIsDesktop } from "@/hooks/use-mobile";
+import { Chip, Chips, MasterDetail, Pill, Row, type PillTone } from "@shared/ui";
 import { toast } from "sonner";
 import { useContacts, useCreateContact } from "../hooks/use-contacts";
 import { ContactFormDialog } from "../components/contact-form-dialog";
+import { ContactDetail } from "../components/contact-detail";
+import { ContactAside } from "../components/contact-aside";
 import { CONTACT_TYPE_LABELS, CONTACT_TYPES, type ContactType } from "../types";
 
 /** Soft tone per contact type (semantic tokens only). */
@@ -38,9 +41,12 @@ export function ContactsPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const role = user?.role.toLowerCase() ?? "agent";
+  const isDesktop = useIsDesktop();
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<ContactType | "ALL">("ALL");
   const [dialogOpen, setDialogOpen] = useState(false);
+  // Desktop master-detail selection. Mobile navigates instead (see openContact).
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const { data, isLoading, error, refetch } = useContacts({ q: search || undefined, limit: 300 });
   const create = useCreateContact();
@@ -50,8 +56,20 @@ export function ContactsPage() {
     return typeFilter === "ALL" ? data : data.filter((c) => c.type === typeFilter);
   }, [data, typeFilter]);
 
-  return (
-    <PageLayout width="md" noPadding className="pb-6">
+  // Mobile: push to the detail route. Desktop: select inline (no navigation).
+  const openContact = (id: string) => {
+    if (isDesktop) setSelectedId(id);
+    else navigate(`/${role}/personas/${id}`);
+  };
+
+  const onCreated = (id: string) => {
+    toast.success("Contacto creado");
+    openContact(id);
+  };
+
+  // Shared list column: header, search, type filter, and the contact rows.
+  const list = (
+    <div className="pb-6">
       {/* Header */}
       <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-3">
         <div>
@@ -132,8 +150,9 @@ export function ContactsPage() {
           {filtered.map((c, i) => (
             <Row
               key={c.id}
-              onClick={() => navigate(`/${role}/personas/${c.id}`)}
+              onClick={() => openContact(c.id)}
               divider={i < filtered.length - 1}
+              className={isDesktop && selectedId === c.id ? "bg-secondary/60" : undefined}
               left={
                 <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-secondary text-sm font-semibold text-foreground">
                   {initials(c.full_name)}
@@ -146,17 +165,51 @@ export function ContactsPage() {
           ))}
         </div>
       )}
+    </div>
+  );
 
-      <ContactFormDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        onSubmit={async (input) => {
-          const created = await create.mutateAsync(input);
-          toast.success("Contacto creado");
-          navigate(`/${role}/personas/${created.id}`);
-        }}
-        pending={create.isPending}
-      />
+  const dialog = (
+    <ContactFormDialog
+      open={dialogOpen}
+      onOpenChange={setDialogOpen}
+      onSubmit={async (input) => {
+        const created = await create.mutateAsync(input);
+        onCreated(created.id);
+      }}
+      pending={create.isPending}
+    />
+  );
+
+  // Desktop: master-detail. Selecting a row renders the detail inline; the
+  // /personas/:id route stays available for deep-links via <ContactDetailPage>.
+  if (isDesktop) {
+    return (
+      <>
+        <MasterDetail
+          selected={!!selectedId}
+          list={list}
+          detail={
+            selectedId ? (
+              <ContactDetail contactId={selectedId} onDeleted={() => setSelectedId(null)} />
+            ) : (
+              <div className="flex h-full items-center justify-center p-6 text-sm text-muted-foreground">
+                Seleccioná un contacto.
+              </div>
+            )
+          }
+          aside={selectedId ? <ContactAside contactId={selectedId} /> : undefined}
+        />
+        {dialog}
+      </>
+    );
+  }
+
+  // Mobile: unchanged — capped column, tapping a row pushes to the detail route.
+  // The shared list already carries the bottom padding the page needs.
+  return (
+    <PageLayout width="md" noPadding>
+      {list}
+      {dialog}
     </PageLayout>
   );
 }
