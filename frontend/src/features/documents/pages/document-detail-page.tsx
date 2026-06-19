@@ -20,7 +20,6 @@ import {
   WifiOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   DropdownMenu,
@@ -29,6 +28,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Pill, RoundButton, SectionLabel } from "@shared/ui";
 import { PageLayout } from "@shared/components/page-layout";
 import { useAuth } from "@shared/hooks/use-auth";
 import {
@@ -266,21 +266,22 @@ export function DocumentDetailPage() {
 
   return (
     <PageLayout width="lg">
-      <div className="mb-4 flex items-center gap-2">
-        <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
-          <ArrowLeft className="size-4" />
-        </Button>
-        <div className="min-w-0 flex-1">
-          <h1 className="truncate text-lg font-semibold">{doc.display_name}</h1>
-          <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-            <Badge variant="outline" className="text-xs">
+      <div className="mb-4 flex items-start gap-3">
+        <RoundButton tone="muted" onClick={() => navigate(-1)} aria-label="Volver">
+          <ArrowLeft className="size-[18px]" strokeWidth={1.8} />
+        </RoundButton>
+        <div className="min-w-0 flex-1 pt-1">
+          <h1 className="truncate text-[22px] font-bold leading-tight tracking-tight text-foreground">
+            {doc.display_name}
+          </h1>
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+            <Pill tone={doc.kind === "IMAGE_PDF" || doc.origin === "CAMERA" ? "accent" : "neutral"}>
               {doc.kind}
-            </Badge>
+            </Pill>
             {currentVersion && (
               <>
-                <Badge variant="outline" className="text-xs">
-                  v{currentVersion.version_number}
-                </Badge>
+                <span>v{currentVersion.version_number}</span>
+                <span>·</span>
                 <span className="font-mono">{currentVersion.sha256.slice(0, 12)}</span>
                 <span>·</span>
                 <span>{(currentVersion.size_bytes / 1024).toFixed(0)} KB</span>
@@ -297,41 +298,58 @@ export function DocumentDetailPage() {
       </div>
 
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <Button size="sm" onClick={downloadCurrent} disabled={!blobState.blob}>
+        <Button
+          size="sm"
+          variant="ink"
+          className="rounded-full"
+          onClick={downloadCurrent}
+          disabled={!blobState.blob}
+        >
           {blobState.loading && !blobState.blob ? (
             <Loader2 className="size-4 animate-spin" />
           ) : (
-            <Download className="size-4" />
+            <Download className="size-4" strokeWidth={1.8} />
           )}{" "}
           Descargar
         </Button>
         {hasSourceImages ? (
           <Button
             size="sm"
-            variant="secondary"
+            variant="outline"
+            className="rounded-full"
             onClick={openScannerReedit}
             disabled={scannerLoading}
           >
             {scannerLoading ? (
               <Loader2 className="size-4 animate-spin" />
             ) : (
-              <Camera className="size-4" />
+              <Camera className="size-4" strokeWidth={1.8} />
             )}
             {scannerLoading ? "Cargando…" : "Recortar"}
           </Button>
         ) : null}
-        <Button size="sm" variant="secondary" onClick={goEditor}>
-          <Pencil className="size-4" /> Editar
+        <Button size="sm" variant="outline" className="rounded-full" onClick={goEditor}>
+          <Pencil className="size-4" strokeWidth={1.8} /> Editar
         </Button>
-        <Button size="sm" variant="secondary" onClick={() => setShareViaOpen(true)}>
-          <Share2 className="size-4" /> Compartir
+        <Button
+          size="sm"
+          variant="outline"
+          className="rounded-full"
+          onClick={() => setShareViaOpen(true)}
+        >
+          <Share2 className="size-4" strokeWidth={1.8} /> Compartir
         </Button>
-        <Button size="sm" variant="ghost" onClick={() => setHistoryOpen(true)}>
-          <History className="size-4" /> Versiones
+        <Button
+          size="sm"
+          variant="ghost"
+          className="rounded-full"
+          onClick={() => setHistoryOpen(true)}
+        >
+          <History className="size-4" strokeWidth={1.8} /> Versiones
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button size="sm" variant="ghost" aria-label="Más acciones">
+            <Button size="sm" variant="ghost" className="rounded-full" aria-label="Más acciones">
               <MoreHorizontal className="size-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -382,33 +400,31 @@ export function DocumentDetailPage() {
       )}
 
       <div className="grid gap-4 lg:grid-cols-[3fr_1fr]">
-        <div className="overflow-hidden rounded-lg bg-card/40">
+        <div className="overflow-hidden rounded-2xl bg-secondary/40 p-2">
           <DocumentPreview
             blob={blobState.blob}
             mimeType={currentVersion?.mime_type}
             loading={blobState.loading}
           />
         </div>
-        <aside className="space-y-5">
+        <aside className="space-y-6">
           <section>
-            <div className="mb-2 flex items-center justify-between">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Vínculos
-              </h3>
-              <Button size="sm" variant="ghost" onClick={() => setPickerOpen(true)}>
-                + Vincular
-              </Button>
+            <SectionLabel className="px-0" action="+ Vincular" onAction={() => setPickerOpen(true)}>
+              Asignado a
+            </SectionLabel>
+            <div className="mt-3">
+              <AssignmentList documentId={doc.id} assignments={doc.assignments ?? []} />
             </div>
-            <AssignmentList documentId={doc.id} assignments={doc.assignments ?? []} />
           </section>
           <section>
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Información
-            </h3>
-            <dl className="space-y-1.5 text-xs">
+            <SectionLabel className="px-0">Información</SectionLabel>
+            <dl className="mt-3 divide-y divide-border overflow-hidden rounded-2xl bg-card">
               <InfoRow label="Origen" value={doc.origin} />
-              <InfoRow label="Creado" value={new Date(doc.created_at).toLocaleString()} />
-              <InfoRow label="Actualizado" value={new Date(doc.updated_at).toLocaleString()} />
+              <InfoRow label="Creado" value={new Date(doc.created_at).toLocaleString("es-CL")} />
+              <InfoRow
+                label="Actualizado"
+                value={new Date(doc.updated_at).toLocaleString("es-CL")}
+              />
               {currentVersion && (
                 <>
                   <InfoRow label="MIME" value={currentVersion.mime_type} />
@@ -494,9 +510,9 @@ export function DocumentDetailPage() {
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-baseline justify-between gap-2">
+    <div className="flex items-baseline justify-between gap-3 px-4 py-2.5 text-[13px]">
       <dt className="text-muted-foreground">{label}</dt>
-      <dd className="truncate text-right font-mono">{value}</dd>
+      <dd className="truncate text-right font-mono text-foreground">{value}</dd>
     </div>
   );
 }
