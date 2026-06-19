@@ -43,7 +43,7 @@ function DeltaBadge({ value }: { value: number | null }) {
     <span
       className={cn(
         "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium",
-        positive ? "bg-emerald-500/15 text-emerald-300" : "bg-red-500/15 text-red-300",
+        positive ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive",
       )}
     >
       <Icon className="size-3" />
