@@ -11,6 +11,10 @@
   --color-blanco-nieve: #F9F6F4;
   --color-gris-acero: #9E9E9E;
   --color-rosa-suave: #F0D8DA;
+
+  /* Geist — default UI font (self-hosted via @fontsource-variable, imported in main.tsx) */
+  --font-sans: "Geist Variable", ui-sans-serif, -apple-system, system-ui, sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, SFMono-Regular, monospace;
 }
 
 @theme inline {
@@ -35,6 +39,12 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  /* Tenant-driven brand accent (set inline on <html> by ThemeController) */
+  --color-accent-brand: var(--accent-brand);
+  --color-accent-brand-foreground: var(--accent-brand-foreground);
+  /* Tertiary text + stronger divider (mockup faint / line2) */
+  --color-faint: var(--faint);
+  --color-line-strong: var(--line-strong);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-success: var(--success);
@@ -63,26 +73,93 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
-/* PropOS is always dark — dark palette in :root.
- * Multi-palette support: <html data-palette="default|anthropic|slate">.
- * Default values live on :root; alternate palettes override under [data-palette="..."].
- */
+/* ── Theme axes (orthogonal) ──────────────────────────────────────────────
+ *  1. light vs dark  → <html> with/without class="dark" (default: dark, set
+ *     statically in index.html; JS only ever removes it for light).
+ *  2. tenant accent  → --accent-brand injected inline on <html> by
+ *     ThemeController; --primary/--ring/--sidebar-primary/--chart-1 derive
+ *     from it. Global / no tenant → the neutral brand default below.
+ *  3. dev palettes   → <html data-palette="…"> (dev-only), scoped under .dark.
+ *  :root = LIGHT defaults; .dark = DARK (overrides by source order). */
 :root {
-  /* Header height — single source of truth, consumed by full-bleed pages (anita chat, etc.) */
   --app-header-h: 3.5rem;
   --radius: 0.625rem;
+
+  /* tenant brand accent — hue injected inline per workspace by ThemeController.
+   * Light theme uses a darker accent so it reads as text on white and carries
+   * white foreground on fills. Default hue 347 ≈ rosa-antiguo. */
+  --accent-hue: 347;
+  --accent-sat: 42%;
+  --accent-brand: hsl(var(--accent-hue) var(--accent-sat) 45%);
+  --accent-brand-foreground: #FFFFFF;
+
+  --background: #FFFFFF;
+  --foreground: #0A0A0A;
+  --card: #FFFFFF;
+  --card-foreground: #0A0A0A;
+  --popover: #FFFFFF;
+  --popover-foreground: #0A0A0A;
+  --primary: var(--accent-brand);
+  --primary-foreground: var(--accent-brand-foreground);
+  --secondary: #F3F3F3;
+  --secondary-foreground: #0A0A0A;
+  --muted: #F6F6F6;
+  --muted-foreground: #6E6E73;
+  --faint: #A0A0A6;
+  --accent: #F1F1F2;
+  --accent-foreground: #0A0A0A;
+  --destructive: #D5402B;
+  --destructive-foreground: #FFFFFF;
+  --success: #0E7C5A;
+  --success-foreground: #FFFFFF;
+  --warning: #B0560F;
+  --warning-foreground: #FFFFFF;
+  --overlay: #000000;
+  --modal: #FFFFFF;
+  --modal-foreground: #0A0A0A;
+  --modal-border: rgba(0, 0, 0, 0.08);
+  --border: #ECECEC;
+  --line-strong: #E2E2E2;
+  --input: #ECECEC;
+  --ring: var(--accent-brand);
+  --chart-1: var(--accent-brand);
+  --chart-2: #F0D8DA;
+  --chart-3: #9E9E9E;
+  --chart-4: #0A0A0A;
+  --chart-5: #E2E2E2;
+  --sidebar: #FAFAFA;
+  --sidebar-foreground: #0A0A0A;
+  --sidebar-primary: var(--accent-brand);
+  --sidebar-primary-foreground: var(--accent-brand-foreground);
+  --sidebar-accent: color-mix(in srgb, var(--accent-brand) 12%, transparent);
+  --sidebar-accent-foreground: #0A0A0A;
+  --sidebar-border: #ECECEC;
+  --sidebar-ring: var(--accent-brand);
+}
+
+/* DARK — default. Mirrors the previous always-dark :root palette (rosa carbon),
+ * with accent-derived tokens now sourced from --accent-brand. */
+.dark {
+  /* Dark theme uses a lighter accent (≈ #D4919B at hue 347) so it reads as
+   * text on carbon and carries dark foreground on fills. */
+  --accent-hue: 347;
+  --accent-sat: 42%;
+  --accent-brand: hsl(var(--accent-hue) var(--accent-sat) 70%);
+  --accent-brand-foreground: #1C1816;
+
   --background: #1C1816;
   --foreground: #F9F6F4;
   --card: #231F1C;
   --card-foreground: #F9F6F4;
   --popover: #231F1C;
   --popover-foreground: #F9F6F4;
-  --primary: #D4919B;
-  --primary-foreground: #1C1816;
+  --primary: var(--accent-brand);
+  --primary-foreground: var(--accent-brand-foreground);
   --secondary: #2A2420;
   --secondary-foreground: #F9F6F4;
   --muted: #2A2420;
   --muted-foreground: #9E9E9E;
+  --faint: rgba(249, 246, 244, 0.34);
   --accent: #F0D8DA;
   --accent-foreground: #1C1816;
   --destructive: #ef4444;
@@ -94,27 +171,31 @@
   --overlay: #000000;
   --modal: #332C28;
   --modal-foreground: #F9F6F4;
-  --modal-border: rgba(212, 145, 155, 0.2);
+  --modal-border: color-mix(in srgb, var(--accent-brand) 20%, transparent);
   --border: rgba(158, 158, 158, 0.2);
+  --line-strong: rgba(158, 158, 158, 0.32);
   --input: rgba(158, 158, 158, 0.2);
-  --ring: #D4919B;
-  --chart-1: #D4919B;
+  --ring: var(--accent-brand);
+  --chart-1: var(--accent-brand);
   --chart-2: #F0D8DA;
   --chart-3: #9E9E9E;
   --chart-4: #F9F6F4;
   --chart-5: #2A2420;
   --sidebar: #1C1816;
   --sidebar-foreground: #F9F6F4;
-  --sidebar-primary: #D4919B;
-  --sidebar-primary-foreground: #1C1816;
-  --sidebar-accent: rgba(212, 145, 155, 0.1);
+  --sidebar-primary: var(--accent-brand);
+  --sidebar-primary-foreground: var(--accent-brand-foreground);
+  --sidebar-accent: color-mix(in srgb, var(--accent-brand) 12%, transparent);
   --sidebar-accent-foreground: #F9F6F4;
   --sidebar-border: rgba(158, 158, 158, 0.2);
-  --sidebar-ring: #D4919B;
+  --sidebar-ring: var(--accent-brand);
 }
 
-/* Anthropic-inspired palette — ink background, terracotta primary, cream foreground (dark mode) */
-[data-palette="anthropic"] {
+/* ── Dev-only palettes (testing). Dark-scoped; a non-default palette sets its
+ * own --primary, so it overrides the tenant accent (dev wins by design). ── */
+
+/* Anthropic-inspired palette — ink background, terracotta primary, cream foreground */
+.dark[data-palette="anthropic"] {
   --background: #191919;
   --foreground: #F5F4EE;
   --card: #1F1F1F;
@@ -127,6 +208,7 @@
   --secondary-foreground: #F5F4EE;
   --muted: #2A2724;
   --muted-foreground: #B7B2A6;
+  --faint: rgba(245, 244, 238, 0.34);
   --accent: #E8E4D8;
   --accent-foreground: #191919;
   --destructive: #ef4444;
@@ -135,6 +217,7 @@
   --modal-foreground: #F5F4EE;
   --modal-border: rgba(204, 120, 92, 0.18);
   --border: rgba(245, 244, 238, 0.12);
+  --line-strong: rgba(245, 244, 238, 0.2);
   --input: rgba(245, 244, 238, 0.12);
   --ring: #CC785C;
   --chart-1: #CC785C;
@@ -153,7 +236,7 @@
 }
 
 /* Slate — cool blue-gray dark alt */
-[data-palette="slate"] {
+.dark[data-palette="slate"] {
   --background: #0F172A;
   --foreground: #E2E8F0;
   --card: #1E293B;
@@ -166,6 +249,7 @@
   --secondary-foreground: #E2E8F0;
   --muted: #1E293B;
   --muted-foreground: #94A3B8;
+  --faint: rgba(226, 232, 240, 0.34);
   --accent: #334155;
   --accent-foreground: #E2E8F0;
   --destructive: #f87171;
@@ -174,6 +258,7 @@
   --modal-foreground: #E2E8F0;
   --modal-border: rgba(96, 165, 250, 0.22);
   --border: rgba(148, 163, 184, 0.2);
+  --line-strong: rgba(148, 163, 184, 0.32);
   --input: rgba(148, 163, 184, 0.2);
   --ring: #60A5FA;
   --chart-1: #60A5FA;
@@ -192,7 +277,7 @@
 }
 
 /* Brutalist — sharp, high contrast, zero-radius */
-[data-palette="brutalist"] {
+.dark[data-palette="brutalist"] {
   --radius: 0px;
   --background: #000000;
   --foreground: #FFFFFF;
@@ -206,6 +291,7 @@
   --secondary-foreground: #FFFFFF;
   --muted: #1A1A1A;
   --muted-foreground: #B0B0B0;
+  --faint: rgba(255, 255, 255, 0.4);
   --accent: #FFFFFF;
   --accent-foreground: #000000;
   --destructive: #FF0000;
@@ -214,6 +300,7 @@
   --modal-foreground: #FFFFFF;
   --modal-border: #FFFFFF;
   --border: #FFFFFF;
+  --line-strong: #FFFFFF;
   --input: #FFFFFF;
   --ring: #FF3D00;
   --chart-1: #FF3D00;
@@ -232,7 +319,7 @@
 }
 
 /* Minimalist — desaturated, low contrast, calm */
-[data-palette="minimalist"] {
+.dark[data-palette="minimalist"] {
   --background: #1A1A1A;
   --foreground: #D8D8D8;
   --card: #1F1F1F;
@@ -245,6 +332,7 @@
   --secondary-foreground: #D8D8D8;
   --muted: #242424;
   --muted-foreground: #888888;
+  --faint: rgba(216, 216, 216, 0.34);
   --accent: #2A2A2A;
   --accent-foreground: #D8D8D8;
   --destructive: #B05050;
@@ -253,6 +341,7 @@
   --modal-foreground: #D8D8D8;
   --modal-border: rgba(216, 216, 216, 0.12);
   --border: rgba(216, 216, 216, 0.08);
+  --line-strong: rgba(216, 216, 216, 0.16);
   --input: rgba(216, 216, 216, 0.08);
   --ring: #A0A0A0;
   --chart-1: #A0A0A0;
