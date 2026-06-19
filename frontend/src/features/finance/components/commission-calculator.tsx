@@ -37,15 +37,15 @@ export function CommissionCalculator() {
   };
 
   return (
-    <Card>
+    <Card className="rounded-2xl">
       <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2 text-sm">
-          <Calculator className="size-4" /> Calculadora de comisión
+        <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+          <Calculator className="size-4" strokeWidth={1.8} /> Calculadora de comisión
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-2">
-        <div className="grid grid-cols-2 gap-2">
-          <div className="space-y-1">
+      <CardContent className="space-y-3">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
             <Label className="text-xs">Valor operación (CLP)</Label>
             <Input
               value={amount}
@@ -54,7 +54,7 @@ export function CommissionCalculator() {
               type="number"
             />
           </div>
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <Label className="text-xs">Comisión %</Label>
             <Input
               value={rate}
@@ -66,10 +66,17 @@ export function CommissionCalculator() {
           </div>
         </div>
         {result && (
-          <div className="flex flex-wrap gap-x-6 gap-y-1 pt-1 text-sm">
-            <span>Neto: {clp(result.net_cents)}</span>
-            <span className="text-muted-foreground">IVA: {clp(result.iva_cents)}</span>
-            <span className="font-semibold">Total: {clp(result.gross_cents)}</span>
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-1 rounded-xl bg-secondary px-3.5 py-2.5 text-sm">
+            <span className="text-muted-foreground">
+              Neto <span className="font-semibold text-foreground">{clp(result.net_cents)}</span>
+            </span>
+            <span className="text-muted-foreground">
+              IVA <span className="font-semibold text-foreground">{clp(result.iva_cents)}</span>
+            </span>
+            <span className="text-muted-foreground">
+              Total{" "}
+              <span className="font-bold text-success">{clp(result.gross_cents)}</span>
+            </span>
           </div>
         )}
       </CardContent>
