@@ -11,7 +11,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { AppSidebar } from "@layouts/app-sidebar";
+import { MobileBottomNav } from "@layouts/mobile-bottom-nav";
 import { useAuth } from "@shared/hooks/use-auth";
+import { useShellMode } from "@shared/hooks/use-shell-mode";
 import { AgentFAB } from "@features/agent/components/agent-fab";
 import { InstallNudge } from "@shared/components/install-nudge/install-nudge";
 import { useUfDailyRefresh } from "@features/uf/hooks/use-uf";
@@ -27,7 +29,22 @@ function getInitials(name: string): string {
 
 export function AppLayout() {
   const { user, signOut } = useAuth();
+  const shellMode = useShellMode();
   useUfDailyRefresh();
+
+  // Mobile broker shell: full-bleed content + floating bottom nav (Propo lives
+  // in the center FAB, so no separate AgentFAB here).
+  if (shellMode === "bottom-nav") {
+    return (
+      <div className="flex min-h-dvh flex-col bg-background">
+        <main className="flex-1 pb-28">
+          <Outlet />
+        </main>
+        <MobileBottomNav />
+        <InstallNudge />
+      </div>
+    );
+  }
 
   return (
     <SidebarProvider defaultOpen={false}>
