@@ -91,7 +91,7 @@ export function AdminHomePage() {
   ].filter((t) => allow(t.scope) && (!t.adminOnly || isAdmin));
 
   return (
-    <div className="mx-auto w-full max-w-2xl pb-6">
+    <div className="mx-auto w-full max-w-2xl pb-6 lg:max-w-5xl">
       {/* header */}
       <div className="flex items-center justify-between px-5 pt-4 pb-3">
         <WorkspacePill label={tenantName} onClick={() => setWsOpen(true)} />
