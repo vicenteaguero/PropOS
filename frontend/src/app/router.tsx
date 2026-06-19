@@ -44,6 +44,8 @@ import { CalendarPage } from "@features/calendar/pages/calendar-page";
 import { EmailInboxPage } from "@features/email/pages/email-inbox-page";
 import { FinancePage } from "@features/finance/pages/finance-page";
 import { ImportPage } from "@features/data-admin/pages/import-page";
+import { BandejaPage } from "@features/bandeja/pages/bandeja-page";
+import { NotesPage } from "@features/notes/pages/notes-page";
 import type { UserRole, UserView } from "@shared/types/auth";
 
 const VIEW_HOME_PATHS: Record<UserView, string> = {
@@ -95,7 +97,12 @@ export function AppRouter() {
             </ProtectedRoute>
           }
         >
-          <Route index element={role === "ADMIN" ? <AdminHomePage /> : <EmptyDashboard />} />
+          <Route
+            index
+            element={
+              role === "ADMIN" || role === "AGENT" ? <AdminHomePage /> : <EmptyDashboard />
+            }
+          />
 
           {role === "ADMIN" && (
             <Route
@@ -173,6 +180,14 @@ export function AppRouter() {
           {(role === "ADMIN" || role === "AGENT") && (
             <>
               <Route
+                path="bandeja"
+                element={
+                  <ProtectedRoute requiredScope="crm">
+                    <BandejaPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="personas"
                 element={
                   <ProtectedRoute requiredScope="crm">
@@ -217,6 +232,14 @@ export function AppRouter() {
                 element={
                   <ProtectedRoute requiredScope="productividad">
                     <CalendarPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="notas"
+                element={
+                  <ProtectedRoute requiredScope="productividad">
+                    <NotesPage />
                   </ProtectedRoute>
                 }
               />
