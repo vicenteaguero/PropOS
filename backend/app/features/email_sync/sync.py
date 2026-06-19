@@ -112,6 +112,12 @@ def _match_or_create_contact(client, tenant_id: str, from_email: str, from_name:
     return created["id"]
 
 
+def _is_duplicate(exc: Exception) -> bool:
+    """True when an insert failed because the row already exists (safe to skip)."""
+    s = str(exc).lower()
+    return "duplicate key" in s or "23505" in s or "already exists" in s
+
+
 def _sync_account_blocking(account: dict[str, Any], tenant_id: str) -> dict[str, int]:
     client = get_supabase_client()
     imap = imaplib.IMAP4_SSL(account["imap_host"], account["imap_port"])
@@ -122,18 +128,22 @@ def _sync_account_blocking(account: dict[str, Any], tenant_id: str) -> dict[str,
         typ, data = imap.uid("search", None, f"UID {last_uid + 1}:*")
         if typ != "OK":
             return {"fetched": 0, "leads": 0}
-        uids = [u for u in data[0].split() if int(u) > last_uid][:BATCH_CAP]
+        uids = sorted(int(u) for u in data[0].split() if int(u) > last_uid)[:BATCH_CAP]
 
         fetched = 0
         leads = 0
-        max_uid = last_uid
-        for uid in uids:
-            typ, msg_data = imap.uid("fetch", uid, "(RFC822)")
+        # Advance the cursor only across a contiguous run of persisted UIDs. A
+        # fetch failure or a real (non-duplicate) insert error blocks it so that
+        # message — and every UID after it — is retried next run instead of being
+        # silently skipped past (the lead-loss bug).
+        committed_uid = last_uid
+        blocked = False
+        for uid_int in uids:
+            typ, msg_data = imap.uid("fetch", str(uid_int), "(RFC822)")
             if typ != "OK" or not msg_data or not msg_data[0]:
+                blocked = True
                 continue
             msg = email.message_from_bytes(msg_data[0][1])
-            uid_int = int(uid)
-            max_uid = max(max_uid, uid_int)
 
             subject = _decode(msg.get("Subject"))
             from_pairs = getaddresses([msg.get("From", "")])
@@ -214,11 +224,21 @@ def _sync_account_blocking(account: dict[str, Any], tenant_id: str) -> dict[str,
                 fetched += 1
                 if lead:
                     leads += 1
-            except Exception as exc:  # noqa: BLE001  (duplicate message_id → skip)
-                logger.info("email_dup_skip", message_id=message_id, error=str(exc)[:120])
+                if not blocked:
+                    committed_uid = uid_int
+            except Exception as exc:  # noqa: BLE001
+                if _is_duplicate(exc):
+                    # Already persisted on a prior run — safe to advance past.
+                    logger.info("email_dup_skip", message_id=message_id, error=str(exc)[:120])
+                    if not blocked:
+                        committed_uid = uid_int
+                else:
+                    # Real failure: stop advancing so this UID is retried next run.
+                    logger.warning("email_insert_failed", message_id=message_id, error=str(exc)[:200])
+                    blocked = True
 
         client.table("email_accounts").update(
-            {"last_seen_uid": max_uid, "last_synced_at": "now()", "last_error": None}
+            {"last_seen_uid": committed_uid, "last_synced_at": "now()", "last_error": None}
         ).eq("id", account["id"]).execute()
         return {"fetched": fetched, "leads": leads}
     finally:
