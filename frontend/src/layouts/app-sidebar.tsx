@@ -360,7 +360,7 @@ export function AppSidebar() {
             className="px-2 py-1 group-data-[collapsible=icon]:px-1.5 group-data-[collapsible=icon]:py-0.5"
           >
             {group.label && (
-              <SidebarGroupLabel className="h-6 px-2 text-[10px] uppercase tracking-wider group-data-[collapsible=icon]:hidden">
+              <SidebarGroupLabel className="h-6 px-2 text-[10px] uppercase tracking-wider group-data-[collapsible=icon]:hidden group-data-[state=collapsed]:hidden">
                 {group.label}
               </SidebarGroupLabel>
             )}
