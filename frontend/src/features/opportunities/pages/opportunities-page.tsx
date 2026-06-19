@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { PageLayout } from "@shared/components/page-layout";
 import { PageHeader } from "@shared/components/page-header";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
+import { AppShellScroll } from "@shared/ui";
 import { toast } from "sonner";
 import { useContacts } from "@features/contacts/hooks/use-contacts";
 import {
@@ -45,61 +46,70 @@ export function OpportunitiesPage() {
   };
 
   return (
-    <PageLayout width="full">
-      <PageHeader
-        title="Oportunidades"
-        description="Pipeline de ventas y arriendos. Arrastrá las tarjetas para cambiar de etapa."
-        actions={
-          <Button
-            onClick={() => {
-              setEditing(undefined);
-              setDialogOpen(true);
-            }}
-            className="gap-2"
-          >
-            <Plus className="size-4" />
-            Nueva
-          </Button>
-        }
-      />
+    <PageLayout width="app" noPadding>
+      <AppShellScroll>
+        {/* Fixed header on desktop; normal flow on mobile. */}
+        <div className="shrink-0 px-4 py-6 md:px-6 md:py-8 lg:px-8 lg:pb-4 lg:pt-7">
+          <PageHeader
+            title="Oportunidades"
+            description="Pipeline de ventas y arriendos. Arrastrá las tarjetas para cambiar de etapa."
+            className="mb-0"
+            actions={
+              <Button
+                onClick={() => {
+                  setEditing(undefined);
+                  setDialogOpen(true);
+                }}
+                className="gap-2"
+              >
+                <Plus className="size-4" />
+                Nueva
+              </Button>
+            }
+          />
+        </div>
 
-      {isLoading && (
-        <div className="flex justify-center py-12">
-          <Loader2 className="size-5 animate-spin text-muted-foreground" />
+        {/* Board region: fills remaining height on desktop, internal column scroll. */}
+        <div className="px-4 md:px-6 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:px-8 lg:pb-6">
+          {isLoading && (
+            <div className="flex justify-center py-12">
+              <Loader2 className="size-5 animate-spin text-muted-foreground" />
+            </div>
+          )}
+          {error && (
+            <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+              No se pudo cargar el pipeline.
+              <Button variant="ghost" size="sm" className="ml-2" onClick={() => refetch()}>
+                Reintentar
+              </Button>
+            </div>
+          )}
+          {!isLoading && !error && (data?.length ?? 0) === 0 && (
+            <EmptyState
+              title="Sin oportunidades abiertas"
+              description="Creá una oportunidad para empezar a hacer seguimiento del pipeline."
+              actionLabel="Nueva oportunidad"
+              onAction={() => {
+                setEditing(undefined);
+                setDialogOpen(true);
+              }}
+            />
+          )}
+          {!isLoading && !error && data && data.length > 0 && (
+            <OpportunityKanban
+              opportunities={data}
+              nameFor={nameFor}
+              onMove={move}
+              onWon={won}
+              onLost={lost}
+              onEdit={(opp) => {
+                setEditing(opp);
+                setDialogOpen(true);
+              }}
+            />
+          )}
         </div>
-      )}
-      {error && (
-        <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
-          No se pudo cargar el pipeline.
-          <Button variant="ghost" size="sm" className="ml-2" onClick={() => refetch()}>
-            Reintentar
-          </Button>
-        </div>
-      )}
-      {!isLoading && !error && (data?.length ?? 0) === 0 && (
-        <EmptyState
-          title="Sin oportunidades abiertas"
-          description="Creá una oportunidad para empezar a hacer seguimiento del pipeline."
-          actionLabel="Nueva oportunidad"
-          onAction={() => {
-            setEditing(undefined);
-            setDialogOpen(true);
-          }}
-        />
-      )}
-      {!isLoading && !error && data && data.length > 0 && (
-        <OpportunityKanban
-          opportunities={data}
-          nameFor={nameFor}
-          onMove={move}
-          onWon={won}
-          onLost={lost}
-          onEdit={(opp) => {
-            setEditing(opp);
-            setDialogOpen(true);
-          }}
-        />
-      )}
+      </AppShellScroll>
 
       <OpportunityFormDialog
         open={dialogOpen}
