@@ -78,7 +78,7 @@ export function AdminUsersPage() {
                     {u.full_name || "(sin nombre)"}
                   </span>
                   {u.is_dev_admin && (
-                    <Badge className="bg-amber-500/20 text-[10px] text-amber-400 hover:bg-amber-500/20">
+                    <Badge className="bg-warning/20 text-[10px] text-warning hover:bg-warning/20">
                       DEV
                     </Badge>
                   )}
