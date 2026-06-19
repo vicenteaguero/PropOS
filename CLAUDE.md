@@ -1,6 +1,6 @@
 # PropOS — Claude Code Guide
 
-Multi-tenant real estate operations platform. PWA-first, Spanish UI, dark theme always.
+Multi-tenant real estate operations platform. PWA-first, Spanish UI, dark theme by default (light available).
 
 ## Stack
 
@@ -23,7 +23,9 @@ docs/{architecture,api,api-conventions,roles,disaster-recovery}.md
 
 - **Code English, UI Spanish.** Routes, models, files, comments, log messages, HTTPException `detail=` → English. Sidebar labels, page titles, button text, toasts shown to broker → Spanish. LLM prompts producing Spanish output (Client Agent) stay Spanish.
   - `/admin/client-inbox` not `/admin/inbox-clientes`. `client-inbox-page.tsx` style.
-- **Dark theme only.** No light mode.
+- **Light + dark; default dark.** `<html class="dark">` is the static default (set in `index.html`); the toggle (`@core/theme/theme.ts` + `ThemeProvider`) only removes `.dark` for light. Light palette lives in `:root`, dark in `.dark` (see `src/index.css`).
+- **Tenant-driven accent.** The active workspace drives the brand accent via a hue injected on `<html>` by `ThemeController` (`@core/theme/tenant-accent.ts`); `--primary`/`--ring`/`--sidebar-primary` derive from it. The `[data-palette]` switcher (`PaletteSwitcher`) is now **dev-only**.
+- **New design kit** in `src/shared/ui/` (Pill, Chips, Segmented, Row, BottomSheet, RoundButton, WorkspacePill, brand marks) — keep shadcn's `src/components/ui/` regenerable. Mobile broker shell = floating bottom-nav + center Propo FAB (`mobile-bottom-nav.tsx`, chosen by `useShellMode`); desktop/other roles = restyled sidebar.
 - **API client**: thin `request()` helper with Supabase auth headers; `useQuery` wraps service functions.
 - **Pages must have**: loading skeleton + error-with-retry + empty state.
 - **Status badges**: custom className styling, not variant prop.
