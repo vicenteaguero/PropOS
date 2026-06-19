@@ -6,6 +6,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "sonner";
 import { ENV } from "@core/config/env";
 import { AgentBrandingProvider } from "@core/branding/agent-branding";
+import { ThemeProvider, useThemeMode } from "@core/theme/theme-provider";
+import { ThemeController } from "@core/theme/theme-controller";
 
 // Warm up backend — triggers Cloud Run cold start while user sees login screen
 fetch(`${ENV.API_URL}/health`).catch(() => {});
@@ -29,26 +31,36 @@ function AuthProvider({ children }: { children: ReactNode }) {
   return <AuthContext.Provider value={auth}>{children}</AuthContext.Provider>;
 }
 
+function ThemedToaster() {
+  const { theme } = useThemeMode();
+  return (
+    <Toaster
+      theme={theme}
+      toastOptions={{
+        style: {
+          background: "var(--card)",
+          border: "1px solid var(--border)",
+          color: "var(--card-foreground)",
+        },
+      }}
+    />
+  );
+}
+
 export function Providers({ children }: ProvidersProps) {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <AuthProvider>
-          <AgentBrandingProvider>
-            <TooltipProvider>
-              {children}
-              <Toaster
-                theme="dark"
-                toastOptions={{
-                  style: {
-                    background: "var(--card)",
-                    border: "1px solid var(--border)",
-                    color: "var(--card-foreground)",
-                  },
-                }}
-              />
-            </TooltipProvider>
-          </AgentBrandingProvider>
+          <ThemeProvider>
+            <AgentBrandingProvider>
+              <ThemeController />
+              <TooltipProvider>
+                {children}
+                <ThemedToaster />
+              </TooltipProvider>
+            </AgentBrandingProvider>
+          </ThemeProvider>
         </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>
