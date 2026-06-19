@@ -1,7 +1,19 @@
-import { useState } from "react";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { useMemo, useState } from "react";
+import {
+  CalendarClock,
+  DoorOpen,
+  Loader2,
+  Mail,
+  MessageCircle,
+  MessageSquare,
+  Phone,
+  Plus,
+  StickyNote,
+  Trash2,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -12,6 +24,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Chip, Chips, RoundButton, Row } from "@shared/ui";
 import { toast } from "sonner";
 import {
   useCreateInteraction,
@@ -27,9 +40,29 @@ interface Props {
   propertyId?: string;
 }
 
+const KIND_ICON: Record<InteractionKind, LucideIcon> = {
+  VISIT: DoorOpen,
+  CALL: Phone,
+  EMAIL: Mail,
+  WHATSAPP_LOG: MessageCircle,
+  NOTE: StickyNote,
+  MEETING: Users,
+  SHOWING: DoorOpen,
+  OTHER: MessageSquare,
+};
+
 function fmt(ts: string | null): string {
   if (!ts) return "";
   return new Date(ts).toLocaleString("es-CL", { dateStyle: "medium", timeStyle: "short" });
+}
+
+function KindIcon({ kind }: { kind: InteractionKind }) {
+  const Icon = KIND_ICON[kind] ?? CalendarClock;
+  return (
+    <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-secondary text-foreground">
+      <Icon className="size-[18px]" strokeWidth={1.8} />
+    </span>
+  );
 }
 
 export function InteractionsList({ personId, propertyId }: Props) {
@@ -45,6 +78,12 @@ export function InteractionsList({ personId, propertyId }: Props) {
   const [kind, setKind] = useState<InteractionKind>("CALL");
   const [summary, setSummary] = useState("");
   const [body, setBody] = useState("");
+  const [filter, setFilter] = useState<InteractionKind | "ALL">("ALL");
+
+  const filtered = useMemo(() => {
+    if (!data) return [];
+    return filter === "ALL" ? data : data.filter((it) => it.kind === filter);
+  }, [data, filter]);
 
   const submit = async () => {
     if (!summary.trim()) {
@@ -65,10 +104,20 @@ export function InteractionsList({ personId, propertyId }: Props) {
   };
 
   return (
-    <div className="space-y-3">
-      <div className="flex justify-end">
-        <Button size="sm" variant="outline" onClick={() => setOpen(true)} className="gap-2">
-          <Plus className="size-4" />
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <Chips className="-mx-1 px-1">
+          <Chip active={filter === "ALL"} onClick={() => setFilter("ALL")}>
+            Todas
+          </Chip>
+          {INTERACTION_KINDS.map((k) => (
+            <Chip key={k} active={filter === k} onClick={() => setFilter(k)}>
+              {INTERACTION_KIND_LABELS[k]}
+            </Chip>
+          ))}
+        </Chips>
+        <Button size="sm" variant="outline" onClick={() => setOpen(true)} className="shrink-0 gap-2">
+          <Plus className="size-4" strokeWidth={1.8} />
           Registrar
         </Button>
       </div>
@@ -79,47 +128,50 @@ export function InteractionsList({ personId, propertyId }: Props) {
         </div>
       )}
       {error && (
-        <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+        <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
           Error al cargar.
           <Button variant="ghost" size="sm" className="ml-2" onClick={() => refetch()}>
             Reintentar
           </Button>
         </div>
       )}
-      {!isLoading && !error && (data?.length ?? 0) === 0 && (
-        <p className="py-6 text-center text-sm text-muted-foreground">
+      {!isLoading && !error && filtered.length === 0 && (
+        <p className="py-10 text-center text-sm text-muted-foreground">
           Sin interacciones registradas.
         </p>
       )}
-      {!isLoading && !error && data && data.length > 0 && (
-        <ul className="space-y-2">
-          {data.map((it) => (
-            <li key={it.id} className="rounded-md border p-3">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-[10px]">
-                      {INTERACTION_KIND_LABELS[it.kind] ?? it.kind}
-                    </Badge>
-                    <span className="text-xs text-muted-foreground">
-                      {fmt(it.occurred_at ?? it.created_at)}
+      {!isLoading && !error && filtered.length > 0 && (
+        <div className="overflow-hidden rounded-2xl border border-border bg-card">
+          {filtered.map((it, i) => (
+            <Row
+              key={it.id}
+              divider={i < filtered.length - 1}
+              left={<KindIcon kind={it.kind} />}
+              title={it.summary ?? INTERACTION_KIND_LABELS[it.kind] ?? it.kind}
+              sub={
+                <>
+                  <span className="block">{fmt(it.occurred_at ?? it.created_at)}</span>
+                  {it.body && (
+                    <span className="mt-0.5 line-clamp-2 block whitespace-normal text-[13px] text-muted-foreground">
+                      {it.body}
                     </span>
-                  </div>
-                  <p className="mt-1 text-sm">{it.summary}</p>
-                  {it.body && <p className="mt-0.5 text-xs text-muted-foreground">{it.body}</p>}
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-7 shrink-0 text-muted-foreground"
+                  )}
+                </>
+              }
+              right={
+                <RoundButton
+                  tone="ghost"
+                  size={32}
+                  className="text-muted-foreground hover:text-destructive"
                   onClick={() => del.mutate(it.id)}
+                  aria-label="Eliminar interacción"
                 >
-                  <Trash2 className="size-3.5" />
-                </Button>
-              </div>
-            </li>
+                  <Trash2 className="size-3.5" strokeWidth={1.8} />
+                </RoundButton>
+              }
+            />
           ))}
-        </ul>
+        </div>
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
