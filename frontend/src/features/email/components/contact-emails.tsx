@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { BrandMark, Pill, Row } from "@shared/ui";
 import { useAuth } from "@shared/hooks/use-auth";
 import { useEmailThreads } from "../hooks/use-email";
 
@@ -21,22 +21,21 @@ export function ContactEmails({ contactId }: { contactId: string }) {
     return <p className="py-4 text-center text-sm text-muted-foreground">Sin correos.</p>;
   }
   return (
-    <ul className="space-y-2">
-      {data.map((t) => (
-        <li key={t.id}>
-          <button
-            onClick={() => navigate(`/${role}/correos`)}
-            className="flex w-full items-center justify-between gap-2 rounded-md border p-3 text-left text-sm hover:bg-muted/50"
-          >
-            <span className="truncate">{t.subject || "(sin asunto)"}</span>
-            {t.portal && (
-              <Badge variant="outline" className="shrink-0 text-[10px]">
-                {t.portal}
-              </Badge>
-            )}
-          </button>
-        </li>
+    <div className="overflow-hidden rounded-2xl border border-border">
+      {data.map((t, i) => (
+        <Row
+          key={t.id}
+          divider={i < data.length - 1}
+          onClick={() => navigate(`/${role}/correos`)}
+          left={
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-secondary">
+              <BrandMark brand="titan" size={22} />
+            </span>
+          }
+          title={t.subject || "(sin asunto)"}
+          right={t.portal ? <Pill tone="accent">{t.portal}</Pill> : undefined}
+        />
       ))}
-    </ul>
+    </div>
   );
 }
