@@ -1,7 +1,9 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-export type PageWidth = "sm" | "md" | "lg" | "xl" | "full";
+// "app" = full-bleed desktop app surface (no centered column); the rest stay
+// centered/capped for forms, auth, and reading.
+export type PageWidth = "sm" | "md" | "lg" | "xl" | "full" | "app";
 
 interface PageLayoutProps {
   children: ReactNode;
@@ -17,6 +19,7 @@ const widthMap: Record<PageWidth, string> = {
   lg: "max-w-6xl",
   xl: "max-w-7xl",
   full: "max-w-none",
+  app: "max-w-none",
 };
 
 export function PageLayout({
@@ -45,7 +48,7 @@ export function PageLayout({
       className={cn(
         "mx-auto w-full",
         widthMap[width],
-        !noPadding && "px-4 py-6 md:px-6 md:py-8",
+        !noPadding && (width === "app" ? "px-4 py-5 lg:px-8 lg:py-7" : "px-4 py-6 md:px-6 md:py-8"),
         className,
       )}
     >
