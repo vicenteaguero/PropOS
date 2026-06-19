@@ -1,10 +1,7 @@
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Archive, ArchiveRestore, MessageCircle } from "lucide-react";
-import { WhatsAppIcon } from "@shared/components/icons/whatsapp-icon";
+import { Archive, ArchiveRestore } from "lucide-react";
+import { BrandMark, Pill, type PillTone, RoundButton, Row } from "@shared/ui";
 import { useArchiveConversation } from "../hooks/use-client-chat";
-import type { ClientConversation, ChannelSource, ConversationStatus } from "../types";
+import type { ClientConversation, ConversationStatus } from "../types";
 
 const STATUS_LABEL: Record<ConversationStatus, string> = {
   open: "Abierta",
@@ -12,11 +9,15 @@ const STATUS_LABEL: Record<ConversationStatus, string> = {
   closed: "Cerrada",
 };
 
-const STATUS_CLASS: Record<ConversationStatus, string> = {
-  open: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30",
-  assigned: "bg-sky-500/15 text-sky-300 border border-sky-500/30",
-  closed: "bg-muted text-muted-foreground border border-border",
+const STATUS_TONE: Record<ConversationStatus, PillTone> = {
+  open: "success",
+  assigned: "accent",
+  closed: "neutral",
 };
+
+function fmtTime(ts: string): string {
+  return new Date(ts).toLocaleString("es-CL", { dateStyle: "short", timeStyle: "short" });
+}
 
 interface Props {
   conversations: ClientConversation[];
@@ -24,62 +25,65 @@ interface Props {
   onSelect: (id: string) => void;
 }
 
-function ChannelIcon({ source }: { source: ChannelSource }) {
-  if (source === "whatsapp") return <WhatsAppIcon className="size-3.5" aria-label="WhatsApp" />;
-  return <MessageCircle className="size-3.5" aria-label={source} />;
-}
-
 export function ConversationList({ conversations, selectedId, onSelect }: Props) {
   const archive = useArchiveConversation();
 
   if (conversations.length === 0) {
     return (
-      <Card className="p-6 text-center text-sm text-muted-foreground">Sin conversaciones.</Card>
+      <p className="px-5 py-10 text-center text-sm text-muted-foreground">Sin conversaciones.</p>
     );
   }
+
   return (
-    <div className="space-y-1">
-      {conversations.map((c) => {
+    <div>
+      {conversations.map((c, i) => {
         const isArchived = !!c.archived_at;
+        const selected = selectedId === c.id;
         return (
-          <div
-            key={c.id}
-            className={`group flex items-stretch gap-1 rounded-md border ${
-              selectedId === c.id ? "border-primary bg-accent" : "border-border hover:bg-accent/50"
-            }`}
-          >
-            <button type="button" onClick={() => onSelect(c.id)} className="flex-1 p-3 text-left">
-              <div className="flex items-center justify-between gap-2">
-                <span className="flex items-center gap-1.5 text-sm font-medium">
-                  <ChannelIcon source={c.source} />
-                  {c.external_phone_e164 ?? "(sin número)"}
+          // Wrapper keeps the archive control a sibling of the row button (no nested buttons).
+          <div key={c.id} className="group relative">
+            <Row
+              divider={i < conversations.length - 1}
+              onClick={() => onSelect(c.id)}
+              className={selected ? "bg-secondary/60" : undefined}
+              left={
+                <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-secondary">
+                  <BrandMark brand={c.source === "whatsapp" ? "whatsapp" : "email"} size={26} />
                 </span>
-                <Badge variant="outline" className={STATUS_CLASS[c.status]}>
-                  {STATUS_LABEL[c.status]}
-                </Badge>
-              </div>
-              <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-                {c.ai_enabled ? <span>IA on</span> : <span>IA off</span>}
-                <span>· {new Date(c.last_message_at).toLocaleString()}</span>
-              </div>
-            </button>
-            <Button
-              type="button"
-              size="icon"
-              variant="ghost"
-              className="m-1 size-7 opacity-0 transition-opacity group-hover:opacity-100"
+              }
+              title={c.external_phone_e164 ?? "(sin número)"}
+              sub={
+                <span className="flex items-center gap-1.5">
+                  <span>{c.ai_enabled ? "IA on" : "IA off"}</span>
+                  <span aria-hidden>·</span>
+                  <span>{fmtTime(c.last_message_at)}</span>
+                </span>
+              }
+              right={
+                <span className="flex shrink-0 items-center gap-2">
+                  <Pill tone={STATUS_TONE[c.status]}>{STATUS_LABEL[c.status]}</Pill>
+                  {/* spacer so the row's content never sits under the archive button */}
+                  <span className="size-8 shrink-0" aria-hidden />
+                </span>
+              }
+            />
+            <RoundButton
+              tone="ghost"
+              size={32}
+              aria-label={isArchived ? "Restaurar" : "Archivar"}
+              title={isArchived ? "Restaurar" : "Archivar"}
+              className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
               onClick={(e) => {
                 e.stopPropagation();
                 archive.mutate({ id: c.id, archived: !isArchived });
               }}
-              title={isArchived ? "Restaurar" : "Archivar"}
             >
               {isArchived ? (
-                <ArchiveRestore className="size-3.5" />
+                <ArchiveRestore className="size-4" strokeWidth={1.8} />
               ) : (
-                <Archive className="size-3.5" />
+                <Archive className="size-4" strokeWidth={1.8} />
               )}
-            </Button>
+            </RoundButton>
           </div>
         );
       })}
