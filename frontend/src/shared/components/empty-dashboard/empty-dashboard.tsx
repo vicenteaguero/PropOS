@@ -1,15 +1,20 @@
-import { AddDocumentCard } from "@features/documents/components/fast-add-fab";
+import { Sparkles } from "lucide-react";
+import { PageLayout } from "@shared/components/page-layout";
 
 export function EmptyDashboard() {
   return (
-    <div className="container mx-auto max-w-3xl px-4 py-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-foreground">Inicio</h1>
-        <p className="text-sm text-muted-foreground">Empieza por aquí.</p>
+    <PageLayout width="sm" centered>
+      <div className="flex flex-col items-center text-center">
+        <span className="mb-5 grid size-16 place-items-center rounded-full bg-secondary text-foreground">
+          <Sparkles className="size-8" strokeWidth={1.8} />
+        </span>
+        <h1 className="text-[26px] font-bold leading-tight tracking-tight text-foreground">
+          Todo listo
+        </h1>
+        <p className="mt-2 max-w-xs text-sm text-muted-foreground">
+          Aún no hay nada por aquí. Cuando tengas actividad, aparecerá en esta pantalla.
+        </p>
       </div>
-      <div className="grid gap-3">
-        <AddDocumentCard />
-      </div>
-    </div>
+    </PageLayout>
   );
 }
