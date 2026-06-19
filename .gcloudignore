@@ -29,6 +29,15 @@
 **/.ruff_cache/
 backend/.venv/
 backend/data/
+backend/.coverage
+
+# Tests, notebooks, raw data — not needed to build/run the API.
+# These were ~291M of the ~298M build context (backend/tests 197M, /data 94M).
+backend/tests/
+backend/notebooks/
+/notebooks/
+/data/
+*.zip
 
 # Compose / mac
 docker-compose.yml
