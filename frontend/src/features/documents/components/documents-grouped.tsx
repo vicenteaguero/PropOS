@@ -73,9 +73,9 @@ export function DocumentsGrouped({ documents, groupBy, onOpen }: Props) {
     <div className="space-y-6">
       {groups.map((group) => (
         <section key={group.key}>
-          <div className="mb-2 flex items-baseline gap-2">
-            <h3 className="text-sm font-semibold">{group.label}</h3>
-            <span className="text-xs text-muted-foreground">{group.docs.length}</span>
+          <div className="mb-3 flex items-baseline gap-2">
+            <h3 className="text-base font-bold tracking-tight text-foreground">{group.label}</h3>
+            <span className="text-[13px] text-muted-foreground">{group.docs.length}</span>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
             {group.docs.map((doc) => (
