@@ -238,15 +238,53 @@ def _accept_create_organization(payload, tenant_id, user_id, agent_session_id):
 
 def _accept_create_property(payload, tenant_id, user_id, agent_session_id):
     client = get_supabase_client()
-    payload = {k: v for k, v in payload.items() if k not in ("summary_es",)}
-    payload["tenant_id"] = str(tenant_id)
-    payload["created_by"] = str(user_id)
-    # public.properties only stores title/address/status/is_draft; the rest
-    # of the registry's `detailed` fields are stashed on the proposal payload
-    # for now and can be migrated to a `property_attributes` JSONB column.
-    keep = {"tenant_id", "created_by", "title", "address", "status", "is_draft"}
-    row = {k: v for k, v in payload.items() if k in keep}
-    row.setdefault("is_draft", False)
+    payload = {k: v for k, v in payload.items() if k != "summary_es"}
+
+    row: dict[str, Any] = {
+        "tenant_id": str(tenant_id),
+        "created_by": str(user_id),
+        "is_draft": bool(payload.get("is_draft", False)),
+    }
+    # Direct text/enum columns.
+    for k in ("title", "address", "status", "description"):
+        if payload.get(k) is not None:
+            row[k] = payload[k]
+    # Numeric columns — pass-2 LLM may return strings, so coerce defensively.
+    for src, col in (
+        ("bedrooms", "bedrooms"),
+        ("bathrooms", "bathrooms"),
+        ("year_built", "year_built"),
+        ("area_m2", "area_sqm"),
+    ):
+        v = payload.get(src)
+        if v is not None:
+            try:
+                row[col] = int(round(float(v)))
+            except (TypeError, ValueError):
+                pass
+    # Pesos → cents (list_price_cents is int8).
+    if payload.get("price_clp") is not None:
+        try:
+            row["list_price_cents"] = int(round(float(payload["price_clp"]))) * 100
+            row.setdefault("currency", "CLP")
+        except (TypeError, ValueError):
+            pass
+    # Captured fields without a dedicated column → metadata JSONB (nothing dropped).
+    meta = {
+        k: payload[k]
+        for k in (
+            "comuna",
+            "parking_count",
+            "has_storage",
+            "hoa_clp",
+            "orientation",
+            "property_type",
+            "owner_name",
+        )
+        if payload.get(k) is not None
+    }
+    if meta:
+        row["metadata"] = meta
     inserted = client.table("properties").insert(row).execute().data[0]
     return ("properties", UUID(inserted["id"]))
 
