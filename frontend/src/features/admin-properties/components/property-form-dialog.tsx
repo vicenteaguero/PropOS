@@ -63,9 +63,11 @@ export function PropertyFormDialog({ open, onOpenChange, property, onSubmit, pen
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg rounded-2xl">
         <DialogHeader>
-          <DialogTitle>{property ? "Editar propiedad" : "Nueva propiedad"}</DialogTitle>
+          <DialogTitle className="text-xl font-bold tracking-tight">
+            {property ? "Editar propiedad" : "Nueva propiedad"}
+          </DialogTitle>
         </DialogHeader>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1.5 sm:col-span-2">
@@ -87,7 +89,7 @@ export function PropertyFormDialog({ open, onOpenChange, property, onSubmit, pen
               id="p-kind"
               value={listingKind}
               onChange={(e) => setListingKind(e.target.value)}
-              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+              className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm"
             >
               <option value="SALE">Venta</option>
               <option value="RENT">Arriendo</option>
