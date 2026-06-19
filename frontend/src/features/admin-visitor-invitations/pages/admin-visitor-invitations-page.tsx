@@ -22,10 +22,10 @@ const STATUS_LABEL: Record<InvitationResponse["status"], string> = {
 };
 
 const STATUS_TONE: Record<InvitationResponse["status"], string> = {
-  pending: "bg-amber-500/15 text-amber-300",
-  opened: "bg-blue-500/15 text-blue-300",
-  completed: "bg-emerald-500/15 text-emerald-300",
-  expired: "bg-zinc-500/15 text-zinc-300",
+  pending: "bg-warning/15 text-warning",
+  opened: "bg-accent-brand/15 text-accent-brand",
+  completed: "bg-success/15 text-success",
+  expired: "bg-muted text-muted-foreground",
 };
 
 export function AdminVisitorInvitationsPage() {
