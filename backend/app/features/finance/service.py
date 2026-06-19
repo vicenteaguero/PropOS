@@ -20,7 +20,14 @@ class FinanceService:
             .is_("deleted_at", "null")
         )
         if month:
-            builder = builder.gte("occurred_at", f"{month}-01").lte("occurred_at", f"{month}-31")
+            # occurred_at is timestamptz: use a half-open [first, next-month) range.
+            # The old `<= {month}-31` dropped late-day 31st rows and used an
+            # invalid date for 30-day/February months.
+            from datetime import date
+
+            y, m = map(int, month.split("-"))
+            nxt = date(y + (m == 12), (m % 12) + 1, 1)
+            builder = builder.gte("occurred_at", f"{month}-01").lt("occurred_at", nxt.isoformat())
         rows = builder.execute().data or []
 
         income = sum(r["amount_cents"] for r in rows if r["direction"] == "IN" and r["status"] == "COMPLETED")
