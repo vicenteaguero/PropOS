@@ -1,18 +1,114 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
-import { Plus } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Bath, BedDouble, MapPin, Maximize, Plus } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { PageLayout } from "@shared/components/page-layout";
+import { EmptyState } from "@shared/components/empty-state/empty-state";
 import { LoadingSpinner } from "@shared/components/loading-spinner/loading-spinner";
-import { Badge } from "@/components/ui/badge";
+import { Pill, Segmented, type PillTone } from "@shared/ui";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { propertiesApi, type PropertyInput } from "../api/properties-api";
+import { propertiesApi, type Property, type PropertyInput } from "../api/properties-api";
 import { PropertyFormDialog } from "../components/property-form-dialog";
 
+/** Operation label + tone: Venta → success, Arriendo → warning. */
+function listingMeta(kind: string): { label: string; tone: PillTone } {
+  switch (kind) {
+    case "SALE":
+      return { label: "Venta", tone: "success" };
+    case "RENT":
+      return { label: "Arriendo", tone: "warning" };
+    case "LEASE":
+      return { label: "Leasing", tone: "accent" };
+    default:
+      return { label: kind, tone: "neutral" };
+  }
+}
+
+function clp(cents: number | null): string {
+  if (cents == null) return "Precio a convenir";
+  return new Intl.NumberFormat("es-CL", {
+    style: "currency",
+    currency: "CLP",
+    maximumFractionDigits: 0,
+  }).format(cents / 100);
+}
+
+/** Short stable code from the property id (presentational). */
+function propertyCode(id: string): string {
+  return id.replace(/-/g, "").slice(0, 6).toUpperCase();
+}
+
+function PropertyCard({ property, onClick }: { property: Property; onClick: () => void }) {
+  const op = listingMeta(property.listing_kind);
+  const specs: { icon: LucideIcon; value: string }[] = [
+    ...(property.bedrooms != null ? [{ icon: BedDouble, value: `${property.bedrooms}` }] : []),
+    ...(property.bathrooms != null ? [{ icon: Bath, value: `${property.bathrooms}` }] : []),
+    ...(property.area_sqm != null ? [{ icon: Maximize, value: `${property.area_sqm} m²` }] : []),
+  ];
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="block w-full overflow-hidden rounded-2xl bg-card text-left transition active:scale-[0.99]"
+    >
+      {/* Photo placeholder */}
+      <div className="relative h-40 w-full bg-gradient-to-br from-secondary to-muted text-foreground">
+        <div
+          className="absolute inset-0 opacity-[0.04]"
+          style={{
+            backgroundImage:
+              "repeating-linear-gradient(45deg, currentColor 0 12px, transparent 12px 24px)",
+          }}
+        />
+        <div className="absolute left-3 top-3 flex items-center gap-2">
+          <Pill tone={op.tone}>{op.label}</Pill>
+          {property.is_draft && <Pill tone="neutral">Borrador</Pill>}
+        </div>
+        <span className="absolute right-3 top-3 rounded-full bg-background/80 px-2.5 py-0.5 text-[11px] font-semibold text-muted-foreground backdrop-blur">
+          {propertyCode(property.id)}
+        </span>
+      </div>
+
+      <div className="px-4 py-3">
+        <div className="truncate text-base font-semibold leading-tight text-foreground">
+          {property.title}
+        </div>
+        {property.address && (
+          <div className="mt-0.5 truncate text-[13px] text-muted-foreground">
+            {property.address}
+          </div>
+        )}
+        <div className="mt-2 text-[17px] font-bold tracking-tight text-foreground">
+          {clp(property.list_price_cents)}
+        </div>
+        {specs.length > 0 && (
+          <div className="mt-2 flex items-center gap-4 text-[13px] text-muted-foreground">
+            {specs.map((s, i) => {
+              const Icon = s.icon;
+              return (
+                <span key={i} className="inline-flex items-center gap-1.5">
+                  <Icon className="size-4" strokeWidth={1.8} />
+                  {s.value}
+                </span>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </button>
+  );
+}
+
 export function AdminPropertiesPage() {
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [view, setView] = useState<"lista" | "mapa">("lista");
+  const [selId, setSelId] = useState<string | null>(null);
   const { data, isLoading } = useQuery({
     queryKey: ["admin", "properties"],
     queryFn: () => propertiesApi.list(),
@@ -23,14 +119,43 @@ export function AdminPropertiesPage() {
     onError: (err) => toast.error(err instanceof Error ? err.message : "No se pudo crear"),
   });
 
+  const properties = data ?? [];
+
   return (
-    <div className="mx-auto w-full max-w-5xl p-4 sm:p-6">
-      <header className="mb-4 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Propiedades</h1>
-        <Button size="sm" onClick={() => setDialogOpen(true)}>
-          <Plus className="mr-1.5 size-4" /> Crear
+    <PageLayout width="md" noPadding className="pb-6">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-3">
+        <div>
+          <h1 className="text-[26px] font-bold leading-tight tracking-tight text-foreground">
+            Propiedades
+          </h1>
+          <p className="mt-0.5 text-[13px] text-muted-foreground">
+            {data ? `${properties.length} publicadas` : "Cartera del negocio"}
+          </p>
+        </div>
+        <Button
+          variant="ink"
+          size="icon-lg"
+          className="rounded-full"
+          aria-label="Crear propiedad"
+          onClick={() => setDialogOpen(true)}
+        >
+          <Plus className="size-5" strokeWidth={1.8} />
         </Button>
-      </header>
+      </div>
+
+      {!isLoading && properties.length > 0 && (
+        <div className="mb-3">
+          <Segmented
+            items={[
+              { id: "lista", label: "Lista" },
+              { id: "mapa", label: "Mapa" },
+            ]}
+            value={view}
+            onChange={(id) => setView(id as "lista" | "mapa")}
+          />
+        </div>
+      )}
 
       <PropertyFormDialog
         open={dialogOpen}
@@ -48,41 +173,90 @@ export function AdminPropertiesPage() {
         </div>
       )}
 
-      <div className="space-y-2">
-        {(data ?? []).map((p) => (
-          <Link
-            key={p.id}
-            to={`/admin/properties/${p.id}`}
-            className="block rounded-xl border border-border bg-card px-4 py-3 hover:bg-accent"
-          >
-            <div className="flex items-center justify-between gap-2">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="truncate font-semibold">{p.title}</span>
-                  <Badge variant="outline" className="text-[10px]">
-                    {p.status}
-                  </Badge>
-                  {p.is_draft && (
-                    <Badge variant="secondary" className="text-[10px]">
-                      draft
-                    </Badge>
-                  )}
-                </div>
-                {p.address && (
-                  <div className="truncate text-xs text-muted-foreground">{p.address}</div>
-                )}
+      {!isLoading && properties.length === 0 && (
+        <div className="px-5 pt-2">
+          <EmptyState
+            title="No hay propiedades"
+            description="Creá tu primera propiedad para esta empresa."
+            actionLabel="Crear propiedad"
+            onAction={() => setDialogOpen(true)}
+          />
+        </div>
+      )}
+
+      {!isLoading && properties.length > 0 && view === "lista" && (
+        <div className="space-y-3 px-5">
+          {properties.map((p) => (
+            <PropertyCard
+              key={p.id}
+              property={p}
+              onClick={() => navigate(`/admin/properties/${p.id}`)}
+            />
+          ))}
+        </div>
+      )}
+
+      {!isLoading &&
+        properties.length > 0 &&
+        view === "mapa" &&
+        (() => {
+          const withAddr = properties.filter((p) => p.address);
+          const sel = withAddr.find((p) => p.id === selId) ?? withAddr[0];
+          if (!sel) {
+            return (
+              <p className="px-5 py-10 text-center text-sm text-muted-foreground">
+                Ninguna propiedad tiene dirección para mostrar en el mapa.
+              </p>
+            );
+          }
+          return (
+            <div className="px-5">
+              <iframe
+                title="Mapa"
+                src={`https://maps.google.com/maps?q=${encodeURIComponent(sel.address ?? "")}&z=14&output=embed`}
+                className="h-64 w-full rounded-2xl border border-border"
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+              />
+              <button
+                type="button"
+                onClick={() => navigate(`/admin/properties/${sel.id}`)}
+                className="mt-3 flex w-full items-center justify-between rounded-2xl border border-border bg-card px-4 py-3 text-left transition active:scale-[0.99]"
+              >
+                <span className="min-w-0">
+                  <span className="block truncate font-semibold text-foreground">{sel.title}</span>
+                  <span className="block truncate text-[13px] text-muted-foreground">
+                    {sel.address}
+                  </span>
+                </span>
+                <span className="shrink-0 text-[13px] font-semibold text-primary">Abrir ficha</span>
+              </button>
+              <div className="mt-4 space-y-2">
+                {withAddr.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setSelId(p.id)}
+                    className={cn(
+                      "flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition active:scale-[0.99]",
+                      p.id === sel.id ? "border-foreground" : "border-border",
+                    )}
+                  >
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-secondary">
+                      <MapPin className="size-[18px] text-foreground" strokeWidth={1.8} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-semibold text-foreground">{p.title}</span>
+                      <span className="block truncate text-[13px] text-muted-foreground">
+                        {p.address}
+                      </span>
+                    </span>
+                  </button>
+                ))}
               </div>
             </div>
-          </Link>
-        ))}
-        {!isLoading && (data ?? []).length === 0 && (
-          <Card>
-            <CardContent className="py-8 text-center text-sm text-muted-foreground">
-              No hay propiedades en este tenant.
-            </CardContent>
-          </Card>
-        )}
-      </div>
-    </div>
+          );
+        })()}
+    </PageLayout>
   );
 }
