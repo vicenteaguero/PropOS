@@ -104,8 +104,8 @@ export function NewInvitationDialog({ open, onOpenChange, defaultPropertyId }: P
           </div>
 
           {hasWarnings && (
-            <div className="flex gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
-              <AlertTriangle className="size-4 shrink-0 text-amber-500" />
+            <div className="flex gap-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm">
+              <AlertTriangle className="size-4 shrink-0 text-warning" />
               <div className="space-y-1">
                 {preflight!.warnings.map((w, i) => (
                   <p key={i}>{w}</p>
