@@ -21,7 +21,7 @@ import { useAgentName } from "@core/branding/agent-branding";
 import { hueForTenant } from "@core/theme/tenant-accent";
 import { useContacts } from "@features/contacts/hooks/use-contacts";
 import { UfButton } from "@features/uf/components/uf-button";
-import { AgentDrawer } from "@features/agent/components/agent-drawer";
+import { AgentOverlay } from "@features/agent/components/agent-overlay";
 import { BottomSheet, Row, SectionLabel, WorkspacePill } from "@shared/ui";
 import { cn } from "@/lib/utils";
 
@@ -63,6 +63,7 @@ export function AdminHomePage() {
   const navigate = useNavigate();
   const [wsOpen, setWsOpen] = useState(false);
   const [propoOpen, setPropoOpen] = useState(false);
+  const [propoMode, setPropoMode] = useState<"voice" | "chat">("chat");
 
   const role = (user?.role ?? "ADMIN").toLowerCase();
   const base = `/${role}`;
@@ -91,9 +92,9 @@ export function AdminHomePage() {
   ].filter((t) => allow(t.scope) && (!t.adminOnly || isAdmin));
 
   return (
-    <div className="mx-auto w-full max-w-2xl pb-6 lg:max-w-5xl">
+    <div className="mx-auto w-full max-w-2xl pb-6 lg:max-w-none lg:px-8 lg:pt-2">
       {/* header */}
-      <div className="flex items-center justify-between px-5 pt-4 pb-3">
+      <div className="flex items-center justify-between px-5 pt-4 pb-3 lg:px-0 lg:pt-4">
         <WorkspacePill label={tenantName} onClick={() => setWsOpen(true)} />
         <div className="flex items-center gap-2">
           <UfButton />
@@ -107,79 +108,119 @@ export function AdminHomePage() {
         </div>
       </div>
 
-      <h1 className="px-5 text-[25px] font-bold leading-tight tracking-tight text-foreground">
-        {greeting()}
-        {firstName ? `, ${firstName}` : ""}
-      </h1>
+      {/* On mobile these blocks stay a single flow column (wrappers are
+          display:contents). On desktop they reflow into a two-column bento. */}
+      <div className="contents lg:mt-2 lg:grid lg:grid-cols-12 lg:items-start lg:gap-6">
+        {/* Left: greeting + Propo command bar + "Tu día" panel */}
+        <div className="contents lg:col-span-4 lg:flex lg:flex-col lg:gap-5">
+          <h1 className="px-5 text-[25px] font-bold leading-tight tracking-tight text-foreground lg:px-0 lg:text-[32px]">
+            {greeting()}
+            {firstName ? `, ${firstName}` : ""}
+          </h1>
 
-      {/* Propo command bar */}
-      {canPropo && (
-        <div className="flex gap-2.5 px-5 pt-4 pb-5">
-          <button
-            type="button"
-            onClick={() => setPropoOpen(true)}
-            className="flex min-w-0 flex-1 items-center gap-3 rounded-2xl bg-secondary px-4 py-3.5 text-left transition active:scale-[0.99]"
-          >
-            <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-foreground text-background">
-              <Sparkles className="size-4" />
-            </span>
-            <span className="truncate text-[15px] font-medium text-muted-foreground">
-              Pídele algo a {agentName}…
-            </span>
-          </button>
-          <button
-            type="button"
-            aria-label={`Hablar con ${agentName}`}
-            onClick={() => setPropoOpen(true)}
-            className="flex w-12 shrink-0 items-center justify-center rounded-2xl bg-foreground text-background transition active:scale-95"
-          >
-            <Mic className="size-[21px]" strokeWidth={1.9} />
-          </button>
-        </div>
-      )}
+          {/* Propo command bar */}
+          {canPropo && (
+            <div className="flex gap-2.5 px-5 pt-4 pb-5 lg:px-0 lg:py-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setPropoMode("chat");
+                  setPropoOpen(true);
+                }}
+                className="flex min-w-0 flex-1 items-center gap-3 rounded-2xl bg-secondary px-4 py-3.5 text-left transition active:scale-[0.99]"
+              >
+                <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-foreground text-background">
+                  <Sparkles className="size-4" />
+                </span>
+                <span className="truncate text-[15px] font-medium text-muted-foreground">
+                  Pídele algo a {agentName}…
+                </span>
+              </button>
+              <button
+                type="button"
+                aria-label={`Hablar con ${agentName}`}
+                onClick={() => {
+                  setPropoMode("voice");
+                  setPropoOpen(true);
+                }}
+                className="flex w-12 shrink-0 items-center justify-center rounded-2xl bg-foreground text-background transition active:scale-95"
+              >
+                <Mic className="size-[21px]" strokeWidth={1.9} />
+              </button>
+            </div>
+          )}
 
-      {/* Service tiles */}
-      <div className="grid grid-cols-4 gap-2.5 px-5 pb-6">
-        {tiles.map((t) => (
-          <ServiceTile key={t.to} tile={t} onClick={() => navigate(t.to)} />
-        ))}
-      </div>
-
-      {/* Recent contacts */}
-      {allow("crm") && (
-        <>
-          <SectionLabel action="Ver CRM" onAction={() => navigate(`${base}/personas`)}>
-            Personas recientes
-          </SectionLabel>
-          <div className="mt-2">
-            {recent.length === 0 ? (
-              <p className="px-5 py-6 text-center text-sm text-muted-foreground">
-                Aún no hay contactos.
+          {/* "Tu día" — desktop-only summary panel */}
+          <div className="hidden lg:block">
+            <div className="rounded-2xl bg-secondary p-5">
+              <p className="text-sm font-semibold text-muted-foreground">Tu día</p>
+              <p className="mt-2 text-[15px] leading-relaxed text-foreground">
+                {recent.length > 0
+                  ? `Tenés ${(contacts ?? []).length} ${
+                      (contacts ?? []).length === 1 ? "persona" : "personas"
+                    } en tu CRM. Retomá el seguimiento desde abajo.`
+                  : "Empezá agregando personas a tu CRM para hacer seguimiento."}
               </p>
-            ) : (
-              recent.map((c, i) => (
-                <Row
-                  key={c.id}
-                  onClick={() => navigate(`${base}/personas/${c.id}`)}
-                  divider={i < recent.length - 1}
-                  left={
-                    <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-secondary text-sm font-semibold text-foreground">
-                      {c.full_name
-                        .split(" ")
-                        .map((p) => p[0])
-                        .join("")
-                        .toUpperCase()
-                        .slice(0, 2)}
-                    </span>
-                  }
-                  title={c.full_name}
-                  sub={[c.phone, c.email].filter(Boolean).join(" · ") || "Sin contacto"}
-                />
-              ))
-            )}
+              {allow("crm") && (
+                <button
+                  type="button"
+                  onClick={() => navigate(`${base}/personas`)}
+                  className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-primary transition hover:underline"
+                >
+                  <Users className="size-4" strokeWidth={1.9} />
+                  Ver CRM
+                </button>
+              )}
+            </div>
           </div>
-        </>
-      )}
+        </div>
+
+        {/* Right: service tiles + recent personas */}
+        <div className="contents lg:col-span-8 lg:flex lg:flex-col lg:gap-6">
+          {/* Service tiles */}
+          <div className="grid grid-cols-4 gap-2.5 px-5 pb-6 lg:px-0 lg:pb-0">
+            {tiles.map((t) => (
+              <ServiceTile key={t.to} tile={t} onClick={() => navigate(t.to)} />
+            ))}
+          </div>
+
+          {/* Recent contacts */}
+          {allow("crm") && (
+            <div className="contents lg:block lg:rounded-2xl lg:border lg:border-border lg:py-2">
+              <SectionLabel action="Ver CRM" onAction={() => navigate(`${base}/personas`)}>
+                Personas recientes
+              </SectionLabel>
+              <div className="mt-2">
+                {recent.length === 0 ? (
+                  <p className="px-5 py-6 text-center text-sm text-muted-foreground">
+                    Aún no hay contactos.
+                  </p>
+                ) : (
+                  recent.map((c, i) => (
+                    <Row
+                      key={c.id}
+                      onClick={() => navigate(`${base}/personas/${c.id}`)}
+                      divider={i < recent.length - 1}
+                      left={
+                        <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-secondary text-sm font-semibold text-foreground">
+                          {c.full_name
+                            .split(" ")
+                            .map((p) => p[0])
+                            .join("")
+                            .toUpperCase()
+                            .slice(0, 2)}
+                        </span>
+                      }
+                      title={c.full_name}
+                      sub={[c.phone, c.email].filter(Boolean).join(" · ") || "Sin contacto"}
+                    />
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Workspace switcher */}
       <BottomSheet
@@ -229,7 +270,9 @@ export function AdminHomePage() {
         </div>
       </BottomSheet>
 
-      {canPropo && <AgentDrawer fullscreen open={propoOpen} onOpenChange={setPropoOpen} />}
+      {canPropo && propoOpen && (
+        <AgentOverlay onClose={() => setPropoOpen(false)} initialMode={propoMode} />
+      )}
     </div>
   );
 }
