@@ -15,10 +15,7 @@ from uuid import UUID
 
 from fastapi import HTTPException, Request, status
 
-from app.core.logging.logger import get_logger
 from app.core.supabase.client import get_supabase_client
-
-logger = get_logger("TENANT")
 
 
 def _read_header_tenant(request: Request) -> UUID | None:
@@ -50,10 +47,10 @@ def _default_tenant(client, user_id: str) -> UUID | None:
     return UUID(resp.data[0]["tenant_id"])
 
 
-def _validate_membership(client, user_id: str, tenant_id: UUID) -> None:
+def _validate_membership(client, user_id: str, tenant_id: UUID) -> dict[str, Any]:
     resp = (
         client.table("tenant_memberships")
-        .select("user_id")
+        .select("role, admin_scope")
         .eq("user_id", user_id)
         .eq("tenant_id", str(tenant_id))
         .eq("is_active", True)
@@ -65,6 +62,7 @@ def _validate_membership(client, user_id: str, tenant_id: UUID) -> None:
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"No active membership in tenant {tenant_id}",
         )
+    return resp.data[0]
 
 
 def resolve_active_tenant(
@@ -95,21 +93,17 @@ def resolve_active_tenant(
     if requested is None and target == current_snapshot:
         return target
 
-    _validate_membership(client, user_id, target)
-    try:
-        client.rpc("activate_tenant", {"p_tenant": str(target)}).execute()
-    except Exception as exc:
-        logger.error(
-            "activate_tenant_failed",
-            event_type="error",
-            user_id=user_id,
-            tenant_id=str(target),
-            error=str(exc),
-        )
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Failed to activate tenant",
-        ) from exc
+    # Validate membership + sync the profile snapshot (tenant_id/role/admin_scope)
+    # directly. The activate_tenant() RPC can't be used here: it is SECURITY
+    # DEFINER keyed on auth.uid(), which is null under the service-role client.
+    membership = _validate_membership(client, user_id, target)
+    client.table("profiles").update(
+        {
+            "tenant_id": str(target),
+            "role": membership["role"],
+            "admin_scope": membership.get("admin_scope") or [],
+        }
+    ).eq("id", user_id).execute()
 
     request.state.tenant_id = target
     return target
