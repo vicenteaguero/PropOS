@@ -35,7 +35,8 @@ export function PaletteSwitcher({ className }: { className?: string }) {
   const { user } = useAuth();
   const [current, setCurrent] = useState<Palette>(() => getStoredPalette());
 
-  if (user?.role !== "ADMIN") return null;
+  // Dev-only: the production accent is tenant-driven (see ThemeController).
+  if (!user?.isDevAdmin) return null;
 
   const handleSelect = (next: Palette) => {
     setPalette(next);
