@@ -27,6 +27,50 @@ const KIND_LABELS: Record<string, string> = {
   propose_create_document_from_photos: "Crear documento con fotos",
 };
 
+// Spanish labels for payload keys so the card never leaks raw English field names.
+const FIELD_LABELS_ES: Record<string, string> = {
+  full_name: "Nombre",
+  first_name: "Nombre",
+  last_name: "Apellido",
+  phone: "Teléfono",
+  email: "Email",
+  rut: "RUT",
+  address: "Dirección",
+  type: "Tipo",
+  role: "Rol",
+  stage: "Etapa",
+  status: "Estado",
+  title: "Título",
+  body: "Detalle",
+  note: "Nota",
+  notes: "Notas",
+  occurred_at: "Fecha",
+  starts_at: "Inicio",
+  ends_at: "Fin",
+  due_at: "Vence",
+  due_date: "Vence",
+  amount: "Monto",
+  amount_cents: "Monto",
+  currency: "Moneda",
+  direction: "Tipo",
+  category: "Categoría",
+  channel: "Canal",
+  subject: "Asunto",
+  interaction_type: "Tipo",
+  comuna: "Comuna",
+  price_clp: "Precio",
+  bedrooms: "Dormitorios",
+  bathrooms: "Baños",
+  area_m2: "m²",
+  area_sqm: "m²",
+  listing_kind: "Operación",
+  year_built: "Año",
+  description: "Descripción",
+  contact_name: "Contacto",
+  property_title: "Propiedad",
+};
+const fieldLabel = (k: string) => FIELD_LABELS_ES[k] ?? k;
+
 export function AgentInlineProposalCard({ proposalId }: Props) {
   const [editing, setEditing] = useState(false);
   const [picks, setPicks] = useState<Record<string, string>>({});
@@ -101,7 +145,7 @@ export function AgentInlineProposalCard({ proposalId }: Props) {
               .slice(0, 4)
               .map(([k, v]) => (
                 <div key={k}>
-                  <span className="font-medium">{k}:</span>{" "}
+                  <span className="font-medium">{fieldLabel(k)}:</span>{" "}
                   <span>{typeof v === "object" ? JSON.stringify(v) : String(v)}</span>
                 </div>
               ))}
