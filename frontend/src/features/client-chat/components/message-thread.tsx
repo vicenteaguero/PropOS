@@ -38,7 +38,7 @@ export function MessageThread({ conversation, onBack }: Props) {
       {/* Header */}
       <div className="flex items-center gap-3 border-b border-border px-4 py-3">
         {onBack && (
-          <RoundButton tone="ghost" size={36} aria-label="Volver" onClick={onBack}>
+          <RoundButton tone="ghost" size={36} aria-label="Volver" onClick={onBack} className="lg:hidden">
             <ArrowLeft className="size-5" strokeWidth={1.8} />
           </RoundButton>
         )}
