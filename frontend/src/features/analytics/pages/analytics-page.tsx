@@ -1,11 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Loader2, RefreshCw } from "lucide-react";
+import { RoundButton } from "@shared/ui";
 import { apiRequest } from "@features/documents/api/http";
 import { formatCLP } from "@/lib/locale-cl";
 import { PageLayout } from "@shared/components/page-layout";
-import { PageHeader } from "@shared/components/page-header";
 import { CHART_COLORS, CHART_HEIGHT } from "@shared/lib/chart-config";
 import { useAgentName } from "@core/branding/agent-branding";
 import {
@@ -67,6 +65,15 @@ const STAGE_COLORS = [
   CHART_COLORS.neutral,
 ];
 
+const AXIS_TICK = { fontSize: 11, fill: "var(--muted-foreground)" };
+const TOOLTIP_STYLE = {
+  fontSize: 12,
+  background: "var(--card)",
+  border: "1px solid var(--border)",
+  borderRadius: 12,
+  color: "var(--foreground)",
+};
+
 export function AnalyticsPage() {
   const queryClient = useQueryClient();
   const agentName = useAgentName();
@@ -108,128 +115,123 @@ export function AnalyticsPage() {
   const funnelLatest = aggregateFunnelLatestMonth(funnel.data ?? []);
 
   return (
-    <PageLayout width="lg">
-      <PageHeader
-        title="Analítica"
-        description="Métricas internas (solo ADMIN). Refresca las materialized views si cambian datos recientes."
-        actions={
-          <Button
-            onClick={() => refresh.mutate()}
-            disabled={refresh.isPending}
-            variant="outline"
-            size="sm"
-            className="gap-1"
-          >
-            {refresh.isPending ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <RefreshCw className="size-4" />
-            )}
-            Refrescar
-          </Button>
-        }
-      />
-      <div className="space-y-4">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-          <KpiCard label="Ingresos totales" value={formatCLP(totalIn / 100)} />
-          <KpiCard label="Gastos totales" value={formatCLP(totalOut / 100)} tone="destructive" />
-          <KpiCard
-            label={`Pendientes ${agentName}`}
-            value={String(pending.data?.pending_count ?? 0)}
-          />
+    <PageLayout width="lg" noPadding className="pb-10">
+      <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-4">
+        <div>
+          <h1 className="text-[26px] font-bold leading-tight tracking-tight text-foreground">
+            Analítica
+          </h1>
+          <p className="mt-0.5 text-[13px] text-muted-foreground">
+            Métricas internas. Refrescá las vistas si cambian datos recientes.
+          </p>
         </div>
+        <RoundButton
+          tone="muted"
+          size={44}
+          onClick={() => refresh.mutate()}
+          disabled={refresh.isPending}
+          aria-label="Refrescar"
+        >
+          {refresh.isPending ? (
+            <Loader2 className="size-[18px] animate-spin" strokeWidth={1.8} />
+          ) : (
+            <RefreshCw className="size-[18px]" strokeWidth={1.8} />
+          )}
+        </RoundButton>
+      </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Revenue mensual</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {revenue.isLoading ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : revenueByMonth.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-8 text-center">
-                  Sin transacciones aún.
-                </p>
-              ) : (
-                <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-                  <LineChart data={revenueByMonth}>
-                    <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                    <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => formatCLP(v / 100)} />
-                    <Tooltip
-                      formatter={(v) => formatCLP(Number(v) / 100)}
-                      contentStyle={{ fontSize: 12 }}
-                    />
-                    <Legend wrapperStyle={{ fontSize: 12 }} />
-                    <Line
-                      type="monotone"
-                      dataKey="in_cents"
-                      name="Ingresos"
-                      stroke={CHART_COLORS.success}
-                      strokeWidth={2}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="out_cents"
-                      name="Gastos"
-                      stroke={CHART_COLORS.error}
-                      strokeWidth={2}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              )}
-            </CardContent>
-          </Card>
+      {/* KPIs */}
+      <div className="grid grid-cols-2 gap-3 px-5 md:grid-cols-3">
+        <StatCard label="Ingresos totales" value={formatCLP(totalIn / 100)} tone="ink" />
+        <StatCard label="Gastos totales" value={formatCLP(totalOut / 100)} tone="destructive" />
+        <StatCard
+          label={`Pendientes ${agentName}`}
+          value={String(pending.data?.pending_count ?? 0)}
+        />
+      </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Funnel (último mes)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {funnel.isLoading ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : funnelLatest.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-8 text-center">
-                  Sin oportunidades aún.
-                </p>
-              ) : (
-                <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-                  <BarChart data={funnelLatest}>
-                    <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                    <XAxis dataKey="stage" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
-                    <Tooltip contentStyle={{ fontSize: 12 }} />
-                    <Bar dataKey="count" name="Oportunidades">
-                      {funnelLatest.map((_, i) => (
-                        <Cell key={i} fill={STAGE_COLORS[i % STAGE_COLORS.length]} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+      {/* Charts */}
+      <div className="mt-3 grid grid-cols-1 gap-3 px-5 lg:grid-cols-2">
+        <ChartCard title="Revenue mensual">
+          {revenue.isLoading ? (
+            <ChartLoading />
+          ) : revenueByMonth.length === 0 ? (
+            <ChartEmpty>Sin transacciones aún.</ChartEmpty>
+          ) : (
+            <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
+              <LineChart data={revenueByMonth}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.6} />
+                <XAxis dataKey="month" tick={AXIS_TICK} stroke="var(--border)" />
+                <YAxis
+                  tick={AXIS_TICK}
+                  stroke="var(--border)"
+                  tickFormatter={(v) => formatCLP(v / 100)}
+                />
+                <Tooltip formatter={(v) => formatCLP(Number(v) / 100)} contentStyle={TOOLTIP_STYLE} />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
+                <Line
+                  type="monotone"
+                  dataKey="in_cents"
+                  name="Ingresos"
+                  stroke={CHART_COLORS.success}
+                  strokeWidth={2}
+                  dot={false}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="out_cents"
+                  name="Gastos"
+                  stroke={CHART_COLORS.error}
+                  strokeWidth={2}
+                  dot={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
+        </ChartCard>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Ad ROI por campaña</CardTitle>
-          </CardHeader>
-          <CardContent className="overflow-x-auto">
-            {adRoi.isLoading ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <table className="w-full text-xs">
+        <ChartCard title="Funnel (último mes)">
+          {funnel.isLoading ? (
+            <ChartLoading />
+          ) : funnelLatest.length === 0 ? (
+            <ChartEmpty>Sin oportunidades aún.</ChartEmpty>
+          ) : (
+            <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
+              <BarChart data={funnelLatest}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.6} />
+                <XAxis dataKey="stage" tick={AXIS_TICK} stroke="var(--border)" />
+                <YAxis tick={AXIS_TICK} stroke="var(--border)" allowDecimals={false} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: "var(--secondary)" }} />
+                <Bar dataKey="count" name="Oportunidades" radius={[6, 6, 0, 0]}>
+                  {funnelLatest.map((_, i) => (
+                    <Cell key={i} fill={STAGE_COLORS[i % STAGE_COLORS.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </ChartCard>
+      </div>
+
+      {/* Ad ROI */}
+      <div className="mt-3 px-5">
+        <ChartCard title="Ad ROI por campaña">
+          {adRoi.isLoading ? (
+            <ChartLoading />
+          ) : (adRoi.data?.length ?? 0) === 0 ? (
+            <ChartEmpty>Sin campañas aún.</ChartEmpty>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b text-left text-muted-foreground">
-                    <th className="py-2 pr-4">Campaña</th>
-                    <th className="py-2 pr-4">Canal</th>
-                    <th className="py-2 pr-4">Presupuesto</th>
-                    <th className="py-2 pr-4">Gastado</th>
-                    <th className="py-2 pr-4">Ganadas</th>
-                    <th className="py-2 pr-4">Valor ganado</th>
-                    <th className="py-2 pr-4">ROI</th>
+                  <tr className="border-b border-border text-left text-xs text-muted-foreground">
+                    <th className="py-2.5 pr-4 font-medium">Campaña</th>
+                    <th className="py-2.5 pr-4 font-medium">Canal</th>
+                    <th className="py-2.5 pr-4 font-medium">Presupuesto</th>
+                    <th className="py-2.5 pr-4 font-medium">Gastado</th>
+                    <th className="py-2.5 pr-4 font-medium">Ganadas</th>
+                    <th className="py-2.5 pr-4 font-medium">Valor ganado</th>
+                    <th className="py-2.5 pr-4 font-medium">ROI</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -239,19 +241,29 @@ export function AnalyticsPage() {
                         ? ((r.won_value_cents - r.spend_cents) / r.spend_cents) * 100
                         : null;
                     return (
-                      <tr key={r.campaign_id} className="border-b last:border-0">
-                        <td className="py-2 pr-4">{r.campaign_name}</td>
-                        <td className="py-2 pr-4">{r.channel}</td>
-                        <td className="py-2 pr-4">
+                      <tr key={r.campaign_id} className="border-b border-border last:border-0">
+                        <td className="py-2.5 pr-4 font-medium text-foreground">
+                          {r.campaign_name}
+                        </td>
+                        <td className="py-2.5 pr-4 text-muted-foreground">{r.channel}</td>
+                        <td className="py-2.5 pr-4 text-muted-foreground">
                           {r.budget_cents != null ? formatCLP(r.budget_cents / 100) : "—"}
                         </td>
-                        <td className="py-2 pr-4">{formatCLP(r.spend_cents / 100)}</td>
-                        <td className="py-2 pr-4">{r.won_count}</td>
-                        <td className="py-2 pr-4">{formatCLP(r.won_value_cents / 100)}</td>
+                        <td className="py-2.5 pr-4 text-muted-foreground">
+                          {formatCLP(r.spend_cents / 100)}
+                        </td>
+                        <td className="py-2.5 pr-4 text-muted-foreground">{r.won_count}</td>
+                        <td className="py-2.5 pr-4 text-muted-foreground">
+                          {formatCLP(r.won_value_cents / 100)}
+                        </td>
                         <td
                           className={
-                            "py-2 pr-4 " +
-                            (roi == null ? "" : roi >= 0 ? "text-success" : "text-destructive")
+                            "py-2.5 pr-4 font-semibold " +
+                            (roi == null
+                              ? "text-muted-foreground"
+                              : roi >= 0
+                                ? "text-success"
+                                : "text-destructive")
                           }
                         >
                           {roi == null ? "—" : `${roi.toFixed(0)}%`}
@@ -261,59 +273,101 @@ export function AnalyticsPage() {
                   })}
                 </tbody>
               </table>
-            )}
-          </CardContent>
-        </Card>
+            </div>
+          )}
+        </ChartCard>
+      </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Pipeline activo</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {pipeline.isLoading ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <div className="space-y-1 text-sm">
-                {[...(pipeline.data ?? [])]
-                  .sort(
-                    (a, b) =>
-                      STAGE_ORDER.indexOf(a.pipeline_stage) - STAGE_ORDER.indexOf(b.pipeline_stage),
-                  )
-                  .map((p) => (
-                    <div
-                      key={p.pipeline_stage}
-                      className="flex justify-between border-b py-1 last:border-0"
-                    >
-                      <span>{p.pipeline_stage}</span>
-                      <span className="text-muted-foreground">
-                        {p.opp_count} • {formatCLP(p.expected_value_cents / 100)}
-                      </span>
-                    </div>
-                  ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+      {/* Pipeline activo */}
+      <div className="mt-3 px-5">
+        <ChartCard title="Pipeline activo">
+          {pipeline.isLoading ? (
+            <ChartLoading />
+          ) : (pipeline.data?.length ?? 0) === 0 ? (
+            <ChartEmpty>Sin pipeline activo.</ChartEmpty>
+          ) : (
+            <div>
+              {[...(pipeline.data ?? [])]
+                .sort(
+                  (a, b) =>
+                    STAGE_ORDER.indexOf(a.pipeline_stage) - STAGE_ORDER.indexOf(b.pipeline_stage),
+                )
+                .map((p, i, arr) => (
+                  <div
+                    key={p.pipeline_stage}
+                    className={
+                      "flex items-center justify-between py-2.5 " +
+                      (i < arr.length - 1 ? "border-b border-border" : "")
+                    }
+                  >
+                    <span className="text-sm font-medium text-foreground">{p.pipeline_stage}</span>
+                    <span className="text-sm text-muted-foreground">
+                      {p.opp_count} • {formatCLP(p.expected_value_cents / 100)}
+                    </span>
+                  </div>
+                ))}
+            </div>
+          )}
+        </ChartCard>
       </div>
     </PageLayout>
   );
 }
 
-function KpiCard({ label, value, tone }: { label: string; value: string; tone?: "destructive" }) {
+function StatCard({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone?: "ink" | "destructive";
+}) {
+  const isInk = tone === "ink";
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-sm text-muted-foreground">{label}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p
-          className={"text-2xl font-semibold " + (tone === "destructive" ? "text-destructive" : "")}
-        >
-          {value}
-        </p>
-      </CardContent>
-    </Card>
+    <div
+      className={
+        "rounded-2xl p-4 " + (isInk ? "bg-foreground text-background" : "bg-secondary text-foreground")
+      }
+    >
+      <p
+        className={
+          "text-[13px] font-medium " + (isInk ? "text-background/70" : "text-muted-foreground")
+        }
+      >
+        {label}
+      </p>
+      <p
+        className={
+          "mt-1 text-2xl font-bold tracking-tight " +
+          (tone === "destructive" ? "text-destructive" : "")
+        }
+      >
+        {value}
+      </p>
+    </div>
   );
+}
+
+function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-2xl border border-border bg-card p-4">
+      <h2 className="mb-3 text-[15px] font-bold tracking-tight text-foreground">{title}</h2>
+      {children}
+    </div>
+  );
+}
+
+function ChartLoading() {
+  return (
+    <div className="flex justify-center py-12">
+      <Loader2 className="size-5 animate-spin text-muted-foreground" />
+    </div>
+  );
+}
+
+function ChartEmpty({ children }: { children: React.ReactNode }) {
+  return <p className="py-12 text-center text-sm text-muted-foreground">{children}</p>;
 }
 
 function aggregateRevenueByMonth(rows: RevenueRow[]) {
