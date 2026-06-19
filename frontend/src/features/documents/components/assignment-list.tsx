@@ -18,7 +18,7 @@ export function AssignmentList({ documentId, assignments }: Props) {
 
   if (assignments.length === 0) {
     return (
-      <p className="rounded-md border border-border bg-muted/30 px-3 py-3 text-xs text-muted-foreground">
+      <p className="rounded-2xl bg-secondary px-4 py-3 text-[13px] text-muted-foreground">
         Sin vínculos. Conecta este documento a contactos, propiedades o áreas internas.
       </p>
     );
@@ -38,20 +38,22 @@ export function AssignmentList({ documentId, assignments }: Props) {
   };
 
   return (
-    <ul className="space-y-1.5">
+    <ul className="space-y-2">
       {assignments.map((a) => {
         const { label, icon: Icon } = labelFor(a);
         return (
           <li
             key={a.id}
-            className="flex items-center gap-2 rounded-md border border-border bg-card px-2.5 py-1.5 text-xs"
+            className="flex items-center gap-2.5 rounded-2xl bg-card px-3 py-2.5 text-sm"
           >
-            <Icon className="size-3.5 shrink-0 text-primary/70" />
-            <span className="min-w-0 flex-1 truncate">{label}</span>
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-secondary text-foreground">
+              <Icon className="size-4" strokeWidth={1.8} />
+            </span>
+            <span className="min-w-0 flex-1 truncate font-medium text-foreground">{label}</span>
             <Button
               size="icon"
               variant="ghost"
-              className="h-6 w-6"
+              className="size-7 rounded-full text-muted-foreground"
               onClick={async () => {
                 try {
                   await remove.mutateAsync(a.id);
@@ -62,7 +64,7 @@ export function AssignmentList({ documentId, assignments }: Props) {
               }}
               aria-label="Eliminar vínculo"
             >
-              <X className="size-3" />
+              <X className="size-3.5" />
             </Button>
           </li>
         );
