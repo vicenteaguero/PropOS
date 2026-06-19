@@ -37,7 +37,7 @@ class MembershipService:
         client = get_supabase_client()
         check = (
             client.table(TABLE)
-            .select("user_id")
+            .select("role, admin_scope")
             .eq("user_id", str(user_id))
             .eq("tenant_id", str(tenant_id))
             .eq("is_active", True)
@@ -47,10 +47,18 @@ class MembershipService:
         if not check.data:
             raise HTTPException(status_code=403, detail=f"No active membership in tenant {tenant_id}")
 
-        try:
-            client.rpc("activate_tenant", {"p_tenant": str(tenant_id)}).execute()
-        except Exception as exc:
-            raise HTTPException(status_code=400, detail=f"activate_tenant failed: {exc}") from exc
+        # Sync the profiles snapshot (tenant_id/role/admin_scope) for legacy RLS.
+        # Done directly instead of via the activate_tenant() RPC: that function is
+        # SECURITY DEFINER and keys off auth.uid(), which is null under the
+        # service-role client, so it always raised "No active membership".
+        m = check.data[0]
+        client.table("profiles").update(
+            {
+                "tenant_id": str(tenant_id),
+                "role": m["role"],
+                "admin_scope": m.get("admin_scope") or [],
+            }
+        ).eq("id", str(user_id)).execute()
 
         profile = client.table("profiles").select("*").eq("id", str(user_id)).single().execute()
         return profile.data
