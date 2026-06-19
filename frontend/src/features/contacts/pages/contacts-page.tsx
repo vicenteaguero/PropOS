@@ -1,17 +1,38 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, Plus, Search, UserRound } from "lucide-react";
+import { Loader2, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { PageLayout } from "@shared/components/page-layout";
-import { PageHeader } from "@shared/components/page-header";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
 import { useAuth } from "@shared/hooks/use-auth";
+import { Chip, Chips, Pill, Row, type PillTone } from "@shared/ui";
 import { toast } from "sonner";
 import { useContacts, useCreateContact } from "../hooks/use-contacts";
 import { ContactFormDialog } from "../components/contact-form-dialog";
 import { CONTACT_TYPE_LABELS, CONTACT_TYPES, type ContactType } from "../types";
+
+/** Soft tone per contact type (semantic tokens only). */
+const TYPE_TONE: Record<ContactType, PillTone> = {
+  BUYER: "accent",
+  SELLER: "success",
+  LANDOWNER: "warning",
+  NOTARY: "neutral",
+  INVESTOR: "accent",
+  EMPLOYEE: "neutral",
+  FAMILY: "neutral",
+  VENDOR: "neutral",
+  STAKEHOLDER: "neutral",
+  OTHER: "neutral",
+};
+
+function initials(name: string): string {
+  return name
+    .split(" ")
+    .map((p) => p[0] ?? "")
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+}
 
 export function ContactsPage() {
   const navigate = useNavigate();
@@ -30,54 +51,55 @@ export function ContactsPage() {
   }, [data, typeFilter]);
 
   return (
-    <PageLayout width="lg">
-      <PageHeader
-        title="Personas"
-        description="Contactos del negocio: interesados, propietarios, proveedores y más."
-        actions={
-          <Button onClick={() => setDialogOpen(true)} className="gap-2">
-            <Plus className="size-4" />
-            Nuevo
-          </Button>
-        }
-      />
+    <PageLayout width="md" noPadding className="pb-6">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-3">
+        <div>
+          <h1 className="text-[26px] font-bold leading-tight tracking-tight text-foreground">
+            Personas
+          </h1>
+          <p className="mt-0.5 text-[13px] text-muted-foreground">
+            {data ? `${data.length} contactos` : "Contactos del negocio"}
+          </p>
+        </div>
+        <Button
+          variant="ink"
+          size="icon-lg"
+          className="rounded-full"
+          aria-label="Nuevo contacto"
+          onClick={() => setDialogOpen(true)}
+        >
+          <Plus className="size-5" strokeWidth={1.8} />
+        </Button>
+      </div>
 
-      <div className="mb-4 space-y-3">
+      {/* Search */}
+      <div className="px-5 pb-3">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
+          <Search
+            className="pointer-events-none absolute left-4 top-1/2 size-[18px] -translate-y-1/2 text-muted-foreground"
+            strokeWidth={1.8}
+          />
+          <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar por nombre, teléfono o email"
-            className="pl-9"
+            className="h-12 w-full rounded-full border border-border bg-secondary pl-11 pr-4 text-[15px] text-foreground placeholder:text-muted-foreground focus-visible:border-line-strong focus-visible:outline-none"
           />
         </div>
-        <div className="flex flex-wrap gap-1.5">
-          <Badge
-            role="button"
-            onClick={() => setTypeFilter("ALL")}
-            variant="outline"
-            className={
-              typeFilter === "ALL" ? "cursor-pointer bg-primary/15 text-primary" : "cursor-pointer"
-            }
-          >
-            Todos
-          </Badge>
-          {CONTACT_TYPES.map((t) => (
-            <Badge
-              key={t}
-              role="button"
-              onClick={() => setTypeFilter(t)}
-              variant="outline"
-              className={
-                typeFilter === t ? "cursor-pointer bg-primary/15 text-primary" : "cursor-pointer"
-              }
-            >
-              {CONTACT_TYPE_LABELS[t]}
-            </Badge>
-          ))}
-        </div>
       </div>
+
+      {/* Type filter */}
+      <Chips className="px-5 pb-4">
+        <Chip active={typeFilter === "ALL"} onClick={() => setTypeFilter("ALL")}>
+          Todos
+        </Chip>
+        {CONTACT_TYPES.map((t) => (
+          <Chip key={t} active={typeFilter === t} onClick={() => setTypeFilter(t)}>
+            {CONTACT_TYPE_LABELS[t]}
+          </Chip>
+        ))}
+      </Chips>
 
       {isLoading && (
         <div className="flex justify-center py-12">
@@ -86,7 +108,7 @@ export function ContactsPage() {
       )}
 
       {error && (
-        <div className="rounded-md border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+        <div className="mx-5 rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
           No se pudieron cargar los contactos.
           <Button variant="ghost" size="sm" className="ml-2" onClick={() => refetch()}>
             Reintentar
@@ -95,35 +117,32 @@ export function ContactsPage() {
       )}
 
       {!isLoading && !error && filtered.length === 0 && (
-        <EmptyState
-          title="Sin contactos"
-          description="Creá tu primer contacto o pedíselo a la IA por chat."
-          actionLabel="Nuevo contacto"
-          onAction={() => setDialogOpen(true)}
-        />
+        <div className="px-5">
+          <EmptyState
+            title="Sin contactos"
+            description="Creá tu primer contacto o pedíselo a la IA por chat."
+            actionLabel="Nuevo contacto"
+            onAction={() => setDialogOpen(true)}
+          />
+        </div>
       )}
 
       {!isLoading && !error && filtered.length > 0 && (
-        <div className="divide-y rounded-lg border">
-          {filtered.map((c) => (
-            <button
+        <div>
+          {filtered.map((c, i) => (
+            <Row
               key={c.id}
               onClick={() => navigate(`/${role}/personas/${c.id}`)}
-              className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/50"
-            >
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted">
-                <UserRound className="size-4 text-muted-foreground" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-medium">{c.full_name}</div>
-                <div className="truncate text-xs text-muted-foreground">
-                  {[c.phone, c.email].filter(Boolean).join(" · ") || "Sin contacto"}
-                </div>
-              </div>
-              <Badge variant="outline" className="shrink-0 text-[10px]">
-                {CONTACT_TYPE_LABELS[c.type]}
-              </Badge>
-            </button>
+              divider={i < filtered.length - 1}
+              left={
+                <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-secondary text-sm font-semibold text-foreground">
+                  {initials(c.full_name)}
+                </span>
+              }
+              title={c.full_name}
+              sub={[c.phone, c.email].filter(Boolean).join(" · ") || "Sin contacto"}
+              right={<Pill tone={TYPE_TONE[c.type]}>{CONTACT_TYPE_LABELS[c.type]}</Pill>}
+            />
           ))}
         </div>
       )}
