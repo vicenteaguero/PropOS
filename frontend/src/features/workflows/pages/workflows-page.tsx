@@ -1,16 +1,19 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Check, Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { Check, Circle, Loader2, Plus } from "lucide-react";
 import { PageLayout } from "@shared/components/page-layout";
 import { PageHeader } from "@shared/components/page-header";
+import { EmptyState } from "@shared/components/empty-state/empty-state";
+import { BottomSheet, Pill } from "@shared/ui";
+import { cn } from "@/lib/utils";
 import { workflowsApi, type Workflow, type WorkflowStep } from "../api/workflows-api";
 
 export function WorkflowsPage() {
+  const [open, setOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [newSteps, setNewSteps] = useState("");
   const queryClient = useQueryClient();
@@ -32,65 +35,100 @@ export function WorkflowsPage() {
     onSuccess: () => {
       setNewName("");
       setNewSteps("");
+      setOpen(false);
       queryClient.invalidateQueries({ queryKey: ["workflows"] });
     },
   });
 
   return (
-    <PageLayout width="md">
-      <PageHeader
-        title="Workflows / Checklists"
-        description="Procesos reutilizables (closing de venta, onboarding propietario, etc)."
-      />
-      <div className="space-y-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Nuevo workflow</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
+    <PageLayout width="md" noPadding>
+      <div className="px-5 pt-4 pb-5">
+        <PageHeader
+          title="Workflows / Checklists"
+          description="Procesos reutilizables (closing de venta, onboarding propietario, etc)."
+          className="mb-0"
+          actions={
+            <Button onClick={() => setOpen(true)} variant="ink" className="gap-2">
+              <Plus className="size-4" strokeWidth={1.8} />
+              Nuevo
+            </Button>
+          }
+        />
+      </div>
+
+      {list.isLoading && (
+        <div className="flex justify-center py-12">
+          <Loader2 className="size-5 animate-spin text-muted-foreground" />
+        </div>
+      )}
+
+      {list.isError && (
+        <div className="mx-5 rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+          No se pudieron cargar los workflows.
+          <Button variant="ghost" size="sm" className="ml-2" onClick={() => list.refetch()}>
+            Reintentar
+          </Button>
+        </div>
+      )}
+
+      {!list.isLoading && !list.isError && (list.data?.length ?? 0) === 0 && (
+        <EmptyState
+          title="Sin workflows"
+          description="Creá un proceso reutilizable para tu equipo."
+          actionLabel="Nuevo workflow"
+          onAction={() => setOpen(true)}
+        />
+      )}
+
+      {!list.isLoading && !list.isError && (list.data?.length ?? 0) > 0 && (
+        <div className="space-y-3 px-5 pb-6">
+          {list.data?.map((w) => (
+            <WorkflowCard key={w.id} workflow={w} />
+          ))}
+        </div>
+      )}
+
+      <BottomSheet open={open} onOpenChange={setOpen} title="Nuevo workflow">
+        <div className="mt-4 space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="wf-name">Nombre</Label>
             <Input
-              placeholder="Nombre (ej: Closing venta casa)"
+              id="wf-name"
+              placeholder="Ej: Closing venta casa"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
             />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="wf-steps">Pasos</Label>
             <Textarea
-              placeholder="Pasos, uno por línea..."
+              id="wf-steps"
+              placeholder="Un paso por línea..."
               value={newSteps}
               onChange={(e) => setNewSteps(e.target.value)}
             />
+          </div>
+          <div className="flex flex-col gap-2 pt-2">
             <Button
-              size="sm"
               onClick={() => create.mutate()}
               disabled={!newName.trim() || create.isPending}
-              className="gap-1"
+              variant="ink"
+              size="block"
             >
-              {create.isPending ? (
-                <Loader2 className="size-3 animate-spin" />
-              ) : (
-                <Plus className="size-3" />
-              )}
+              {create.isPending && <Loader2 className="size-4 animate-spin" />}
               Crear
             </Button>
-          </CardContent>
-        </Card>
-
-        {list.isLoading ? (
-          <div className="flex justify-center py-8">
-            <Loader2 className="size-5 animate-spin text-muted-foreground" />
+            <Button
+              variant="ghost"
+              size="block"
+              onClick={() => setOpen(false)}
+              disabled={create.isPending}
+            >
+              Cancelar
+            </Button>
           </div>
-        ) : (
-          <div className="space-y-2">
-            {list.data?.map((w) => (
-              <WorkflowCard key={w.id} workflow={w} />
-            ))}
-            {list.data?.length === 0 && (
-              <Card className="p-8 text-center text-muted-foreground text-sm">
-                Sin workflows. Crea uno arriba.
-              </Card>
-            )}
-          </div>
-        )}
-      </div>
+        </div>
+      </BottomSheet>
     </PageLayout>
   );
 }
@@ -134,36 +172,58 @@ function WorkflowCard({ workflow }: { workflow: Workflow }) {
   const all = steps.data ?? [];
   const done = all.filter((s) => s.status === "COMPLETED").length;
   const total = all.length;
+  const complete = workflow.state === "COMPLETED";
 
   return (
-    <Card>
-      <CardHeader className="py-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base">{workflow.name}</CardTitle>
-          <Badge variant={workflow.state === "COMPLETED" ? "default" : "secondary"}>
-            {total > 0 ? `${done}/${total}` : workflow.state}
-          </Badge>
+    <div className="overflow-hidden rounded-2xl border border-border bg-card">
+      <div className="flex items-center justify-between gap-3 px-4 py-3">
+        <h3 className="truncate text-base font-semibold text-foreground">{workflow.name}</h3>
+        <Pill tone={complete ? "success" : "neutral"}>
+          {total > 0 ? `${done}/${total}` : workflow.state}
+        </Pill>
+      </div>
+
+      {steps.isLoading && (
+        <div className="px-4 pb-3">
+          <Loader2 className="size-4 animate-spin text-muted-foreground" />
         </div>
-      </CardHeader>
-      <CardContent className="space-y-1">
-        {steps.isLoading && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
-        {all.map((s) => (
-          <div
-            key={s.id}
-            className="flex items-center gap-2 py-1 text-sm cursor-pointer hover:bg-muted/50 rounded px-1"
-            onClick={() => toggle(s)}
-          >
-            {s.status === "COMPLETED" ? (
-              <Check className="size-4 text-success shrink-0" />
-            ) : (
-              <Circle className="size-4 text-muted-foreground shrink-0" />
-            )}
-            <span className={s.status === "COMPLETED" ? "line-through text-muted-foreground" : ""}>
-              {s.name}
-            </span>
-          </div>
-        ))}
-      </CardContent>
-    </Card>
+      )}
+
+      {all.length > 0 && (
+        <div className="border-t border-border">
+          {all.map((s) => {
+            const isDone = s.status === "COMPLETED";
+            return (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => toggle(s)}
+                aria-pressed={isDone}
+                className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition hover:bg-secondary/50 active:scale-[0.99]"
+              >
+                <span
+                  className={cn(
+                    "flex size-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
+                    isDone
+                      ? "border-success bg-success text-background"
+                      : "border-line-strong text-transparent",
+                  )}
+                >
+                  <Check className="size-3.5" strokeWidth={2.5} />
+                </span>
+                <span
+                  className={cn(
+                    "text-sm",
+                    isDone ? "text-muted-foreground line-through" : "text-foreground",
+                  )}
+                >
+                  {s.name}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
