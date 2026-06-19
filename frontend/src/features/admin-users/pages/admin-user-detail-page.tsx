@@ -63,7 +63,7 @@ export function AdminUserDetailPage() {
           <p className="text-sm text-muted-foreground">{data.email}</p>
         </div>
         {data.is_dev_admin && (
-          <Badge className="bg-amber-500/20 text-amber-400 hover:bg-amber-500/20">DEV</Badge>
+          <Badge className="bg-warning/20 text-warning hover:bg-warning/20">DEV</Badge>
         )}
         {!data.is_active && <Badge variant="destructive">Deshabilitado</Badge>}
       </header>
