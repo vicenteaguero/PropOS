@@ -13,9 +13,11 @@ import { useAgentName } from "@core/branding/agent-branding";
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Immersive full-screen presentation (mobile Propo) vs the side drawer. */
+  fullscreen?: boolean;
 }
 
-export function AgentDrawer({ open, onOpenChange }: Props) {
+export function AgentDrawer({ open, onOpenChange, fullscreen = false }: Props) {
   const sessionQuery = useAgentSession();
   const sessionId = sessionQuery.data?.id;
   const messagesQuery = useAgentMessages(sessionId);
@@ -40,7 +42,14 @@ export function AgentDrawer({ open, onOpenChange }: Props) {
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-md h-dvh flex flex-col p-0 gap-0">
+      <SheetContent
+        side={fullscreen ? "bottom" : "right"}
+        className={
+          fullscreen
+            ? "inset-0 flex h-dvh w-full max-w-none flex-col gap-0 rounded-none border-0 p-0"
+            : "flex h-dvh w-full flex-col gap-0 p-0 sm:max-w-md"
+        }
+      >
         <SheetHeader className="px-4 py-3 border-b border-border space-y-1 shrink-0">
           <div className="flex items-center justify-between gap-2">
             <SheetTitle className="flex items-center gap-2">
