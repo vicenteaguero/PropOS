@@ -2,10 +2,11 @@ import { useMemo } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { ArrowLeft, Calendar, Download, Eye, FileText, Lock } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@shared/components/loading-spinner/loading-spinner";
+import { Pill, Row } from "@shared/ui";
 import { apiRequest } from "@features/documents/api/http";
 import { useGrantForProperty } from "@features/owner/hooks/use-my-grants";
 
@@ -77,140 +78,168 @@ export function OwnerPropertyDetailPage() {
     return <Navigate to="/owner" replace />;
   }
 
+  const docs = docsQ.data ?? [];
+  const visits = visitsQ.data ?? [];
+
   return (
     <TooltipProvider>
-      <div className="mx-auto w-full max-w-3xl p-4 sm:p-6">
-        <Link
-          to="/owner"
-          className="mb-3 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="size-3.5" /> Volver
-        </Link>
+      <div className="mx-auto w-full max-w-2xl pb-10">
+        {/* Header bar */}
+        <div className="px-5 pt-4 pb-2">
+          <Link
+            to="/owner"
+            className="inline-flex items-center gap-1.5 text-[13px] font-medium text-muted-foreground transition hover:text-foreground"
+          >
+            <ArrowLeft className="size-4" strokeWidth={1.8} /> Mis propiedades
+          </Link>
+        </div>
 
-        <header className="mb-6">
-          <h1 className="text-2xl font-bold">{grant.propertyTitle ?? "Propiedad"}</h1>
+        {/* Gallery placeholder */}
+        <div className="px-5">
+          <div className="relative h-52 w-full overflow-hidden rounded-2xl bg-gradient-to-br from-secondary to-muted text-foreground">
+            <div
+              className="absolute inset-0 opacity-[0.04]"
+              style={{
+                backgroundImage:
+                  "repeating-linear-gradient(45deg, currentColor 0 14px, transparent 14px 28px)",
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Title + address */}
+        <div className="px-5 pt-4">
+          <h1 className="text-[24px] font-bold leading-tight tracking-tight text-foreground">
+            {grant.propertyTitle ?? "Propiedad"}
+          </h1>
           {grant.propertyAddress && (
-            <p className="text-sm text-muted-foreground">{grant.propertyAddress}</p>
+            <p className="mt-1 text-[14px] text-muted-foreground">{grant.propertyAddress}</p>
           )}
-        </header>
+        </div>
 
-        <Tabs defaultValue="documents" className="w-full">
-          <TabsList>
-            <TabsTrigger value="documents">Documentos</TabsTrigger>
-            <TabsTrigger value="visits">Visitas</TabsTrigger>
-            <TabsTrigger value="detail">Detalle</TabsTrigger>
-          </TabsList>
+        {/* Tabs: Documentos + Visitas + Detalle */}
+        <div className="px-5 pt-5">
+          <Tabs defaultValue="documents" className="w-full">
+            <TabsList>
+              <TabsTrigger value="documents">Documentos</TabsTrigger>
+              <TabsTrigger value="visits">Visitas</TabsTrigger>
+              <TabsTrigger value="detail">Detalle</TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="documents" className="mt-4 space-y-3">
-            {docsQ.isLoading && (
-              <div className="flex justify-center py-8">
-                <LoadingSpinner size="sm" />
-              </div>
-            )}
-            {!docsQ.isLoading && (docsQ.data ?? []).length === 0 && (
-              <Card>
-                <CardContent className="py-6 text-center text-sm text-muted-foreground">
+            <TabsContent value="documents" className="mt-4">
+              {docsQ.isLoading && (
+                <div className="flex justify-center py-8">
+                  <LoadingSpinner size="sm" />
+                </div>
+              )}
+              {!docsQ.isLoading && docs.length === 0 && (
+                <div className="rounded-2xl border border-border bg-card px-5 py-8 text-center text-sm text-muted-foreground">
                   No hay documentos compartidos contigo todavía.
-                </CardContent>
-              </Card>
-            )}
-            {(docsQ.data ?? []).map((doc) => {
-              const docCanDownload =
-                canDownload && audienceHas(doc.audience_caps, "owner", "download");
-              return (
-                <div
-                  key={doc.id}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3"
-                >
-                  <div className="flex min-w-0 items-center gap-3">
-                    <FileText className="size-5 shrink-0 text-muted-foreground" />
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-medium">{doc.display_name}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {doc.kind} · {new Date(doc.created_at).toLocaleDateString("es-CL")}
-                      </div>
+                </div>
+              )}
+              {docs.length > 0 && (
+                <div className="overflow-hidden rounded-2xl border border-border bg-card">
+                  {docs.map((doc, i) => {
+                    const docCanDownload =
+                      canDownload && audienceHas(doc.audience_caps, "owner", "download");
+                    return (
+                      <Row
+                        key={doc.id}
+                        divider={i < docs.length - 1}
+                        left={
+                          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-foreground">
+                            <FileText className="size-[18px]" strokeWidth={1.8} />
+                          </span>
+                        }
+                        title={doc.display_name}
+                        sub={`${doc.kind} · ${new Date(doc.created_at).toLocaleDateString("es-CL")}`}
+                        right={
+                          <div className="flex shrink-0 items-center gap-1.5">
+                            <Button variant="outline" size="xs" className="gap-1">
+                              <Eye className="size-3.5" strokeWidth={1.8} /> Ver
+                            </Button>
+                            {docCanDownload ? (
+                              <Button variant="outline" size="xs" className="gap-1">
+                                <Download className="size-3.5" strokeWidth={1.8} /> Descargar
+                              </Button>
+                            ) : (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="inline-flex cursor-not-allowed items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground opacity-60">
+                                    <Lock className="size-3.5" strokeWidth={1.8} /> Descargar
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent>El admin no habilitó descarga.</TooltipContent>
+                              </Tooltip>
+                            )}
+                          </div>
+                        }
+                      />
+                    );
+                  })}
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="visits" className="mt-4 space-y-3">
+              {visitsQ.isLoading && (
+                <div className="flex justify-center py-8">
+                  <LoadingSpinner size="sm" />
+                </div>
+              )}
+              {!visitsQ.isLoading && visits.length === 0 && (
+                <div className="rounded-2xl border border-border bg-card px-5 py-8 text-center text-sm text-muted-foreground">
+                  Sin visitas compartidas todavía.
+                </div>
+              )}
+              {visits.map((v) => {
+                const showVisitor =
+                  canSeeVisitors && audienceHas(v.audience_caps, "owner", "view_visitor_identity");
+                return (
+                  <div key={v.id} className="rounded-2xl border border-border bg-card p-4">
+                    <div className="flex items-center gap-2 text-[15px] font-semibold text-foreground">
+                      <Calendar className="size-4 text-muted-foreground" strokeWidth={1.8} />
+                      {new Date(v.occurred_at).toLocaleString("es-CL")}
+                      {v.duration_minutes != null && (
+                        <Pill tone="neutral">{v.duration_minutes} min</Pill>
+                      )}
+                    </div>
+                    <div className="mt-1.5 text-[13px] text-muted-foreground">
+                      {showVisitor ? (v.summary ?? "(sin notas)") : "Visitante (anónimo)"}
                     </div>
                   </div>
-                  <div className="flex shrink-0 items-center gap-1.5">
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-1 rounded-md border border-border px-2.5 py-1 text-xs hover:bg-accent"
-                    >
-                      <Eye className="size-3.5" /> Ver
-                    </button>
-                    {docCanDownload ? (
-                      <button
-                        type="button"
-                        className="inline-flex items-center gap-1 rounded-md border border-border px-2.5 py-1 text-xs hover:bg-accent"
-                      >
-                        <Download className="size-3.5" /> Descargar
-                      </button>
-                    ) : (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span className="inline-flex cursor-not-allowed items-center gap-1 rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground opacity-60">
-                            <Lock className="size-3.5" /> Descargar
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent>El admin no habilitó descarga.</TooltipContent>
-                      </Tooltip>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </TabsContent>
+                );
+              })}
+            </TabsContent>
 
-          <TabsContent value="visits" className="mt-4 space-y-3">
-            {visitsQ.isLoading && (
-              <div className="flex justify-center py-8">
-                <LoadingSpinner size="sm" />
-              </div>
-            )}
-            {!visitsQ.isLoading && (visitsQ.data ?? []).length === 0 && (
-              <Card>
-                <CardContent className="py-6 text-center text-sm text-muted-foreground">
-                  Sin visitas compartidas todavía.
-                </CardContent>
-              </Card>
-            )}
-            {(visitsQ.data ?? []).map((v) => {
-              const showVisitor =
-                canSeeVisitors && audienceHas(v.audience_caps, "owner", "view_visitor_identity");
-              return (
-                <div key={v.id} className="rounded-xl border border-border bg-card p-4">
-                  <div className="mb-1 flex items-center gap-2 text-sm font-medium">
-                    <Calendar className="size-4 text-muted-foreground" />
-                    {new Date(v.occurred_at).toLocaleString("es-CL")}
-                    {v.duration_minutes != null && (
-                      <span className="text-xs text-muted-foreground">
-                        · {v.duration_minutes} min
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {showVisitor ? (v.summary ?? "(sin notas)") : "Visitante (anónimo)"}
-                  </div>
+            <TabsContent value="detail" className="mt-4 space-y-3">
+              <div className="rounded-2xl border border-border bg-card px-5 py-4">
+                <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  Dirección
                 </div>
-              );
-            })}
-          </TabsContent>
-
-          <TabsContent value="detail" className="mt-4">
-            <Card>
-              <CardContent className="py-4 text-sm">
-                <div className="mb-2">
-                  <span className="text-muted-foreground">Dirección: </span>
+                <div className="mt-1 text-[15px] text-foreground">
                   {grant.propertyAddress ?? "—"}
                 </div>
-                <div className="text-muted-foreground">
-                  Tu acceso incluye:{" "}
-                  {grant.capabilities.length ? grant.capabilities.join(", ") : "—"}
+              </div>
+              <div className="rounded-2xl border border-border bg-card px-5 py-4">
+                <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  Tu acceso incluye
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+                {grant.capabilities.length > 0 ? (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {grant.capabilities.map((c) => (
+                      <Pill key={c} tone="neutral">
+                        {c}
+                      </Pill>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="mt-1 text-[15px] text-muted-foreground">—</div>
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
     </TooltipProvider>
   );
