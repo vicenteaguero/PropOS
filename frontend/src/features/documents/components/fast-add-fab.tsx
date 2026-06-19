@@ -483,6 +483,28 @@ export function NewDocumentButton() {
   );
 }
 
+/**
+ * Mobile-first pair of block CTAs: Escanear (ink) opens the camera flow
+ * directly; Subir (outline) opens the upload dialog. Reuses the same
+ * `useFastAdd` state + dialog body as the rest of the feature.
+ */
+export function NewDocumentActions() {
+  const state = useFastAdd();
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-3">
+        <Button variant="ink" size="block" onClick={() => state.setCameraOpen(true)}>
+          <Camera className="size-5" strokeWidth={1.8} /> Escanear
+        </Button>
+        <Button variant="outline" size="block" onClick={() => state.setOpen(true)}>
+          <Upload className="size-5" strokeWidth={1.8} /> Subir
+        </Button>
+      </div>
+      <FastAddDialogBody {...state} />
+    </>
+  );
+}
+
 export function AddDocumentCard() {
   const state = useFastAdd();
   return (
