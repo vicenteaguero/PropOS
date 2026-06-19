@@ -1,19 +1,13 @@
 import { useMemo, useState } from "react";
-import { isThisWeek, isToday } from "date-fns";
-import { Check, Loader2, Plus, Trash2 } from "lucide-react";
+import { isPast, isThisWeek, isToday } from "date-fns";
+import { Loader2, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { PageLayout } from "@shared/components/page-layout";
 import { PageHeader } from "@shared/components/page-header";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
+import { BottomSheet, Chip, Chips, Pill, Row, RoundButton, SectionLabel } from "@shared/ui";
 import { toast } from "sonner";
 import { useCreateTask, useDeleteTask, useTasks, useUpdateTask } from "../hooks/use-tasks";
 import type { Task } from "../api/tasks-api";
@@ -30,6 +24,27 @@ function bucketOf(t: Task): Bucket {
 
 const ORDER: Bucket[] = ["Hoy", "Esta semana", "Más adelante", "Sin fecha"];
 
+const FILTERS: { id: "all" | Bucket; label: string }[] = [
+  { id: "all", label: "Todas" },
+  { id: "Hoy", label: "Hoy" },
+  { id: "Esta semana", label: "Esta semana" },
+  { id: "Más adelante", label: "Más adelante" },
+  { id: "Sin fecha", label: "Sin fecha" },
+];
+
+/** Priority pill: backend orders desc, higher = more urgent. 0 → none. */
+function priorityPill(priority: number) {
+  if (priority >= 2) return <Pill tone="destructive">Alta</Pill>;
+  if (priority === 1) return <Pill tone="warning">Media</Pill>;
+  return null;
+}
+
+function dueLabel(due: string): { text: string; tone: "neutral" | "warning" } {
+  const d = new Date(due);
+  const text = d.toLocaleString("es-CL", { dateStyle: "medium", timeStyle: "short" });
+  return { text, tone: isPast(d) && !isToday(d) ? "warning" : "neutral" };
+}
+
 export function TasksPage() {
   const { data, isLoading, error, refetch } = useTasks({ only_open: true });
   const create = useCreateTask();
@@ -39,6 +54,7 @@ export function TasksPage() {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [dueAt, setDueAt] = useState("");
+  const [filter, setFilter] = useState<"all" | Bucket>("all");
 
   const grouped = useMemo(() => {
     const g = new Map<Bucket, Task[]>();
@@ -49,6 +65,10 @@ export function TasksPage() {
     }
     return g;
   }, [data]);
+
+  const visibleBuckets = ORDER.filter((b) => grouped.has(b)).filter(
+    (b) => filter === "all" || b === filter,
+  );
 
   const submit = async () => {
     if (!title.trim()) {
@@ -66,17 +86,20 @@ export function TasksPage() {
   };
 
   return (
-    <PageLayout width="md">
-      <PageHeader
-        title="Tareas"
-        description="Pendientes, recordatorios y metas del equipo."
-        actions={
-          <Button onClick={() => setOpen(true)} className="gap-2">
-            <Plus className="size-4" />
-            Nueva
-          </Button>
-        }
-      />
+    <PageLayout width="md" noPadding>
+      <div className="px-5 pt-4 pb-5">
+        <PageHeader
+          title="Tareas"
+          description="Pendientes, recordatorios y metas del equipo."
+          className="mb-0"
+          actions={
+            <Button onClick={() => setOpen(true)} variant="ink" className="gap-2">
+              <Plus className="size-4" strokeWidth={1.8} />
+              Nueva
+            </Button>
+          }
+        />
+      </div>
 
       {isLoading && (
         <div className="flex justify-center py-12">
@@ -84,7 +107,7 @@ export function TasksPage() {
         </div>
       )}
       {error && (
-        <div className="rounded-md border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+        <div className="mx-5 rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
           No se pudieron cargar las tareas.
           <Button variant="ghost" size="sm" className="ml-2" onClick={() => refetch()}>
             Reintentar
@@ -100,79 +123,104 @@ export function TasksPage() {
         />
       )}
 
-      <div className="space-y-6">
-        {ORDER.filter((b) => grouped.has(b)).map((bucket) => (
-          <section key={bucket}>
-            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              {bucket}
-            </h2>
-            <ul className="divide-y rounded-lg border">
-              {grouped.get(bucket)!.map((t) => (
-                <li key={t.id} className="flex items-center gap-3 px-3 py-2.5">
-                  <button
-                    onClick={() => update.mutate({ id: t.id, body: { status: "DONE" } })}
-                    className="flex size-5 shrink-0 items-center justify-center rounded-full border text-transparent transition-colors hover:border-emerald-500 hover:text-emerald-500"
-                    aria-label="Completar"
-                  >
-                    <Check className="size-3.5" />
-                  </button>
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm">{t.title}</div>
-                    {t.due_at && (
-                      <div className="text-xs text-muted-foreground">
-                        {new Date(t.due_at).toLocaleString("es-CL", {
-                          dateStyle: "medium",
-                          timeStyle: "short",
-                        })}
-                      </div>
-                    )}
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-7 text-muted-foreground"
-                    onClick={() => del.mutate(t.id)}
-                  >
-                    <Trash2 className="size-3.5" />
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ))}
-      </div>
+      {!isLoading && !error && (data?.length ?? 0) > 0 && (
+        <>
+          <Chips className="px-5 pb-5">
+            {FILTERS.filter((f) => f.id === "all" || grouped.has(f.id)).map((f) => (
+              <Chip
+                key={f.id}
+                active={filter === f.id}
+                count={f.id === "all" ? (data?.length ?? 0) : grouped.get(f.id)?.length}
+                onClick={() => setFilter(f.id)}
+              >
+                {f.label}
+              </Chip>
+            ))}
+          </Chips>
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Nueva tarea</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="t-title">Título</Label>
-              <Input id="t-title" value={title} onChange={(e) => setTitle(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="t-due">Vence (opcional)</Label>
-              <Input
-                id="t-due"
-                type="datetime-local"
-                value={dueAt}
-                onChange={(e) => setDueAt(e.target.value)}
-              />
-            </div>
+          <div className="space-y-7 pb-6">
+            {visibleBuckets.map((bucket) => {
+              const tasks = grouped.get(bucket)!;
+              return (
+                <section key={bucket}>
+                  <SectionLabel className="mb-2">{bucket}</SectionLabel>
+                  <div className="overflow-hidden">
+                    {tasks.map((t, i) => {
+                      const due = t.due_at ? dueLabel(t.due_at) : null;
+                      return (
+                        <Row
+                          key={t.id}
+                          divider={i < tasks.length - 1}
+                          left={
+                            <button
+                              type="button"
+                              onClick={() => update.mutate({ id: t.id, body: { status: "DONE" } })}
+                              className="flex size-6 shrink-0 items-center justify-center rounded-full border-2 border-line-strong text-transparent transition-colors hover:border-success hover:text-success"
+                              aria-label="Completar"
+                            />
+                          }
+                          title={t.title}
+                          sub={
+                            due || priorityPill(t.priority) ? (
+                              <span className="flex flex-wrap items-center gap-1.5">
+                                {due && <Pill tone={due.tone}>{due.text}</Pill>}
+                                {priorityPill(t.priority)}
+                              </span>
+                            ) : undefined
+                          }
+                          right={
+                            <RoundButton
+                              tone="ghost"
+                              size={32}
+                              onClick={() => del.mutate(t.id)}
+                              aria-label="Eliminar"
+                              className="text-muted-foreground"
+                            >
+                              <Trash2 className="size-4" strokeWidth={1.8} />
+                            </RoundButton>
+                          }
+                        />
+                      );
+                    })}
+                  </div>
+                </section>
+              );
+            })}
           </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setOpen(false)} disabled={create.isPending}>
-              Cancelar
-            </Button>
-            <Button onClick={submit} disabled={create.isPending} className="gap-2">
+        </>
+      )}
+
+      <BottomSheet open={open} onOpenChange={setOpen} title="Nueva tarea">
+        <div className="mt-4 space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="t-title">Título</Label>
+            <Input id="t-title" value={title} onChange={(e) => setTitle(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="t-due">Vence (opcional)</Label>
+            <Input
+              id="t-due"
+              type="datetime-local"
+              value={dueAt}
+              onChange={(e) => setDueAt(e.target.value)}
+            />
+          </div>
+          <div className="flex flex-col gap-2 pt-2">
+            <Button onClick={submit} disabled={create.isPending} variant="ink" size="block">
               {create.isPending && <Loader2 className="size-4 animate-spin" />}
               Crear
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <Button
+              variant="ghost"
+              size="block"
+              onClick={() => setOpen(false)}
+              disabled={create.isPending}
+            >
+              Cancelar
+            </Button>
+          </div>
+        </div>
+      </BottomSheet>
     </PageLayout>
   );
 }
