@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import httpx
 
@@ -24,6 +25,9 @@ from app.core.supabase.client import get_supabase_client
 
 logger = get_logger("UF")
 
+# UF is a Chile-local daily indicator; "today" must be America/Santiago, not UTC
+# (after ~20:00 local the UTC date is already tomorrow → wrong/missing UF row).
+SANTIAGO = ZoneInfo("America/Santiago")
 UF_TABLE = "uf_daily"
 MINDICADOR_BASE = "https://mindicador.cl/api/uf"
 BACKFILL_START = date(2024, 1, 1)
@@ -74,7 +78,7 @@ def _upsert_rows(points: list[tuple[date, float]]) -> int:
 async def ensure_today() -> tuple[date, float, bool]:
     """Make sure today's UF is in DB. Returns (date, value, inserted)."""
     client = get_supabase_client()
-    today = datetime.now(UTC).date()
+    today = datetime.now(SANTIAGO).date()
     existing = client.table(UF_TABLE).select("value_clp").eq("date", today.isoformat()).limit(1).execute().data
     if existing:
         return today, float(existing[0]["value_clp"]), False
@@ -110,7 +114,7 @@ async def ensure_today() -> tuple[date, float, bool]:
 async def backfill_missing(start: date | None = None) -> int:
     """Find gaps in [start, today] and fill them via mindicador yearly endpoint."""
     start = start or BACKFILL_START
-    today = datetime.now(UTC).date()
+    today = datetime.now(SANTIAGO).date()
     client = get_supabase_client()
 
     existing_rows = (
@@ -155,7 +159,7 @@ def _all_business_days(start: date, end: date):
 def get_today_with_deltas() -> dict[str, Any] | None:
     """Read today's UF + month/year deltas. No network."""
     client = get_supabase_client()
-    today = datetime.now(UTC).date()
+    today = datetime.now(SANTIAGO).date()
     rows = (
         client.table(UF_TABLE)
         .select("date,value_clp")
