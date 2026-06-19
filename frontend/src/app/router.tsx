@@ -70,7 +70,9 @@ function ViewRedirect() {
   return <Navigate to={VIEW_HOME_PATHS[user.view] ?? "/admin"} replace />;
 }
 
-const ROLE_ROUTES: UserRole[] = ["ADMIN", "AGENT", "LANDOWNER", "BUYER", "CONTENT"];
+// LANDOWNER omitted: those users have view "owner" and are routed to the real
+// /owner experience; a generic /landowner route only ever rendered a blank page.
+const ROLE_ROUTES: UserRole[] = ["ADMIN", "AGENT", "BUYER", "CONTENT"];
 
 export function AppRouter() {
   return (
@@ -99,9 +101,7 @@ export function AppRouter() {
         >
           <Route
             index
-            element={
-              role === "ADMIN" || role === "AGENT" ? <AdminHomePage /> : <EmptyDashboard />
-            }
+            element={role === "ADMIN" || role === "AGENT" ? <AdminHomePage /> : <EmptyDashboard />}
           />
 
           {role === "ADMIN" && (
