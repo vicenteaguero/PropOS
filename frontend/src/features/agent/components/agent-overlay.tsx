@@ -59,14 +59,15 @@ export function AgentOverlay({ onClose, initialMode = "chat" }: Props) {
     chat.pendingAudio.length === 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex md:items-center md:justify-center md:bg-black/70 md:p-4">
+    <div className="fixed inset-0 z-50 flex justify-end md:bg-black/40">
       <button
         type="button"
         aria-label="Cerrar"
         onClick={onClose}
         className="absolute inset-0 hidden cursor-default md:block"
       />
-      <div className="dark relative flex h-full w-full flex-col overflow-hidden bg-[#0A0A0A] text-white duration-300 animate-in fade-in slide-in-from-bottom-4 md:h-[86vh] md:max-w-lg md:rounded-3xl md:border md:border-white/10 md:shadow-2xl">
+      {/* Mobile: full-screen. Desktop: docked right-hand panel (slide-over). */}
+      <div className="dark relative flex h-full w-full flex-col overflow-hidden bg-[#0A0A0A] text-white duration-300 animate-in fade-in slide-in-from-bottom-4 md:w-[26rem] md:slide-in-from-right-4 md:border-l md:border-white/10 md:shadow-2xl">
         {/* header */}
         <div
           className={`flex shrink-0 items-center justify-between px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-3 md:pt-4 ${
