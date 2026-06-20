@@ -149,7 +149,7 @@ function Sidebar({
   variant?: "sidebar" | "floating" | "inset";
   collapsible?: "offcanvas" | "icon" | "none";
 }) {
-  const { isMobile, state, openMobile, setOpen } = useSidebar();
+  const { isMobile, state, openMobile } = useSidebar();
 
   if (collapsible === "none") {
     return (
@@ -210,8 +210,6 @@ function Sidebar({
       />
       <div
         data-slot="sidebar-container"
-        onMouseEnter={() => setOpen(true)}
-        onMouseLeave={() => setOpen(false)}
         className={cn(
           "fixed inset-y-0 z-40 hidden h-svh overflow-hidden transition-[width] duration-300 ease-in-out md:flex",
           "w-(--sidebar-width-icon) group-data-[state=expanded]:w-(--sidebar-width)",
