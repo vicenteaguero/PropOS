@@ -47,7 +47,7 @@ export function AgentCostPage() {
 
   if (isLoading) {
     return (
-      <PageLayout width="lg" noPadding>
+      <PageLayout width="lg" noPadding className="lg:max-w-none">
         <div className="flex min-h-[40vh] justify-center">
           <Loader2 className="size-5 animate-spin text-muted-foreground" />
         </div>
@@ -56,8 +56,8 @@ export function AgentCostPage() {
   }
   if (isError || !data) {
     return (
-      <PageLayout width="lg" noPadding>
-        <div className="mx-5 mt-6 rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+      <PageLayout width="lg" noPadding className="lg:max-w-none">
+        <div className="mx-5 mt-6 rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive lg:mx-8">
           No pude cargar costos.
         </div>
       </PageLayout>
@@ -65,9 +65,10 @@ export function AgentCostPage() {
   }
 
   return (
-    <PageLayout width="lg" noPadding className="pb-10">
-      <div className="px-5 pt-5 pb-4">
-        <h1 className="text-[26px] font-bold leading-tight tracking-tight text-foreground">
+    // Mobile: capped centered column (unchanged). Desktop: full-bleed dashboard.
+    <PageLayout width="lg" noPadding className="pb-10 lg:max-w-none">
+      <div className="px-5 pt-5 pb-4 lg:px-8 lg:pt-7">
+        <h1 className="text-[26px] font-bold leading-tight tracking-tight text-foreground lg:text-[30px]">
           Costo {agentName}
         </h1>
         <p className="mt-0.5 text-[13px] text-muted-foreground">
@@ -76,7 +77,7 @@ export function AgentCostPage() {
       </div>
 
       {/* Totals */}
-      <div className="grid grid-cols-2 gap-3 px-5 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 px-5 lg:grid-cols-4 lg:gap-4 lg:px-8">
         <StatCard label="Mensajes" value={String(data.totals.message_count)} />
         <StatCard label="Tokens entrada" value={data.totals.tokens_in.toLocaleString()} />
         <StatCard label="Tokens salida" value={data.totals.tokens_out.toLocaleString()} />
@@ -84,30 +85,32 @@ export function AgentCostPage() {
       </div>
 
       {/* Daily cost */}
-      <div className="mt-3 px-5">
+      <div className="mt-3 px-5 lg:mt-4 lg:px-8">
         <ChartCard title="Costo por día">
           {data.by_day.length === 0 ? (
             <p className="py-12 text-center text-sm text-muted-foreground">Sin actividad aún.</p>
           ) : (
-            <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-              <BarChart data={data.by_day}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.6} />
-                <XAxis dataKey="day" tick={AXIS_TICK} stroke="var(--border)" />
-                <YAxis tick={AXIS_TICK} stroke="var(--border)" tickFormatter={(v) => fmtUSD(v)} />
-                <Tooltip
-                  formatter={(v) => fmtUSD(Number(v))}
-                  contentStyle={TOOLTIP_STYLE}
-                  cursor={{ fill: "var(--secondary)" }}
-                />
-                <Bar dataKey="cost_cents" fill={CHART_COLORS.primary} radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            <div style={{ height: CHART_HEIGHT }} className="w-full lg:!h-[340px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={data.by_day}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.6} />
+                  <XAxis dataKey="day" tick={AXIS_TICK} stroke="var(--border)" />
+                  <YAxis tick={AXIS_TICK} stroke="var(--border)" tickFormatter={(v) => fmtUSD(v)} />
+                  <Tooltip
+                    formatter={(v) => fmtUSD(Number(v))}
+                    contentStyle={TOOLTIP_STYLE}
+                    cursor={{ fill: "var(--secondary)" }}
+                  />
+                  <Bar dataKey="cost_cents" fill={CHART_COLORS.primary} radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           )}
         </ChartCard>
       </div>
 
       {/* Sessions */}
-      <div className="mt-3 px-5">
+      <div className="mt-3 px-5 lg:mt-4 lg:px-8">
         <ChartCard title="Sesiones (top 50 recientes)">
           {data.by_session.length === 0 ? (
             <p className="py-12 text-center text-sm text-muted-foreground">Sin sesiones aún.</p>
@@ -166,20 +169,13 @@ export function AgentCostPage() {
   );
 }
 
-function StatCard({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: string;
-  tone?: "ink";
-}) {
+function StatCard({ label, value, tone }: { label: string; value: string; tone?: "ink" }) {
   const isInk = tone === "ink";
   return (
     <div
       className={
-        "rounded-2xl p-4 " + (isInk ? "bg-foreground text-background" : "bg-secondary text-foreground")
+        "rounded-2xl p-4 " +
+        (isInk ? "bg-foreground text-background" : "bg-secondary text-foreground")
       }
     >
       <p
