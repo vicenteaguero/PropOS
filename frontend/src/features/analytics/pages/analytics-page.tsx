@@ -115,10 +115,11 @@ export function AnalyticsPage() {
   const funnelLatest = aggregateFunnelLatestMonth(funnel.data ?? []);
 
   return (
-    <PageLayout width="lg" noPadding className="pb-10">
-      <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-4">
+    // Mobile: capped centered column (unchanged). Desktop: full-bleed dashboard.
+    <PageLayout width="lg" noPadding className="pb-10 lg:max-w-none">
+      <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-4 lg:px-8 lg:pt-7">
         <div>
-          <h1 className="text-[26px] font-bold leading-tight tracking-tight text-foreground">
+          <h1 className="text-[26px] font-bold leading-tight tracking-tight text-foreground lg:text-[30px]">
             Analítica
           </h1>
           <p className="mt-0.5 text-[13px] text-muted-foreground">
@@ -140,8 +141,8 @@ export function AnalyticsPage() {
         </RoundButton>
       </div>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-2 gap-3 px-5 md:grid-cols-3">
+      {/* KPIs — 3-up on mobile, spread across the full width on desktop. */}
+      <div className="grid grid-cols-2 gap-3 px-5 md:grid-cols-3 lg:px-8 lg:gap-4">
         <StatCard label="Ingresos totales" value={formatCLP(totalIn / 100)} tone="ink" />
         <StatCard label="Gastos totales" value={formatCLP(totalOut / 100)} tone="destructive" />
         <StatCard
@@ -151,42 +152,47 @@ export function AnalyticsPage() {
       </div>
 
       {/* Charts */}
-      <div className="mt-3 grid grid-cols-1 gap-3 px-5 lg:grid-cols-2">
+      <div className="mt-3 grid grid-cols-1 gap-3 px-5 lg:mt-4 lg:grid-cols-2 lg:gap-4 lg:px-8">
         <ChartCard title="Revenue mensual">
           {revenue.isLoading ? (
             <ChartLoading />
           ) : revenueByMonth.length === 0 ? (
             <ChartEmpty>Sin transacciones aún.</ChartEmpty>
           ) : (
-            <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-              <LineChart data={revenueByMonth}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.6} />
-                <XAxis dataKey="month" tick={AXIS_TICK} stroke="var(--border)" />
-                <YAxis
-                  tick={AXIS_TICK}
-                  stroke="var(--border)"
-                  tickFormatter={(v) => formatCLP(v / 100)}
-                />
-                <Tooltip formatter={(v) => formatCLP(Number(v) / 100)} contentStyle={TOOLTIP_STYLE} />
-                <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Line
-                  type="monotone"
-                  dataKey="in_cents"
-                  name="Ingresos"
-                  stroke={CHART_COLORS.success}
-                  strokeWidth={2}
-                  dot={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="out_cents"
-                  name="Gastos"
-                  stroke={CHART_COLORS.error}
-                  strokeWidth={2}
-                  dot={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            <ChartFrame>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={revenueByMonth}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.6} />
+                  <XAxis dataKey="month" tick={AXIS_TICK} stroke="var(--border)" />
+                  <YAxis
+                    tick={AXIS_TICK}
+                    stroke="var(--border)"
+                    tickFormatter={(v) => formatCLP(v / 100)}
+                  />
+                  <Tooltip
+                    formatter={(v) => formatCLP(Number(v) / 100)}
+                    contentStyle={TOOLTIP_STYLE}
+                  />
+                  <Legend wrapperStyle={{ fontSize: 12 }} />
+                  <Line
+                    type="monotone"
+                    dataKey="in_cents"
+                    name="Ingresos"
+                    stroke={CHART_COLORS.success}
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="out_cents"
+                    name="Gastos"
+                    stroke={CHART_COLORS.error}
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </ChartFrame>
           )}
         </ChartCard>
 
@@ -196,119 +202,125 @@ export function AnalyticsPage() {
           ) : funnelLatest.length === 0 ? (
             <ChartEmpty>Sin oportunidades aún.</ChartEmpty>
           ) : (
-            <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-              <BarChart data={funnelLatest}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.6} />
-                <XAxis dataKey="stage" tick={AXIS_TICK} stroke="var(--border)" />
-                <YAxis tick={AXIS_TICK} stroke="var(--border)" allowDecimals={false} />
-                <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: "var(--secondary)" }} />
-                <Bar dataKey="count" name="Oportunidades" radius={[6, 6, 0, 0]}>
-                  {funnelLatest.map((_, i) => (
-                    <Cell key={i} fill={STAGE_COLORS[i % STAGE_COLORS.length]} />
+            <ChartFrame>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={funnelLatest}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.6} />
+                  <XAxis dataKey="stage" tick={AXIS_TICK} stroke="var(--border)" />
+                  <YAxis tick={AXIS_TICK} stroke="var(--border)" allowDecimals={false} />
+                  <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: "var(--secondary)" }} />
+                  <Bar dataKey="count" name="Oportunidades" radius={[6, 6, 0, 0]}>
+                    {funnelLatest.map((_, i) => (
+                      <Cell key={i} fill={STAGE_COLORS[i % STAGE_COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartFrame>
+          )}
+        </ChartCard>
+      </div>
+
+      {/* Ad ROI (wide table) + active pipeline (compact) share the width on desktop. */}
+      <div className="mt-3 grid grid-cols-1 gap-3 px-5 lg:mt-4 lg:grid-cols-3 lg:gap-4 lg:px-8">
+        <div className="lg:col-span-2">
+          <ChartCard title="Ad ROI por campaña">
+            {adRoi.isLoading ? (
+              <ChartLoading />
+            ) : (adRoi.data?.length ?? 0) === 0 ? (
+              <ChartEmpty>Sin campañas aún.</ChartEmpty>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-left text-xs text-muted-foreground">
+                      <th className="py-2.5 pr-4 font-medium">Campaña</th>
+                      <th className="py-2.5 pr-4 font-medium">Canal</th>
+                      <th className="py-2.5 pr-4 font-medium">Presupuesto</th>
+                      <th className="py-2.5 pr-4 font-medium">Gastado</th>
+                      <th className="py-2.5 pr-4 font-medium">Ganadas</th>
+                      <th className="py-2.5 pr-4 font-medium">Valor ganado</th>
+                      <th className="py-2.5 pr-4 font-medium">ROI</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {adRoi.data?.map((r) => {
+                      const roi =
+                        r.spend_cents > 0
+                          ? ((r.won_value_cents - r.spend_cents) / r.spend_cents) * 100
+                          : null;
+                      return (
+                        <tr key={r.campaign_id} className="border-b border-border last:border-0">
+                          <td className="py-2.5 pr-4 font-medium text-foreground">
+                            {r.campaign_name}
+                          </td>
+                          <td className="py-2.5 pr-4 text-muted-foreground">{r.channel}</td>
+                          <td className="py-2.5 pr-4 text-muted-foreground">
+                            {r.budget_cents != null ? formatCLP(r.budget_cents / 100) : "—"}
+                          </td>
+                          <td className="py-2.5 pr-4 text-muted-foreground">
+                            {formatCLP(r.spend_cents / 100)}
+                          </td>
+                          <td className="py-2.5 pr-4 text-muted-foreground">{r.won_count}</td>
+                          <td className="py-2.5 pr-4 text-muted-foreground">
+                            {formatCLP(r.won_value_cents / 100)}
+                          </td>
+                          <td
+                            className={
+                              "py-2.5 pr-4 font-semibold " +
+                              (roi == null
+                                ? "text-muted-foreground"
+                                : roi >= 0
+                                  ? "text-success"
+                                  : "text-destructive")
+                            }
+                          >
+                            {roi == null ? "—" : `${roi.toFixed(0)}%`}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </ChartCard>
+        </div>
+
+        {/* Pipeline activo — third column on desktop, full width on mobile. */}
+        <div className="lg:col-span-1">
+          <ChartCard title="Pipeline activo">
+            {pipeline.isLoading ? (
+              <ChartLoading />
+            ) : (pipeline.data?.length ?? 0) === 0 ? (
+              <ChartEmpty>Sin pipeline activo.</ChartEmpty>
+            ) : (
+              <div>
+                {[...(pipeline.data ?? [])]
+                  .sort(
+                    (a, b) =>
+                      STAGE_ORDER.indexOf(a.pipeline_stage) - STAGE_ORDER.indexOf(b.pipeline_stage),
+                  )
+                  .map((p, i, arr) => (
+                    <div
+                      key={p.pipeline_stage}
+                      className={
+                        "flex items-center justify-between py-2.5 " +
+                        (i < arr.length - 1 ? "border-b border-border" : "")
+                      }
+                    >
+                      <span className="text-sm font-medium text-foreground">
+                        {p.pipeline_stage}
+                      </span>
+                      <span className="text-sm text-muted-foreground">
+                        {p.opp_count} • {formatCLP(p.expected_value_cents / 100)}
+                      </span>
+                    </div>
                   ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </ChartCard>
-      </div>
-
-      {/* Ad ROI */}
-      <div className="mt-3 px-5">
-        <ChartCard title="Ad ROI por campaña">
-          {adRoi.isLoading ? (
-            <ChartLoading />
-          ) : (adRoi.data?.length ?? 0) === 0 ? (
-            <ChartEmpty>Sin campañas aún.</ChartEmpty>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                    <th className="py-2.5 pr-4 font-medium">Campaña</th>
-                    <th className="py-2.5 pr-4 font-medium">Canal</th>
-                    <th className="py-2.5 pr-4 font-medium">Presupuesto</th>
-                    <th className="py-2.5 pr-4 font-medium">Gastado</th>
-                    <th className="py-2.5 pr-4 font-medium">Ganadas</th>
-                    <th className="py-2.5 pr-4 font-medium">Valor ganado</th>
-                    <th className="py-2.5 pr-4 font-medium">ROI</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {adRoi.data?.map((r) => {
-                    const roi =
-                      r.spend_cents > 0
-                        ? ((r.won_value_cents - r.spend_cents) / r.spend_cents) * 100
-                        : null;
-                    return (
-                      <tr key={r.campaign_id} className="border-b border-border last:border-0">
-                        <td className="py-2.5 pr-4 font-medium text-foreground">
-                          {r.campaign_name}
-                        </td>
-                        <td className="py-2.5 pr-4 text-muted-foreground">{r.channel}</td>
-                        <td className="py-2.5 pr-4 text-muted-foreground">
-                          {r.budget_cents != null ? formatCLP(r.budget_cents / 100) : "—"}
-                        </td>
-                        <td className="py-2.5 pr-4 text-muted-foreground">
-                          {formatCLP(r.spend_cents / 100)}
-                        </td>
-                        <td className="py-2.5 pr-4 text-muted-foreground">{r.won_count}</td>
-                        <td className="py-2.5 pr-4 text-muted-foreground">
-                          {formatCLP(r.won_value_cents / 100)}
-                        </td>
-                        <td
-                          className={
-                            "py-2.5 pr-4 font-semibold " +
-                            (roi == null
-                              ? "text-muted-foreground"
-                              : roi >= 0
-                                ? "text-success"
-                                : "text-destructive")
-                          }
-                        >
-                          {roi == null ? "—" : `${roi.toFixed(0)}%`}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </ChartCard>
-      </div>
-
-      {/* Pipeline activo */}
-      <div className="mt-3 px-5">
-        <ChartCard title="Pipeline activo">
-          {pipeline.isLoading ? (
-            <ChartLoading />
-          ) : (pipeline.data?.length ?? 0) === 0 ? (
-            <ChartEmpty>Sin pipeline activo.</ChartEmpty>
-          ) : (
-            <div>
-              {[...(pipeline.data ?? [])]
-                .sort(
-                  (a, b) =>
-                    STAGE_ORDER.indexOf(a.pipeline_stage) - STAGE_ORDER.indexOf(b.pipeline_stage),
-                )
-                .map((p, i, arr) => (
-                  <div
-                    key={p.pipeline_stage}
-                    className={
-                      "flex items-center justify-between py-2.5 " +
-                      (i < arr.length - 1 ? "border-b border-border" : "")
-                    }
-                  >
-                    <span className="text-sm font-medium text-foreground">{p.pipeline_stage}</span>
-                    <span className="text-sm text-muted-foreground">
-                      {p.opp_count} • {formatCLP(p.expected_value_cents / 100)}
-                    </span>
-                  </div>
-                ))}
-            </div>
-          )}
-        </ChartCard>
+              </div>
+            )}
+          </ChartCard>
+        </div>
       </div>
     </PageLayout>
   );
@@ -327,7 +339,8 @@ function StatCard({
   return (
     <div
       className={
-        "rounded-2xl p-4 " + (isInk ? "bg-foreground text-background" : "bg-secondary text-foreground")
+        "rounded-2xl p-4 " +
+        (isInk ? "bg-foreground text-background" : "bg-secondary text-foreground")
       }
     >
       <p
@@ -353,6 +366,18 @@ function ChartCard({ title, children }: { title: string; children: React.ReactNo
   return (
     <div className="rounded-2xl border border-border bg-card p-4">
       <h2 className="mb-3 text-[15px] font-bold tracking-tight text-foreground">{title}</h2>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * Fixed-height chart frame. Mobile keeps the shared CHART_HEIGHT; desktop gets
+ * more vertical room. The inner ResponsiveContainer fills this box at 100%.
+ */
+function ChartFrame({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ height: CHART_HEIGHT }} className="w-full lg:!h-[340px]">
       {children}
     </div>
   );
