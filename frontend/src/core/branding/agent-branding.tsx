@@ -21,7 +21,7 @@ interface TenantResponse {
 }
 
 const DEFAULT: TenantBranding = {
-  agentName: "Anita",
+  agentName: "Propo",
   defaultPaperSize: "A4",
   brandColor: null,
 };
