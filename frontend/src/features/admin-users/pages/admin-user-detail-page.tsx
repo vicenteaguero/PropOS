@@ -1,14 +1,6 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import {
-  ArrowLeft,
-  KeyRound,
-  Loader2,
-  Mail,
-  ShieldAlert,
-  Trash2,
-  UserX,
-} from "lucide-react";
+import { ArrowLeft, KeyRound, Loader2, Mail, ShieldAlert, Trash2, UserX } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,7 +60,9 @@ export function AdminUserDetailPage() {
   }
 
   return (
-    <PageLayout width="md" className="pb-10">
+    // Mobile: capped reading column. Desktop: a wider, comfortable admin canvas
+    // (not full-bleed — this is a detail/edit surface, not a list).
+    <PageLayout width="md" className="pb-10 lg:max-w-5xl lg:px-8 lg:py-9">
       <Link
         to="/admin/users"
         className="mb-4 inline-flex items-center gap-1 text-[13px] text-muted-foreground transition-colors hover:text-foreground"
@@ -76,13 +70,13 @@ export function AdminUserDetailPage() {
         <ArrowLeft className="size-4" strokeWidth={1.8} /> Volver
       </Link>
 
-      <header className="mb-6 flex items-center gap-4">
-        <span className="flex size-14 shrink-0 items-center justify-center rounded-full bg-secondary text-lg font-semibold text-foreground">
+      <header className="mb-6 flex items-center gap-4 lg:mb-8">
+        <span className="flex size-14 shrink-0 items-center justify-center rounded-full bg-secondary text-lg font-semibold text-foreground lg:size-16 lg:text-xl">
           {initials(data.full_name || data.email)}
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight">
+            <h1 className="text-2xl font-bold tracking-tight lg:text-3xl">
               {data.full_name || "(sin nombre)"}
             </h1>
             {data.is_dev_admin && <Pill tone="warning">DEV</Pill>}
@@ -102,7 +96,8 @@ export function AdminUserDetailPage() {
         </TabsList>
 
         <TabsContent value="profile" className="mt-4">
-          <dl className="rounded-2xl border border-border bg-card p-5 text-sm">
+          {/* Mobile: stacked rows. Desktop: 2-up grid of fact cells. */}
+          <dl className="rounded-2xl border border-border bg-card p-5 text-sm lg:grid lg:grid-cols-2 lg:gap-x-10 lg:gap-y-1 lg:p-6">
             {[
               { label: "RUT", value: data.rut ?? "—" },
               { label: "Rol activo", value: data.role },
@@ -112,7 +107,7 @@ export function AdminUserDetailPage() {
               <div
                 key={r.label}
                 className={`flex items-center justify-between gap-3 py-2.5 ${
-                  i < arr.length - 1 ? "border-b border-border" : ""
+                  i < arr.length - 1 ? "border-b border-border lg:border-b-0" : ""
                 }`}
               >
                 <dt className="text-muted-foreground">{r.label}</dt>
@@ -197,7 +192,10 @@ export function AdminUserDetailPage() {
           })}
         </TabsContent>
 
-        <TabsContent value="emails" className="mt-4 space-y-2">
+        <TabsContent
+          value="emails"
+          className="mt-4 space-y-2 lg:grid lg:grid-cols-2 lg:gap-2 lg:space-y-0"
+        >
           {data.user_emails.map((e) => (
             <div
               key={e.id}
@@ -214,9 +212,12 @@ export function AdminUserDetailPage() {
           ))}
         </TabsContent>
 
-        <TabsContent value="grants" className="mt-4 space-y-2">
+        <TabsContent
+          value="grants"
+          className="mt-4 space-y-2 lg:grid lg:grid-cols-2 lg:gap-2 lg:space-y-0"
+        >
           {data.grants.length === 0 && (
-            <div className="rounded-2xl border border-border bg-card py-6 text-center text-sm text-muted-foreground">
+            <div className="rounded-2xl border border-border bg-card py-6 text-center text-sm text-muted-foreground lg:col-span-2">
               Sin grants.
             </div>
           )}
@@ -240,8 +241,11 @@ export function AdminUserDetailPage() {
         </TabsContent>
 
         {isDev && (
-          <TabsContent value="security" className="mt-4 space-y-6">
-            <section className="space-y-3">
+          <TabsContent
+            value="security"
+            className="mt-4 space-y-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-6 lg:space-y-0"
+          >
+            <section className="space-y-3 lg:col-span-2">
               <SectionLabel className="px-0">Acciones de email</SectionLabel>
               <div className="flex flex-wrap gap-2">
                 <Button
@@ -359,7 +363,7 @@ export function AdminUserDetailPage() {
               </div>
             </section>
 
-            <section className="space-y-3 rounded-2xl border border-destructive/40 bg-destructive/5 p-5">
+            <section className="space-y-3 rounded-2xl border border-destructive/40 bg-destructive/5 p-5 lg:col-span-2">
               <h3 className="flex items-center gap-1.5 text-sm font-semibold text-destructive">
                 <ShieldAlert className="size-4" strokeWidth={1.8} /> Eliminar usuario
               </h3>
