@@ -1,4 +1,4 @@
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { LogOut } from "lucide-react";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -31,6 +31,9 @@ function getInitials(name: string): string {
 export function AppLayout() {
   const { user, signOut } = useAuth();
   const shellMode = useShellMode();
+  const location = useLocation();
+  // Inside Anita's own page the header's Anita launcher is redundant.
+  const isAgentRoute = location.pathname.endsWith("/agent");
   useUfDailyRefresh();
 
   // Mobile broker shell: full-bleed content + floating bottom nav (Propo lives
@@ -54,7 +57,7 @@ export function AppLayout() {
         <header className="sticky top-0 z-10 flex h-[var(--app-header-h)] shrink-0 items-center gap-2 border-b border-border bg-background px-4">
           <SidebarTrigger className="-ml-1" />
           <div className="flex flex-1 items-center justify-center px-2">
-            <CommandBar />
+            {!isAgentRoute && <CommandBar />}
           </div>
           <div className="block">
             <DropdownMenu>
