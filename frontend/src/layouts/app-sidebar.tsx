@@ -289,7 +289,7 @@ function TenantSwitcher() {
       <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
         <span
           className="size-2 shrink-0 rounded-full"
-          style={{ background: dot(user?.tenantId) }}
+          style={{ background: "var(--accent-brand)" }}
         />
         <span className="truncate">{current?.tenantName ?? user?.fullName ?? ""}</span>
       </div>
@@ -298,7 +298,10 @@ function TenantSwitcher() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="flex w-full min-w-0 items-center gap-1.5 rounded text-left text-[11px] text-muted-foreground hover:text-foreground">
-        <span className="size-2 shrink-0 rounded-full" style={{ background: dot(user.tenantId) }} />
+        <span
+          className="size-2 shrink-0 rounded-full"
+          style={{ background: "var(--accent-brand)" }}
+        />
         <span className="truncate">{current?.tenantName ?? "—"}</span>
         <ChevronsUpDown className="size-3 shrink-0" />
       </DropdownMenuTrigger>
@@ -315,7 +318,9 @@ function TenantSwitcher() {
           >
             <span
               className="size-2.5 shrink-0 rounded-full"
-              style={{ background: dot(m.tenantId) }}
+              style={{
+                background: m.tenantId === user.tenantId ? "var(--accent-brand)" : dot(m.tenantId),
+              }}
             />
             <span className="flex-1 truncate">{m.tenantName ?? m.tenantSlug ?? m.tenantId}</span>
             {m.tenantId === user.tenantId && <Check className="size-3.5" />}
