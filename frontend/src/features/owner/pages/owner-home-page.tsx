@@ -83,42 +83,46 @@ export function OwnerHomePage() {
   const grants = data ?? [];
 
   return (
-    <PageLayout width="sm" noPadding className="pb-6">
-      {/* Header */}
-      <div className="px-5 pt-5 pb-3">
-        <h1 className="text-[26px] font-bold leading-tight tracking-tight text-foreground">
-          Mis propiedades
-        </h1>
-        <p className="mt-0.5 text-[13px] text-muted-foreground">
-          {grants.length > 0
-            ? "Las propiedades a las que tu administrador te dio acceso."
-            : "Acá verás las propiedades que tu administrador comparta contigo."}
-        </p>
-      </div>
+    <PageLayout width="app" noPadding>
+      <div className="mx-auto w-full max-w-xl pb-6 lg:max-w-6xl">
+        {/* Header */}
+        <div className="px-5 pt-5 pb-3 lg:px-8 lg:pt-7">
+          <h1 className="text-[26px] font-bold leading-tight tracking-tight text-foreground lg:text-[30px]">
+            Mis propiedades
+          </h1>
+          <p className="mt-0.5 text-[13px] text-muted-foreground">
+            {grants.length > 0
+              ? "Las propiedades a las que tu administrador te dio acceso."
+              : "Acá verás las propiedades que tu administrador comparta contigo."}
+          </p>
+        </div>
 
-      {grants.length === 0 ? (
-        <div className="px-5 pt-6">
-          <div className="flex flex-col items-center rounded-2xl border border-border bg-card px-6 py-12 text-center">
-            <span className="mb-4 grid size-14 place-items-center rounded-full bg-secondary text-muted-foreground">
-              <Building2 className="size-7" strokeWidth={1.6} />
-            </span>
-            <h3 className="text-lg font-semibold text-foreground">Aún no tienes propiedades</h3>
-            <p className="mt-1.5 max-w-xs text-sm text-muted-foreground">
-              Pídele a tu administrador que te otorgue acceso a una propiedad.
-            </p>
+        {grants.length === 0 ? (
+          <div className="px-5 pt-6 lg:px-8">
+            <div className="flex flex-col items-center rounded-2xl border border-border bg-card px-6 py-12 text-center">
+              <span className="mb-4 grid size-14 place-items-center rounded-full bg-secondary text-muted-foreground">
+                <Building2 className="size-7" strokeWidth={1.6} />
+              </span>
+              <h3 className="text-lg font-semibold text-foreground">Aún no tienes propiedades</h3>
+              <p className="mt-1.5 max-w-xs text-sm text-muted-foreground">
+                Pídele a tu administrador que te otorgue acceso a una propiedad.
+              </p>
+            </div>
           </div>
-        </div>
-      ) : (
-        <div className="space-y-3 px-5">
-          {grants.map((g) => (
-            <PropertyCard
-              key={g.id}
-              grant={g}
-              onClick={() => navigate(`/owner/properties/${g.propertyId}`)}
-            />
-          ))}
-        </div>
-      )}
+        ) : (
+          <div className="px-5 lg:px-8">
+            <div className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0 xl:grid-cols-3">
+              {grants.map((g) => (
+                <PropertyCard
+                  key={g.id}
+                  grant={g}
+                  onClick={() => navigate(`/owner/properties/${g.propertyId}`)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </PageLayout>
   );
 }
