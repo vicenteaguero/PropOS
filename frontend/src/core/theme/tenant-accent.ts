@@ -6,11 +6,9 @@
  *    and let index.css pick lightness per theme (darker in light, lighter in
  *    dark). This is the v1 default until a brokerage sets its exact color.
  *
- * Precedence: a non-default dev palette sets its own --primary and wins, so we
- * skip injection entirely when the active palette is not "default".
+ * The tenant accent always applies (injected inline on <html>), so switching
+ * workspace recolors the brand immediately regardless of any dev palette.
  */
-
-import { getStoredPalette } from "./palette";
 
 /** Curated, harmonious hues (avoids muddy/ambiguous ones). Index picked by hash. */
 const HUES = [347, 152, 220, 270, 25, 190, 330, 45, 95, 300];
@@ -50,11 +48,6 @@ interface AccentInput {
 export function applyTenantAccent({ seed, color }: AccentInput): void {
   if (typeof document === "undefined") return;
   const style = document.documentElement.style;
-
-  if (getStoredPalette() !== "default") {
-    clearTenantAccent();
-    return;
-  }
 
   if (color && HEX_RE.test(color)) {
     const hex = color.startsWith("#") ? color : `#${color}`;
