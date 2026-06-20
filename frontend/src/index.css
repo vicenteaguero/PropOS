@@ -93,20 +93,23 @@
   --accent-brand: hsl(var(--accent-hue) var(--accent-sat) 45%);
   --accent-brand-foreground: #ffffff;
 
-  --background: #ffffff;
+  /* Per-tenant surface tint: 0% = neutral (global); ThemeController raises it
+   * per workspace so every paper surface mixes toward the brand (mockup parity). */
+  --tint: 0%;
+  --background: color-mix(in srgb, var(--accent-brand) var(--tint), #ffffff);
   --foreground: #0a0a0a;
-  --card: #ffffff;
+  --card: color-mix(in srgb, var(--accent-brand) var(--tint), #ffffff);
   --card-foreground: #0a0a0a;
-  --popover: #ffffff;
+  --popover: color-mix(in srgb, var(--accent-brand) var(--tint), #ffffff);
   --popover-foreground: #0a0a0a;
   --primary: var(--accent-brand);
   --primary-foreground: var(--accent-brand-foreground);
-  --secondary: #f3f3f3;
+  --secondary: color-mix(in srgb, var(--accent-brand) var(--tint), #f3f3f3);
   --secondary-foreground: #0a0a0a;
-  --muted: #f6f6f6;
+  --muted: color-mix(in srgb, var(--accent-brand) var(--tint), #f6f6f6);
   --muted-foreground: #6e6e73;
   --faint: #a0a0a6;
-  --accent: #f1f1f2;
+  --accent: color-mix(in srgb, var(--accent-brand) var(--tint), #f1f1f2);
   --accent-foreground: #0a0a0a;
   --destructive: #d5402b;
   --destructive-foreground: #ffffff;
@@ -127,7 +130,7 @@
   --chart-3: #9e9e9e;
   --chart-4: #0a0a0a;
   --chart-5: #e2e2e2;
-  --sidebar: #fafafa;
+  --sidebar: color-mix(in srgb, var(--accent-brand) var(--tint), #fafafa);
   --sidebar-foreground: #0a0a0a;
   --sidebar-primary: var(--accent-brand);
   --sidebar-primary-foreground: var(--accent-brand-foreground);
@@ -147,21 +150,22 @@
   --accent-brand: hsl(var(--accent-hue) var(--accent-sat) 70%);
   --accent-brand-foreground: #0a0a0a;
 
-  --background: #000000;
+  --tint: 0%;
+  --background: color-mix(in srgb, var(--accent-brand) var(--tint), #000000);
   --foreground: #ffffff;
-  --card: #141416;
+  --card: color-mix(in srgb, var(--accent-brand) var(--tint), #141416);
   --card-foreground: #ffffff;
-  --popover: #141416;
+  --popover: color-mix(in srgb, var(--accent-brand) var(--tint), #141416);
   --popover-foreground: #ffffff;
   --primary: var(--accent-brand);
   --primary-foreground: var(--accent-brand-foreground);
-  --secondary: #1b1b1e;
+  --secondary: color-mix(in srgb, var(--accent-brand) var(--tint), #1b1b1e);
   --secondary-foreground: #ffffff;
-  --muted: #232327;
+  --muted: color-mix(in srgb, var(--accent-brand) var(--tint), #232327);
   --muted-foreground: rgba(235, 235, 245, 0.6);
   --faint: rgba(235, 235, 245, 0.34);
-  /* neutral surface accent (hover/active bg) — NOT the brand color */
-  --accent: #1b1b1e;
+  /* neutral surface accent (hover/active bg) — tints toward the brand per tenant */
+  --accent: color-mix(in srgb, var(--accent-brand) var(--tint), #1b1b1e);
   --accent-foreground: #ffffff;
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
@@ -182,7 +186,7 @@
   --chart-3: rgba(235, 235, 245, 0.55);
   --chart-4: #8e8e93;
   --chart-5: #232327;
-  --sidebar: #0a0a0a;
+  --sidebar: color-mix(in srgb, var(--accent-brand) var(--tint), #0a0a0a);
   --sidebar-foreground: #ffffff;
   --sidebar-primary: var(--accent-brand);
   --sidebar-primary-foreground: var(--accent-brand-foreground);
