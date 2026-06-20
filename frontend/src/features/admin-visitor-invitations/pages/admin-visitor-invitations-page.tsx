@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Copy, Loader2, RefreshCw, UserPlus, X } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { LoadingSpinner } from "@shared/components/loading-spinner/loading-spinner";
+import { PageLayout } from "@shared/components/page-layout";
+import { EmptyState } from "@shared/components/empty-state/empty-state";
+import { Pill, Row, type PillTone } from "@shared/ui";
+import { useIsDesktop } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import {
   expireInvitation,
@@ -21,15 +22,24 @@ const STATUS_LABEL: Record<InvitationResponse["status"], string> = {
   expired: "Expirado",
 };
 
-const STATUS_TONE: Record<InvitationResponse["status"], string> = {
-  pending: "bg-warning/15 text-warning",
-  opened: "bg-accent-brand/15 text-accent-brand",
-  completed: "bg-success/15 text-success",
-  expired: "bg-muted text-muted-foreground",
+const STATUS_TONE: Record<InvitationResponse["status"], PillTone> = {
+  pending: "warning",
+  opened: "accent",
+  completed: "success",
+  expired: "neutral",
 };
+
+function modeLabel(mode: InvitationResponse["mode"]): string {
+  return mode === "auth_user" ? "Con cuenta" : "Solo registrar";
+}
+
+function expiresLabel(iso: string): string {
+  return new Date(iso).toLocaleDateString("es-CL");
+}
 
 export function AdminVisitorInvitationsPage() {
   const qc = useQueryClient();
+  const isDesktop = useIsDesktop();
   const [open, setOpen] = useState(false);
 
   const { data, isLoading, error, refetch } = useQuery({
@@ -62,127 +72,173 @@ export function AdminVisitorInvitationsPage() {
       .catch(() => toast.error("No se pudo copiar"));
   }
 
-  return (
-    <div className="mx-auto w-full max-w-6xl p-4 sm:p-6">
-      <header className="mb-4 flex items-center justify-between gap-2">
-        <h1 className="text-2xl font-bold">Visitantes</h1>
-        <Button size="sm" onClick={() => setOpen(true)}>
-          <UserPlus className="mr-1.5 size-4" /> Invitar visitante
+  function isClosed(inv: InvitationResponse) {
+    return inv.status === "completed" || inv.status === "expired";
+  }
+
+  // Per-row action buttons — shared between the mobile rows and desktop table.
+  function actions(inv: InvitationResponse) {
+    const closed = isClosed(inv);
+    return (
+      <div className="flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-8"
+          onClick={() => copyLink(inv.invite_url)}
+          title="Copiar link"
+        >
+          <Copy className="size-4" strokeWidth={1.8} />
         </Button>
-      </header>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-8"
+          disabled={closed || resend.isPending}
+          onClick={() => resend.mutate(inv.id)}
+          title="Reenviar email"
+        >
+          {resend.isPending ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <RefreshCw className="size-4" strokeWidth={1.8} />
+          )}
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-8"
+          disabled={closed || expire.isPending}
+          onClick={() => expire.mutate(inv.id)}
+          title="Expirar"
+        >
+          <X className="size-4" strokeWidth={1.8} />
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <PageLayout width="md" noPadding className="pb-6 lg:max-w-none">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-3 lg:px-8 lg:pt-7">
+        <div>
+          <h1 className="text-[26px] font-bold leading-tight tracking-tight text-foreground">
+            Visitantes
+          </h1>
+          <p className="mt-0.5 text-[13px] text-muted-foreground">
+            {data ? `${data.length} invitaciones` : "Invitaciones de acceso"}
+          </p>
+        </div>
+        <Button
+          variant="ink"
+          size="icon-lg"
+          className="rounded-full lg:hidden"
+          aria-label="Invitar visitante"
+          onClick={() => setOpen(true)}
+        >
+          <UserPlus className="size-5" strokeWidth={1.8} />
+        </Button>
+        <Button variant="ink" className="hidden gap-2 lg:inline-flex" onClick={() => setOpen(true)}>
+          <UserPlus className="size-4" strokeWidth={1.8} /> Invitar visitante
+        </Button>
+      </div>
 
       {isLoading && (
         <div className="flex justify-center py-12">
-          <LoadingSpinner size="md" />
+          <Loader2 className="size-5 animate-spin text-muted-foreground" />
         </div>
       )}
 
       {error && (
-        <Card>
-          <CardContent className="py-6 text-center text-sm text-destructive">
-            Error: {(error as Error).message}
-            <div className="mt-2">
-              <Button variant="link" size="sm" onClick={() => refetch()}>
-                Reintentar
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="mx-5 rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive lg:mx-8">
+          No pudimos cargar las invitaciones.
+          <Button variant="ghost" size="sm" className="ml-2" onClick={() => refetch()}>
+            Reintentar
+          </Button>
+        </div>
       )}
 
-      {!isLoading && data && data.length === 0 && (
-        <Card>
-          <CardContent className="py-10 text-center">
-            <p className="text-sm text-muted-foreground">
-              Aún no hay invitaciones. Crea la primera con el botón "Invitar visitante".
-            </p>
-          </CardContent>
-        </Card>
+      {!isLoading && !error && data && data.length === 0 && (
+        <div className="px-5 lg:px-8">
+          <EmptyState
+            title="Sin invitaciones"
+            description="Creá la primera invitación con el botón Invitar visitante."
+            actionLabel="Invitar visitante"
+            onAction={() => setOpen(true)}
+          />
+        </div>
       )}
 
-      {!isLoading && data && data.length > 0 && (
-        <Card>
-          <CardContent className="p-0">
+      {/* Mobile: stacked rows (no horizontal table overflow). */}
+      {!isLoading && !error && data && data.length > 0 && !isDesktop && (
+        <div className="lg:hidden">
+          {data.map((inv, i) => (
+            <Row
+              key={inv.id}
+              divider={i < data.length - 1}
+              title={
+                <span className="flex items-center gap-2">
+                  <span className="truncate">{inv.email}</span>
+                  <Pill tone={STATUS_TONE[inv.status]}>{STATUS_LABEL[inv.status]}</Pill>
+                </span>
+              }
+              sub={`${modeLabel(inv.mode)} · vence ${expiresLabel(inv.expires_at)}`}
+              right={actions(inv)}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Desktop: dense table using the full width. */}
+      {!isLoading && !error && data && data.length > 0 && isDesktop && (
+        <div className="px-8">
+          <div className="overflow-hidden rounded-2xl border border-border bg-card">
             <table className="w-full text-sm">
-              <thead className="border-b border-border bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
-                <tr>
-                  <th className="px-4 py-2 text-left">Email</th>
-                  <th className="px-4 py-2 text-left">Modo</th>
-                  <th className="px-4 py-2 text-left">Estado</th>
-                  <th className="px-4 py-2 text-left">Vence</th>
-                  <th className="px-4 py-2 text-right">Acciones</th>
+              <thead>
+                <tr className="border-b border-border text-left text-[12px] font-medium text-muted-foreground">
+                  <th className="py-2.5 pl-4 pr-3 font-medium">Email</th>
+                  <th className="px-3 py-2.5 font-medium">Modo</th>
+                  <th className="px-3 py-2.5 font-medium">Estado</th>
+                  <th className="px-3 py-2.5 font-medium">Vence</th>
+                  <th className="py-2.5 pl-3 pr-4 text-right font-medium">Acciones</th>
                 </tr>
               </thead>
               <tbody>
-                {data.map((inv) => {
-                  const closed = inv.status === "completed" || inv.status === "expired";
-                  return (
-                    <tr key={inv.id} className="border-b border-border last:border-0">
-                      <td className="px-4 py-2">
-                        <div className="font-medium">{inv.email}</div>
-                        <div className="text-xs text-muted-foreground">
-                          slug: {inv.slug}
-                        </div>
-                      </td>
-                      <td className="px-4 py-2">
-                        <Badge variant="outline" className="text-xs">
-                          {inv.mode === "auth_user" ? "Con cuenta" : "Solo registrar"}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-2">
-                        <span
-                          className={`rounded px-2 py-0.5 text-xs ${STATUS_TONE[inv.status]}`}
-                        >
-                          {STATUS_LABEL[inv.status]}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2 text-xs text-muted-foreground">
-                        {new Date(inv.expires_at).toLocaleDateString("es-CL")}
-                      </td>
-                      <td className="px-4 py-2 text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => copyLink(inv.invite_url)}
-                            title="Copiar link"
-                          >
-                            <Copy className="size-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled={closed || resend.isPending}
-                            onClick={() => resend.mutate(inv.id)}
-                            title="Reenviar email"
-                          >
-                            {resend.isPending ? (
-                              <Loader2 className="size-4 animate-spin" />
-                            ) : (
-                              <RefreshCw className="size-4" />
-                            )}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled={closed || expire.isPending}
-                            onClick={() => expire.mutate(inv.id)}
-                            title="Expirar"
-                          >
-                            <X className="size-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                {data.map((inv, i) => (
+                  <tr
+                    key={inv.id}
+                    className={`align-middle transition hover:bg-secondary/40 ${
+                      i < data.length - 1 ? "border-b border-border" : ""
+                    }`}
+                  >
+                    <td className="py-2.5 pl-4 pr-3">
+                      <div className="font-medium text-foreground">{inv.email}</div>
+                      <div className="font-mono text-[11px] text-muted-foreground">
+                        slug: {inv.slug}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <Pill tone="neutral">{modeLabel(inv.mode)}</Pill>
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <Pill tone={STATUS_TONE[inv.status]}>{STATUS_LABEL[inv.status]}</Pill>
+                    </td>
+                    <td className="px-3 py-2.5 tabular-nums text-muted-foreground">
+                      {expiresLabel(inv.expires_at)}
+                    </td>
+                    <td className="py-2.5 pl-3 pr-4">
+                      <div className="flex justify-end">{actions(inv)}</div>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       <NewInvitationDialog open={open} onOpenChange={setOpen} />
-    </div>
+    </PageLayout>
   );
 }
