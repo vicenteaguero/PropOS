@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import {
   Bell,
   Building2,
   CalendarDays,
   Check,
   CheckSquare,
+  ChevronRight,
   FileText,
   Inbox,
   MessageCircle,
@@ -16,13 +18,19 @@ import {
   Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { startOfDay, endOfDay, format } from "date-fns";
+import { es } from "date-fns/locale";
 import { useAuth } from "@shared/hooks/use-auth";
 import { useAgentName } from "@core/branding/agent-branding";
 import { hueForTenant } from "@core/theme/tenant-accent";
 import { useContacts } from "@features/contacts/hooks/use-contacts";
+import { useCalendarFeed } from "@features/calendar/hooks/use-calendar";
+import type { CalendarItem } from "@features/calendar/api/calendar-api";
+import { apiRequest } from "@features/documents/api/http";
 import { UfButton } from "@features/uf/components/uf-button";
 import { AgentOverlay } from "@features/agent/components/agent-overlay";
-import { BottomSheet, Row, SectionLabel, WorkspacePill } from "@shared/ui";
+import { BottomSheet, Pill, Row, SectionLabel, WorkspacePill, type PillTone } from "@shared/ui";
+import { useIsDesktop } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 
 interface Tile {
@@ -41,19 +49,52 @@ function greeting(): string {
   return "Buenas noches";
 }
 
+function initials(name: string): string {
+  return name
+    .split(" ")
+    .map((p) => p[0] ?? "")
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+}
+
+const TYPE_META: Record<CalendarItem["item_type"], { tone: PillTone; label: string }> = {
+  EVENT: { tone: "accent", label: "Evento" },
+  TASK: { tone: "warning", label: "Tarea" },
+  PAYMENT: { tone: "success", label: "Pago" },
+};
+
 function ServiceTile({ tile, onClick }: { tile: Tile; onClick: () => void }) {
   const Icon = tile.icon;
   return (
     <button
       type="button"
       onClick={onClick}
-      className="flex h-[88px] flex-col items-start justify-between rounded-2xl bg-secondary p-3 text-left transition active:scale-[0.97]"
+      className="flex h-[88px] flex-col items-start justify-between rounded-2xl bg-secondary p-3 text-left transition active:scale-[0.97] lg:h-auto lg:flex-row lg:items-center lg:gap-3 lg:p-3.5 lg:hover:bg-muted"
     >
       <span className="flex size-9 items-center justify-center rounded-xl bg-background shadow-sm">
         <Icon className="size-[19px] text-foreground" strokeWidth={1.9} />
       </span>
-      <span className="text-[13px] font-semibold text-foreground">{tile.label}</span>
+      <span className="text-[13px] font-semibold text-foreground lg:flex-1">{tile.label}</span>
+      <ChevronRight className="hidden size-4 text-muted-foreground lg:block" />
     </button>
+  );
+}
+
+/** Desktop KPI card. */
+function Kpi({ label, value, icon: Icon }: { label: string; value: string; icon: LucideIcon }) {
+  return (
+    <div className="flex items-center gap-3.5 rounded-2xl border border-border bg-card p-4">
+      <span className="flex size-11 items-center justify-center rounded-xl bg-secondary">
+        <Icon className="size-5 text-foreground" strokeWidth={1.8} />
+      </span>
+      <div className="min-w-0">
+        <div className="text-2xl font-bold leading-none tracking-tight text-foreground">
+          {value}
+        </div>
+        <div className="mt-1 truncate text-[13px] text-muted-foreground">{label}</div>
+      </div>
+    </div>
   );
 }
 
@@ -61,6 +102,7 @@ export function AdminHomePage() {
   const { user, memberships, switchTenant } = useAuth();
   const agentName = useAgentName();
   const navigate = useNavigate();
+  const isDesktop = useIsDesktop();
   const [wsOpen, setWsOpen] = useState(false);
   const [propoOpen, setPropoOpen] = useState(false);
   const [propoMode, setPropoMode] = useState<"voice" | "chat">("chat");
@@ -77,7 +119,20 @@ export function AdminHomePage() {
     memberships.find((m) => m.tenantId === user?.tenantId)?.tenantName ?? "Workspace";
 
   const { data: contacts } = useContacts({ limit: 50 });
-  const recent = (contacts ?? []).slice(0, 4);
+  const recent = (contacts ?? []).slice(0, isDesktop ? 6 : 4);
+
+  // Today's agenda + KPIs (desktop dashboard only — cheap single-day window).
+  const today = new Date();
+  const todayFeed = useCalendarFeed(startOfDay(today).toISOString(), endOfDay(today).toISOString());
+  const todayItems = (todayFeed.data ?? [])
+    .filter((it) => it.start_at)
+    .sort((a, b) => (a.start_at ?? "").localeCompare(b.start_at ?? ""));
+  const pendingQuery = useQuery<{ pending_count: number }>({
+    queryKey: ["analytics", "pending-count"],
+    queryFn: () => apiRequest("/v1/analytics/pending-count"),
+    staleTime: 30_000,
+    enabled: isDesktop && allow("pendientes"),
+  });
 
   const tiles: Tile[] = [
     { to: `${base}/bandeja`, label: "CRM", icon: Users, scope: "crm" },
@@ -91,10 +146,67 @@ export function AdminHomePage() {
     { to: "/admin/finanzas", label: "Finanzas", icon: Receipt, scope: "finanzas", adminOnly: true },
   ].filter((t) => allow(t.scope) && (!t.adminOnly || isAdmin));
 
-  return (
-    <div className="mx-auto w-full max-w-2xl pb-6 lg:max-w-none lg:px-8 lg:pt-2">
-      {/* header */}
-      <div className="flex items-center justify-between px-5 pt-4 pb-3 lg:px-0 lg:pt-4">
+  // Propo ask bar + mic — shared between layouts.
+  const propoBar = canPropo && (
+    <div className="flex gap-2.5">
+      <button
+        type="button"
+        onClick={() => {
+          setPropoMode("chat");
+          setPropoOpen(true);
+        }}
+        className="flex min-w-0 flex-1 items-center gap-3 rounded-2xl bg-secondary px-4 py-3.5 text-left transition hover:bg-muted active:scale-[0.99]"
+      >
+        <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-foreground text-background">
+          <Sparkles className="size-4" />
+        </span>
+        <span className="truncate text-[15px] font-medium text-muted-foreground">
+          Pídele algo a {agentName}…
+        </span>
+      </button>
+      <button
+        type="button"
+        aria-label={`Hablar con ${agentName}`}
+        onClick={() => {
+          setPropoMode("voice");
+          setPropoOpen(true);
+        }}
+        className="flex w-12 shrink-0 items-center justify-center rounded-2xl bg-foreground text-background transition active:scale-95"
+      >
+        <Mic className="size-[21px]" strokeWidth={1.9} />
+      </button>
+    </div>
+  );
+
+  const recentList = (
+    <div>
+      {recent.length === 0 ? (
+        <p className="px-5 py-6 text-center text-sm text-muted-foreground lg:px-4">
+          Aún no hay contactos.
+        </p>
+      ) : (
+        recent.map((c, i) => (
+          <Row
+            key={c.id}
+            onClick={() => navigate(`${base}/personas/${c.id}`)}
+            divider={i < recent.length - 1}
+            left={
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-secondary text-sm font-semibold text-foreground">
+                {initials(c.full_name)}
+              </span>
+            }
+            title={c.full_name}
+            sub={[c.phone, c.email].filter(Boolean).join(" · ") || "Sin contacto"}
+          />
+        ))
+      )}
+    </div>
+  );
+
+  // ---- Desktop dashboard ----
+  const desktop = (
+    <div className="mx-auto w-full max-w-7xl px-8 py-7">
+      <div className="flex items-center justify-between gap-3">
         <WorkspacePill label={tenantName} onClick={() => setWsOpen(true)} />
         <div className="flex items-center gap-2">
           <UfButton />
@@ -108,119 +220,141 @@ export function AdminHomePage() {
         </div>
       </div>
 
-      {/* On mobile these blocks stay a single flow column (wrappers are
-          display:contents). On desktop they reflow into a two-column bento. */}
-      <div className="contents lg:mt-2 lg:grid lg:grid-cols-12 lg:items-start lg:gap-6">
-        {/* Left: greeting + Propo command bar + "Tu día" panel */}
-        <div className="contents lg:col-span-4 lg:flex lg:flex-col lg:gap-5">
-          <h1 className="px-5 text-[25px] font-bold leading-tight tracking-tight text-foreground lg:px-0 lg:text-[32px]">
-            {greeting()}
-            {firstName ? `, ${firstName}` : ""}
-          </h1>
+      <h1 className="mt-6 text-[32px] font-bold leading-tight tracking-tight text-foreground">
+        {greeting()}
+        {firstName ? `, ${firstName}` : ""}
+      </h1>
 
-          {/* Propo command bar */}
-          {canPropo && (
-            <div className="flex gap-2.5 px-5 pt-4 pb-5 lg:px-0 lg:py-0">
-              <button
-                type="button"
-                onClick={() => {
-                  setPropoMode("chat");
-                  setPropoOpen(true);
-                }}
-                className="flex min-w-0 flex-1 items-center gap-3 rounded-2xl bg-secondary px-4 py-3.5 text-left transition active:scale-[0.99]"
-              >
-                <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-foreground text-background">
-                  <Sparkles className="size-4" />
-                </span>
-                <span className="truncate text-[15px] font-medium text-muted-foreground">
-                  Pídele algo a {agentName}…
-                </span>
-              </button>
-              <button
-                type="button"
-                aria-label={`Hablar con ${agentName}`}
-                onClick={() => {
-                  setPropoMode("voice");
-                  setPropoOpen(true);
-                }}
-                className="flex w-12 shrink-0 items-center justify-center rounded-2xl bg-foreground text-background transition active:scale-95"
-              >
-                <Mic className="size-[21px]" strokeWidth={1.9} />
-              </button>
-            </div>
-          )}
+      {canPropo && <div className="mt-5 max-w-2xl">{propoBar}</div>}
 
-          {/* "Tu día" — desktop-only summary panel */}
-          <div className="hidden lg:block">
-            <div className="rounded-2xl bg-secondary p-5">
-              <p className="text-sm font-semibold text-muted-foreground">Tu día</p>
-              <p className="mt-2 text-[15px] leading-relaxed text-foreground">
-                {recent.length > 0
-                  ? `Tenés ${(contacts ?? []).length} ${
-                      (contacts ?? []).length === 1 ? "persona" : "personas"
-                    } en tu CRM. Retomá el seguimiento desde abajo.`
-                  : "Empezá agregando personas a tu CRM para hacer seguimiento."}
-              </p>
-              {allow("crm") && (
-                <button
-                  type="button"
-                  onClick={() => navigate(`${base}/personas`)}
-                  className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-primary transition hover:underline"
-                >
-                  <Users className="size-4" strokeWidth={1.9} />
-                  Ver CRM
-                </button>
-              )}
+      {/* KPI strip */}
+      <div className="mt-7 grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-4">
+        <Kpi label="Personas en tu CRM" value={String((contacts ?? []).length)} icon={Users} />
+        <Kpi label="Eventos hoy" value={String(todayItems.length)} icon={CalendarDays} />
+        {allow("pendientes") && (
+          <Kpi
+            label="Pendientes por revisar"
+            value={String(pendingQuery.data?.pending_count ?? 0)}
+            icon={Inbox}
+          />
+        )}
+      </div>
+
+      {/* Main grid */}
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* Tu día */}
+        <section className="lg:col-span-2">
+          <SectionLabel action="Ver calendario" onAction={() => navigate(`${base}/calendario`)}>
+            Tu día · {format(today, "EEEE d 'de' MMMM", { locale: es })}
+          </SectionLabel>
+          <div className="mt-2 rounded-2xl border border-border">
+            {todayFeed.isLoading ? (
+              <p className="px-4 py-8 text-center text-sm text-muted-foreground">Cargando…</p>
+            ) : todayItems.length === 0 ? (
+              <div className="flex flex-col items-center gap-2 px-4 py-12 text-center">
+                <CalendarDays className="size-9 text-faint" strokeWidth={1.5} />
+                <p className="text-sm text-muted-foreground">Nada agendado para hoy.</p>
+              </div>
+            ) : (
+              todayItems.map((it, i) => {
+                const meta = TYPE_META[it.item_type];
+                return (
+                  <Row
+                    key={`${it.item_type}-${it.id}`}
+                    divider={i < todayItems.length - 1}
+                    left={
+                      <span className="w-12 shrink-0 text-[13px] font-semibold tabular-nums text-muted-foreground">
+                        {it.all_day || !it.start_at
+                          ? "Todo"
+                          : format(new Date(it.start_at), "HH:mm")}
+                      </span>
+                    }
+                    title={it.title ?? "Sin título"}
+                    right={<Pill tone={meta.tone}>{meta.label}</Pill>}
+                  />
+                );
+              })
+            )}
+          </div>
+        </section>
+
+        {/* Right column: quick actions + recent */}
+        <section className="flex flex-col gap-6">
+          <div>
+            <SectionLabel>Accesos rápidos</SectionLabel>
+            <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1">
+              {tiles.map((t) => (
+                <ServiceTile key={t.to} tile={t} onClick={() => navigate(t.to)} />
+              ))}
             </div>
           </div>
-        </div>
-
-        {/* Right: service tiles + recent personas */}
-        <div className="contents lg:col-span-8 lg:flex lg:flex-col lg:gap-6">
-          {/* Service tiles */}
-          <div className="grid grid-cols-4 gap-2.5 px-5 pb-6 lg:px-0 lg:pb-0">
-            {tiles.map((t) => (
-              <ServiceTile key={t.to} tile={t} onClick={() => navigate(t.to)} />
-            ))}
-          </div>
-
-          {/* Recent contacts */}
           {allow("crm") && (
-            <div className="contents lg:block lg:rounded-2xl lg:border lg:border-border lg:py-2">
+            <div>
               <SectionLabel action="Ver CRM" onAction={() => navigate(`${base}/personas`)}>
                 Personas recientes
               </SectionLabel>
-              <div className="mt-2">
-                {recent.length === 0 ? (
-                  <p className="px-5 py-6 text-center text-sm text-muted-foreground">
-                    Aún no hay contactos.
-                  </p>
-                ) : (
-                  recent.map((c, i) => (
-                    <Row
-                      key={c.id}
-                      onClick={() => navigate(`${base}/personas/${c.id}`)}
-                      divider={i < recent.length - 1}
-                      left={
-                        <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-secondary text-sm font-semibold text-foreground">
-                          {c.full_name
-                            .split(" ")
-                            .map((p) => p[0])
-                            .join("")
-                            .toUpperCase()
-                            .slice(0, 2)}
-                        </span>
-                      }
-                      title={c.full_name}
-                      sub={[c.phone, c.email].filter(Boolean).join(" · ") || "Sin contacto"}
-                    />
-                  ))
-                )}
-              </div>
+              <div className="mt-2 rounded-2xl border border-border">{recentList}</div>
             </div>
           )}
+        </section>
+      </div>
+    </div>
+  );
+
+  // ---- Mobile home (unchanged) ----
+  const mobile = (
+    <div className="mx-auto w-full max-w-2xl pb-6">
+      <div className="flex items-center justify-between px-5 pt-4 pb-3">
+        <WorkspacePill label={tenantName} onClick={() => setWsOpen(true)} />
+        <div className="flex items-center gap-2">
+          <UfButton />
+          <button
+            type="button"
+            aria-label="Notificaciones"
+            className="flex size-10 items-center justify-center rounded-full bg-secondary text-foreground transition active:scale-90"
+          >
+            <Bell className="size-[18px]" strokeWidth={1.9} />
+          </button>
         </div>
       </div>
+
+      <h1 className="px-5 text-[25px] font-bold leading-tight tracking-tight text-foreground">
+        {greeting()}
+        {firstName ? `, ${firstName}` : ""}
+      </h1>
+
+      {canPropo && <div className="px-5 pt-4 pb-5">{propoBar}</div>}
+
+      <div className="grid grid-cols-4 gap-2.5 px-5 pb-6">
+        {tiles.map((t) => (
+          <button
+            key={t.to}
+            type="button"
+            onClick={() => navigate(t.to)}
+            className="flex h-[88px] flex-col items-start justify-between rounded-2xl bg-secondary p-3 text-left transition active:scale-[0.97]"
+          >
+            <span className="flex size-9 items-center justify-center rounded-xl bg-background shadow-sm">
+              <t.icon className="size-[19px] text-foreground" strokeWidth={1.9} />
+            </span>
+            <span className="text-[13px] font-semibold text-foreground">{t.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {allow("crm") && (
+        <>
+          <SectionLabel action="Ver CRM" onAction={() => navigate(`${base}/personas`)}>
+            Personas recientes
+          </SectionLabel>
+          <div className="mt-2">{recentList}</div>
+        </>
+      )}
+    </div>
+  );
+
+  return (
+    <>
+      {isDesktop ? desktop : mobile}
 
       {/* Workspace switcher */}
       <BottomSheet
@@ -273,6 +407,6 @@ export function AdminHomePage() {
       {canPropo && propoOpen && (
         <AgentOverlay onClose={() => setPropoOpen(false)} initialMode={propoMode} />
       )}
-    </div>
+    </>
   );
 }
