@@ -22,7 +22,7 @@ router = APIRouter(prefix="/tenants", tags=["tenants"])
 def _hydrate(row: dict) -> TenantResponse:
     settings_json = row.get("settings") or {}
     settings = TenantSettings(
-        ai_assistant_name=settings_json.get("ai_assistant_name") or "Anita",
+        ai_assistant_name=settings_json.get("ai_assistant_name") or "Propo",
         default_paper_size=settings_json.get("default_paper_size") or "A4",
         brand_color=settings_json.get("brand_color") or None,
     )
