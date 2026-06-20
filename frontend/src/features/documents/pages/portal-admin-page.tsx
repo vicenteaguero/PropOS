@@ -10,6 +10,7 @@ import { EmptyState } from "@shared/components/empty-state/empty-state";
 import { PageLayout } from "@shared/components/page-layout";
 import { PageHeader } from "@shared/components/page-header";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useIsDesktop } from "@/hooks/use-mobile";
 import { useDeletePortal, usePortals } from "../hooks/use-portals";
 import { portalsApi } from "../api/portals-api";
 import { PortalFormDialog } from "../components/portal-form-dialog";
@@ -17,13 +18,15 @@ import { UploadsReview } from "../components/uploads-review";
 
 export function PortalAdminPage() {
   const navigate = useNavigate();
+  const isDesktop = useIsDesktop();
   const { data: portals, isLoading } = usePortals();
   const deletePortal = useDeletePortal();
   const [createOpen, setCreateOpen] = useState(false);
   const [qrOf, setQrOf] = useState<{ slug: string; title: string } | null>(null);
 
   return (
-    <PageLayout width="lg">
+    // Desktop fills the app surface; mobile keeps the capped reading column.
+    <PageLayout width={isDesktop ? "app" : "lg"}>
       <PageHeader
         title="Enlaces de subida anónima"
         description="Crea enlaces públicos para recibir documentos desde fuera del equipo."
@@ -54,7 +57,10 @@ export function PortalAdminPage() {
         />
       )}
 
-      <div className="space-y-4">
+      {/* Cards carry a variable-height uploads list, so desktop uses a CSS
+          masonry (columns) that packs them naturally instead of a rigid grid
+          with ragged row heights. Mobile stays a single stacked column. */}
+      <div className="space-y-4 lg:columns-2 lg:gap-4 lg:space-y-0 2xl:columns-3 lg:[&>*]:mb-4 lg:[&>*]:break-inside-avoid">
         {portals?.map((p) => {
           const url = portalsApi.publicUrl(p.slug);
           return (
