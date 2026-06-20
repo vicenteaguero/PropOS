@@ -93,8 +93,8 @@
   --accent-brand: hsl(var(--accent-hue) var(--accent-sat) 45%);
   --accent-brand-foreground: #ffffff;
 
-  /* Per-tenant surface tint: 0% = neutral (global); ThemeController raises it
-   * per workspace so every paper surface mixes toward the brand (mockup parity). */
+  /* Neutral base (global / no workspace). Real per-workspace theming is done by
+   * the [data-tenant="…"] palette blocks below; --tint stays 0% here. */
   --tint: 0%;
   --background: color-mix(in srgb, var(--accent-brand) var(--tint), #ffffff);
   --foreground: color-mix(in srgb, var(--accent-brand) var(--tint), #0a0a0a);
@@ -194,6 +194,89 @@
   --sidebar-accent-foreground: var(--foreground);
   --sidebar-border: color-mix(in srgb, var(--accent-brand) var(--tint), #262629);
   --sidebar-ring: var(--accent-brand);
+}
+
+/* ── Per-workspace palettes (mockup WS_THEMES). ThemeController sets the active
+ * tenant's slug on <html data-tenant="…">; each block restyles every surface with
+ * curated low-chroma warm/cool tones (white cards that pop) so the whole app reads
+ * as that brokerage's brand. The accent (--accent-brand) is injected separately by
+ * applyTenantAccent from settings.brand_color; *-foreground tokens inherit
+ * var(--foreground). Tenants without a block fall back to the neutral default. ── */
+
+/* Anaida — warm rosa */
+[data-tenant="anaida"] {
+  --background: #f9f6f4;
+  --foreground: #1c1816;
+  --card: #ffffff;
+  --popover: #ffffff;
+  --secondary: #f1e8e5;
+  --muted: #f6efec;
+  --muted-foreground: #8c817c;
+  --faint: #b6aba5;
+  --accent: #f1e8e5;
+  --modal: #ffffff;
+  --border: #ece2dd;
+  --line-strong: #e4d7d1;
+  --input: #ece2dd;
+  --sidebar: #f9f6f4;
+  --sidebar-accent: #f0d8da;
+  --sidebar-border: #ece2dd;
+}
+.dark[data-tenant="anaida"] {
+  --background: #1a1513;
+  --foreground: #f9f6f4;
+  --card: #241d1a;
+  --popover: #241d1a;
+  --secondary: #2c2420;
+  --muted: #332a25;
+  --muted-foreground: rgba(249, 246, 244, 0.62);
+  --faint: rgba(249, 246, 244, 0.34);
+  --accent: #2c2420;
+  --modal: #241d1a;
+  --border: #352b26;
+  --line-strong: #3f332d;
+  --input: #352b26;
+  --sidebar: #1a1513;
+  --sidebar-accent: #3a2a2c;
+  --sidebar-border: #352b26;
+}
+
+/* Ceter — verde */
+[data-tenant="ceter"] {
+  --background: #f4f7f5;
+  --foreground: #15211b;
+  --card: #ffffff;
+  --popover: #ffffff;
+  --secondary: #e8efea;
+  --muted: #eef4f0;
+  --muted-foreground: #7c887f;
+  --faint: #aab4ad;
+  --accent: #e8efea;
+  --modal: #ffffff;
+  --border: #e2eae5;
+  --line-strong: #d8e2dc;
+  --input: #e2eae5;
+  --sidebar: #f4f7f5;
+  --sidebar-accent: #dceae1;
+  --sidebar-border: #e2eae5;
+}
+.dark[data-tenant="ceter"] {
+  --background: #101a15;
+  --foreground: #eaf1ec;
+  --card: #16231c;
+  --popover: #16231c;
+  --secondary: #1b2c23;
+  --muted: #21342a;
+  --muted-foreground: rgba(234, 241, 236, 0.62);
+  --faint: rgba(234, 241, 236, 0.34);
+  --accent: #1b2c23;
+  --modal: #16231c;
+  --border: #243a30;
+  --line-strong: #2c463a;
+  --input: #243a30;
+  --sidebar: #101a15;
+  --sidebar-accent: #1e3329;
+  --sidebar-border: #243a30;
 }
 
 /* ── Dev-only palettes (testing). Dark-scoped; a non-default palette sets its
