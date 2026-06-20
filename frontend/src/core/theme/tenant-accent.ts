@@ -39,10 +39,6 @@ function readableForeground(hex: string): string {
 
 const HEX_RE = /^#?[0-9a-fA-F]{6}$/;
 
-// How strongly the active workspace tints every paper surface (mockup parity:
-// global = neutral, each tenant subtly warms/cools the whole UI toward its brand).
-const TENANT_TINT = "8%";
-
 interface AccentInput {
   seed?: string | null;
   color?: string | null;
@@ -58,7 +54,6 @@ export function applyTenantAccent({ seed, color }: AccentInput): void {
     style.setProperty("--accent-brand", hex);
     style.setProperty("--accent-brand-foreground", readableForeground(hex));
     style.removeProperty("--accent-hue");
-    style.setProperty("--tint", TENANT_TINT);
     return;
   }
 
@@ -67,7 +62,6 @@ export function applyTenantAccent({ seed, color }: AccentInput): void {
     style.removeProperty("--accent-brand");
     style.removeProperty("--accent-brand-foreground");
     style.setProperty("--accent-hue", String(hueForTenant(seed)));
-    style.setProperty("--tint", TENANT_TINT);
     return;
   }
 
@@ -81,5 +75,4 @@ export function clearTenantAccent(): void {
   style.removeProperty("--accent-hue");
   style.removeProperty("--accent-brand");
   style.removeProperty("--accent-brand-foreground");
-  style.removeProperty("--tint");
 }
