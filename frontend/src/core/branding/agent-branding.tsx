@@ -7,6 +7,7 @@ interface TenantBranding {
   agentName: string;
   defaultPaperSize: string;
   brandColor: string | null;
+  slug: string | null;
 }
 
 interface TenantResponse {
@@ -24,6 +25,7 @@ const DEFAULT: TenantBranding = {
   agentName: "Propo",
   defaultPaperSize: "A4",
   brandColor: null,
+  slug: null,
 };
 
 const AgentBrandingContext = createContext<TenantBranding>(DEFAULT);
@@ -43,6 +45,7 @@ export function AgentBrandingProvider({ children }: { children: ReactNode }) {
       agentName: query.data.settings.ai_assistant_name || DEFAULT.agentName,
       defaultPaperSize: query.data.settings.default_paper_size || DEFAULT.defaultPaperSize,
       brandColor: query.data.settings.brand_color || null,
+      slug: query.data.slug || null,
     };
   }, [query.data]);
 
