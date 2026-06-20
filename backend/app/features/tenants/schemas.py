@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 
 class TenantSettings(BaseModel):
-    ai_assistant_name: str = "Anita"
+    ai_assistant_name: str = "Propo"
     default_paper_size: str = "A4"
     # Optional hex brand color (e.g. "#2E6B52"); drives the UI accent per workspace.
     brand_color: str | None = None
