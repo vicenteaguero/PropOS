@@ -97,20 +97,20 @@
    * per workspace so every paper surface mixes toward the brand (mockup parity). */
   --tint: 0%;
   --background: color-mix(in srgb, var(--accent-brand) var(--tint), #ffffff);
-  --foreground: #0a0a0a;
+  --foreground: color-mix(in srgb, var(--accent-brand) var(--tint), #0a0a0a);
   --card: color-mix(in srgb, var(--accent-brand) var(--tint), #ffffff);
-  --card-foreground: #0a0a0a;
+  --card-foreground: var(--foreground);
   --popover: color-mix(in srgb, var(--accent-brand) var(--tint), #ffffff);
-  --popover-foreground: #0a0a0a;
+  --popover-foreground: var(--foreground);
   --primary: var(--accent-brand);
   --primary-foreground: var(--accent-brand-foreground);
   --secondary: color-mix(in srgb, var(--accent-brand) var(--tint), #f3f3f3);
-  --secondary-foreground: #0a0a0a;
+  --secondary-foreground: var(--foreground);
   --muted: color-mix(in srgb, var(--accent-brand) var(--tint), #f6f6f6);
-  --muted-foreground: #6e6e73;
-  --faint: #a0a0a6;
+  --muted-foreground: color-mix(in srgb, var(--accent-brand) var(--tint), #6e6e73);
+  --faint: color-mix(in srgb, var(--accent-brand) var(--tint), #a0a0a6);
   --accent: color-mix(in srgb, var(--accent-brand) var(--tint), #f1f1f2);
-  --accent-foreground: #0a0a0a;
+  --accent-foreground: var(--foreground);
   --destructive: #d5402b;
   --destructive-foreground: #ffffff;
   --success: #0e7c5a;
@@ -118,12 +118,12 @@
   --warning: #b0560f;
   --warning-foreground: #ffffff;
   --overlay: #000000;
-  --modal: #ffffff;
-  --modal-foreground: #0a0a0a;
+  --modal: color-mix(in srgb, var(--accent-brand) var(--tint), #ffffff);
+  --modal-foreground: var(--foreground);
   --modal-border: rgba(0, 0, 0, 0.08);
-  --border: #ececec;
-  --line-strong: #e2e2e2;
-  --input: #ececec;
+  --border: color-mix(in srgb, var(--accent-brand) var(--tint), #ececec);
+  --line-strong: color-mix(in srgb, var(--accent-brand) var(--tint), #e2e2e2);
+  --input: color-mix(in srgb, var(--accent-brand) var(--tint), #ececec);
   --ring: var(--accent-brand);
   --chart-1: var(--accent-brand);
   --chart-2: #f0d8da;
@@ -131,12 +131,12 @@
   --chart-4: #0a0a0a;
   --chart-5: #e2e2e2;
   --sidebar: color-mix(in srgb, var(--accent-brand) var(--tint), #fafafa);
-  --sidebar-foreground: #0a0a0a;
+  --sidebar-foreground: var(--foreground);
   --sidebar-primary: var(--accent-brand);
   --sidebar-primary-foreground: var(--accent-brand-foreground);
   --sidebar-accent: color-mix(in srgb, var(--accent-brand) 12%, transparent);
-  --sidebar-accent-foreground: #0a0a0a;
-  --sidebar-border: #ececec;
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: color-mix(in srgb, var(--accent-brand) var(--tint), #ececec);
   --sidebar-ring: var(--accent-brand);
 }
 
@@ -152,21 +152,21 @@
 
   --tint: 0%;
   --background: color-mix(in srgb, var(--accent-brand) var(--tint), #000000);
-  --foreground: #ffffff;
+  --foreground: color-mix(in srgb, var(--accent-brand) var(--tint), #ffffff);
   --card: color-mix(in srgb, var(--accent-brand) var(--tint), #141416);
-  --card-foreground: #ffffff;
+  --card-foreground: var(--foreground);
   --popover: color-mix(in srgb, var(--accent-brand) var(--tint), #141416);
-  --popover-foreground: #ffffff;
+  --popover-foreground: var(--foreground);
   --primary: var(--accent-brand);
   --primary-foreground: var(--accent-brand-foreground);
   --secondary: color-mix(in srgb, var(--accent-brand) var(--tint), #1b1b1e);
-  --secondary-foreground: #ffffff;
+  --secondary-foreground: var(--foreground);
   --muted: color-mix(in srgb, var(--accent-brand) var(--tint), #232327);
-  --muted-foreground: rgba(235, 235, 245, 0.6);
-  --faint: rgba(235, 235, 245, 0.34);
+  --muted-foreground: color-mix(in srgb, var(--accent-brand) var(--tint), rgba(235, 235, 245, 0.6));
+  --faint: color-mix(in srgb, var(--accent-brand) var(--tint), rgba(235, 235, 245, 0.34));
   /* neutral surface accent (hover/active bg) — tints toward the brand per tenant */
   --accent: color-mix(in srgb, var(--accent-brand) var(--tint), #1b1b1e);
-  --accent-foreground: #ffffff;
+  --accent-foreground: var(--foreground);
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
   --success: #34d399;
@@ -174,12 +174,12 @@
   --warning: #eab308;
   --warning-foreground: #1a1206;
   --overlay: #000000;
-  --modal: #1b1b1e;
-  --modal-foreground: #ffffff;
+  --modal: color-mix(in srgb, var(--accent-brand) var(--tint), #1b1b1e);
+  --modal-foreground: var(--foreground);
   --modal-border: color-mix(in srgb, var(--accent-brand) 20%, transparent);
-  --border: #262629;
-  --line-strong: #2e2e32;
-  --input: #262629;
+  --border: color-mix(in srgb, var(--accent-brand) var(--tint), #262629);
+  --line-strong: color-mix(in srgb, var(--accent-brand) var(--tint), #2e2e32);
+  --input: color-mix(in srgb, var(--accent-brand) var(--tint), #262629);
   --ring: var(--accent-brand);
   --chart-1: var(--accent-brand);
   --chart-2: #ffffff;
@@ -187,12 +187,12 @@
   --chart-4: #8e8e93;
   --chart-5: #232327;
   --sidebar: color-mix(in srgb, var(--accent-brand) var(--tint), #0a0a0a);
-  --sidebar-foreground: #ffffff;
+  --sidebar-foreground: var(--foreground);
   --sidebar-primary: var(--accent-brand);
   --sidebar-primary-foreground: var(--accent-brand-foreground);
   --sidebar-accent: color-mix(in srgb, var(--accent-brand) 12%, transparent);
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: #262629;
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: color-mix(in srgb, var(--accent-brand) var(--tint), #262629);
   --sidebar-ring: var(--accent-brand);
 }
 
