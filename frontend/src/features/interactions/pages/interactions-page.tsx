@@ -1,10 +1,15 @@
 import { PageLayout } from "@shared/components/page-layout";
 import { PageHeader } from "@shared/components/page-header";
+import { useIsDesktop } from "@/hooks/use-mobile";
 import { InteractionsList } from "../components/interactions-list";
 
 export function InteractionsPage() {
+  const isDesktop = useIsDesktop();
+
+  // Desktop: full-width app surface so the dense interactions table uses the
+  // whole width. Mobile: capped reading column (unchanged).
   return (
-    <PageLayout width="lg">
+    <PageLayout width={isDesktop ? "app" : "lg"}>
       <PageHeader
         title="Interacciones"
         description="Historial de visitas, llamadas, reuniones y mensajes con los stakeholders."
