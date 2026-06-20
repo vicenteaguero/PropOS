@@ -51,6 +51,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@shared/hooks/use-auth";
 import { useAgentName } from "@core/branding/agent-branding";
+import { hueForTenant } from "@core/theme/tenant-accent";
 import { PaletteSwitcher } from "@shared/components/palette-switcher/palette-switcher";
 import { ThemeToggle } from "@shared/components/theme-toggle/theme-toggle";
 import { apiRequest } from "@features/documents/api/http";
@@ -280,22 +281,28 @@ function NavItemRow({
 
 function TenantSwitcher() {
   const { memberships, user, switchTenant } = useAuth();
+  const current = memberships.find((m) => m.tenantId === user?.tenantId);
+  const dot = (seed: string | null | undefined) => `hsl(${hueForTenant(seed)} 60% 55%)`;
+
   if (!user || memberships.length <= 1) {
-    const current = memberships.find((m) => m.tenantId === user?.tenantId);
     return (
-      <div className="truncate text-[11px] text-muted-foreground">
-        {current?.tenantName ?? user?.fullName ?? ""}
+      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+        <span
+          className="size-2 shrink-0 rounded-full"
+          style={{ background: dot(user?.tenantId) }}
+        />
+        <span className="truncate">{current?.tenantName ?? user?.fullName ?? ""}</span>
       </div>
     );
   }
-  const current = memberships.find((m) => m.tenantId === user.tenantId);
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="flex w-full min-w-0 items-center gap-1 rounded text-left text-[11px] text-muted-foreground hover:text-foreground">
+      <DropdownMenuTrigger className="flex w-full min-w-0 items-center gap-1.5 rounded text-left text-[11px] text-muted-foreground hover:text-foreground">
+        <span className="size-2 shrink-0 rounded-full" style={{ background: dot(user.tenantId) }} />
         <span className="truncate">{current?.tenantName ?? "—"}</span>
         <ChevronsUpDown className="size-3 shrink-0" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="min-w-[200px]">
+      <DropdownMenuContent align="start" className="min-w-[220px]">
         {memberships.map((m) => (
           <DropdownMenuItem
             key={m.tenantId}
@@ -304,9 +311,13 @@ function TenantSwitcher() {
                 void switchTenant(m.tenantId);
               }
             }}
-            className="flex items-center justify-between gap-2"
+            className="flex items-center gap-2"
           >
-            <span className="truncate">{m.tenantName ?? m.tenantSlug ?? m.tenantId}</span>
+            <span
+              className="size-2.5 shrink-0 rounded-full"
+              style={{ background: dot(m.tenantId) }}
+            />
+            <span className="flex-1 truncate">{m.tenantName ?? m.tenantSlug ?? m.tenantId}</span>
             {m.tenantId === user.tenantId && <Check className="size-3.5" />}
           </DropdownMenuItem>
         ))}
