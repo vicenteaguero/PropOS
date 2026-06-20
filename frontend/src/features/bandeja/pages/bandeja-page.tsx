@@ -8,6 +8,7 @@ import { PageLayout } from "@shared/components/page-layout";
 import { PageHeader } from "@shared/components/page-header";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
 import { Row, Segmented, Pill, BrandMark, type PillTone } from "@shared/ui";
+import { useIsDesktop } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 
 type Channel = "whatsapp" | "email";
@@ -32,6 +33,12 @@ function fmt(ms: number): string {
   return new Date(ms).toLocaleDateString("es-CL", { day: "numeric", month: "short" });
 }
 
+const FILTERS = [
+  { id: "todos", label: "Todos" },
+  { id: "whatsapp", label: "WhatsApp" },
+  { id: "email", label: "Correos" },
+];
+
 /**
  * CRM "Bandeja" — a unified entry point that merges recent WhatsApp + Email
  * activity into one list and routes into the existing (separate) inboxes.
@@ -40,6 +47,7 @@ function fmt(ms: number): string {
 export function BandejaPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const isDesktop = useIsDesktop();
   const base = `/${(user?.role ?? "ADMIN").toLowerCase()}`;
   const [filter, setFilter] = useState<"todos" | Channel>("todos");
 
@@ -71,68 +79,101 @@ export function BandejaPage() {
   const isLoading = convos.isLoading || emails.isLoading;
   const error = convos.error || emails.error;
 
+  const goTo = (channel: Channel) =>
+    navigate(channel === "whatsapp" ? `${base}/client-inbox` : `${base}/correos`);
+
+  const loading = (
+    <div className="flex justify-center py-12">
+      <Loader2 className="size-5 animate-spin text-muted-foreground" />
+    </div>
+  );
+
+  const errorBox = (
+    <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+      No se pudo cargar la bandeja.
+      <Button
+        variant="ghost"
+        size="sm"
+        className="ml-2"
+        onClick={() => {
+          void convos.refetch();
+          void emails.refetch();
+        }}
+      >
+        Reintentar
+      </Button>
+    </div>
+  );
+
+  const empty = <EmptyState title="Bandeja vacía" description="No hay conversaciones recientes." />;
+
+  const rowFor = (it: InboxItem, divider: boolean) => (
+    <Row
+      key={it.key}
+      divider={divider}
+      onClick={() => goTo(it.channel)}
+      left={<BrandMark brand={it.channel === "whatsapp" ? "whatsapp" : "email"} size={40} />}
+      title={it.title}
+      sub={it.sub}
+      right={
+        <div className="flex flex-col items-end gap-1.5">
+          <Pill tone={STATUS_TONE[it.status] ?? "neutral"}>{it.status}</Pill>
+          <span className="text-xs text-faint">{fmt(it.time)}</span>
+        </div>
+      }
+    />
+  );
+
+  // Desktop: full-width app surface with inline channel filter and a dense
+  // two-column grid of channel rows wrapped in a single bordered card so the
+  // width is actually used (instead of a centered narrow column).
+  if (isDesktop) {
+    return (
+      <PageLayout width="app">
+        <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
+          <PageHeader
+            title="Bandeja"
+            description="WhatsApp y correos recientes en un solo lugar."
+            className="mb-0"
+          />
+          <Segmented
+            items={FILTERS}
+            value={filter}
+            onChange={(id) => setFilter(id as "todos" | Channel)}
+            className="shrink-0 border-b-0 px-0"
+          />
+        </div>
+
+        {isLoading && loading}
+        {error && errorBox}
+        {!isLoading && !error && shown.length === 0 && empty}
+        {!isLoading && !error && shown.length > 0 && (
+          <div className="overflow-hidden rounded-2xl border border-border bg-card xl:grid xl:grid-cols-2">
+            {shown.map((it, i) => rowFor(it, i < shown.length - 1))}
+          </div>
+        )}
+      </PageLayout>
+    );
+  }
+
+  // Mobile: unchanged — capped column, full-width segmented control, stacked rows.
   return (
     <PageLayout width="md">
       <PageHeader title="Bandeja" description="WhatsApp y correos recientes en un solo lugar." />
 
       <div className="mb-4">
         <Segmented
-          items={[
-            { id: "todos", label: "Todos" },
-            { id: "whatsapp", label: "WhatsApp" },
-            { id: "email", label: "Correos" },
-          ]}
+          items={FILTERS}
           value={filter}
           onChange={(id) => setFilter(id as "todos" | Channel)}
         />
       </div>
 
-      {isLoading && (
-        <div className="flex justify-center py-12">
-          <Loader2 className="size-5 animate-spin text-muted-foreground" />
-        </div>
-      )}
-
-      {error && (
-        <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
-          No se pudo cargar la bandeja.
-          <Button
-            variant="ghost"
-            size="sm"
-            className="ml-2"
-            onClick={() => {
-              void convos.refetch();
-              void emails.refetch();
-            }}
-          >
-            Reintentar
-          </Button>
-        </div>
-      )}
-
-      {!isLoading && !error && shown.length === 0 && (
-        <EmptyState title="Bandeja vacía" description="No hay conversaciones recientes." />
-      )}
-
+      {isLoading && loading}
+      {error && errorBox}
+      {!isLoading && !error && shown.length === 0 && empty}
       {!isLoading && !error && shown.length > 0 && (
-        <div>
-          {shown.map((it, i) => (
-            <Row
-              key={it.key}
-              divider={i < shown.length - 1}
-              onClick={() => navigate(it.channel === "whatsapp" ? `${base}/client-inbox` : `${base}/correos`)}
-              left={<BrandMark brand={it.channel === "whatsapp" ? "whatsapp" : "email"} size={40} />}
-              title={it.title}
-              sub={it.sub}
-              right={
-                <div className="flex flex-col items-end gap-1.5">
-                  <Pill tone={STATUS_TONE[it.status] ?? "neutral"}>{it.status}</Pill>
-                  <span className="text-xs text-faint">{fmt(it.time)}</span>
-                </div>
-              }
-            />
-          ))}
-        </div>
+        <div>{shown.map((it, i) => rowFor(it, i < shown.length - 1))}</div>
       )}
     </PageLayout>
   );
