@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { PageLayout } from "@shared/components/page-layout";
 import { PageHeader } from "@shared/components/page-header";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
-import { BottomSheet, Pill } from "@shared/ui";
+import { Pill, ResponsiveSheet } from "@shared/ui";
 import { cn } from "@/lib/utils";
 import { workflowsApi, type Workflow, type WorkflowStep } from "../api/workflows-api";
 
@@ -41,8 +41,9 @@ export function WorkflowsPage() {
   });
 
   return (
-    <PageLayout width="md" noPadding>
-      <div className="px-5 pt-4 pb-5">
+    // Mobile: capped centered column (unchanged). Desktop: full-bleed grid.
+    <PageLayout width="md" noPadding className="pb-6 lg:max-w-none">
+      <div className="px-5 pt-4 pb-5 lg:px-8 lg:pt-7">
         <PageHeader
           title="Workflows / Checklists"
           description="Procesos reutilizables (closing de venta, onboarding propietario, etc)."
@@ -63,7 +64,7 @@ export function WorkflowsPage() {
       )}
 
       {list.isError && (
-        <div className="mx-5 rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+        <div className="mx-5 rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive lg:mx-8">
           No se pudieron cargar los workflows.
           <Button variant="ghost" size="sm" className="ml-2" onClick={() => list.refetch()}>
             Reintentar
@@ -80,15 +81,17 @@ export function WorkflowsPage() {
         />
       )}
 
+      {/* Mobile: single stacked column. Desktop: masonry-ish multi-column grid
+          so reusable processes read as a dense board, not a narrow list. */}
       {!list.isLoading && !list.isError && (list.data?.length ?? 0) > 0 && (
-        <div className="space-y-3 px-5 pb-6">
+        <div className="space-y-3 px-5 pb-6 lg:columns-2 lg:gap-4 lg:space-y-0 lg:px-8 2xl:columns-3 lg:[&>*]:mb-4 lg:[&>*]:break-inside-avoid">
           {list.data?.map((w) => (
             <WorkflowCard key={w.id} workflow={w} />
           ))}
         </div>
       )}
 
-      <BottomSheet open={open} onOpenChange={setOpen} title="Nuevo workflow">
+      <ResponsiveSheet open={open} onOpenChange={setOpen} title="Nuevo workflow">
         <div className="mt-4 space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="wf-name">Nombre</Label>
@@ -128,7 +131,7 @@ export function WorkflowsPage() {
             </Button>
           </div>
         </div>
-      </BottomSheet>
+      </ResponsiveSheet>
     </PageLayout>
   );
 }
