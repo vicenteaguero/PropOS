@@ -144,6 +144,18 @@ export function AgentVoice({ chat, onSwitchToChat, onClose }: Props) {
     if (rec && rec.state === "recording") rec.stop();
   };
 
+  // Auto-start listening ~1s after entering voice mode: a brief "warming up"
+  // beat (pulsing mic) so it feels intentional rather than grabbing the mic the
+  // instant the overlay opens. Skipped when resuming an in-flight conversation.
+  const autoStarted = useRef(false);
+  useEffect(() => {
+    if (autoStarted.current) return;
+    if (chat.pendingAudio.length > 0 || chat.isStreaming) return;
+    autoStarted.current = true;
+    const id = setTimeout(() => void start(), 1000);
+    return () => clearTimeout(id);
+  }, [chat.pendingAudio.length, chat.isStreaming]);
+
   const lastAudio = chat.pendingAudio[chat.pendingAudio.length - 1];
   const transcript = lastAudio?.transcript ?? "";
   const transcribing = !!lastAudio?.transcribing;
