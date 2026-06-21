@@ -118,9 +118,10 @@ export function AgentOverlay({ onClose, initialMode = "chat" }: Props) {
               type="button"
               onClick={onClose}
               aria-label="Cerrar"
-              className="flex size-9 items-center justify-center rounded-full bg-white/10 transition active:scale-90"
+              className="flex h-9 items-center justify-center gap-1.5 rounded-full bg-white/20 px-3.5 transition hover:bg-white/30 active:scale-90 md:size-9 md:px-0"
             >
-              <X className="size-[18px]" />
+              <X className="size-5 md:size-[18px]" strokeWidth={2.2} />
+              <span className="text-sm font-semibold md:hidden">Cerrar</span>
             </button>
           </div>
         </div>
