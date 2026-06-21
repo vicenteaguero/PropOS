@@ -81,19 +81,15 @@ function ServiceTile({ tile, onClick }: { tile: Tile; onClick: () => void }) {
   );
 }
 
-/** Desktop KPI card. */
+/** Desktop KPI card — single-line: icon · value · label. */
 function Kpi({ label, value, icon: Icon }: { label: string; value: string; icon: LucideIcon }) {
   return (
-    <div className="flex items-center gap-3.5 rounded-2xl border border-border bg-card p-4">
-      <span className="flex size-11 items-center justify-center rounded-xl bg-secondary">
-        <Icon className="size-5 text-foreground" strokeWidth={1.8} />
+    <div className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3.5">
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-secondary">
+        <Icon className="size-[18px] text-foreground" strokeWidth={1.8} />
       </span>
-      <div className="min-w-0">
-        <div className="text-2xl font-bold leading-none tracking-tight text-foreground">
-          {value}
-        </div>
-        <div className="mt-1 truncate text-[13px] text-muted-foreground">{label}</div>
-      </div>
+      <span className="text-xl font-bold tracking-tight text-foreground">{value}</span>
+      <span className="min-w-0 flex-1 truncate text-[13px] text-muted-foreground">{label}</span>
     </div>
   );
 }
@@ -206,21 +202,7 @@ export function AdminHomePage() {
   // ---- Desktop dashboard ----
   const desktop = (
     <div className="mx-auto w-full max-w-7xl px-8 py-7">
-      <div className="flex items-center justify-between gap-3">
-        <WorkspacePill label={tenantName} onClick={() => setWsOpen(true)} />
-        <div className="flex items-center gap-2">
-          <UfButton />
-          <button
-            type="button"
-            aria-label="Notificaciones"
-            className="flex size-10 items-center justify-center rounded-full bg-secondary text-foreground transition active:scale-90"
-          >
-            <Bell className="size-[18px]" strokeWidth={1.9} />
-          </button>
-        </div>
-      </div>
-
-      <h1 className="mt-6 text-[32px] font-bold leading-tight tracking-tight text-foreground">
+      <h1 className="text-[32px] font-bold leading-tight tracking-tight text-foreground">
         {greeting()}
         {firstName ? `, ${firstName}` : ""}
       </h1>
@@ -228,7 +210,7 @@ export function AdminHomePage() {
       {canPropo && <div className="mt-5 max-w-2xl">{propoBar}</div>}
 
       {/* KPI strip */}
-      <div className="mt-7 grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="mt-7 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Kpi label="Personas en tu CRM" value={String((contacts ?? []).length)} icon={Users} />
         <Kpi label="Eventos hoy" value={String(todayItems.length)} icon={CalendarDays} />
         {allow("pendientes") && (
@@ -243,7 +225,7 @@ export function AdminHomePage() {
       {/* Main grid */}
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Tu día */}
-        <section className="lg:col-span-2">
+        <section className="flex flex-col gap-6 lg:col-span-2">
           <SectionLabel action="Ver calendario" onAction={() => navigate(`${base}/calendario`)}>
             Tu día · {format(today, "EEEE d 'de' MMMM", { locale: es })}
           </SectionLabel>
@@ -276,18 +258,20 @@ export function AdminHomePage() {
               })
             )}
           </div>
-        </section>
 
-        {/* Right column: quick actions + recent */}
-        <section className="flex flex-col gap-6">
+          {/* Accesos rápidos — two columns, inside Home */}
           <div>
             <SectionLabel>Accesos rápidos</SectionLabel>
-            <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1">
+            <div className="mt-2 grid grid-cols-2 gap-2.5">
               {tiles.map((t) => (
                 <ServiceTile key={t.to} tile={t} onClick={() => navigate(t.to)} />
               ))}
             </div>
           </div>
+        </section>
+
+        {/* Right column: recent people */}
+        <section>
           {allow("crm") && (
             <div>
               <SectionLabel action="Ver CRM" onAction={() => navigate(`${base}/personas`)}>
@@ -325,18 +309,20 @@ export function AdminHomePage() {
 
       {canPropo && <div className="px-5 pt-4 pb-5">{propoBar}</div>}
 
-      <div className="grid grid-cols-4 gap-2.5 px-5 pb-6">
+      <div className="grid grid-cols-3 gap-2.5 px-5 pb-6">
         {tiles.map((t) => (
           <button
             key={t.to}
             type="button"
             onClick={() => navigate(t.to)}
-            className="flex h-[88px] flex-col items-start justify-between rounded-2xl bg-secondary p-3 text-left transition active:scale-[0.97]"
+            className="flex aspect-square flex-col items-center justify-center gap-2 rounded-2xl bg-secondary p-2 text-center transition active:scale-[0.97]"
           >
-            <span className="flex size-9 items-center justify-center rounded-xl bg-background shadow-sm">
-              <t.icon className="size-[19px] text-foreground" strokeWidth={1.9} />
+            <span className="flex size-11 items-center justify-center rounded-xl bg-background shadow-sm">
+              <t.icon className="size-[21px] text-foreground" strokeWidth={1.9} />
             </span>
-            <span className="text-[13px] font-semibold text-foreground">{t.label}</span>
+            <span className="text-[12.5px] font-semibold leading-tight text-foreground">
+              {t.label}
+            </span>
           </button>
         ))}
       </div>
