@@ -67,7 +67,7 @@ export function AgentOverlay({ onClose, initialMode = "chat" }: Props) {
         className="absolute inset-0 hidden cursor-default md:block"
       />
       {/* Mobile: full-screen. Desktop: docked right-hand panel (slide-over). */}
-      <div className="dark relative flex h-full w-full flex-col overflow-hidden bg-[#0A0A0A] text-white duration-300 animate-in fade-in slide-in-from-bottom-4 md:w-[26rem] md:slide-in-from-right-4 md:border-l md:border-white/10 md:shadow-2xl">
+      <div className="dark relative flex h-full w-full flex-col overflow-hidden bg-[#0A0A0A] text-white duration-300 animate-in fade-in max-md:slide-in-from-bottom-4 md:w-[26rem] md:slide-in-from-right md:border-l md:border-white/10 md:shadow-2xl">
         {/* header */}
         <div
           className={`flex shrink-0 items-center justify-between px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-3 md:pt-4 ${
