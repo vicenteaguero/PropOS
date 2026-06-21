@@ -1,5 +1,6 @@
+import { useEffect, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
-import { LogOut } from "lucide-react";
+import { Check, LogOut, Moon, Sun } from "lucide-react";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -15,9 +16,13 @@ import { MobileBottomNav } from "@layouts/mobile-bottom-nav";
 import { CommandBar } from "@shared/components/command-bar/command-bar";
 import { useAuth } from "@shared/hooks/use-auth";
 import { useShellMode } from "@shared/hooks/use-shell-mode";
+import { useThemeMode } from "@core/theme/theme-provider";
+import { hueForTenant } from "@core/theme/tenant-accent";
 import { AgentFAB } from "@features/agent/components/agent-fab";
 import { InstallNudge } from "@shared/components/install-nudge/install-nudge";
 import { useUfDailyRefresh } from "@features/uf/hooks/use-uf";
+import { UfButton } from "@features/uf/components/uf-button";
+import { WorkspacePill } from "@shared/ui";
 
 function getInitials(name: string): string {
   return name
@@ -28,13 +33,83 @@ function getInitials(name: string): string {
     .slice(0, 2);
 }
 
+/** Top-bar workspace selector (always visible). Dropdown when >1 membership. */
+function HeaderWorkspaceSwitcher() {
+  const { memberships, user, switchTenant } = useAuth();
+  if (!user) return null;
+  const current = memberships.find((m) => m.tenantId === user.tenantId);
+  const label = current?.tenantName ?? current?.tenantSlug ?? "Workspace";
+
+  if (memberships.length <= 1) {
+    return <WorkspacePill label={label} className="cursor-default active:scale-100" />;
+  }
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <WorkspacePill label={label} />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="min-w-[240px]">
+        {memberships.map((m) => {
+          const active = m.tenantId === user.tenantId;
+          return (
+            <DropdownMenuItem
+              key={m.tenantId}
+              onSelect={() => {
+                if (!active) void switchTenant(m.tenantId);
+              }}
+              className="flex items-center gap-2.5"
+            >
+              <span
+                className="size-2.5 shrink-0 rounded-full"
+                style={{
+                  background: active ? "var(--accent-brand)" : `hsl(${hueForTenant(m.tenantId)} 55% 55%)`,
+                }}
+              />
+              <span className="flex-1 truncate">{m.tenantName ?? m.tenantSlug ?? m.tenantId}</span>
+              {active && <Check className="size-3.5 shrink-0" />}
+            </DropdownMenuItem>
+          );
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+/** Top-bar light/dark toggle (round icon button on the right). */
+function HeaderThemeToggle() {
+  const { theme, toggle } = useThemeMode();
+  const isDark = theme === "dark";
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      aria-label={isDark ? "Cambiar a claro" : "Cambiar a oscuro"}
+      className="flex size-9 items-center justify-center rounded-full text-foreground transition hover:bg-secondary active:scale-90"
+    >
+      {isDark ? <Moon className="size-[18px]" /> : <Sun className="size-[18px]" />}
+    </button>
+  );
+}
+
 export function AppLayout() {
   const { user, signOut } = useAuth();
   const shellMode = useShellMode();
   const location = useLocation();
-  // Inside Anita's own page the header's Anita launcher is redundant.
+  // Inside Propo's own page the header's Propo launcher is redundant.
   const isAgentRoute = location.pathname.endsWith("/agent");
   useUfDailyRefresh();
+
+  // Sidebar auto-collapses to the icon rail below xl and expands above; manual
+  // toggle (⌘B / trigger) still works until the next breakpoint crossing.
+  const [sidebarOpen, setSidebarOpen] = useState(() =>
+    typeof window === "undefined" ? true : window.matchMedia("(min-width: 1280px)").matches,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1280px)");
+    const onChange = (e: MediaQueryListEvent) => setSidebarOpen(e.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
 
   // Mobile broker shell: full-bleed content + floating bottom nav (Propo lives
   // in the center FAB, so no separate AgentFAB here).
@@ -51,14 +126,17 @@ export function AppLayout() {
   }
 
   return (
-    <SidebarProvider defaultOpen>
+    <SidebarProvider open={sidebarOpen} onOpenChange={setSidebarOpen}>
       <AppSidebar />
       <SidebarInset>
         <header className="sticky top-0 z-10 flex h-[var(--app-header-h)] shrink-0 items-center gap-2 border-b border-border bg-background px-4">
           <SidebarTrigger className="-ml-1" />
+          <HeaderWorkspaceSwitcher />
           <div className="flex flex-1 items-center justify-center px-2">
             {!isAgentRoute && <CommandBar />}
           </div>
+          <UfButton />
+          <HeaderThemeToggle />
           <div className="block">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
