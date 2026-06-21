@@ -60,10 +60,11 @@ function DialogContent({
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
-            className="absolute top-4 right-4 rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+            aria-label="Cerrar"
+            className="absolute top-3.5 right-3.5 flex size-9 items-center justify-center rounded-full bg-secondary text-foreground ring-offset-background transition hover:bg-muted focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden active:scale-90 disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-5"
           >
-            <XIcon />
-            <span className="sr-only">Close</span>
+            <XIcon strokeWidth={2.2} />
+            <span className="sr-only">Cerrar</span>
           </DialogPrimitive.Close>
         )}
       </DialogPrimitive.Content>
