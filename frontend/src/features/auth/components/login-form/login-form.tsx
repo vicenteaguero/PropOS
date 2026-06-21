@@ -11,12 +11,18 @@ import { toast } from "sonner";
 export function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [redirecting, setRedirecting] = useState(false);
   const { login, isLoading, error } = useLogin();
+  // Keep the button spinning from a successful sign-in until the auth state
+  // flips and the page redirects, so it never flashes back to idle.
+  const busy = isLoading || redirecting;
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const result = await login({ email, password });
-    if (!result) {
+    if (result) {
+      setRedirecting(true);
+    } else {
       toast.error("Error al iniciar sesión");
     }
   }
@@ -35,7 +41,7 @@ export function LoginForm() {
           placeholder="tu@email.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          disabled={isLoading}
+          disabled={busy}
           className="h-12 rounded-xl px-4 text-base"
         />
       </div>
@@ -52,15 +58,15 @@ export function LoginForm() {
           placeholder="••••••••"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          disabled={isLoading}
+          disabled={busy}
           className="h-12 rounded-xl px-4 text-base"
         />
       </div>
 
       {error && <AuthError message={`Error: ${error}`} />}
 
-      <Button type="submit" variant="ink" size="block" disabled={isLoading} className="mt-1">
-        {isLoading ? <LoadingSpinner size="sm" /> : "Iniciar sesión"}
+      <Button type="submit" variant="ink" size="block" disabled={busy} className="mt-1">
+        {busy ? <LoadingSpinner size="sm" /> : "Iniciar sesión"}
       </Button>
 
       <Link
