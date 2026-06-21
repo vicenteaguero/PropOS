@@ -161,6 +161,12 @@ export function useAuthProvider(): AuthContextValue {
       return;
     }
 
+    // Surface a loading state while we resolve profile/tenant on the first
+    // authenticated transition (initial load or sign-in) so the UI can show a
+    // skeleton instead of freezing on the login form. Skipped when an active
+    // session just refreshed its token (avoids a periodic skeleton flash).
+    setState((prev) => (prev.isAuthenticated ? prev : { ...prev, isLoading: true }));
+
     // 1) Memberships first — pick a default tenant before any tenant-scoped call.
     const memberships = await fetchMemberships();
     const stored = getActiveTenantId();
