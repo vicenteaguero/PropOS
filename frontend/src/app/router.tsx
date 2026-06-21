@@ -22,7 +22,6 @@ import { AgentChatPage } from "@features/agent/pages/agent-chat-page";
 import { AdminHomePage } from "@features/home/pages/admin-home-page";
 import { ClientInboxPage } from "@features/client-chat/pages/client-inbox-page";
 import { AdminPhonesPage } from "@features/admin-phones/pages/admin-phones-page";
-import { NovedadesPage } from "@features/novedades/pages/novedades-page";
 import { SettingsPage } from "@features/settings/pages/settings-page";
 import { PrivacyPage } from "@features/legal/pages/privacy-page";
 import { DataRightsPage } from "@features/legal/pages/data-rights-page";
@@ -263,7 +262,6 @@ export function AppRouter() {
             }
           />
           <Route path="timeline/:table/:id" element={<EntityTimelinePage />} />
-          {role === "ADMIN" && <Route path="novedades" element={<NovedadesPage />} />}
           {role === "ADMIN" && <Route path="settings" element={<SettingsPage />} />}
 
           {role === "ADMIN" && (
