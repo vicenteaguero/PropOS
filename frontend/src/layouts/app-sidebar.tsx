@@ -3,9 +3,7 @@ import {
   BarChart3,
   Building2,
   CalendarDays,
-  Check,
   CheckSquare,
-  ChevronsUpDown,
   FileText,
   Folder,
   Home,
@@ -15,7 +13,6 @@ import {
   Mail,
   MessageCircle,
   MessageSquare,
-  Newspaper,
   Phone,
   Receipt,
   Settings,
@@ -43,17 +40,8 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { useAuth } from "@shared/hooks/use-auth";
 import { useAgentName } from "@core/branding/agent-branding";
-import { hueForTenant } from "@core/theme/tenant-accent";
-import { PaletteSwitcher } from "@shared/components/palette-switcher/palette-switcher";
-import { ThemeToggle } from "@shared/components/theme-toggle/theme-toggle";
 import { apiRequest } from "@features/documents/api/http";
 import type { UserView } from "@shared/types/auth";
 
@@ -248,7 +236,7 @@ function usePendingCount(): number {
 }
 
 const ITEM_CLASS =
-  "h-8 !px-2 text-[13px] [&>svg]:size-[18px] group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:[&>svg]:size-5";
+  "h-8 !px-2 text-[13px] [&>svg]:size-[18px] group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:[&>svg]:size-5 group-data-[collapsible=icon]:[&>span]:hidden";
 
 function NavItemRow({
   item,
@@ -271,63 +259,16 @@ function NavItemRow({
           className={({ isActive }) => (isActive ? "bg-sidebar-accent text-sidebar-primary" : "")}
         >
           <Icon />
-          <span>{item.label}</span>
+          <span className="flex-1 truncate">{item.label}</span>
+          {item.devOnly && (
+            <span className="rounded bg-warning/20 px-1 py-0 text-[8px] font-bold uppercase tracking-wide text-warning">
+              dev
+            </span>
+          )}
         </NavLink>
       </SidebarMenuButton>
       {showBadge && <SidebarMenuBadge className="top-1">{pendingCount}</SidebarMenuBadge>}
     </SidebarMenuItem>
-  );
-}
-
-function TenantSwitcher() {
-  const { memberships, user, switchTenant } = useAuth();
-  const current = memberships.find((m) => m.tenantId === user?.tenantId);
-  const dot = (seed: string | null | undefined) => `hsl(${hueForTenant(seed)} 60% 55%)`;
-
-  if (!user || memberships.length <= 1) {
-    return (
-      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-        <span
-          className="size-2 shrink-0 rounded-full"
-          style={{ background: "var(--accent-brand)" }}
-        />
-        <span className="truncate">{current?.tenantName ?? user?.fullName ?? ""}</span>
-      </div>
-    );
-  }
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger className="flex w-full min-w-0 items-center gap-1.5 rounded text-left text-[11px] text-muted-foreground hover:text-foreground">
-        <span
-          className="size-2 shrink-0 rounded-full"
-          style={{ background: "var(--accent-brand)" }}
-        />
-        <span className="truncate">{current?.tenantName ?? "—"}</span>
-        <ChevronsUpDown className="size-3 shrink-0" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="min-w-[220px]">
-        {memberships.map((m) => (
-          <DropdownMenuItem
-            key={m.tenantId}
-            onSelect={() => {
-              if (m.tenantId !== user.tenantId) {
-                void switchTenant(m.tenantId);
-              }
-            }}
-            className="flex items-center gap-2"
-          >
-            <span
-              className="size-2.5 shrink-0 rounded-full"
-              style={{
-                background: m.tenantId === user.tenantId ? "var(--accent-brand)" : dot(m.tenantId),
-              }}
-            />
-            <span className="flex-1 truncate">{m.tenantName ?? m.tenantSlug ?? m.tenantId}</span>
-            {m.tenantId === user.tenantId && <Check className="size-3.5" />}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
   );
 }
 
@@ -356,16 +297,13 @@ export function AppSidebar() {
           alt="PropOS"
           className="size-8 shrink-0 rounded-lg ring-2 ring-primary/20 shadow-md shadow-primary/10"
         />
-        <div className="grid min-w-0 flex-1 text-left leading-tight group-data-[collapsible=icon]:hidden">
-          <div className="flex items-center gap-1.5">
-            <span className="truncate text-[13px] font-semibold">PropOS</span>
-            {isDevAdmin && (
-              <span className="rounded bg-warning/20 px-1.5 py-0 text-[9px] font-bold uppercase tracking-wide text-warning">
-                DEV
-              </span>
-            )}
-          </div>
-          <TenantSwitcher />
+        <div className="flex min-w-0 flex-1 items-center gap-1.5 text-left group-data-[collapsible=icon]:hidden">
+          <span className="truncate text-[15px] font-bold tracking-tight">PropOS</span>
+          {isDevAdmin && (
+            <span className="rounded bg-warning/20 px-1.5 py-0 text-[9px] font-bold uppercase tracking-wide text-warning">
+              DEV
+            </span>
+          )}
         </div>
       </SidebarHeader>
 
@@ -399,43 +337,21 @@ export function AppSidebar() {
       <SidebarFooter className="gap-0.5 border-t border-sidebar-border px-2 py-2">
         <SidebarMenu className="gap-0.5">
           {isAdminView && (
-            <>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Novedades" className={ITEM_CLASS}>
-                  <NavLink
-                    to="/admin/novedades"
-                    onClick={onNavigate}
-                    className={({ isActive }) =>
-                      isActive ? "bg-sidebar-accent text-sidebar-primary" : ""
-                    }
-                  >
-                    <Newspaper />
-                    <span>Novedades</span>
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Configuración" className={ITEM_CLASS}>
-                  <NavLink
-                    to="/admin/settings"
-                    onClick={onNavigate}
-                    className={({ isActive }) =>
-                      isActive ? "bg-sidebar-accent text-sidebar-primary" : ""
-                    }
-                  >
-                    <Settings />
-                    <span>Configuración</span>
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild tooltip="Configuración" className={ITEM_CLASS}>
+                <NavLink
+                  to="/admin/settings"
+                  onClick={onNavigate}
+                  className={({ isActive }) =>
+                    isActive ? "bg-sidebar-accent text-sidebar-primary" : ""
+                  }
+                >
+                  <Settings />
+                  <span className="flex-1 truncate">Configuración</span>
+                </NavLink>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
           )}
-          <SidebarMenuItem>
-            <ThemeToggle className={ITEM_CLASS} />
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <PaletteSwitcher className={ITEM_CLASS} />
-          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton
               onClick={() => {
@@ -446,7 +362,7 @@ export function AppSidebar() {
               className={ITEM_CLASS}
             >
               <LogOut />
-              <span>Cerrar sesión</span>
+              <span className="flex-1 truncate">Cerrar sesión</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
