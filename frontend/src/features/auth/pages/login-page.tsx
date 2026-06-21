@@ -1,13 +1,20 @@
 import { Navigate } from "react-router-dom";
 import { LoginForm } from "@features/auth/components/login-form/login-form";
 import { AuthShell } from "@features/auth/components/auth-shell/auth-shell";
+import { AppSkeleton } from "@shared/components/app-skeleton/app-skeleton";
 import { useAuth } from "@shared/hooks/use-auth";
 
 export function LoginPage() {
   const { isAuthenticated, isLoading } = useAuth();
 
-  if (!isLoading && isAuthenticated) {
+  if (isAuthenticated) {
     return <Navigate to="/" replace />;
+  }
+
+  // While the session/profile resolves (e.g. right after sign-in), show the app
+  // skeleton instead of leaving the login form frozen until the redirect.
+  if (isLoading) {
+    return <AppSkeleton />;
   }
 
   return (
