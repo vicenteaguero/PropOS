@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Delete, Loader2, TrendingDown, TrendingUp } from "lucide-react";
+import { Delete, Loader2, Minus, Plus, TrendingDown, TrendingUp } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { useUfToday, useUsdToday } from "../hooks/use-uf";
@@ -99,7 +99,11 @@ export function UfDialog({ open, onOpenChange }: Props) {
   const uf = useUfToday();
   const usd = useUsdToday();
   const [from, setFrom] = useState<Currency>("UF");
-  const [raw, setRaw] = useState("1");
+  // Calculator always starts at 0; the first digit press overwrites it.
+  const [raw, setRaw] = useState("0");
+  // Broker commission, default 4%, adjustable 1–10% in 0.25% steps.
+  const [pct, setPct] = useState(4);
+  const clampPct = (v: number) => Math.min(10, Math.max(1, Math.round(v * 4) / 4));
 
   const ufValue = uf.data?.today.value_clp ?? null;
   const usdValue = usd.data?.value_clp ?? null;
@@ -124,6 +128,10 @@ export function UfDialog({ open, onOpenChange }: Props) {
   };
 
   const targets = CURRENCIES.filter((c) => c !== from);
+
+  // Commission = pct of the entered amount (shown in the source currency + CLP).
+  const commissionFrom = amountNum != null ? (amountNum * pct) / 100 : null;
+  const commissionClp = amountInClp != null ? (amountInClp * pct) / 100 : null;
 
   const pushDigit = (d: string) => {
     setRaw((cur) => {
@@ -247,6 +255,47 @@ export function UfDialog({ open, onOpenChange }: Props) {
                   </div>
                 ))}
               </div>
+            </div>
+
+            <div className="rounded-2xl border border-border bg-background/40 p-4">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                  Comisión
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    aria-label="Bajar comisión"
+                    onClick={() => setPct((p) => clampPct(p - 0.25))}
+                    disabled={pct <= 1}
+                    className="flex size-7 items-center justify-center rounded-full bg-secondary text-secondary-foreground transition active:scale-90 disabled:opacity-40"
+                  >
+                    <Minus className="size-3.5" />
+                  </button>
+                  <span className="w-16 text-center text-base font-semibold tabular-nums text-primary">
+                    {PCT_FMT.format(pct)}%
+                  </span>
+                  <button
+                    type="button"
+                    aria-label="Subir comisión"
+                    onClick={() => setPct((p) => clampPct(p + 0.25))}
+                    disabled={pct >= 10}
+                    className="flex size-7 items-center justify-center rounded-full bg-secondary text-secondary-foreground transition active:scale-90 disabled:opacity-40"
+                  >
+                    <Plus className="size-3.5" />
+                  </button>
+                </div>
+              </div>
+              <div className="mt-3 flex items-baseline justify-between border-t border-border/60 pt-3 text-sm">
+                <span className="text-xs font-medium text-muted-foreground">{from}</span>
+                <span className="text-lg font-semibold">{formatCurrency(commissionFrom, from)}</span>
+              </div>
+              {from !== "CLP" && (
+                <div className="mt-1 flex items-baseline justify-between text-sm">
+                  <span className="text-xs font-medium text-muted-foreground">CLP</span>
+                  <span className="font-semibold">{formatCurrency(commissionClp, "CLP")}</span>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-3 gap-2">
