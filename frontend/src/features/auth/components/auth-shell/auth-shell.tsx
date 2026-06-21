@@ -15,6 +15,11 @@ export function AuthShell({ subtitle, children }: AuthShellProps) {
     <div className="flex min-h-dvh w-full items-center justify-center bg-background px-6 py-10">
       <div className="w-full max-w-sm">
         <div className="mb-10 flex flex-col items-center text-center">
+          <img
+            src="/icon.svg"
+            alt="PropOS"
+            className="mb-4 size-16 rounded-2xl shadow-lg shadow-primary/10 ring-1 ring-border"
+          />
           <h1 className="text-4xl font-bold tracking-tight text-foreground">PropOS</h1>
           <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>
         </div>
