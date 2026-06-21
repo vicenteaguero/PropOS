@@ -14,7 +14,17 @@ import {
   startOfWeek,
 } from "date-fns";
 import { es } from "date-fns/locale";
-import { CalendarDays, ChevronLeft, ChevronRight, Loader2, Plus } from "lucide-react";
+import {
+  Banknote,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  type LucideIcon,
+  ListTodo,
+  Loader2,
+  MapPin,
+  Plus,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,17 +46,28 @@ import { useCalendarFeed, useCreateEvent } from "../hooks/use-calendar";
 import type { CalendarItem } from "../api/calendar-api";
 import type { PillTone } from "@shared/ui";
 
-/** Per-type tone + dot color (semantic tokens only). */
-const TYPE_META: Record<CalendarItem["item_type"], { tone: PillTone; dot: string; label: string }> =
-  {
-    EVENT: { tone: "accent", dot: "var(--color-accent-brand)", label: "Evento" },
-    TASK: { tone: "warning", dot: "var(--color-warning)", label: "Tarea" },
-    PAYMENT: { tone: "success", dot: "var(--color-success)", label: "Pago" },
-  };
+/** Per-type tone + dot color + kind icon (semantic tokens only). */
+const TYPE_META: Record<
+  CalendarItem["item_type"],
+  { tone: PillTone; dot: string; label: string; icon: LucideIcon }
+> = {
+  EVENT: { tone: "accent", dot: "var(--color-accent-brand)", label: "Evento", icon: MapPin },
+  TASK: { tone: "warning", dot: "var(--color-warning)", label: "Tarea", icon: ListTodo },
+  PAYMENT: { tone: "success", dot: "var(--color-success)", label: "Pago", icon: Banknote },
+};
 
 const WEEKDAYS = ["L", "M", "M", "J", "V", "S", "D"];
 
 type View = "month" | "week" | "day";
+
+/** Mobile view order matches the mockup: Día / Semana / Mes. */
+type MobileView = "day" | "week" | "month";
+
+const MOBILE_VIEW_ITEMS: { id: MobileView; label: string }[] = [
+  { id: "day", label: "Día" },
+  { id: "week", label: "Semana" },
+  { id: "month", label: "Mes" },
+];
 
 const VIEW_ITEMS = [
   { id: "month", label: "Mes" },
@@ -65,6 +86,20 @@ function dayKey(d: Date): string {
 function timeLabel(it: CalendarItem): string {
   if (it.all_day || !it.start_at) return "Todo";
   return format(new Date(it.start_at), "HH:mm");
+}
+
+/** Compact duration shown under the time (e.g. "1h", "45 min", "1h 30") or "Todo". */
+function durationLabel(it: CalendarItem): string {
+  if (it.all_day || !it.start_at) return "Todo";
+  if (!it.end_at) return "1h";
+  const minutes = Math.round(
+    (new Date(it.end_at).getTime() - new Date(it.start_at).getTime()) / 60000,
+  );
+  if (minutes <= 0) return "1h";
+  if (minutes < 60) return `${minutes} min`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m === 0 ? `${h}h` : `${h}h ${m}`;
 }
 
 /** Minutes from midnight for a timed item (0 when missing). */
@@ -86,6 +121,8 @@ function durationPx(it: CalendarItem): number {
 export function CalendarPage() {
   const isDesktop = useIsDesktop();
   const [view, setView] = useState<View>("month");
+  // Mobile drives Día/Semana/Mes independently from the desktop time-grid view.
+  const [mobileView, setMobileView] = useState<MobileView>("day");
   const [cursor, setCursor] = useState(() => new Date());
   const [selected, setSelected] = useState(() => new Date());
   const [open, setOpen] = useState(false);
@@ -109,10 +146,11 @@ export function CalendarPage() {
     setView(v);
   };
 
-  // Mobile is locked to the month grid regardless of the (desktop-only) toggle.
+  // Desktop drives the time-grid / month-grid view; mobile has its own
+  // `mobileView` state, so the desktop view is parked on month off-desktop.
   const activeView: View = isDesktop ? view : "month";
 
-  // Visible range drives both the query window and what we render.
+  // Desktop visible range drives the desktop time-grid / month-grid.
   const { rangeStart, rangeEnd, gridDays } = useMemo(() => {
     if (activeView === "day") {
       const start = startOfDay(cursor);
@@ -137,9 +175,46 @@ export function CalendarPage() {
     };
   }, [activeView, cursor]);
 
+  // Mobile range is anchored on `selected` and driven by the mobile view.
+  // `weekDays` always covers the selected week (the day-strip); `monthDays`
+  // covers the month grid for the Mes view.
+  const {
+    mobileRangeStart,
+    mobileRangeEnd,
+    weekDays,
+    monthDays,
+  } = useMemo(() => {
+    const weekStart = startOfWeek(selected, { weekStartsOn: 1 });
+    const weekEnd = endOfWeek(selected, { weekStartsOn: 1 });
+    const week = eachDayOfInterval({ start: weekStart, end: weekEnd });
+    const monthGridStart = startOfWeek(startOfMonth(selected), { weekStartsOn: 1 });
+    const monthGridEnd = endOfWeek(endOfMonth(selected), { weekStartsOn: 1 });
+    const month = eachDayOfInterval({ start: monthGridStart, end: monthGridEnd });
+    // Range must cover whatever the active mobile view renders.
+    const start = mobileView === "month" ? monthGridStart : weekStart;
+    const end = mobileView === "month" ? addDays(monthGridEnd, 1) : addDays(weekEnd, 1);
+    return {
+      mobileRangeStart: start,
+      mobileRangeEnd: end,
+      weekDays: week,
+      monthDays: month,
+    };
+  }, [selected, mobileView]);
+
+  // Both the mobile and desktop trees stay mounted (toggled via CSS), so the
+  // single query window must span the union of both ranges.
+  const queryStart = useMemo(
+    () => (rangeStart < mobileRangeStart ? rangeStart : mobileRangeStart),
+    [rangeStart, mobileRangeStart],
+  );
+  const queryEnd = useMemo(
+    () => (rangeEnd > mobileRangeEnd ? rangeEnd : mobileRangeEnd),
+    [rangeEnd, mobileRangeEnd],
+  );
+
   const { data, isLoading, error, refetch } = useCalendarFeed(
-    rangeStart.toISOString(),
-    rangeEnd.toISOString(),
+    queryStart.toISOString(),
+    queryEnd.toISOString(),
   );
   const create = useCreateEvent();
 
@@ -160,8 +235,17 @@ export function CalendarPage() {
   const selectedKey = dayKey(selected);
   const selectedItems = itemsByDay.get(selectedKey) ?? [];
 
-  // Period label adapts to the active view.
+  // Period label adapts to the active view. On mobile it follows `selected`
+  // and the mobile view; on desktop it follows `cursor` and the desktop view.
   const periodLabel = useMemo(() => {
+    if (!isDesktop) {
+      if (mobileView === "month") return format(selected, "MMMM yyyy", { locale: es });
+      const s = startOfWeek(selected, { weekStartsOn: 1 });
+      const e = endOfWeek(selected, { weekStartsOn: 1 });
+      return isSameMonth(s, e)
+        ? `${format(s, "d", { locale: es })}–${format(e, "d 'de' MMMM", { locale: es })}`
+        : `${format(s, "d MMM", { locale: es })} – ${format(e, "d MMM", { locale: es })}`;
+    }
     if (activeView === "day") return format(cursor, "EEEE d 'de' MMMM", { locale: es });
     if (activeView === "week") {
       const s = startOfWeek(cursor, { weekStartsOn: 1 });
@@ -171,9 +255,18 @@ export function CalendarPage() {
         : `${format(s, "d MMM", { locale: es })} – ${format(e, "d MMM", { locale: es })}`;
     }
     return format(cursor, "MMMM yyyy", { locale: es });
-  }, [activeView, cursor]);
+  }, [isDesktop, mobileView, selected, activeView, cursor]);
 
   const step = (dir: 1 | -1) => {
+    if (!isDesktop) {
+      // Mobile steps the selected day by day/week/month.
+      setSelected((d) => {
+        if (mobileView === "day") return addDays(d, dir);
+        if (mobileView === "week") return addWeeks(d, dir);
+        return addMonths(d, dir);
+      });
+      return;
+    }
     setCursor((c) => {
       if (activeView === "day") return addDays(c, dir);
       if (activeView === "week") return addWeeks(c, dir);
@@ -266,31 +359,20 @@ export function CalendarPage() {
           )}
         </div>
 
-        {/* Body. Mobile: month grid + day agenda (unchanged). Desktop: per-view. */}
-        {/* ---- Mobile (always month) ---- */}
+        {/* Body. Mobile: Día / Semana / Mes (rebuilt). Desktop: per-view. */}
+        {/* ---- Mobile ---- */}
         <div className="lg:hidden">
-          <MonthGrid
-            days={gridDays}
-            cursor={cursor}
+          <MobileCalendar
+            mobileView={mobileView}
+            onViewChange={setMobileView}
             selected={selected}
-            itemsByDay={itemsByDay}
             onSelect={setSelected}
+            weekDays={weekDays}
+            monthDays={monthDays}
+            itemsByDay={itemsByDay}
+            isLoading={isLoading}
+            onOpen={setDetail}
           />
-
-          {isLoading && (
-            <div className="mt-6 flex justify-center">
-              <Loader2 className="size-5 animate-spin text-muted-foreground" />
-            </div>
-          )}
-
-          {!isLoading && (
-            <div className="mt-6 pb-6">
-              <SectionLabel className="mb-2 capitalize">
-                {format(selected, "EEEE d 'de' MMMM", { locale: es })}
-              </SectionLabel>
-              <DayAgenda items={selectedItems} onOpen={setDetail} />
-            </div>
-          )}
         </div>
 
         {/* ---- Desktop ---- */}
@@ -678,6 +760,345 @@ function TimeGrid({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Mobile calendar (rebuilt to match the reference mockup)            */
+/* ------------------------------------------------------------------ */
+
+/** "Hoy" / "Mañana" / capitalized weekday for a day heading. */
+function dayHeading(day: Date): string {
+  const today = startOfDay(new Date());
+  if (isSameDay(day, today)) return "Hoy";
+  if (isSameDay(day, addDays(today, 1))) return "Mañana";
+  const w = format(day, "EEEE", { locale: es });
+  return w.charAt(0).toUpperCase() + w.slice(1);
+}
+
+/** Full-width Día / Semana / Mes pill switch (active = filled ink). */
+function MobileViewSwitch({
+  value,
+  onChange,
+}: {
+  value: MobileView;
+  onChange: (v: MobileView) => void;
+}) {
+  return (
+    <div className="flex gap-2 px-5 pb-4">
+      {MOBILE_VIEW_ITEMS.map((it) => {
+        const active = it.id === value;
+        return (
+          <button
+            key={it.id}
+            type="button"
+            onClick={() => onChange(it.id)}
+            className={cn(
+              "flex-1 rounded-full py-2.5 text-sm font-semibold transition active:scale-[0.98]",
+              active
+                ? "bg-foreground text-background"
+                : "border border-line-strong text-foreground hover:bg-secondary",
+            )}
+          >
+            {it.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Horizontal week day-strip: weekday letter + day number + event dot. */
+function WeekStrip({
+  days,
+  selected,
+  itemsByDay,
+  onSelect,
+}: {
+  days: Date[];
+  selected: Date;
+  itemsByDay: Map<string, CalendarItem[]>;
+  onSelect: (d: Date) => void;
+}) {
+  return (
+    <div className="flex gap-1.5 px-4 pb-4">
+      {days.map((day, i) => {
+        const isSelected = isSameDay(day, selected);
+        const isToday = isSameDay(day, new Date());
+        const has = (itemsByDay.get(dayKey(day)) ?? []).length > 0;
+        return (
+          <button
+            key={dayKey(day)}
+            type="button"
+            onClick={() => onSelect(day)}
+            className={cn(
+              "flex flex-1 flex-col items-center gap-1 rounded-2xl py-2 transition active:scale-[0.97]",
+              isSelected ? "bg-foreground" : "hover:bg-secondary",
+            )}
+          >
+            <span
+              className={cn(
+                "text-[11px] font-semibold",
+                isSelected ? "text-background/60" : "text-faint",
+              )}
+            >
+              {WEEKDAYS[i]}
+            </span>
+            <span
+              className={cn(
+                "text-base font-bold tabular-nums",
+                isSelected
+                  ? "text-background"
+                  : isToday
+                    ? "text-primary"
+                    : "text-foreground",
+              )}
+            >
+              {format(day, "d")}
+            </span>
+            <span
+              className="size-1 rounded-full"
+              style={{
+                background: has
+                  ? isSelected
+                    ? "var(--color-background)"
+                    : "var(--color-accent-brand)"
+                  : "transparent",
+              }}
+            />
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Rich event row: time + duration, colored bar, kind icon + label, title, meta. */
+function EventRow({
+  item,
+  onOpen,
+}: {
+  item: CalendarItem;
+  onOpen: (it: CalendarItem) => void;
+}) {
+  const meta = TYPE_META[item.item_type];
+  const KindIcon = meta.icon;
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(item)}
+      className="flex w-full gap-3 px-5 py-3 text-left transition active:scale-[0.99] hover:bg-secondary/50"
+    >
+      {/* Time + duration */}
+      <div className="w-[46px] shrink-0 text-right">
+        <div className="text-[15px] font-bold tabular-nums text-foreground">{timeLabel(item)}</div>
+        <div className="mt-0.5 text-[11px] text-faint">{durationLabel(item)}</div>
+      </div>
+      {/* Colored vertical bar */}
+      <span className="w-[3px] shrink-0 rounded-full" style={{ background: meta.dot }} />
+      {/* Content */}
+      <div className="min-w-0 flex-1">
+        <div className="mb-0.5 flex items-center gap-1.5">
+          <KindIcon className="size-3.5 shrink-0" strokeWidth={2} style={{ color: meta.dot }} />
+          <span
+            className="text-[11px] font-bold uppercase tracking-wide"
+            style={{ color: meta.dot }}
+          >
+            {meta.label}
+          </span>
+        </div>
+        <div className="text-[15px] font-semibold leading-snug text-foreground">
+          {item.title ?? "Sin título"}
+        </div>
+        {item.status && (
+          <div className="mt-1.5 text-[12.5px] capitalize text-muted-foreground">
+            {item.status.toLowerCase()}
+          </div>
+        )}
+      </div>
+    </button>
+  );
+}
+
+/** Empty state for a day/week with no events. */
+function MobileEmpty({ label }: { label: string }) {
+  return (
+    <div className="flex flex-col items-center gap-2 px-5 py-12 text-center">
+      <CalendarDays className="size-9 text-faint" strokeWidth={1.5} />
+      <p className="text-sm text-muted-foreground">{label}</p>
+    </div>
+  );
+}
+
+/** 7-col month grid (aspect-square cells, today filled, event dots). */
+function MobileMonthGrid({
+  days,
+  selected,
+  itemsByDay,
+  onSelect,
+}: {
+  days: Date[];
+  selected: Date;
+  itemsByDay: Map<string, CalendarItem[]>;
+  onSelect: (d: Date) => void;
+}) {
+  return (
+    <div className="px-4 pb-6">
+      <div className="mb-1 grid grid-cols-7 gap-1">
+        {WEEKDAYS.map((d, i) => (
+          <div key={i} className="py-1 text-center text-[11px] font-bold text-faint">
+            {d}
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-7 gap-1">
+        {days.map((day) => {
+          const items = itemsByDay.get(dayKey(day)) ?? [];
+          const inMonth = isSameMonth(day, selected);
+          const isToday = isSameDay(day, new Date());
+          const isSelected = isSameDay(day, selected);
+          const filled = isSelected || (isToday && !isSelected);
+          return (
+            <button
+              key={dayKey(day)}
+              type="button"
+              onClick={() => onSelect(day)}
+              className={cn(
+                "flex aspect-square flex-col items-center justify-center gap-1 rounded-xl transition active:scale-[0.95]",
+                filled ? "bg-foreground" : "hover:bg-secondary",
+              )}
+            >
+              <span
+                className={cn(
+                  "text-sm tabular-nums",
+                  filled
+                    ? "font-bold text-background"
+                    : inMonth
+                      ? "font-medium text-foreground"
+                      : "font-medium text-faint",
+                )}
+              >
+                {format(day, "d")}
+              </span>
+              <span
+                className="size-1.5 rounded-full"
+                style={{
+                  background:
+                    items.length > 0
+                      ? filled
+                        ? "var(--color-background)"
+                        : "var(--color-accent-brand)"
+                      : "transparent",
+                }}
+              />
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/** Mobile calendar orchestrator: view switch + week strip + Día/Semana/Mes body. */
+function MobileCalendar({
+  mobileView,
+  onViewChange,
+  selected,
+  onSelect,
+  weekDays,
+  monthDays,
+  itemsByDay,
+  isLoading,
+  onOpen,
+}: {
+  mobileView: MobileView;
+  onViewChange: (v: MobileView) => void;
+  selected: Date;
+  onSelect: (d: Date) => void;
+  weekDays: Date[];
+  monthDays: Date[];
+  itemsByDay: Map<string, CalendarItem[]>;
+  isLoading: boolean;
+  onOpen: (it: CalendarItem) => void;
+}) {
+  // Tapping a month-grid day selects it and drops back into the Día view.
+  const selectFromMonth = (d: Date) => {
+    onSelect(d);
+    onViewChange("day");
+  };
+
+  const selectedItems = itemsByDay.get(dayKey(selected)) ?? [];
+
+  return (
+    <div className="pb-6">
+      <MobileViewSwitch value={mobileView} onChange={onViewChange} />
+
+      {mobileView !== "month" && (
+        <WeekStrip
+          days={weekDays}
+          selected={selected}
+          itemsByDay={itemsByDay}
+          onSelect={onSelect}
+        />
+      )}
+
+      {isLoading ? (
+        <div className="flex justify-center py-12">
+          <Loader2 className="size-5 animate-spin text-muted-foreground" />
+        </div>
+      ) : mobileView === "day" ? (
+        <div>
+          <div className="flex items-baseline gap-2 px-5 pb-2 pt-1">
+            <span className="text-lg font-bold tracking-tight text-foreground">
+              {dayHeading(selected)}
+            </span>
+            <span className="text-[13px] text-faint">
+              {format(selected, "d 'de' MMMM", { locale: es })}
+            </span>
+          </div>
+          {selectedItems.length ? (
+            selectedItems.map((it) => (
+              <EventRow key={`${it.item_type}-${it.id}`} item={it} onOpen={onOpen} />
+            ))
+          ) : (
+            <MobileEmpty label="Sin eventos este día." />
+          )}
+        </div>
+      ) : mobileView === "week" ? (
+        <div>
+          {weekDays.some((d) => (itemsByDay.get(dayKey(d)) ?? []).length > 0) ? (
+            weekDays.map((day) => {
+              const items = itemsByDay.get(dayKey(day)) ?? [];
+              if (!items.length) return null;
+              return (
+                <div key={dayKey(day)} className="mb-1">
+                  <div className="flex items-baseline gap-2 px-5 pb-1 pt-3">
+                    <span className="text-base font-bold tracking-tight text-foreground">
+                      {dayHeading(day)}
+                    </span>
+                    <span className="text-[13px] text-faint">
+                      {format(day, "EEE d MMM", { locale: es })}
+                    </span>
+                  </div>
+                  {items.map((it) => (
+                    <EventRow key={`${it.item_type}-${it.id}`} item={it} onOpen={onOpen} />
+                  ))}
+                </div>
+              );
+            })
+          ) : (
+            <MobileEmpty label="Sin eventos esta semana." />
+          )}
+        </div>
+      ) : (
+        <MobileMonthGrid
+          days={monthDays}
+          selected={selected}
+          itemsByDay={itemsByDay}
+          onSelect={selectFromMonth}
+        />
+      )}
     </div>
   );
 }
