@@ -6,7 +6,6 @@ import {
   Home,
   LogOut,
   Moon,
-  Newspaper,
   Settings,
   Sparkles,
   Sun,
@@ -174,18 +173,7 @@ export function MobileBottomNav() {
             onClick={toggle}
           />
           {isAdminView && (
-            <>
-              <SheetItem
-                icon={Settings}
-                label="Configuración"
-                onClick={() => go("/admin/settings")}
-              />
-              <SheetItem
-                icon={Newspaper}
-                label="Novedades"
-                onClick={() => go("/admin/novedades")}
-              />
-            </>
+            <SheetItem icon={Settings} label="Configuración" onClick={() => go("/admin/settings")} />
           )}
         </div>
 
