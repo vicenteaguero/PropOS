@@ -6,7 +6,7 @@ import { AuthSetupPage } from "@features/auth/pages/auth-setup-page";
 import { ForgotPasswordPage } from "@features/auth/pages/forgot-password-page";
 import { AppLayout } from "@layouts/app-layout";
 import { EmptyDashboard } from "@shared/components/empty-dashboard/empty-dashboard";
-import { LoadingSpinner } from "@shared/components/loading-spinner/loading-spinner";
+import { AppSkeleton } from "@shared/components/app-skeleton/app-skeleton";
 import { DocumentsPage } from "@features/documents/pages/documents-page";
 import { DocumentDetailPage } from "@features/documents/pages/document-detail-page";
 import { DocumentEditorPage } from "@features/documents/pages/document-editor-page";
@@ -59,11 +59,7 @@ const VIEW_HOME_PATHS: Record<UserView, string> = {
 function ViewRedirect() {
   const { user, isLoading } = useAuth();
   if (isLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        <LoadingSpinner size="lg" />
-      </div>
-    );
+    return <AppSkeleton />;
   }
   if (!user) return <Navigate to="/login" replace />;
   return <Navigate to={VIEW_HOME_PATHS[user.view] ?? "/admin"} replace />;
