@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@shared/hooks/use-auth";
-import { LoadingSpinner } from "@shared/components/loading-spinner/loading-spinner";
+import { AppSkeleton } from "@shared/components/app-skeleton/app-skeleton";
 import type { UserRole, UserView } from "@shared/types/auth";
 
 interface ProtectedRouteProps {
@@ -31,11 +31,7 @@ export function ProtectedRoute({
   const { isAuthenticated, isLoading, user } = useAuth();
 
   if (isLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        <LoadingSpinner size="lg" />
-      </div>
-    );
+    return <AppSkeleton />;
   }
 
   if (!isAuthenticated) {
