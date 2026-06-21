@@ -189,30 +189,36 @@ export function UfDialog({ open, onOpenChange }: Props) {
         ) : (
           <div className="space-y-3 px-4 pb-4">
             <div className="rounded-2xl border border-border bg-background/40 p-4">
-              <div className="flex items-baseline justify-between">
-                <p className="text-xs text-muted-foreground">
-                  {dateStr
-                    ? new Date(dateStr).toLocaleDateString("es-CL", {
-                        weekday: "long",
-                        day: "numeric",
-                        month: "long",
-                      })
-                    : "—"}
-                </p>
-                <DeltaBadge value={uf.data?.month_delta_pct ?? null} />
-              </div>
-              <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
-                <div className="flex items-center justify-between rounded-md bg-muted/40 px-2 py-1">
-                  <span className="font-medium text-primary">UF</span>
-                  <span className="text-muted-foreground">
-                    {ufValue != null ? `$${CLP_FMT.format(Math.round(ufValue))}` : "—"}
+              <p className="text-xs text-muted-foreground">
+                {dateStr
+                  ? new Date(dateStr).toLocaleDateString("es-CL", {
+                      weekday: "long",
+                      day: "numeric",
+                      month: "long",
+                    })
+                  : "—"}
+              </p>
+              <div className="mt-2.5 space-y-1.5">
+                <div className="flex items-center justify-between gap-2 rounded-md bg-muted/40 px-2.5 py-1.5">
+                  <span className="flex items-baseline gap-2">
+                    <span className="text-sm font-semibold text-primary">UF</span>
+                    <span className="text-sm text-muted-foreground">
+                      {ufValue != null ? `$${CLP_FMT.format(Math.round(ufValue))}` : "—"}
+                    </span>
+                  </span>
+                  <span className="flex items-center gap-1.5" title="Variación de la UF este mes">
+                    <span className="text-[10px] uppercase tracking-wide text-faint">mes</span>
+                    <DeltaBadge value={uf.data?.month_delta_pct ?? null} />
                   </span>
                 </div>
-                <div className="flex items-center justify-between rounded-md bg-muted/40 px-2 py-1">
-                  <span className="font-medium text-primary">USD</span>
-                  <span className="text-muted-foreground">
-                    {usdValue != null ? `$${CLP_FMT.format(Math.round(usdValue))}` : "—"}
+                <div className="flex items-center justify-between gap-2 rounded-md bg-muted/40 px-2.5 py-1.5">
+                  <span className="flex items-baseline gap-2">
+                    <span className="text-sm font-semibold text-primary">USD</span>
+                    <span className="text-sm text-muted-foreground">
+                      {usdValue != null ? `$${CLP_FMT.format(Math.round(usdValue))}` : "—"}
+                    </span>
                   </span>
+                  <span className="text-[10px] uppercase tracking-wide text-faint">dólar obs.</span>
                 </div>
               </div>
             </div>
