@@ -35,6 +35,33 @@ router = APIRouter(
 # ──────────────────────────── sessions ────────────────────────────
 
 
+def _delete_empty_sessions(client: Any, user_id: str, tenant_id: str) -> None:
+    """Delete this user's sessions that have no user-authored message — the
+    "opened Propo then left without typing" threads that otherwise pile up as
+    trash. ``agent_messages`` cascade-delete with the session; transcripts are
+    preserved (their FK is ``ON DELETE SET NULL``)."""
+    owned = (
+        client.table("agent_sessions").select("id").eq("user_id", user_id).eq("tenant_id", tenant_id).execute().data
+        or []
+    )
+    owned_ids = [s["id"] for s in owned]
+    if not owned_ids:
+        return
+    with_user_msg = (
+        client.table("agent_messages")
+        .select("session_id")
+        .in_("session_id", owned_ids)
+        .eq("role", "user")
+        .execute()
+        .data
+        or []
+    )
+    non_empty = {m["session_id"] for m in with_user_msg}
+    empty_ids = [sid for sid in owned_ids if sid not in non_empty]
+    if empty_ids:
+        client.table("agent_sessions").delete().in_("id", empty_ids).execute()
+
+
 @router.post(
     "/sessions",
     response_model=AgentSessionResponse,
@@ -68,6 +95,9 @@ async def create_or_resume_session(
         client.table("agent_sessions").update({"status": "CLOSED", "closed_at": datetime.now(UTC).isoformat()}).eq(
             "user_id", user_id
         ).eq("tenant_id", str(tenant_id)).eq("status", "OPEN").execute()
+        # Sweep abandoned empty sessions (incl. the ones just closed) before
+        # opening a fresh one, so the history never accrues "(sin mensajes)" trash.
+        _delete_empty_sessions(client, user_id, str(tenant_id))
     else:
         cutoff = (datetime.now(UTC) - timedelta(hours=settings.agent_session_inactivity_hours)).isoformat()
         existing = (
@@ -157,7 +187,10 @@ async def list_sessions(
 
     for s in sessions:
         s["preview"] = seen.get(s["id"], "")
-    return sessions
+    # Hide empty conversations (no user-authored message) — abandoned sessions
+    # shouldn't clutter the history list; the active chat pane is driven by the
+    # session id in component state, not by this list.
+    return [s for s in sessions if s["id"] in seen]
 
 
 @router.patch(
