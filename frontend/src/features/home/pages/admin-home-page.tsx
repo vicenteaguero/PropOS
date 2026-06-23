@@ -24,6 +24,7 @@ import { useAuth } from "@shared/hooks/use-auth";
 import { useAgentName } from "@core/branding/agent-branding";
 import { hueForTenant } from "@core/theme/tenant-accent";
 import { useContacts } from "@features/contacts/hooks/use-contacts";
+import { useOpportunities } from "@features/opportunities/hooks/use-opportunities";
 import { useCalendarFeed } from "@features/calendar/hooks/use-calendar";
 import type { CalendarItem } from "@features/calendar/api/calendar-api";
 import { apiRequest } from "@features/documents/api/http";
@@ -117,12 +118,27 @@ export function AdminHomePage() {
   const { data: contacts } = useContacts({ limit: 50 });
   const recent = (contacts ?? []).slice(0, isDesktop ? 6 : 4);
 
+  // Pipeline counts for the mobile "Pipeline" pills.
+  const { data: openOpps } = useOpportunities({ status: "OPEN", limit: 100 });
+  const leadsActivos = (openOpps ?? []).length;
+  // OFFER + RESERVATION are the negotiation-stage opportunities.
+  const negociacion = (openOpps ?? []).filter(
+    (o) => o.pipeline_stage === "OFFER" || o.pipeline_stage === "RESERVATION",
+  ).length;
+  // NOTE: no unread source yet — placeholder until an unread/messages count exists.
+  const sinLeer = 0;
+
   // Today's agenda + KPIs (desktop dashboard only — cheap single-day window).
   const today = new Date();
   const todayFeed = useCalendarFeed(startOfDay(today).toISOString(), endOfDay(today).toISOString());
   const todayItems = (todayFeed.data ?? [])
     .filter((it) => it.start_at)
     .sort((a, b) => (a.start_at ?? "").localeCompare(b.start_at ?? ""));
+  const todayVisits = todayItems.filter((it) => it.item_type === "EVENT").length;
+  const todayTasks = todayItems.filter((it) => it.item_type === "TASK").length;
+  // Next event drives the mobile "Tu día" card; `[0]` is typed as possibly
+  // undefined, so bind it once and gate the card on it (narrows the accesses).
+  const nextEvent = todayItems[0];
   const pendingQuery = useQuery<{ pending_count: number }>({
     queryKey: ["analytics", "pending-count"],
     queryFn: () => apiRequest("/v1/analytics/pending-count"),
@@ -137,7 +153,6 @@ export function AdminHomePage() {
     { to: `${base}/notas`, label: "Notas", icon: StickyNote, scope: "productividad" },
     { to: `${base}/client-inbox`, label: "WhatsApp", icon: MessageCircle, scope: "inbox" },
     { to: `${base}/documents`, label: "Docs", icon: FileText, scope: "documents" },
-    { to: `${base}/pendientes`, label: "Pendientes", icon: Inbox, scope: "pendientes" },
     { to: "/admin/properties", label: "Propiedades", icon: Building2, adminOnly: true },
     { to: "/admin/finanzas", label: "Finanzas", icon: Receipt, scope: "finanzas", adminOnly: true },
   ].filter((t) => allow(t.scope) && (!t.adminOnly || isAdmin));
@@ -202,76 +217,77 @@ export function AdminHomePage() {
   // ---- Desktop dashboard ----
   const desktop = (
     <div className="mx-auto w-full max-w-7xl px-8 py-7">
-      <h1 className="text-[32px] font-bold leading-tight tracking-tight text-foreground">
-        {greeting()}
-        {firstName ? `, ${firstName}` : ""}
-      </h1>
-
-      {canPropo && <div className="mt-5 max-w-2xl">{propoBar}</div>}
-
-      {/* KPI strip */}
-      <div className="mt-7 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Kpi label="Personas en tu CRM" value={String((contacts ?? []).length)} icon={Users} />
-        <Kpi label="Eventos hoy" value={String(todayItems.length)} icon={CalendarDays} />
-        {allow("pendientes") && (
-          <Kpi
-            label="Pendientes por revisar"
-            value={String(pendingQuery.data?.pending_count ?? 0)}
-            icon={Inbox}
-          />
-        )}
-      </div>
-
-      {/* Main grid */}
-      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Tu día */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* Left column: greeting, Propo, KPIs, Tu día */}
         <section className="flex flex-col gap-6 lg:col-span-2">
-          <SectionLabel action="Ver calendario" onAction={() => navigate(`${base}/calendario`)}>
-            Tu día · {format(today, "EEEE d 'de' MMMM", { locale: es })}
-          </SectionLabel>
-          <div className="mt-2 rounded-2xl border border-border">
-            {todayFeed.isLoading ? (
-              <p className="px-4 py-8 text-center text-sm text-muted-foreground">Cargando…</p>
-            ) : todayItems.length === 0 ? (
-              <div className="flex flex-col items-center gap-2 px-4 py-12 text-center">
-                <CalendarDays className="size-9 text-faint" strokeWidth={1.5} />
-                <p className="text-sm text-muted-foreground">Nada agendado para hoy.</p>
-              </div>
-            ) : (
-              todayItems.map((it, i) => {
-                const meta = TYPE_META[it.item_type];
-                return (
-                  <Row
-                    key={`${it.item_type}-${it.id}`}
-                    divider={i < todayItems.length - 1}
-                    left={
-                      <span className="w-12 shrink-0 text-[13px] font-semibold tabular-nums text-muted-foreground">
-                        {it.all_day || !it.start_at
-                          ? "Todo"
-                          : format(new Date(it.start_at), "HH:mm")}
-                      </span>
-                    }
-                    title={it.title ?? "Sin título"}
-                    right={<Pill tone={meta.tone}>{meta.label}</Pill>}
-                  />
-                );
-              })
+          <h1 className="text-[32px] font-bold leading-tight tracking-tight text-foreground">
+            {greeting()}
+            {firstName ? `, ${firstName}` : ""}
+          </h1>
+
+          {canPropo && <div className="max-w-2xl">{propoBar}</div>}
+
+          {/* KPI strip */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <Kpi label="Personas en tu CRM" value={String((contacts ?? []).length)} icon={Users} />
+            <Kpi label="Eventos hoy" value={String(todayItems.length)} icon={CalendarDays} />
+            {allow("pendientes") && (
+              <Kpi
+                label="Pendientes por revisar"
+                value={String(pendingQuery.data?.pending_count ?? 0)}
+                icon={Inbox}
+              />
             )}
           </div>
 
-          {/* Accesos rápidos — two columns, inside Home */}
+          {/* Tu día */}
+          <div>
+            <SectionLabel action="Ver calendario" onAction={() => navigate(`${base}/calendario`)}>
+              Tu día · {format(today, "EEEE d 'de' MMMM", { locale: es })}
+            </SectionLabel>
+            <div className="mt-2 rounded-2xl border border-border">
+              {todayFeed.isLoading ? (
+                <p className="px-4 py-8 text-center text-sm text-muted-foreground">Cargando…</p>
+              ) : todayItems.length === 0 ? (
+                <div className="flex flex-col items-center gap-2 px-4 py-12 text-center">
+                  <CalendarDays className="size-9 text-faint" strokeWidth={1.5} />
+                  <p className="text-sm text-muted-foreground">Nada agendado para hoy.</p>
+                </div>
+              ) : (
+                todayItems.map((it, i) => {
+                  const meta = TYPE_META[it.item_type];
+                  return (
+                    <Row
+                      key={`${it.item_type}-${it.id}`}
+                      divider={i < todayItems.length - 1}
+                      left={
+                        <span className="w-12 shrink-0 text-[13px] font-semibold tabular-nums text-muted-foreground">
+                          {it.all_day || !it.start_at
+                            ? "Todo"
+                            : format(new Date(it.start_at), "HH:mm")}
+                        </span>
+                      }
+                      title={it.title ?? "Sin título"}
+                      right={<Pill tone={meta.tone}>{meta.label}</Pill>}
+                    />
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* Right column: quick access, then recent people */}
+        <section className="flex flex-col gap-6">
           <div>
             <SectionLabel>Accesos rápidos</SectionLabel>
-            <div className="mt-2 grid grid-cols-2 gap-2.5">
+            <div className="mt-2 grid grid-cols-1 gap-2">
               {tiles.map((t) => (
                 <ServiceTile key={t.to} tile={t} onClick={() => navigate(t.to)} />
               ))}
             </div>
           </div>
-        </section>
 
-        {/* Right column: recent people */}
-        <section>
           {allow("crm") && (
             <div>
               <SectionLabel action="Ver CRM" onAction={() => navigate(`${base}/personas`)}>
@@ -285,7 +301,7 @@ export function AdminHomePage() {
     </div>
   );
 
-  // ---- Mobile home (unchanged) ----
+  // ---- Mobile home ----
   const mobile = (
     <div className="mx-auto w-full max-w-2xl pb-6">
       <div className="flex items-center justify-between px-5 pt-4 pb-3">
@@ -309,22 +325,83 @@ export function AdminHomePage() {
 
       {canPropo && <div className="px-5 pt-4 pb-5">{propoBar}</div>}
 
-      <div className="grid grid-cols-3 gap-2.5 px-5 pb-6">
+      <div className="grid grid-cols-4 gap-2.5 px-5 pb-6">
         {tiles.map((t) => (
           <button
             key={t.to}
             type="button"
             onClick={() => navigate(t.to)}
-            className="flex aspect-square flex-col items-center justify-center gap-2 rounded-2xl bg-secondary p-2 text-center transition active:scale-[0.97]"
+            className="flex h-[88px] flex-col items-start justify-between rounded-2xl bg-secondary p-3 text-left transition active:scale-[0.97]"
           >
-            <span className="flex size-11 items-center justify-center rounded-xl bg-background shadow-sm">
-              <t.icon className="size-[21px] text-foreground" strokeWidth={1.9} />
+            <span className="flex size-9 items-center justify-center rounded-xl bg-background shadow-sm">
+              <t.icon className="size-[19px] text-foreground" strokeWidth={1.9} />
             </span>
             <span className="text-[12.5px] font-semibold leading-tight text-foreground">
               {t.label}
             </span>
           </button>
         ))}
+      </div>
+
+      {/* Tu día — next event */}
+      {nextEvent && (
+        <div className="px-5 pb-6">
+          <div className="overflow-hidden rounded-3xl bg-foreground text-background">
+            <div className="flex items-center justify-between gap-3 px-4 pt-3.5 pb-3">
+              <span className="text-[12.5px] font-bold uppercase tracking-wide opacity-60">
+                Tu día
+              </span>
+              <span className="text-[12.5px] font-semibold opacity-80">
+                {todayVisits} {todayVisits === 1 ? "visita" : "visitas"} · {todayTasks}{" "}
+                {todayTasks === 1 ? "tarea" : "tareas"}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate(`${base}/calendario`)}
+              className="flex w-full items-center gap-3 border-t border-white/10 p-4 text-left transition active:scale-[0.99]"
+            >
+              <span className="min-w-[54px] rounded-xl bg-background px-2.5 py-1.5 text-center text-foreground">
+                <span className="block text-[15px] font-bold leading-none">
+                  {nextEvent.all_day || !nextEvent.start_at
+                    ? "Todo"
+                    : format(new Date(nextEvent.start_at as string), "HH:mm")}
+                </span>
+                <span className="mt-1 block text-[10.5px] font-semibold text-muted-foreground">
+                  hoy
+                </span>
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[15px] font-semibold">
+                  {nextEvent.title ?? "Sin título"}
+                </span>
+                <span className="mt-0.5 block text-[13px] opacity-60">
+                  Próximo · {TYPE_META[nextEvent.item_type].label}
+                </span>
+              </span>
+              <ChevronRight className="size-[18px] shrink-0 opacity-50" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Pipeline */}
+      <SectionLabel action="Ver CRM" onAction={() => navigate(`${base}/bandeja`)}>
+        Pipeline
+      </SectionLabel>
+      <div className="flex gap-2 px-5 pt-2 pb-6">
+        <div className="flex-1 rounded-2xl bg-secondary px-3.5 py-3">
+          <div className="text-2xl font-bold tracking-tight text-foreground">{leadsActivos}</div>
+          <div className="mt-1 truncate text-[12.5px] text-muted-foreground">Leads activos</div>
+        </div>
+        <div className="flex-1 rounded-2xl bg-secondary px-3.5 py-3">
+          <div className="text-2xl font-bold tracking-tight text-foreground">{sinLeer}</div>
+          <div className="mt-1 truncate text-[12.5px] text-muted-foreground">Sin leer</div>
+        </div>
+        <div className="flex-1 rounded-2xl bg-secondary px-3.5 py-3">
+          <div className="text-2xl font-bold tracking-tight text-foreground">{negociacion}</div>
+          <div className="mt-1 truncate text-[12.5px] text-muted-foreground">Negociación</div>
+        </div>
       </div>
 
       {allow("crm") && (
