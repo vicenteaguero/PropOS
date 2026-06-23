@@ -10,9 +10,14 @@ import { applyTenantAccent, clearTenantAccent } from "./tenant-accent";
  * switches). Must render inside AgentBrandingProvider. Renders nothing.
  */
 export function ThemeController() {
-  const { user } = useAuth();
-  const { brandColor, slug } = useTenantBranding();
+  const { user, memberships } = useAuth();
+  const { brandColor } = useTenantBranding();
   const tenantId = user?.tenantId ?? null;
+  // Derive the workspace slug from the auth membership (updates instantly on
+  // switch) rather than the /tenants/me query (which lags behind its staleTime
+  // until refetch), so the curated [data-tenant] palette swaps the moment the
+  // workspace changes — not ~20s later.
+  const slug = memberships.find((m) => m.tenantId === tenantId)?.tenantSlug ?? null;
 
   useEffect(() => {
     if (tenantId || brandColor) applyTenantAccent({ seed: tenantId, color: brandColor });
