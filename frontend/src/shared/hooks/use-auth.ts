@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, createContext, useContext } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import { supabase } from "@core/supabase/client";
 import { createLogger } from "@core/logging/logger";
@@ -140,6 +141,7 @@ async function fetchGrants(): Promise<PropertyGrant[]> {
 }
 
 export function useAuthProvider(): AuthContextValue {
+  const queryClient = useQueryClient();
   const [state, setState] = useState<AuthState>({
     user: null,
     memberships: [],
@@ -237,29 +239,36 @@ export function useAuthProvider(): AuthContextValue {
     setState({ user: null, memberships: [], grants: [], isLoading: false, isAuthenticated: false });
   }, []);
 
-  const switchTenant = useCallback(async (tenantId: string) => {
-    setActiveTenantId(tenantId);
-    try {
-      await apiRequest("/v1/memberships/activate", {
-        method: "POST",
-        body: { tenant_id: tenantId },
-      });
-    } catch (err) {
-      logger.error("error", "switchTenant activate failed", { err: String(err) });
-    }
-    const { data } = await supabase.auth.getSession();
-    if (data.session?.user) {
-      const memberships = await fetchMemberships();
-      const active = memberships.find((m) => m.tenantId === tenantId) ?? null;
-      const [profile, grants] = await Promise.all([
-        fetchProfile(data.session.user.id, active),
-        fetchGrants(),
-      ]);
-      if (profile) {
-        setState((prev) => ({ ...prev, user: profile, memberships, grants }));
+  const switchTenant = useCallback(
+    async (tenantId: string) => {
+      setActiveTenantId(tenantId);
+      try {
+        await apiRequest("/v1/memberships/activate", {
+          method: "POST",
+          body: { tenant_id: tenantId },
+        });
+      } catch (err) {
+        logger.error("error", "switchTenant activate failed", { err: String(err) });
       }
-    }
-  }, []);
+      // Refetch tenant branding (brand color, assistant name) for the new
+      // workspace — without this the /tenants/me cache stays stale past its
+      // staleTime and the palette/agent name lag behind the switch.
+      queryClient.invalidateQueries({ queryKey: ["tenant", "me"] });
+      const { data } = await supabase.auth.getSession();
+      if (data.session?.user) {
+        const memberships = await fetchMemberships();
+        const active = memberships.find((m) => m.tenantId === tenantId) ?? null;
+        const [profile, grants] = await Promise.all([
+          fetchProfile(data.session.user.id, active),
+          fetchGrants(),
+        ]);
+        if (profile) {
+          setState((prev) => ({ ...prev, user: profile, memberships, grants }));
+        }
+      }
+    },
+    [queryClient],
+  );
 
   const refreshGrants = useCallback(async () => {
     const grants = await fetchGrants();
