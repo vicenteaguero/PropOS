@@ -62,7 +62,9 @@ function HeaderWorkspaceSwitcher() {
               <span
                 className="size-2.5 shrink-0 rounded-full"
                 style={{
-                  background: active ? "var(--accent-brand)" : `hsl(${hueForTenant(m.tenantId)} 55% 55%)`,
+                  background: active
+                    ? "var(--accent-brand)"
+                    : `hsl(${hueForTenant(m.tenantId)} 55% 55%)`,
                 }}
               />
               <span className="flex-1 truncate">{m.tenantName ?? m.tenantSlug ?? m.tenantId}</span>
@@ -99,16 +101,28 @@ export function AppLayout() {
   const isAgentRoute = location.pathname.endsWith("/agent");
   useUfDailyRefresh();
 
-  // Sidebar auto-collapses to the icon rail below xl and expands above; manual
-  // toggle (⌘B / trigger) still works until the next breakpoint crossing.
+  // Sidebar auto-collapses to the icon rail on narrow desktops and expands on
+  // wide ones, with HYSTERESIS: collapse below 1180px, expand above 1300px, and
+  // leave the current state untouched in the 1180–1300 dead-band. The gap stops
+  // a scrollbar toggling near a single threshold from oscillating the sidebar
+  // (the "bounce"). Manual ⌘B / trigger still works between the bounds.
   const [sidebarOpen, setSidebarOpen] = useState(() =>
     typeof window === "undefined" ? true : window.matchMedia("(min-width: 1280px)").matches,
   );
   useEffect(() => {
-    const mq = window.matchMedia("(min-width: 1280px)");
-    const onChange = (e: MediaQueryListEvent) => setSidebarOpen(e.matches);
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
+    const collapseMq = window.matchMedia("(max-width: 1179px)");
+    const expandMq = window.matchMedia("(min-width: 1300px)");
+    const apply = () => {
+      if (collapseMq.matches) setSidebarOpen(false);
+      else if (expandMq.matches) setSidebarOpen(true);
+    };
+    apply();
+    collapseMq.addEventListener("change", apply);
+    expandMq.addEventListener("change", apply);
+    return () => {
+      collapseMq.removeEventListener("change", apply);
+      expandMq.removeEventListener("change", apply);
+    };
   }, []);
 
   // Mobile broker shell: full-bleed content + floating bottom nav (Propo lives
@@ -128,7 +142,10 @@ export function AppLayout() {
   return (
     <SidebarProvider open={sidebarOpen} onOpenChange={setSidebarOpen}>
       <AppSidebar />
-      <SidebarInset>
+      {/* Bound the shell to the viewport so the inner <main> is the scroll
+          container — keeps the header pinned (a window-level scroll trapped the
+          header's sticky inside the wrapper's overflow-hidden). */}
+      <SidebarInset className="h-svh overflow-hidden">
         <header className="sticky top-0 z-10 flex h-[var(--app-header-h)] shrink-0 items-center gap-2 border-b border-border bg-background px-4">
           <SidebarTrigger className="-ml-1" />
           <HeaderWorkspaceSwitcher />
@@ -167,7 +184,7 @@ export function AppLayout() {
             </DropdownMenu>
           </div>
         </header>
-        <main className="flex-1 overflow-x-hidden">
+        <main className="min-h-0 flex-1 overflow-y-auto">
           <Outlet />
         </main>
         {/* FAB on tablet/mobile-sidebar shell; desktop uses the header ⌘K bar. */}
