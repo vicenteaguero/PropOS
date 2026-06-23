@@ -23,7 +23,9 @@ import {
   ListTodo,
   Loader2,
   MapPin,
+  Mic,
   Plus,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +44,8 @@ import {
 import { useIsDesktop } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useAuth } from "@shared/hooks/use-auth";
+import { AgentOverlay } from "@features/agent/components/agent-overlay";
 import { useCalendarFeed, useCreateEvent } from "../hooks/use-calendar";
 import type { CalendarItem } from "../api/calendar-api";
 import type { PillTone } from "@shared/ui";
@@ -119,6 +123,7 @@ function durationPx(it: CalendarItem): number {
 }
 
 export function CalendarPage() {
+  const { user } = useAuth();
   const isDesktop = useIsDesktop();
   const [view, setView] = useState<View>("month");
   // Mobile drives Día/Semana/Mes independently from the desktop time-grid view.
@@ -129,6 +134,12 @@ export function CalendarPage() {
   const [title, setTitle] = useState("");
   const [startsAt, setStartsAt] = useState("");
   const [detail, setDetail] = useState<CalendarItem | null>(null);
+  const [propoOpen, setPropoOpen] = useState(false);
+
+  // Propo (agent pipeline) is backend ADMIN-only — mirror the Home gate.
+  const role = (user?.role ?? "ADMIN").toLowerCase();
+  const scope = user?.adminScope ?? [];
+  const canPropo = role === "admin" && (scope.length === 0 || scope.includes("agent"));
 
   // Desktop defaults to the week time-grid the first time we know we're on a
   // wide viewport; once the user picks a view we stop auto-switching.
@@ -178,12 +189,7 @@ export function CalendarPage() {
   // Mobile range is anchored on `selected` and driven by the mobile view.
   // `weekDays` always covers the selected week (the day-strip); `monthDays`
   // covers the month grid for the Mes view.
-  const {
-    mobileRangeStart,
-    mobileRangeEnd,
-    weekDays,
-    monthDays,
-  } = useMemo(() => {
+  const { mobileRangeStart, mobileRangeEnd, weekDays, monthDays } = useMemo(() => {
     const weekStart = startOfWeek(selected, { weekStartsOn: 1 });
     const weekEnd = endOfWeek(selected, { weekStartsOn: 1 });
     const week = eachDayOfInterval({ start: weekStart, end: weekEnd });
@@ -303,188 +309,229 @@ export function CalendarPage() {
   };
 
   return (
-    // Mobile keeps the capped (md) centered column; desktop goes full-bleed.
-    <PageLayout width="app" noPadding className="max-w-4xl lg:max-w-none">
-      <AppShellScroll>
-        {/* Header + controls: fixed on desktop, normal flow on mobile. */}
-        <div className="shrink-0">
-          <div className="px-5 pt-4 pb-4 lg:px-8 lg:pt-7">
-            <PageHeader
-              title="Calendario"
-              description="Visitas, vencimientos y pagos del equipo."
-              className="mb-0"
-              actions={
-                <Button onClick={() => openCreate()} variant="ink" className="gap-2">
-                  <Plus className="size-4" strokeWidth={1.8} />
-                  Nuevo evento
+    <>
+      {/* Mobile keeps the capped (md) centered column; desktop goes full-bleed. */}
+      <PageLayout width="app" noPadding className="max-w-4xl lg:max-w-none">
+        <AppShellScroll>
+          {/* Header + controls: fixed on desktop, normal flow on mobile. */}
+          <div className="shrink-0">
+            <div className="px-5 pt-4 pb-4 lg:px-8 lg:pt-7">
+              <PageHeader
+                title="Calendario"
+                description="Visitas, vencimientos y pagos del equipo."
+                className="mb-0"
+                actions={
+                  <Button onClick={() => openCreate()} variant="ink" className="gap-2">
+                    <Plus className="size-4" strokeWidth={1.8} />
+                    Nuevo evento
+                  </Button>
+                }
+              />
+            </div>
+
+            <div className="flex items-center justify-between gap-3 px-5 pb-3 lg:px-8">
+              <h2 className="truncate text-xl font-bold capitalize tracking-tight text-foreground">
+                {periodLabel}
+              </h2>
+              <div className="flex items-center gap-1.5">
+                <RoundButton onClick={() => step(-1)} aria-label="Anterior">
+                  <ChevronLeft className="size-5" strokeWidth={1.8} />
+                </RoundButton>
+                <Button variant="secondary" size="sm" className="rounded-full" onClick={goToday}>
+                  Hoy
                 </Button>
-              }
-            />
-          </div>
-
-          <div className="flex items-center justify-between gap-3 px-5 pb-3 lg:px-8">
-            <h2 className="truncate text-xl font-bold capitalize tracking-tight text-foreground">
-              {periodLabel}
-            </h2>
-            <div className="flex items-center gap-1.5">
-              <RoundButton onClick={() => step(-1)} aria-label="Anterior">
-                <ChevronLeft className="size-5" strokeWidth={1.8} />
-              </RoundButton>
-              <Button variant="secondary" size="sm" className="rounded-full" onClick={goToday}>
-                Hoy
-              </Button>
-              <RoundButton onClick={() => step(1)} aria-label="Siguiente">
-                <ChevronRight className="size-5" strokeWidth={1.8} />
-              </RoundButton>
-            </div>
-          </div>
-
-          {/* View toggle — desktop only (mobile stays the month grid). */}
-          <div className="hidden lg:block">
-            <Segmented
-              items={VIEW_ITEMS}
-              value={view}
-              onChange={(v) => pickView(v as View)}
-              className="px-8"
-            />
-          </div>
-
-          {error && (
-            <div className="mx-5 mb-3 rounded-2xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive lg:mx-8">
-              No se pudo cargar el calendario.
-              <Button variant="ghost" size="sm" className="ml-2" onClick={() => refetch()}>
-                Reintentar
-              </Button>
-            </div>
-          )}
-        </div>
-
-        {/* Body. Mobile: Día / Semana / Mes (rebuilt). Desktop: per-view. */}
-        {/* ---- Mobile ---- */}
-        <div className="lg:hidden">
-          <MobileCalendar
-            mobileView={mobileView}
-            onViewChange={setMobileView}
-            selected={selected}
-            onSelect={setSelected}
-            weekDays={weekDays}
-            monthDays={monthDays}
-            itemsByDay={itemsByDay}
-            isLoading={isLoading}
-            onOpen={setDetail}
-          />
-        </div>
-
-        {/* ---- Desktop ---- */}
-        <div className="hidden min-h-0 flex-1 lg:flex lg:flex-col">
-          {isLoading && (
-            <div className="flex flex-1 items-center justify-center">
-              <Loader2 className="size-5 animate-spin text-muted-foreground" />
-            </div>
-          )}
-
-          {!isLoading && activeView === "month" && (
-            <div className="flex min-h-0 flex-1 gap-6 px-8 pb-6 pt-2">
-              <div className="min-w-0 flex-[2]">
-                <MonthGrid
-                  days={gridDays}
-                  cursor={cursor}
-                  selected={selected}
-                  itemsByDay={itemsByDay}
-                  onSelect={setSelected}
-                  onCreate={openCreate}
-                />
-              </div>
-              <div className="flex min-h-0 w-80 shrink-0 flex-col overflow-y-auto rounded-2xl border border-border">
-                <SectionLabel className="mb-1 mt-3 capitalize">
-                  {format(selected, "EEEE d 'de' MMMM", { locale: es })}
-                </SectionLabel>
-                <DayAgenda items={selectedItems} onOpen={setDetail} />
+                <RoundButton onClick={() => step(1)} aria-label="Siguiente">
+                  <ChevronRight className="size-5" strokeWidth={1.8} />
+                </RoundButton>
               </div>
             </div>
-          )}
 
-          {!isLoading && (activeView === "week" || activeView === "day") && (
-            <TimeGrid
-              days={gridDays}
-              itemsByDay={itemsByDay}
-              onOpen={setDetail}
-              onCreate={openCreate}
-            />
-          )}
-        </div>
-      </AppShellScroll>
-
-      {/* Create flow */}
-      <ResponsiveSheet open={open} onOpenChange={setOpen} title="Nuevo evento">
-        <div className="mt-4 space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="e-title">Título</Label>
-            <Input id="e-title" value={title} onChange={(e) => setTitle(e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="e-start">Fecha y hora</Label>
-            <Input
-              id="e-start"
-              type="datetime-local"
-              value={startsAt}
-              onChange={(e) => setStartsAt(e.target.value)}
-            />
-          </div>
-          <div className="flex flex-col gap-2 pt-2">
-            <Button onClick={submit} disabled={create.isPending} variant="ink" size="block">
-              {create.isPending && <Loader2 className="size-4 animate-spin" />}
-              Crear
-            </Button>
-            <Button
-              variant="ghost"
-              size="block"
-              onClick={() => setOpen(false)}
-              disabled={create.isPending}
-            >
-              Cancelar
-            </Button>
-          </div>
-        </div>
-      </ResponsiveSheet>
-
-      {/* Event detail */}
-      <ResponsiveSheet
-        open={!!detail}
-        onOpenChange={(o) => !o && setDetail(null)}
-        title={detail?.title ?? "Sin título"}
-        description={
-          detail
-            ? format(new Date(detail.start_at ?? Date.now()), "EEEE d 'de' MMMM", { locale: es })
-            : undefined
-        }
-      >
-        {detail && (
-          <div className="mt-4 space-y-4">
-            <div className="flex items-center gap-2">
-              <Pill tone={TYPE_META[detail.item_type].tone}>
-                {TYPE_META[detail.item_type].label}
-              </Pill>
-              <span className="text-sm font-medium text-muted-foreground">
-                {detail.all_day || !detail.start_at
-                  ? "Todo el día"
-                  : `${format(new Date(detail.start_at), "HH:mm")}${
-                      detail.end_at ? ` – ${format(new Date(detail.end_at), "HH:mm")}` : ""
-                    }`}
-              </span>
+            {/* View toggle — desktop only (mobile stays the month grid). */}
+            <div className="hidden lg:block">
+              <Segmented
+                items={VIEW_ITEMS}
+                value={view}
+                onChange={(v) => pickView(v as View)}
+                className="px-8"
+              />
             </div>
-            {detail.status && (
-              <div className="text-sm text-muted-foreground">
-                Estado: <span className="text-foreground">{detail.status}</span>
+
+            {error && (
+              <div className="mx-5 mb-3 rounded-2xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive lg:mx-8">
+                No se pudo cargar el calendario.
+                <Button variant="ghost" size="sm" className="ml-2" onClick={() => refetch()}>
+                  Reintentar
+                </Button>
               </div>
             )}
-            <Button variant="ghost" size="block" onClick={() => setDetail(null)}>
-              Cerrar
-            </Button>
           </div>
-        )}
-      </ResponsiveSheet>
-    </PageLayout>
+
+          {/* Body. Mobile: Día / Semana / Mes (rebuilt). Desktop: per-view. */}
+          {/* ---- Mobile ---- */}
+          <div className="lg:hidden">
+            <MobileCalendar
+              mobileView={mobileView}
+              onViewChange={setMobileView}
+              selected={selected}
+              onSelect={setSelected}
+              weekDays={weekDays}
+              monthDays={monthDays}
+              itemsByDay={itemsByDay}
+              isLoading={isLoading}
+              onOpen={setDetail}
+              canPropo={canPropo}
+              onOpenPropo={() => setPropoOpen(true)}
+            />
+          </div>
+
+          {/* ---- Desktop ---- */}
+          <div className="hidden min-h-0 flex-1 lg:flex lg:flex-col">
+            {canPropo && (
+              <div className="px-8 pb-1 pt-2">
+                <PropoCard onOpen={() => setPropoOpen(true)} />
+              </div>
+            )}
+
+            {isLoading && (
+              <div className="flex flex-1 items-center justify-center">
+                <Loader2 className="size-5 animate-spin text-muted-foreground" />
+              </div>
+            )}
+
+            {!isLoading && activeView === "month" && (
+              <div className="flex min-h-0 flex-1 gap-6 px-8 pb-6 pt-2">
+                <div className="min-w-0 flex-[2]">
+                  <MonthGrid
+                    days={gridDays}
+                    cursor={cursor}
+                    selected={selected}
+                    itemsByDay={itemsByDay}
+                    onSelect={(d) => {
+                      // Selecting a day in the month grid drops into the Día view.
+                      setSelected(d);
+                      setCursor(d);
+                      pickView("day");
+                    }}
+                    onCreate={openCreate}
+                  />
+                </div>
+                <div className="flex min-h-0 w-80 shrink-0 flex-col overflow-y-auto rounded-2xl border border-border">
+                  <SectionLabel className="mb-1 mt-3 capitalize">
+                    {format(selected, "EEEE d 'de' MMMM", { locale: es })}
+                  </SectionLabel>
+                  <DayAgenda items={selectedItems} onOpen={setDetail} />
+                </div>
+              </div>
+            )}
+
+            {!isLoading && (activeView === "week" || activeView === "day") && (
+              <TimeGrid
+                days={gridDays}
+                itemsByDay={itemsByDay}
+                onOpen={setDetail}
+                onCreate={openCreate}
+              />
+            )}
+          </div>
+        </AppShellScroll>
+
+        {/* Create flow */}
+        <ResponsiveSheet open={open} onOpenChange={setOpen} title="Nuevo evento">
+          <div className="mt-4 space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="e-title">Título</Label>
+              <Input id="e-title" value={title} onChange={(e) => setTitle(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="e-start">Fecha y hora</Label>
+              <Input
+                id="e-start"
+                type="datetime-local"
+                value={startsAt}
+                onChange={(e) => setStartsAt(e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col gap-2 pt-2">
+              <Button onClick={submit} disabled={create.isPending} variant="ink" size="block">
+                {create.isPending && <Loader2 className="size-4 animate-spin" />}
+                Crear
+              </Button>
+              <Button
+                variant="ghost"
+                size="block"
+                onClick={() => setOpen(false)}
+                disabled={create.isPending}
+              >
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        </ResponsiveSheet>
+
+        {/* Event detail */}
+        <ResponsiveSheet
+          open={!!detail}
+          onOpenChange={(o) => !o && setDetail(null)}
+          title={detail?.title ?? "Sin título"}
+          description={
+            detail
+              ? format(new Date(detail.start_at ?? Date.now()), "EEEE d 'de' MMMM", { locale: es })
+              : undefined
+          }
+        >
+          {detail && (
+            <div className="mt-4 space-y-4">
+              <div className="flex items-center gap-2">
+                <Pill tone={TYPE_META[detail.item_type].tone}>
+                  {TYPE_META[detail.item_type].label}
+                </Pill>
+                <span className="text-sm font-medium text-muted-foreground">
+                  {detail.all_day || !detail.start_at
+                    ? "Todo el día"
+                    : `${format(new Date(detail.start_at), "HH:mm")}${
+                        detail.end_at ? ` – ${format(new Date(detail.end_at), "HH:mm")}` : ""
+                      }`}
+                </span>
+              </div>
+              {detail.status && (
+                <div className="text-sm text-muted-foreground">
+                  Estado: <span className="text-foreground">{detail.status}</span>
+                </div>
+              )}
+              <Button variant="ghost" size="block" onClick={() => setDetail(null)}>
+                Cerrar
+              </Button>
+            </div>
+          )}
+        </ResponsiveSheet>
+      </PageLayout>
+
+      {canPropo && propoOpen && (
+        <AgentOverlay onClose={() => setPropoOpen(false)} initialMode="voice" />
+      )}
+    </>
+  );
+}
+
+/** Dashed call-to-action that opens Propo in voice mode. */
+function PropoCard({ onOpen }: { onOpen: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="flex w-full items-center gap-3 rounded-2xl border border-dashed border-line-strong bg-transparent p-3.5 text-left transition active:scale-[0.99]"
+    >
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-foreground text-background">
+        <Sparkles className="size-[18px]" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold text-foreground">Agenda con Propo</span>
+        <span className="block text-xs text-muted-foreground">
+          Agéndame una visita el sábado y recuérdame revisar los planos
+        </span>
+      </span>
+      <Mic className="size-[19px] shrink-0 text-foreground" strokeWidth={1.9} />
+    </button>
   );
 }
 
@@ -848,11 +895,7 @@ function WeekStrip({
             <span
               className={cn(
                 "text-base font-bold tabular-nums",
-                isSelected
-                  ? "text-background"
-                  : isToday
-                    ? "text-primary"
-                    : "text-foreground",
+                isSelected ? "text-background" : isToday ? "text-primary" : "text-foreground",
               )}
             >
               {format(day, "d")}
@@ -875,13 +918,7 @@ function WeekStrip({
 }
 
 /** Rich event row: time + duration, colored bar, kind icon + label, title, meta. */
-function EventRow({
-  item,
-  onOpen,
-}: {
-  item: CalendarItem;
-  onOpen: (it: CalendarItem) => void;
-}) {
+function EventRow({ item, onOpen }: { item: CalendarItem; onOpen: (it: CalendarItem) => void }) {
   const meta = TYPE_META[item.item_type];
   const KindIcon = meta.icon;
   return (
@@ -1011,6 +1048,8 @@ function MobileCalendar({
   itemsByDay,
   isLoading,
   onOpen,
+  canPropo,
+  onOpenPropo,
 }: {
   mobileView: MobileView;
   onViewChange: (v: MobileView) => void;
@@ -1021,6 +1060,8 @@ function MobileCalendar({
   itemsByDay: Map<string, CalendarItem[]>;
   isLoading: boolean;
   onOpen: (it: CalendarItem) => void;
+  canPropo: boolean;
+  onOpenPropo: () => void;
 }) {
   // Tapping a month-grid day selects it and drops back into the Día view.
   const selectFromMonth = (d: Date) => {
@@ -1041,6 +1082,12 @@ function MobileCalendar({
           itemsByDay={itemsByDay}
           onSelect={onSelect}
         />
+      )}
+
+      {canPropo && (
+        <div className="px-5 pb-4">
+          <PropoCard onOpen={onOpenPropo} />
+        </div>
       )}
 
       {isLoading ? (
