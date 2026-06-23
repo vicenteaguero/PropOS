@@ -4,14 +4,20 @@ import { Loader2 } from "lucide-react";
 import { useAuth } from "@shared/hooks/use-auth";
 import { useConversations } from "@features/client-chat/hooks/use-client-chat";
 import { useEmailThreads } from "@features/email/hooks/use-email";
+import { useContacts } from "@features/contacts/hooks/use-contacts";
+import { CONTACT_TYPE_LABELS, type ContactType } from "@features/contacts/types";
 import { PageLayout } from "@shared/components/page-layout";
 import { PageHeader } from "@shared/components/page-header";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
-import { Row, Segmented, Pill, BrandMark, type PillTone } from "@shared/ui";
+import { Row, Segmented, Pill, Chips, Chip, BrandMark, type PillTone } from "@shared/ui";
 import { useIsDesktop } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
+import { CrmPipeline } from "../components/crm-pipeline";
+import { CrmMetrics } from "../components/crm-metrics";
 
 type Channel = "whatsapp" | "email";
+type Tab = "bandeja" | "pipeline" | "metricas";
+type FilterId = "todos" | "pending" | "interesado" | "dueno" | Channel;
 
 interface InboxItem {
   key: string;
@@ -20,6 +26,9 @@ interface InboxItem {
   sub: string;
   time: number;
   status: string;
+  contactId: string | null;
+  /** last activity was inbound and the thread is still open → awaiting our reply */
+  needsReply: boolean;
 }
 
 const STATUS_TONE: Record<string, PillTone> = {
@@ -28,41 +37,73 @@ const STATUS_TONE: Record<string, PillTone> = {
   closed: "neutral",
 };
 
+// Contact types that map to the mockup's "Interesados" / "Dueños" filters.
+const INTERESADO_TYPES: ContactType[] = ["BUYER", "INVESTOR"];
+const DUENO_TYPES: ContactType[] = ["SELLER", "LANDOWNER"];
+
 function fmt(ms: number): string {
   if (!ms) return "";
   return new Date(ms).toLocaleDateString("es-CL", { day: "numeric", month: "short" });
 }
 
+const TABS = [
+  { id: "bandeja", label: "Bandeja" },
+  { id: "pipeline", label: "Pipeline" },
+  { id: "metricas", label: "Métricas" },
+];
+
 const FILTERS = [
   { id: "todos", label: "Todos" },
+  { id: "pending", label: "Por responder" },
+  { id: "interesado", label: "Interesados" },
+  { id: "dueno", label: "Dueños" },
   { id: "whatsapp", label: "WhatsApp" },
   { id: "email", label: "Correos" },
 ];
 
 /**
- * CRM "Bandeja" — a unified entry point that merges recent WhatsApp + Email
- * activity into one list and routes into the existing (separate) inboxes.
- * Channels are NOT merged into one thread (by design).
+ * CRM screen — a tabbed surface over Bandeja / Pipeline / Métricas.
+ *
+ * Bandeja merges recent WhatsApp + Email activity into one list and routes into
+ * the existing (separate) inboxes; channels are NOT merged into one thread (by
+ * design). Pipeline and Métricas reuse the opportunities + analytics data.
  */
 export function BandejaPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const isDesktop = useIsDesktop();
   const base = `/${(user?.role ?? "ADMIN").toLowerCase()}`;
-  const [filter, setFilter] = useState<"todos" | Channel>("todos");
+  const [tab, setTab] = useState<Tab>("bandeja");
+  const [filter, setFilter] = useState<FilterId>("todos");
 
   const convos = useConversations();
   const emails = useEmailThreads({});
+  // Contacts let us resolve a role (comprador / propietario / …) per row and
+  // power the Interesados / Dueños filters. Loaded once, joined by contact_id.
+  const contacts = useContacts({ limit: 500 });
+
+  const roleMap = useMemo(() => {
+    const m = new Map<string, ContactType>();
+    for (const c of contacts.data ?? []) m.set(c.id, c.type);
+    return m;
+  }, [contacts.data]);
 
   const items = useMemo<InboxItem[]>(() => {
-    const wa: InboxItem[] = (convos.data ?? []).map((c) => ({
-      key: `wa-${c.id}`,
-      channel: "whatsapp",
-      title: c.external_phone_e164 ?? "Conversación de WhatsApp",
-      sub: "WhatsApp · Kapso",
-      time: c.last_message_at ? Date.parse(c.last_message_at) : 0,
-      status: c.status,
-    }));
+    const wa: InboxItem[] = (convos.data ?? []).map((c) => {
+      const lastMs = c.last_message_at ? Date.parse(c.last_message_at) : 0;
+      const inboundMs = c.last_inbound_at ? Date.parse(c.last_inbound_at) : 0;
+      return {
+        key: `wa-${c.id}`,
+        channel: "whatsapp",
+        title: c.external_phone_e164 ?? "Conversación de WhatsApp",
+        sub: "WhatsApp · Kapso",
+        time: lastMs,
+        status: c.status,
+        contactId: c.contact_id,
+        // Open thread whose latest activity was the contact writing in.
+        needsReply: c.status !== "closed" && inboundMs > 0 && inboundMs >= lastMs,
+      };
+    });
     const em: InboxItem[] = (emails.data ?? []).map((t) => ({
       key: `em-${t.id}`,
       channel: "email",
@@ -70,11 +111,39 @@ export function BandejaPage() {
       sub: t.subject || "Correo · Titan",
       time: t.last_message_at ? Date.parse(t.last_message_at) : 0,
       status: t.status,
+      contactId: t.contact_id,
+      // NOTE: email threads expose no inbound timestamp, so "Por responder"
+      // cannot be derived for email — they are excluded from that filter.
+      needsReply: false,
     }));
     return [...wa, ...em].sort((a, b) => b.time - a.time);
   }, [convos.data, emails.data]);
 
-  const shown = filter === "todos" ? items : items.filter((i) => i.channel === filter);
+  const shown = useMemo(() => {
+    switch (filter) {
+      case "todos":
+        return items;
+      case "pending":
+        return items.filter((i) => i.needsReply);
+      case "whatsapp":
+      case "email":
+        return items.filter((i) => i.channel === filter);
+      case "interesado":
+        return items.filter((i) => {
+          const role = i.contactId ? roleMap.get(i.contactId) : undefined;
+          return role != null && INTERESADO_TYPES.includes(role);
+        });
+      case "dueno":
+        return items.filter((i) => {
+          const role = i.contactId ? roleMap.get(i.contactId) : undefined;
+          return role != null && DUENO_TYPES.includes(role);
+        });
+      default:
+        return items;
+    }
+  }, [items, filter, roleMap]);
+
+  const pendingTotal = useMemo(() => items.filter((i) => i.needsReply).length, [items]);
 
   const isLoading = convos.isLoading || emails.isLoading;
   const error = convos.error || emails.error;
@@ -107,6 +176,13 @@ export function BandejaPage() {
 
   const empty = <EmptyState title="Bandeja vacía" description="No hay conversaciones recientes." />;
 
+  const subLine = (it: InboxItem): string => {
+    const role = it.contactId ? roleMap.get(it.contactId) : undefined;
+    const roleLabel = role ? CONTACT_TYPE_LABELS[role] : undefined;
+    // Enrich the sub-line with the contact role when we can resolve it.
+    return roleLabel ? `${roleLabel} · ${it.sub}` : it.sub;
+  };
+
   const rowFor = (it: InboxItem, divider: boolean) => (
     <Row
       key={it.key}
@@ -114,67 +190,91 @@ export function BandejaPage() {
       onClick={() => goTo(it.channel)}
       left={<BrandMark brand={it.channel === "whatsapp" ? "whatsapp" : "email"} size={40} />}
       title={it.title}
-      sub={it.sub}
+      sub={subLine(it)}
       right={
         <div className="flex flex-col items-end gap-1.5">
-          <Pill tone={STATUS_TONE[it.status] ?? "neutral"}>{it.status}</Pill>
+          {it.needsReply ? (
+            <Pill tone="destructive" dot="var(--destructive)">
+              Por responder
+            </Pill>
+          ) : (
+            <Pill tone={STATUS_TONE[it.status] ?? "neutral"}>{it.status}</Pill>
+          )}
           <span className="text-xs text-faint">{fmt(it.time)}</span>
         </div>
       }
     />
   );
 
-  // Desktop: full-width app surface with inline channel filter and a dense
-  // two-column grid of channel rows wrapped in a single bordered card so the
-  // width is actually used (instead of a centered narrow column).
+  // The filter chips + list body for the Bandeja tab. `wide` switches to the
+  // desktop two-column card grid.
+  const bandejaBody = (wide: boolean) => (
+    <>
+      <Chips className="mb-4 pb-1">
+        {FILTERS.map((f) => (
+          <Chip
+            key={f.id}
+            active={f.id === filter}
+            count={f.id === "pending" && pendingTotal > 0 ? pendingTotal : undefined}
+            onClick={() => setFilter(f.id as FilterId)}
+          >
+            {f.label}
+          </Chip>
+        ))}
+      </Chips>
+
+      {isLoading && loading}
+      {error && errorBox}
+      {!isLoading && !error && shown.length === 0 && empty}
+      {!isLoading && !error && shown.length > 0 && wide && (
+        <div className="overflow-hidden rounded-2xl border border-border bg-card xl:grid xl:grid-cols-2">
+          {shown.map((it, i) => rowFor(it, i < shown.length - 1))}
+        </div>
+      )}
+      {!isLoading && !error && shown.length > 0 && !wide && (
+        <div>{shown.map((it, i) => rowFor(it, i < shown.length - 1))}</div>
+      )}
+    </>
+  );
+
+  // Desktop: full-width app surface. Tabs live next to the header; the body
+  // swaps between the three views. Bandeja keeps its dense two-column grid.
   if (isDesktop) {
     return (
       <PageLayout width="app">
         <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
           <PageHeader
-            title="Bandeja"
-            description="WhatsApp y correos recientes en un solo lugar."
+            title="CRM"
+            description="Conversaciones, pipeline y métricas en un solo lugar."
             className="mb-0"
           />
           <Segmented
-            items={FILTERS}
-            value={filter}
-            onChange={(id) => setFilter(id as "todos" | Channel)}
+            items={TABS}
+            value={tab}
+            onChange={(id) => setTab(id as Tab)}
             className="shrink-0 border-b-0 px-0"
           />
         </div>
 
-        {isLoading && loading}
-        {error && errorBox}
-        {!isLoading && !error && shown.length === 0 && empty}
-        {!isLoading && !error && shown.length > 0 && (
-          <div className="overflow-hidden rounded-2xl border border-border bg-card xl:grid xl:grid-cols-2">
-            {shown.map((it, i) => rowFor(it, i < shown.length - 1))}
-          </div>
-        )}
+        {tab === "bandeja" && bandejaBody(true)}
+        {tab === "pipeline" && <CrmPipeline />}
+        {tab === "metricas" && <CrmMetrics />}
       </PageLayout>
     );
   }
 
-  // Mobile: unchanged — capped column, full-width segmented control, stacked rows.
+  // Mobile: capped column, full-width tab bar, stacked views.
   return (
     <PageLayout width="md">
-      <PageHeader title="Bandeja" description="WhatsApp y correos recientes en un solo lugar." />
+      <PageHeader title="CRM" description="Conversaciones, pipeline y métricas en un solo lugar." />
 
       <div className="mb-4">
-        <Segmented
-          items={FILTERS}
-          value={filter}
-          onChange={(id) => setFilter(id as "todos" | Channel)}
-        />
+        <Segmented items={TABS} value={tab} onChange={(id) => setTab(id as Tab)} />
       </div>
 
-      {isLoading && loading}
-      {error && errorBox}
-      {!isLoading && !error && shown.length === 0 && empty}
-      {!isLoading && !error && shown.length > 0 && (
-        <div>{shown.map((it, i) => rowFor(it, i < shown.length - 1))}</div>
-      )}
+      {tab === "bandeja" && bandejaBody(false)}
+      {tab === "pipeline" && <CrmPipeline />}
+      {tab === "metricas" && <CrmMetrics />}
     </PageLayout>
   );
 }
