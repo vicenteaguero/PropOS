@@ -75,8 +75,7 @@ export function DataRightsPage() {
           <section>
             <h2>¿Cómo lo haces?</h2>
             <p className="mb-4">
-              Escríbenos un email a{" "}
-              <a href={`mailto:${PRIVACY_EMAIL}`}>{PRIVACY_EMAIL}</a>{" "}
+              Escríbenos un email a <a href={`mailto:${PRIVACY_EMAIL}`}>{PRIVACY_EMAIL}</a>{" "}
               <strong>desde la dirección con la que nos contactaste</strong>. Indica:
             </p>
             <ul>
