@@ -176,7 +176,13 @@ export function InviteUserDrawer({ open, onOpenChange, currentTenantId }: Props)
           Es admin-dev (acceso a operaciones destructivas)
         </label>
 
-        <Button type="submit" variant="ink" size="block" disabled={invite.isPending} className="mt-2">
+        <Button
+          type="submit"
+          variant="ink"
+          size="block"
+          disabled={invite.isPending}
+          className="mt-2"
+        >
           {invite.isPending ? <Loader2 className="size-4 animate-spin" /> : "Enviar invitación"}
         </Button>
       </form>
