@@ -78,9 +78,7 @@ export function DocumentCard({ doc, onOpen }: Props) {
           <DocumentKindPill doc={doc} />
           {v && <span className="text-xs text-muted-foreground">v{v.version_number}</span>}
           {doc.assignments && doc.assignments.length > 0 && (
-            <span className="text-xs text-muted-foreground">
-              · {doc.assignments.length} vínc.
-            </span>
+            <span className="text-xs text-muted-foreground">· {doc.assignments.length} vínc.</span>
           )}
         </div>
       </div>
