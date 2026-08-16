@@ -30,7 +30,7 @@ def _missing_env() -> list[str]:
     return [k for k in needed if not os.environ.get(k)]
 
 
-TEST_SCHEMA = os.environ.get("ANITA_TEST_SCHEMA", "propos_test")
+TEST_SCHEMA = os.environ.get("AGENT_TEST_SCHEMA", "propos_test")
 
 
 def _schema_is_exposed(schema: str) -> bool:
@@ -46,36 +46,34 @@ def _schema_is_exposed(schema: str) -> bool:
 
 @pytest.fixture(scope="session", autouse=True)
 def _route_to_test_schema() -> Generator[str, None, None]:
-    """Route Supabase calls to `propos_test` if PostgREST exposes it.
+    """Route Supabase calls to `propos_test`, or refuse to run.
 
-    Same DB, different schema — set via Supabase dashboard → API →
-    Exposed Schemas, or in `supabase/config.toml` `[api] schemas`. If the
-    schema isn't exposed, fall back to `public` and rely on
-    tenant_id-scoped isolation (cleanup deletes by tenant_id).
+    Same DB, different schema — exposed via `supabase/config.toml` `[api]
+    schemas` (and Project Settings → API → Exposed Schemas). There is a single
+    Supabase project and `public` is production, so an unreachable test schema
+    is a hard stop: the previous behaviour was to warn and silently write to
+    production, which nobody reads in CI output.
+
+    If the probe fails, rebuild the schema with `make test-schema-rebuild`.
     """
     from app.core.supabase.client import get_supabase_client
 
     # Make sure cached client picks up whatever was set previously.
     get_supabase_client.cache_clear()
 
-    if _schema_is_exposed(TEST_SCHEMA):
-        prev = os.environ.get("SUPABASE_DB_SCHEMA")
-        os.environ["SUPABASE_DB_SCHEMA"] = TEST_SCHEMA
-        get_supabase_client.cache_clear()
-        active = TEST_SCHEMA
-    else:
-        prev = os.environ.get("SUPABASE_DB_SCHEMA")
-        os.environ.pop("SUPABASE_DB_SCHEMA", None)
-        get_supabase_client.cache_clear()
-        active = "public"
-        import warnings
-
-        warnings.warn(
-            f"PostgREST has not exposed schema {TEST_SCHEMA!r}; falling back to "
-            "'public' + tenant scoping. Add it under Project Settings → API → "
-            "Exposed Schemas in the Supabase dashboard for full isolation.",
-            stacklevel=2,
+    if not _schema_is_exposed(TEST_SCHEMA):
+        pytest.exit(
+            f"PostgREST does not expose schema {TEST_SCHEMA!r}. Refusing to run "
+            "integration tests against 'public' — that is the production schema. "
+            "Fix: `make test-schema-rebuild`, and check `[api] schemas` in "
+            "supabase/config.toml.",
+            returncode=1,
         )
+
+    prev = os.environ.get("SUPABASE_DB_SCHEMA")
+    os.environ["SUPABASE_DB_SCHEMA"] = TEST_SCHEMA
+    get_supabase_client.cache_clear()
+    active = TEST_SCHEMA
 
     yield active
 
@@ -97,7 +95,7 @@ def seed_handles(_route_to_test_schema: str) -> Generator[SeedHandles, None, Non
 
 
 _DEFAULT = ["groq"]
-if os.environ.get("ANITA_TEST_FULL"):
+if os.environ.get("AGENT_TEST_FULL"):
     _DEFAULT = ["groq", "cerebras", "anthropic", "openai"]
 
 PROVIDERS = [p for p in _DEFAULT if os.environ.get(f"{p.upper()}_API_KEY")]
@@ -107,5 +105,5 @@ PROVIDERS = [p for p in _DEFAULT if os.environ.get(f"{p.upper()}_API_KEY")]
 def provider(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> str:
     if request.param == "__none__":
         pytest.skip("Set CEREBRAS_API_KEY or GROQ_API_KEY to run.")
-    monkeypatch.setenv("ANITA_PROVIDER", request.param)
+    monkeypatch.setenv("AGENT_PROVIDER", request.param)
     return request.param
