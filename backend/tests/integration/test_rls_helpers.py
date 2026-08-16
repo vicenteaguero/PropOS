@@ -11,7 +11,6 @@ Run with: poetry run pytest -m integration tests/integration/test_rls_helpers.py
 
 from __future__ import annotations
 
-import os
 import uuid
 from collections.abc import Generator
 
@@ -61,6 +60,7 @@ def _impersonate(cur: psycopg.Cursor, user_id: str, tenant_id: str | None = None
 
 # ---------- get_my_tenant_id ----------
 
+
 def test_get_my_tenant_id_uses_session_override(cur: psycopg.Cursor) -> None:
     """Session-var override beats profile snapshot fallback."""
     cur.execute("SELECT id, tenant_id FROM profiles WHERE email='vicenteaguero@uc.cl'")
@@ -84,6 +84,7 @@ def test_get_my_tenant_id_uses_session_override(cur: psycopg.Cursor) -> None:
 
 
 # ---------- property_grants / user_has_property_cap ----------
+
 
 def test_owner_has_caps_via_grant(cur: psycopg.Cursor) -> None:
     cur.execute(
@@ -109,9 +110,7 @@ def test_owner_has_caps_via_grant(cur: psycopg.Cursor) -> None:
 
 def test_no_cap_for_user_without_grant(cur: psycopg.Cursor) -> None:
     random_uid = str(uuid.uuid4())
-    cur.execute(
-        "SELECT property_id FROM property_grants LIMIT 1"
-    )
+    cur.execute("SELECT property_id FROM property_grants LIMIT 1")
     row = cur.fetchone()
     if not row:
         pytest.skip("No property_grants — seed not run")
@@ -122,6 +121,7 @@ def test_no_cap_for_user_without_grant(cur: psycopg.Cursor) -> None:
 
 
 # ---------- audience_can ----------
+
 
 def test_audience_can_unlocks_for_member_view(cur: psycopg.Cursor) -> None:
     """Owner-view member sees a doc when caps include {'owner': ['view']}."""
@@ -150,9 +150,7 @@ def test_audience_can_unlocks_for_member_view(cur: psycopg.Cursor) -> None:
 
 
 def test_audience_can_rejects_empty_caps(cur: psycopg.Cursor) -> None:
-    cur.execute(
-        "SELECT user_id, tenant_id FROM tenant_memberships WHERE is_active LIMIT 1"
-    )
+    cur.execute("SELECT user_id, tenant_id FROM tenant_memberships WHERE is_active LIMIT 1")
     row = cur.fetchone()
     if not row:
         pytest.skip("No memberships — seed not run")
@@ -163,6 +161,7 @@ def test_audience_can_rejects_empty_caps(cur: psycopg.Cursor) -> None:
 
 
 # ---------- activate_tenant ----------
+
 
 def test_activate_tenant_rejects_non_member(cur: psycopg.Cursor) -> None:
     random_uid = str(uuid.uuid4())
