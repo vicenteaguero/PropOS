@@ -4,7 +4,10 @@ import { Loader2, CheckCircle2, AlertTriangle, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ConsentCheckbox, type ConsentEvidence } from "@shared/components/consent-checkbox/consent-checkbox";
+import {
+  ConsentCheckbox,
+  type ConsentEvidence,
+} from "@shared/components/consent-checkbox/consent-checkbox";
 import { IdScanCapture } from "@shared/components/id-scan-capture/id-scan-capture";
 import { PublicFooter } from "@shared/components/public-footer/public-footer";
 import { formatRut, isValidRut } from "@/lib/locale-cl";
@@ -21,7 +24,9 @@ export function VisitorRegistrationPage() {
   const [invitation, setInvitation] = useState<InvitationPublicView | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [submitted, setSubmitted] = useState<{ message: string; requiresEmail: boolean } | null>(null);
+  const [submitted, setSubmitted] = useState<{ message: string; requiresEmail: boolean } | null>(
+    null,
+  );
 
   // Form state
   const [fullName, setFullName] = useState("");
@@ -54,8 +59,7 @@ export function VisitorRegistrationPage() {
   }, [slug]);
 
   const isAuthMode = invitation?.mode === "auth_user";
-  const passwordOk =
-    !isAuthMode || (password.length >= 8 && password === passwordConfirm);
+  const passwordOk = !isAuthMode || (password.length >= 8 && password === passwordConfirm);
   const rutOk = rut.length > 2 && isValidRut(rut);
   const formOk =
     fullName.trim().length > 1 && rutOk && consent !== null && idUploaded && passwordOk;
