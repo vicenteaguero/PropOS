@@ -1,0 +1,22 @@
+{
+  "_comment": "Copy to .mcp.json and replace <VENV> with the project venv path (poetry env info --path). .mcp.json is gitignored: paths are machine-specific and the token is local-only. Start the server with `make jupyter`.",
+  "mcpServers": {
+    "jupyter": {
+      "command": "<VENV>/bin/jupyter-mcp-server",
+      "args": [
+        "--transport",
+        "stdio",
+        "--provider",
+        "jupyter",
+        "--runtime-url",
+        "http://localhost:8888",
+        "--runtime-token",
+        "propos-dev",
+        "--document-url",
+        "http://localhost:8888",
+        "--document-token",
+        "propos-dev"
+      ]
+    }
+  }
+}
