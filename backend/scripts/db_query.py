@@ -51,9 +51,21 @@ def _conn_kwargs() -> dict[str, str | int]:
 
 
 def _resolve_sql(arg: str) -> str:
-    p = Path(arg)
-    if p.exists() and p.is_file():
-        return p.read_text()
+    """Treat the argument as a .sql file path, else as literal SQL.
+
+    Probing every argument with Path.exists() raised OSError(63, name too long)
+    on any query longer than the filesystem's 255-byte name limit, which made
+    long queries look like a broken tool. Only strings that plausibly name a
+    file are probed, and the probe never raises.
+    """
+    if len(arg) > 255 or "\n" in arg:
+        return arg
+    try:
+        p = Path(arg)
+        if p.is_file():
+            return p.read_text()
+    except OSError:
+        pass
     return arg
 
 
