@@ -74,8 +74,7 @@ export function CommissionCalculator() {
               IVA <span className="font-semibold text-foreground">{clp(result.iva_cents)}</span>
             </span>
             <span className="text-muted-foreground">
-              Total{" "}
-              <span className="font-bold text-success">{clp(result.gross_cents)}</span>
+              Total <span className="font-bold text-success">{clp(result.gross_cents)}</span>
             </span>
           </div>
         )}
