@@ -73,9 +73,76 @@ def _public_tables(cur: psycopg.Cursor) -> list[str]:
     return [r[0] for r in cur.fetchall()]
 
 
+def _public_functions(cur: psycopg.Cursor) -> list[str]:
+    """Definitions of every non-extension function/procedure in public."""
+    cur.execute(
+        """
+        select pg_get_functiondef(p.oid)
+        from pg_proc p
+        join pg_namespace n on n.oid = p.pronamespace
+        where n.nspname = 'public'
+          and p.prokind in ('f', 'p')
+          and not exists (
+            select 1 from pg_depend d
+            where d.objid = p.oid and d.deptype = 'e'
+          )
+        order by p.proname
+        """
+    )
+    return [r[0] for r in cur.fetchall()]
+
+
+def _public_views(cur: psycopg.Cursor) -> list[tuple[str, str, bool]]:
+    """(name, definition, is_materialized) for every view in public."""
+    cur.execute(
+        """
+        select c.relname, pg_get_viewdef(c.oid, true), c.relkind = 'm'
+        from pg_class c
+        join pg_namespace n on n.oid = c.relnamespace
+        where n.nspname = 'public' and c.relkind in ('v', 'm')
+        order by c.relname
+        """
+    )
+    return [(r[0], r[1], r[2]) for r in cur.fetchall()]
+
+
+def _public_triggers(cur: psycopg.Cursor) -> list[str]:
+    cur.execute(
+        """
+        select pg_get_triggerdef(t.oid)
+        from pg_trigger t
+        join pg_class c on c.oid = t.tgrelid
+        join pg_namespace n on n.oid = c.relnamespace
+        where n.nspname = 'public' and not t.tgisinternal
+        order by t.tgname
+        """
+    )
+    return [r[0] for r in cur.fetchall()]
+
+
+def _quote(identifier: str) -> str:
+    return '"' + identifier.replace('"', '""') + '"'
+
+
+def _reschema(ddl: str, schema: str) -> str:
+    """Point a public DDL definition at the mirror schema.
+
+    Every `public.<thing>` reference becomes `<schema>.<thing>`, so a cloned
+    function reads and writes the mirror instead of production. `auth.` and
+    `storage.` references are left alone: those schemas are shared and the app
+    only reads them. A bare `SET search_path = public` keeps public as a
+    fallback so extension operators still resolve.
+    """
+    ddl = re.sub(r"(?i)\bsearch_path\s*=\s*public\b", f"search_path = {schema}, public", ddl)
+    return re.sub(r"(?<![\w.])public\.", f"{schema}.", ddl)
+
+
 def build_statements(cur: psycopg.Cursor, schema: str) -> list[sql.Composed]:
     ident = sql.Identifier(schema)
     stmts: list[sql.Composed] = [
+        # Functions are emitted in catalog order, so a LANGUAGE sql body may
+        # reference a sibling that does not exist yet. pg_dump does the same.
+        sql.SQL("SET check_function_bodies = off"),
         sql.SQL("DROP SCHEMA IF EXISTS {} CASCADE").format(ident),
         sql.SQL("CREATE SCHEMA {}").format(ident),
     ]
@@ -93,9 +160,25 @@ def build_statements(cur: psycopg.Cursor, schema: str) -> list[sql.Composed]:
             ).format(ident, sql.Identifier(table), sql.Identifier(table))
         )
 
+    # Functions before views and triggers: both can reference them.
+    for definition in _public_functions(cur):
+        stmts.append(sql.SQL(_reschema(definition, schema)))  # noqa: S608 — rewritten server DDL
+
+    for name, definition, is_matview in _public_views(cur):
+        kind = "MATERIALIZED VIEW" if is_matview else "VIEW"
+        # Built by concatenation, not .format(): a view body may contain braces
+        # (jsonb literals) that sql.SQL's formatter would try to interpret.
+        target = f"{_quote(schema)}.{_quote(name)}"
+        stmts.append(sql.SQL(f"CREATE {kind} {target} AS " + _reschema(definition, schema).rstrip(";")))
+
+    for definition in _public_triggers(cur):
+        stmts.append(sql.SQL(_reschema(definition, schema)))
+
     for role in _existing_roles(cur, GRANT_ROLES_ALL + GRANT_ROLES_SELECT):
         r = sql.Identifier(role)
         stmts.append(sql.SQL("GRANT USAGE ON SCHEMA {} TO {}").format(ident, r))
+        stmts.append(sql.SQL("GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA {} TO {}").format(ident, r))
+        stmts.append(sql.SQL("ALTER DEFAULT PRIVILEGES IN SCHEMA {} GRANT EXECUTE ON FUNCTIONS TO {}").format(ident, r))
         if role in GRANT_ROLES_ALL:
             stmts.append(sql.SQL("GRANT ALL ON ALL TABLES IN SCHEMA {} TO {}").format(ident, r))
             stmts.append(sql.SQL("ALTER DEFAULT PRIVILEGES IN SCHEMA {} GRANT ALL ON TABLES TO {}").format(ident, r))
