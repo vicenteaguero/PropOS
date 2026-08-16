@@ -1,52 +1,94 @@
+# Backend build + deploy. Fired by the `propos-api-deploy` trigger on push to
+# main (paths backend/**, config/docker/**), or manually via `make deploy-backend`.
+#
+# Two things this file deliberately does at runtime instead of statically:
+#   1. Tags the image with the commit SHA as well as :latest, so a bad deploy can
+#      be rolled back to a specific revision. Manual builds have no SHORT_SHA, so
+#      they fall back to a timestamp tag.
+#   2. Builds --set-secrets from the secrets that actually exist in Secret
+#      Manager. A secret listed here but missing makes `gcloud run deploy` fail,
+#      which would mean the whole deploy pipeline breaks the moment we add a
+#      not-yet-provisioned integration. Instead, features stay dark until their
+#      secret is created, and the next deploy picks it up with no edit here.
 steps:
-  # Pull previous image for layer cache (ignore failure on first build).
   - name: "gcr.io/cloud-builders/docker"
-    id: pull-cache
+    id: build-push
     entrypoint: bash
-    args: ["-c", "docker pull $_IMAGE || exit 0"]
-
-  - name: "gcr.io/cloud-builders/docker"
-    id: build
     args:
-      - build
-      - --cache-from=$_IMAGE
-      - --build-arg=BUILDKIT_INLINE_CACHE=1
-      - -t
-      - $_IMAGE
-      - -f
-      - config/docker/backend.prod.Dockerfile
-      - .
-    env: ["DOCKER_BUILDKIT=1"]
-
-  - name: "gcr.io/cloud-builders/docker"
-    id: push
-    args: [push, $_IMAGE]
+      - -c
+      - |
+        set -euo pipefail
+        TAG="$SHORT_SHA"
+        if [ -z "$$TAG" ]; then TAG="manual-$$(date -u +%Y%m%d-%H%M%S)"; fi
+        echo "$$TAG" > /workspace/image_tag
+        echo "==> building $_IMAGE_BASE:$$TAG"
+        docker pull "$_IMAGE_BASE:latest" || true
+        DOCKER_BUILDKIT=1 docker build \
+          --cache-from="$_IMAGE_BASE:latest" \
+          --build-arg BUILDKIT_INLINE_CACHE=1 \
+          -t "$_IMAGE_BASE:$$TAG" \
+          -t "$_IMAGE_BASE:latest" \
+          -f config/docker/backend.prod.Dockerfile \
+          .
+        docker push "$_IMAGE_BASE:$$TAG"
+        docker push "$_IMAGE_BASE:latest"
 
   - name: "gcr.io/cloud-builders/gcloud"
     id: deploy
+    entrypoint: bash
     args:
-      - run
-      - deploy
-      - propos-api
-      - --image=$_IMAGE
-      - --region=$_REGION
-      - --platform=managed
-      - --allow-unauthenticated
-      - --port=8000
-      - --min-instances=0
-      - --max-instances=1
-      - --memory=512Mi
-      - --cpu=1
-      - --env-vars-file=config/docker/cloudrun-env.yaml
-      - --set-secrets=SUPABASE_URL=supabase-url:latest,SUPABASE_ANON_KEY=supabase-anon-key:latest,SUPABASE_SERVICE_ROLE_KEY=supabase-service-role-key:latest,VAPID_PUBLIC_KEY=vapid-public-key:latest,VAPID_PRIVATE_KEY=vapid-private-key:latest,CEREBRAS_API_KEY=cerebras-api-key:latest,GROQ_API_KEY=groq-api-key:latest
+      - -c
+      - |
+        set -euo pipefail
+        TAG="$$(cat /workspace/image_tag)"
 
-images:
-  - $_IMAGE
+        # ENV_VAR=secret-name pairs. Missing secrets are skipped, not fatal.
+        PAIRS="SUPABASE_URL=supabase-url
+        SUPABASE_ANON_KEY=supabase-anon-key
+        SUPABASE_SERVICE_ROLE_KEY=supabase-service-role-key
+        VAPID_PUBLIC_KEY=vapid-public-key
+        VAPID_PRIVATE_KEY=vapid-private-key
+        CEREBRAS_API_KEY=cerebras-api-key
+        GROQ_API_KEY=groq-api-key
+        ANTHROPIC_API_KEY=anthropic-api-key
+        OPENAI_API_KEY=openai-api-key
+        KAPSO_API_KEY=kapso-api-key
+        KAPSO_WEBHOOK_SECRET=kapso-webhook-secret
+        KAPSO_PHONE_NUMBER_ID=kapso-phone-number-id
+        RESEND_API_KEY=resend-api-key
+        INTERNAL_JOBS_SECRET=internal-jobs-secret
+        AGENT_READONLY_DB_URL=agent-readonly-db-url
+        EMAIL_IMAP_USER=email-imap-user
+        EMAIL_IMAP_PASSWORD=email-imap-password"
+
+        SECRETS=""
+        for pair in $$PAIRS; do
+          name="$${pair#*=}"
+          if gcloud secrets describe "$$name" >/dev/null 2>&1; then
+            SECRETS="$${SECRETS:+$$SECRETS,}$$pair:latest"
+          else
+            echo "skip secret (not provisioned): $$name"
+          fi
+        done
+        echo "==> mounting secrets: $$SECRETS"
+
+        gcloud run deploy propos-api \
+          --image="$_IMAGE_BASE:$$TAG" \
+          --region=$_REGION \
+          --platform=managed \
+          --allow-unauthenticated \
+          --port=8000 \
+          --min-instances=0 \
+          --max-instances=1 \
+          --memory=512Mi \
+          --cpu=1 \
+          --env-vars-file=config/docker/cloudrun-env.yaml \
+          --set-secrets="$$SECRETS"
 
 options:
   logging: CLOUD_LOGGING_ONLY
   machineType: E2_HIGHCPU_8
 
 substitutions:
-  _IMAGE: us-central1-docker.pkg.dev/propos-489401/propos/api:latest
+  _IMAGE_BASE: us-central1-docker.pkg.dev/propos-489401/propos/api
   _REGION: us-central1
