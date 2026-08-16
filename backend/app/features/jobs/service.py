@@ -48,14 +48,12 @@ async def run_due_reminders() -> dict[str, int]:
                 user_id=r["user_id"],
                 url=r.get("url") or "/",
             )
-            client.table("reminders").update(
-                {"status": "SENT", "sent_at": datetime.now(UTC).isoformat()}
-            ).eq("id", r["id"]).execute()
-            sent += 1
-        except Exception as exc:  # noqa: BLE001
-            client.table("reminders").update({"status": "FAILED", "error": str(exc)[:300]}).eq(
+            client.table("reminders").update({"status": "SENT", "sent_at": datetime.now(UTC).isoformat()}).eq(
                 "id", r["id"]
             ).execute()
+            sent += 1
+        except Exception as exc:  # noqa: BLE001
+            client.table("reminders").update({"status": "FAILED", "error": str(exc)[:300]}).eq("id", r["id"]).execute()
             failed += 1
 
     logger.info("run_due_reminders", event_type="job", claimed=len(claimed), sent=sent, failed=failed)
