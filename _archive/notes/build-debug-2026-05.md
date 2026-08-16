@@ -1,3 +1,8 @@
+> **Historical note (2026-05).** Kept for the diagnosis, not as current guidance.
+> The root cause below was the iCloud-managed `~/Desktop` path; the project moved to
+> `~/real-state/PropOS` on 2026-05-05 and native tooling is fast again (build ~5s,
+> lint ~2s). Do not re-apply these workarounds.
+
 # Build Debug Report — Final
 
 ## Fixes shipped (working now)
