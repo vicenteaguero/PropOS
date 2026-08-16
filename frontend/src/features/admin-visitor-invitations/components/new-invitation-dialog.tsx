@@ -66,7 +66,9 @@ export function NewInvitationDialog({ open, onOpenChange, defaultPropertyId }: P
       return;
     }
     const t = setTimeout(() => {
-      preflightInvitation(email).then(setPreflight).catch(() => setPreflight(null));
+      preflightInvitation(email)
+        .then(setPreflight)
+        .catch(() => setPreflight(null));
     }, 400);
     return () => clearTimeout(t);
   }, [email, open]);
