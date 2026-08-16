@@ -1,7 +1,7 @@
 include .env
 export
 
-.PHONY: setup dev dev-frontend dev-hmr dev-pwa dev-pwa-hmr dev-pwa-hmr-kapso dev-docker-hmr dev-docker-pwa-hmr dev-docker-pwa-hmr-kapso stop build migrate seed format lint test clean logs backend-shell db-studio gcloud-auth deploy-setup deploy-secrets-sync deploy-trigger-setup deploy-trigger-list deploy-backend deploy-verify deploy-frontend kapso-templates-sync kapso-webhook-tunnel query query-write backfill-thumbnails
+.PHONY: setup dev dev-frontend dev-hmr dev-pwa dev-pwa-hmr dev-pwa-hmr-kapso dev-docker-hmr dev-docker-pwa-hmr dev-docker-pwa-hmr-kapso stop build migrate seed format lint test clean logs backend-shell db-studio gcloud-auth deploy-setup deploy-secrets-sync deploy-trigger-setup deploy-trigger-list deploy-backend deploy-verify deploy-frontend kapso-templates-sync kapso-webhook-tunnel query query-write backfill-thumbnails jupyter
 
 setup:
 	@bash scripts/setup.sh
@@ -269,3 +269,16 @@ query-write:
 #   make backfill-thumbnails ARGS="--mime image"
 backfill-thumbnails:
 	cd backend && poetry run python -m scripts.backfill_thumbnails $(ARGS)
+
+# Jupyter server for analysis notebooks (paired with Claude Code MCP).
+# Token = propos-dev (matches .mcp.json). Notebooks live in ./notebooks.
+# `notebooks/` is gitignored (real client data), so create it on a fresh clone.
+jupyter:
+	@mkdir -p $(PWD)/notebooks
+	cd backend && poetry run jupyter lab \
+		--no-browser \
+		--port=8888 \
+		--ServerApp.token=propos-dev \
+		--ServerApp.password='' \
+		--ServerApp.root_dir=$(PWD)/notebooks \
+		--ServerApp.disable_check_xsrf=True
