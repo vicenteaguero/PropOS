@@ -27,7 +27,10 @@ LIMITS: dict[tuple[str, str], ModelLimits] = {
     ("groq", "llama-3.3-70b-versatile"): ModelLimits(rpm=30, rpd=1_000, tpm=12_000, tpd=100_000),
     ("groq", "qwen/qwen3-32b"): ModelLimits(rpm=60, rpd=1_000, tpm=6_000, tpd=500_000),
     ("groq", "llama-3.1-8b-instant"): ModelLimits(rpm=30, rpd=14_400, tpm=6_000, tpd=500_000),
-    ("groq", "meta-llama/llama-4-scout-17b-16e-instruct"): ModelLimits(rpm=30, rpd=1_000, tpm=30_000, tpd=500_000),
+    # meta-llama/llama-4-scout-17b-16e-instruct was retired by Groq (404
+    # model_not_found) — it was the configured default, so the agent returned
+    # errors in production until the switch to llama-3.3-70b-versatile.
+    ("groq", "qwen/qwen3.6-27b"): ModelLimits(rpm=30, rpd=1_000, tpm=8_000, tpd=200_000),
     ("groq", "openai/gpt-oss-120b"): ModelLimits(rpm=30, rpd=1_000, tpm=8_000, tpd=200_000),
     ("groq", "openai/gpt-oss-20b"): ModelLimits(rpm=30, rpd=1_000, tpm=8_000, tpd=200_000),
     ("groq", "allam-2-7b"): ModelLimits(rpm=30, rpd=7_000, tpm=6_000, tpd=500_000),
