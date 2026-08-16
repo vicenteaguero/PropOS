@@ -76,13 +76,22 @@ tratamientos:
     categorias_datos: [identificacion, contacto, mensajes, contexto_crm]
     base_licitud: contrato
     destinatarios_internos: [usuarios_anita]
-    sub_encargados: [Anthropic, Cerebras]
+    sub_encargados: [Groq]
     transferencia_internacional:
       destino: "Estados Unidos"
-      mecanismo: "DPA + SCC del proveedor LLM"
+      mecanismo: "DPA + SCC del proveedor LLM — DPA con Groq PENDIENTE"
     retencion: "90 días"
     medidas_seguridad: [pending_proposals_con_aprobacion_humana, audit_log, opt_out_training_provider]
-    nota: "Audio biométrico (Groq Whisper STT) deshabilitado hasta tener DPA explícito con Groq. Flag ANITA_STT_ENABLED=false."
+    nota: |
+      Corregido 2026-07-02. El único proveedor LLM/STT en uso es Groq Inc. (US),
+      hardcodeado en agent/classifier.py, agent/tools/text_to_sql.py y
+      agent/transcribe.py. Anthropic y Cerebras NO procesan datos hoy (el swap
+      por proveedor quedó diferido post-v0.1.0).
+      Groq Whisper STT está ACTIVO: todas las notas de voz del asistente se
+      envían a Groq. La versión anterior de este registro decía que el STT
+      estaba deshabilitado vía ANITA_STT_ENABLED=false — ese flag no existe en
+      el código. DPA con Groq requerido (Art. 27); ver dpa-subprocessors.md.
+      El audio se transcribe pero no se persiste en media_files.
 
   - id: whatsapp_kapso
     nombre: "Comunicación WhatsApp vía Kapso (BSP)"
