@@ -294,7 +294,9 @@ export function UfDialog({ open, onOpenChange }: Props) {
               </div>
               <div className="mt-3 flex items-baseline justify-between border-t border-border/60 pt-3 text-sm">
                 <span className="text-xs font-medium text-muted-foreground">{from}</span>
-                <span className="text-lg font-semibold">{formatCurrency(commissionFrom, from)}</span>
+                <span className="text-lg font-semibold">
+                  {formatCurrency(commissionFrom, from)}
+                </span>
               </div>
               {from !== "CLP" && (
                 <div className="mt-1 flex items-baseline justify-between text-sm">
