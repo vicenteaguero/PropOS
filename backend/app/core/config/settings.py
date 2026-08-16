@@ -1,4 +1,14 @@
+import os
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Env vars from before the anita -> agent rename. `extra="ignore"` means a
+# leftover ANITA_* is silently dropped and the field falls back to its default,
+# which is exactly how Cloud Run ran on code defaults for months while
+# cloudrun-env.yaml still shipped ANITA_*. Fail the boot instead: on Cloud Run a
+# revision that cannot start never receives traffic, so the previous one keeps
+# serving.
+_RETIRED_ENV_PREFIXES = ("ANITA_",)
 
 
 class Settings(BaseSettings):
@@ -68,5 +78,23 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
+
+def _reject_retired_env() -> None:
+    """Refuse to boot when a retired env var is still set.
+
+    `extra="ignore"` cannot be tightened to "forbid" because the `.env` file
+    carries deploy-only keys (GCP_*, SUPABASE_DB_PASSWORD, VITE_*) that are not
+    settings fields. So the check is explicit instead of structural.
+    """
+    stale = sorted(k for k in os.environ if k.startswith(_RETIRED_ENV_PREFIXES))
+    if stale:
+        raise RuntimeError(
+            f"Retired env vars still set: {', '.join(stale)}. "
+            "They were renamed ANITA_* -> AGENT_* and are now ignored, which silently "
+            "reverts the agent to code defaults. Remove them (see config/docker/cloudrun-env.yaml)."
+        )
+
+
+_reject_retired_env()
 
 settings = Settings()
