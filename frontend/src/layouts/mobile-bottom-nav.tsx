@@ -173,7 +173,11 @@ export function MobileBottomNav() {
             onClick={toggle}
           />
           {isAdminView && (
-            <SheetItem icon={Settings} label="Configuración" onClick={() => go("/admin/settings")} />
+            <SheetItem
+              icon={Settings}
+              label="Configuración"
+              onClick={() => go("/admin/settings")}
+            />
           )}
         </div>
 
