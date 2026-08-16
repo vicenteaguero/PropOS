@@ -11,7 +11,9 @@ Multi-tenant real estate operations platform. PWA-first, Spanish UI, dark theme 
 - **Frontend**: React 19 + TypeScript + Vite 6 + Tailwind v4 + shadcn/ui + TanStack Query + react-router 7 + vite-plugin-pwa. Path aliases: `@/`, `@shared`, `@features`, `@core`, `@layouts`.
 - **Backend**: FastAPI + Poetry + structlog + pydantic-settings + Supabase Python client. Feature pattern: `router.py`, `service.py`, `schemas.py`.
 - **DB**: Supabase Postgres (project `tlbkwrjzraaikdrajwqh`, us-east-2). Migrations in `supabase/migrations/` (sequential SQL).
-- **Deploy**: GCP Cloud Run (backend), Vercel (frontend). **Two Vercel projects, one per branch**: `main` → `prop-os` (prod, `prop-os-delta.vercel.app`); `dev` → `prop-os-edge` (preview, `prop-os-edge.vercel.app`). Both `.vercel/project.json` (root + frontend) point to the same `prop-os-edge` link locally; pushing the branch is what selects the target project on Vercel's side. Env vars are per-project — keep them in sync (e.g. `VITE_VAPID_PUBLIC_KEY` was missing from prod).
+- **Deploy**: GCP Cloud Run (backend), Vercel (frontend). Full matrix, secrets inventory and rollback in `docs/deployment.md`. Short version: `main` → `prop-os` (prod), `dev` → `prop-os-edge` (staging), and **staging is frontend-only** — both branches share one Cloud Run service and one Supabase schema (`public`). Env vars are per-Vercel-project and baked at build time.
+
+**Branch flow**: work on `dev` → verify on `prop-os-edge` → merge to `main` = production. Backend or DB changes reach production regardless of branch, so treat those as production changes wherever they land.
 
 ## Repo layout
 
@@ -66,7 +68,7 @@ Service Worker disabled in dev (`devOptions.enabled = false` in `vite.config.ts`
 
 **Project location**: `/Users/vicenteaguero/real-state/PropOS`. Moved out of iCloud Desktop on 2026-05-05 — file-provider made bulk ops (tsc, vite build, rollup) hang. Native tooling now fast: build 5s, lint 1.7s, ruff 1.8s. Backend Poetry venv at `~/Library/Caches/pypoetry/virtualenvs/propos-backend-F68E3XRv-py3.12`.
 
-`frontend/src/shared/lib/` is gitignored by `lib/` pattern — `chart-config.ts` must be manually preserved.
+`.gitignore` ignores `lib/` but negates the three source paths (`frontend/src/lib/`, `frontend/src/shared/lib/`, `frontend/src/features/**/lib/`), so nothing under `frontend/src` is ignored. Verify with `git status --ignored -s frontend/src` — it must print nothing.
 
 ## Lint / format / test
 
@@ -99,13 +101,15 @@ Datos: para Supabase, `pd.read_sql(...)` contra pooler URL (no commitear credenc
 
 ## DB
 
-Nota de entorno (2026-08-16): el venv de Poetry se había perdido y `make query`/`make lint` fallaban. Reconstruido con `cd backend && poetry env use python3.12 && poetry install` (Poetry 2.4.1, venv en `~/Library/Caches/pypoetry/virtualenvs/propos-backend-F68E3XRv-py3.12`). Si vuelven a fallar, ese es el arreglo — no es un bug del Makefile. `db_query` interpreta SQL largo como path (errno 63) → mantener queries cortas.
+Nota de entorno (2026-08-16): el venv de Poetry se había perdido y `make query`/`make lint` fallaban. Reconstruido con `cd backend && poetry env use python3.12 && poetry install` (Poetry 2.4.1, venv en `~/Library/Caches/pypoetry/virtualenvs/propos-backend-F68E3XRv-py3.12`). Si vuelven a fallar, ese es el arreglo — no es un bug del Makefile.
 
 ```bash
 make query SQL="..."       # read-only via backend/scripts/db_query.py + pooler
 make query-write SQL="..." # mutations
 make migrate               # supabase db push via percent-encoded pooler URL
 ```
+
+**Un solo proyecto Supabase.** `public` es producción. `propos_test` es el schema espejo que usa la suite de integración; se regenera desde la estructura viva con `make test-schema-rebuild` (`make test-schema-rebuild DRY=1` imprime el SQL sin ejecutar). No se mantiene a mano: la migración `...0002` lo dejó congelado en 28 tablas mientras `public` llegaba a 59. El fixture de integración aborta si PostgREST no expone `propos_test`, en vez de caer a `public`.
 
 Schema gotchas:
 - No `users` table. Use `profiles` (auth users) or `people` (CRM contacts).
