@@ -162,4 +162,4 @@ class TestClassifyEmail:
 def test_no_marketing_regex_false_positive():
     # Sanity: a plain promotional subject matches no portal.
     assert not any(p.search("¡Tasación con 20% de descuento!") for p in LEAD_SUBJECT_PATTERNS.values())
-    assert re.compile  # keep `re` import meaningful
+    assert re.compile
