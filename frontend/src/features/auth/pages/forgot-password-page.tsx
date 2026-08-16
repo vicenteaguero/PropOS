@@ -41,8 +41,8 @@ export function ForgotPasswordPage() {
             <MailCheck className="size-6 text-foreground" strokeWidth={1.8} />
           </span>
           <p className="text-sm text-muted-foreground">
-            Si el correo está registrado, te enviamos un link para restablecer tu contraseña.
-            Revisá tu bandeja en los próximos minutos.
+            Si el correo está registrado, te enviamos un link para restablecer tu contraseña. Revisá
+            tu bandeja en los próximos minutos.
           </p>
           <Button asChild variant="outline" size="block">
             <Link to="/login">Volver al inicio de sesión</Link>
