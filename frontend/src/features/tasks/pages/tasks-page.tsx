@@ -204,7 +204,15 @@ function periodSubtitle(period: Period): string | null {
 }
 
 /** Circular check button. Open = colored ring; done = filled ink + white check. */
-function TaskCheck({ done, color, onToggle }: { done: boolean; color: string; onToggle: () => void }) {
+function TaskCheck({
+  done,
+  color,
+  onToggle,
+}: {
+  done: boolean;
+  color: string;
+  onToggle: () => void;
+}) {
   return (
     <button
       type="button"
@@ -392,7 +400,8 @@ export function TasksPage() {
   // Mobile: the tasks for the currently-selected period.
   const periodTasks = byPeriod.get(period) ?? [];
   // Inside "Hoy" we list overdue first, then strictly-today tasks.
-  const todayOnly = period === "today" ? periodTasks.filter((t) => urgencyOf(t) !== "overdue") : periodTasks;
+  const todayOnly =
+    period === "today" ? periodTasks.filter((t) => urgencyOf(t) !== "overdue") : periodTasks;
   const periodTitle = PERIOD_META.find((p) => p.id === period)!.title;
   const subtitle = periodSubtitle(period);
 
@@ -442,23 +451,25 @@ export function TasksPage() {
            * ---------------------------------------------------------- */}
           <div className="pb-6 lg:hidden">
             <Chips className="px-5 pb-4">
-              {PERIOD_META.filter(
-                (p) => p.id !== "nodate" || periodCount("nodate") > 0,
-              ).map((p) => (
-                <Chip
-                  key={p.id}
-                  active={period === p.id}
-                  count={periodCount(p.id) || undefined}
-                  onClick={() => setPeriod(p.id)}
-                >
-                  {p.label}
-                </Chip>
-              ))}
+              {PERIOD_META.filter((p) => p.id !== "nodate" || periodCount("nodate") > 0).map(
+                (p) => (
+                  <Chip
+                    key={p.id}
+                    active={period === p.id}
+                    count={periodCount(p.id) || undefined}
+                    onClick={() => setPeriod(p.id)}
+                  >
+                    {p.label}
+                  </Chip>
+                ),
+              )}
             </Chips>
 
             {/* Big period title + date-range subtext. */}
             <div className="flex items-baseline gap-2.5 px-5 pb-1.5">
-              <h2 className="text-[22px] font-bold tracking-tight text-foreground">{periodTitle}</h2>
+              <h2 className="text-[22px] font-bold tracking-tight text-foreground">
+                {periodTitle}
+              </h2>
               {subtitle && <span className="text-[13px] text-faint">{subtitle}</span>}
             </div>
 
@@ -495,12 +506,11 @@ export function TasksPage() {
             ))}
 
             {/* Per-period empty states (overdue still counts for "Hoy"). */}
-            {todayOnly.length === 0 &&
-              !(period === "today" && overdue.length > 0) && (
-                <div className="px-5 py-8 text-center text-sm text-faint">
-                  {period === "today" ? "Todo al día 🎉" : "Sin tareas · disfruta 🎉"}
-                </div>
-              )}
+            {todayOnly.length === 0 && !(period === "today" && overdue.length > 0) && (
+              <div className="px-5 py-8 text-center text-sm text-faint">
+                {period === "today" ? "Todo al día 🎉" : "Sin tareas · disfruta 🎉"}
+              </div>
+            )}
 
             <AddTaskRow onClick={() => setOpen(true)} />
           </div>
