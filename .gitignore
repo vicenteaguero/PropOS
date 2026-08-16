@@ -232,3 +232,22 @@ backend/tests/integration/scanner/docscanner/
 backend/tests/integration/scanner/output/
 backend/tests/integration/scanner/output_docscanner/
 .vercel
+
+# Raw data dumps (mbox, scrapes, exports) — large + PII
+data/
+
+# Docs — private working material (this repo is PUBLIC)
+docs/research/
+# Security audits: list open, unpatched findings with file:line. Keep local.
+docs/audits/*
+!docs/audits/README.md
+# Product spec PDFs and design exports
+docs/versions/*.pdf
+_archive/design-exports/
+
+# Analysis notebooks — real client data (mailbox exports, property sheets)
+notebooks/
+backend/notebooks/
+
+# Local MCP config: machine-specific paths + local tokens (see .mcp.json.example)
+.mcp.json
