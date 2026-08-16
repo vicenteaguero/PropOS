@@ -59,7 +59,9 @@ def _build_table_mock(execute_return):
     def _execute(*_a, **_k):
         if is_single["flag"]:
             is_single["flag"] = False
-            data = execute_return if isinstance(execute_return, dict) else (execute_return[0] if execute_return else None)
+            data = (
+                execute_return if isinstance(execute_return, dict) else (execute_return[0] if execute_return else None)
+            )
         else:
             data = execute_return if isinstance(execute_return, list) else [execute_return] if execute_return else []
         return _mock_execute(data)
