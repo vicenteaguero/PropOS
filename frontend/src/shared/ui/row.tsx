@@ -18,7 +18,9 @@ export function Row({ left, title, sub, right, onClick, divider = true, classNam
     <>
       {left}
       <div className="min-w-0 flex-1">
-        <div className="truncate text-base font-semibold leading-tight text-foreground">{title}</div>
+        <div className="truncate text-base font-semibold leading-tight text-foreground">
+          {title}
+        </div>
         {sub && <div className="mt-0.5 truncate text-[13px] text-muted-foreground">{sub}</div>}
       </div>
       {right}
