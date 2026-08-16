@@ -24,7 +24,7 @@ class Settings(BaseSettings):
 
     # Agent AI assistant
     agent_provider: str = "groq"
-    agent_model: str = "meta-llama/llama-4-scout-17b-16e-instruct"
+    agent_model: str = "llama-3.3-70b-versatile"
     agent_fallback_provider: str = "groq"
     cerebras_api_key: str = ""
     anthropic_api_key: str = ""
@@ -53,7 +53,7 @@ class Settings(BaseSettings):
 
     # Client Agent (B2C AI for inbound WhatsApp from external contacts)
     client_agent_provider: str = "groq"
-    client_agent_model: str = "meta-llama/llama-4-scout-17b-16e-instruct"
+    client_agent_model: str = "llama-3.3-70b-versatile"
     client_agent_max_history: int = 12
     client_agent_business_name: str = "PropOS"
 
