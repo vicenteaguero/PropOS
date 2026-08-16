@@ -88,9 +88,7 @@ class ImportService:
 
         entity = job["entity"]
         table = _TABLE[entity]
-        valid_rows = [
-            {k: v for k, v in r.items() if k != "_valid"} for r in (job.get("rows") or []) if r.get("_valid")
-        ]
+        valid_rows = [{k: v for k, v in r.items() if k != "_valid"} for r in (job.get("rows") or []) if r.get("_valid")]
         for r in valid_rows:
             r["tenant_id"] = str(tenant_id)
             r["created_by"] = str(created_by)
