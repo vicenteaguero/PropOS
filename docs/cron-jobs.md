@@ -7,10 +7,19 @@ secret header (`X-Internal-Key`), not a user JWT.
 
 ## Endpoints
 
-| Job | Method + path | Cadence | Added |
-|-----|---------------|---------|-------|
-| Due reminders | `POST /api/v1/internal/jobs/run-due-reminders` | every 5 min | P1 (no-op until P3) |
-| Email sync | `POST /api/v1/internal/jobs/email-sync` | every 5 min | P4 |
+| Job | Method + path | Cadence | Endpoint | Scheduler job |
+|-----|---------------|---------|----------|---------------|
+| Due reminders | `POST /api/v1/internal/jobs/run-due-reminders` | every 5 min | live | **not created** |
+| Email sync | `POST /api/v1/internal/jobs/email-sync` | every 5 min | live | **not created** |
+| Refresh analytics MVs | `POST /api/v1/internal/jobs/refresh-analytics` | every 15 min | **missing** | **not created** |
+
+> **Production state (verified 2026-07-02): no Cloud Scheduler job exists.**
+> `INTERNAL_JOBS_SECRET` was never added to `sync_cloud_env.sh` or to the
+> `--set-secrets` list in `config/docker/cloudbuild.yaml`, so the endpoints answer
+> `503` in prod even if a job were created. Consequence: reminders never fire and
+> portal leads are never ingested. The analytics materialized views have no
+> refresh endpoint at all — they only update when an admin presses the manual
+> refresh button. Fixing this is Gate A of the v0.1.0 remediation plan.
 
 All internal endpoints return:
 - `503` if `INTERNAL_JOBS_SECRET` is unset (feature disabled)
