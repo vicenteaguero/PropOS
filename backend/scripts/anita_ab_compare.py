@@ -52,10 +52,10 @@ async def run_new(prompt: str) -> tuple[int, int, dict]:
 async def main() -> None:
     # Use the test schema/seed if env vars suggest integration setup; else require
     # the caller to pass tenant_id (rare).
-    tenant_id_str = os.environ.get("ANITA_AB_TENANT_ID")
+    tenant_id_str = os.environ.get("AGENT_AB_TENANT_ID")
     if not tenant_id_str:
         # Quick path: skip OLD pipeline (which needs a real tenant + snapshot).
-        print("[skipping OLD pipeline — set ANITA_AB_TENANT_ID to compare]\n")
+        print("[skipping OLD pipeline — set AGENT_AB_TENANT_ID to compare]\n")
         new_in, new_out, new_result = await run_new(PROMPT)
         print("NEW classifier:")
         print(f"  result      : {new_result}")
@@ -67,7 +67,7 @@ async def main() -> None:
     from uuid import UUID
 
     tid = UUID(tenant_id_str)
-    uid = UUID(os.environ.get("ANITA_AB_USER_ID", "00000000-0000-0000-0000-000000000001"))
+    uid = UUID(os.environ.get("AGENT_AB_USER_ID", "00000000-0000-0000-0000-000000000001"))
 
     print(f"prompt: {PROMPT}\n")
 
