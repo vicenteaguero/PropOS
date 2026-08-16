@@ -13,6 +13,12 @@ on:
     - cron: "0 12 */5 * *"
   workflow_dispatch: {}
 
+# Override with the repo variable CLOUD_RUN_URL if the service is ever recreated
+# (the hostname is derived from the project, so a new project = a new host):
+#   gh variable set CLOUD_RUN_URL --body https://<service>.run.app
+env:
+  CLOUD_RUN_URL: ${{ vars.CLOUD_RUN_URL || 'https://propos-api-blfjtiyx4q-uc.a.run.app' }}
+
 jobs:
   ping:
     runs-on: ubuntu-latest
@@ -22,7 +28,7 @@ jobs:
         run: |
           set -e
           for i in 1 2 3; do
-            code=$(curl -s -o /tmp/body -w "%{http_code}" https://propos-api-blfjtiyx4q-uc.a.run.app/health || true)
+            code=$(curl -s -o /tmp/body -w "%{http_code}" "$CLOUD_RUN_URL/health" || true)
             echo "attempt $i → http=$code"
             if [ "$code" = "200" ]; then
               cat /tmp/body
