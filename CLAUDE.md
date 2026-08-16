@@ -2,6 +2,10 @@
 
 Multi-tenant real estate operations platform. PWA-first, Spanish UI, dark theme by default (light available).
 
+> ⚠️ **This repo is PUBLIC** (`github.com/vicenteaguero/PropOS`) while the deployment is live. Never commit `.env`, service-role keys, mailbox credentials, customer data, or security findings that are still unpatched. Gitignored on purpose: `docs/audits/*`, `docs/research/`, `docs/internal*/`, `docs/versions/*.pdf`, `notebooks/`, `backend/notebooks/`, `data/`, `.mcp.json`.
+
+**Current state**: v0.1.0 is code-complete-ish but not production-wired — see `docs/versions/v0.1.0.md` for real per-feature status and `docs/audits/README.md` for where the (local-only) audit reports live. Latest audit R2, 2026-07-02, at commit `201e586`: ~60% ready for internal daily use, 12–18 days of work across Gate A (turn prod on), Gate B (missing spec surfaces), Gate C (data integrity).
+
 ## Stack
 
 - **Frontend**: React 19 + TypeScript + Vite 6 + Tailwind v4 + shadcn/ui + TanStack Query + react-router 7 + vite-plugin-pwa. Path aliases: `@/`, `@shared`, `@features`, `@core`, `@layouts`.
@@ -69,7 +73,7 @@ Service Worker disabled in dev (`devOptions.enabled = false` in `vite.config.ts`
 ```bash
 make lint                  # ruff check + ruff format --check + eslint + prettier --check
 make format                # ruff --fix + ruff format + eslint --fix + prettier --write
-make test                  # pytest + npm test  ⚠️ frontend has no `test` script yet
+make test                  # pytest (200 unit) + npm test (`vitest run` — 1 file, 3 tests)
 cd backend && poetry run pytest --no-cov -q
 cd frontend && npm run typecheck
 cd frontend && npm run build
@@ -77,11 +81,11 @@ cd frontend && npm run build
 
 ## Notebooks (Jupyter MCP)
 
-Análisis exploratorio vive en `notebooks/`. Claude Code corre celdas + ve outputs (incl. matplotlib PNGs, DataFrames) via Jupyter MCP server.
+Análisis exploratorio vive en `notebooks/` (raíz) y `backend/notebooks/`. **Ambos directorios están gitignored** — contienen datos reales (exports de casillas Titan, planillas de propiedades) y el repo es público. Claude Code corre celdas + ve outputs (incl. matplotlib PNGs, DataFrames) via Jupyter MCP server.
 
 Setup:
 1. Arrancar Jupyter: `make jupyter` (puerto 8888, token `propos-dev`, root = `./notebooks`). Mantener corriendo.
-2. `.mcp.json` ya configurado → al abrir Claude Code en el repo, MCP `jupyter` aparece. `/mcp` para verificar.
+2. `.mcp.json` es local (gitignored, ruta del venv es por máquina). Copiar de `.mcp.json.example` y reemplazar `<VENV>` por `poetry env info --path`. Al abrir Claude Code en el repo, MCP `jupyter` aparece; `/mcp` para verificar.
 3. Crear o abrir `.ipynb` en `notebooks/`. Pedir a Claude algo como "abre `scratch.ipynb`, agrega celda que plotee X, ejecuta".
 
 Tools MCP disponibles (no `NotebookEdit` — esa NO ejecuta kernel):
@@ -94,6 +98,8 @@ Notebook smoke test: `notebooks/scratch.ipynb`. Borrar cuando agregues análisis
 Datos: para Supabase, `pd.read_sql(...)` contra pooler URL (no commitear credenciales — leer de env). Para datos locales/sintéticos no hace falta DB.
 
 ## DB
+
+Nota de entorno (2026-08-16): el venv de Poetry se había perdido y `make query`/`make lint` fallaban. Reconstruido con `cd backend && poetry env use python3.12 && poetry install` (Poetry 2.4.1, venv en `~/Library/Caches/pypoetry/virtualenvs/propos-backend-F68E3XRv-py3.12`). Si vuelven a fallar, ese es el arreglo — no es un bug del Makefile. `db_query` interpreta SQL largo como path (errno 63) → mantener queries cortas.
 
 ```bash
 make query SQL="..."       # read-only via backend/scripts/db_query.py + pooler
@@ -127,7 +133,7 @@ The assistant was renamed **anita → agent** (migration `20240601000011`); code
 
 - **Architecture is a classifier pipeline, NOT native tool-calling.** Flow: `classifier` (single LLM call → KV intent) → `resolver` (local rapidfuzz entity match, zero LLM) → `dispatcher` (deterministic branch). Files: `agent/{classifier,resolver,dispatcher,intent_registry,chat}.py`. There is **no** `llm.py` Protocol and **no** `tools/definitions.py` — adding a capability = new `IntentSpec` in `intent_registry.py` + classifier prompt example + dispatcher branch + `_accept_*` in `tools/executors.py` + `ACCEPTOR_BY_KIND`.
 - **Provider is Groq-only** (`https://api.groq.com/openai/v1`, hardcoded in `classifier.py`/`tools/text_to_sql.py`/`transcribe.py`). `settings.agent_provider` only selects the rate-limit window. The Cerebras-dev / Anthropic-prod swap is **not** implemented (deferred post-v0.1.0).
-- **Audio**: MediaRecorder (frontend) → server-side Groq Whisper (`agent/transcribe.py`). No Web Speech API. Audio persisted to `media_files`.
+- **Audio**: MediaRecorder (frontend) → server-side Groq Whisper (`agent/transcribe.py`). No Web Speech API. Only the transcript is stored — the audio blob is **not** persisted to `media_files` (`agent/router.py:296-305`), despite older docs saying otherwise.
 - **Mutation flow**: propose → `pending_proposals` → accept/reject; low-stakes intents `auto_commit=True` write directly. Accept handler in `pending/service.py` stamps audit via PostgREST headers `X-Agent-Session-Id` + `X-Action-Source='agent'` (the universal audit trigger reads `app.action_source`). Read path: `query_data` (whitelisted views) + `text_to_sql` (sqlglot-guarded SELECT via `agent_readonly` role).
 - **UI**: inline `<AgentInlineProposalCard>` (accept/edit/reject in chat) + `<ProposalDisambiguationPicker>` when `pending_proposals.ambiguity[<field>].candidates.length >= 2`.
 - **Pages**: `/admin/agent`, `/admin/analytics`, `/admin/analytics/agent-cost`, `/<role>/timeline/:table/:id`, `/<role>/workflows`.
