@@ -5,6 +5,9 @@ interface ImportMetaEnv {
   readonly VITE_SUPABASE_URL: string;
   readonly VITE_SUPABASE_ANON_KEY: string;
   readonly VITE_API_URL: string;
+  // Web push subscription key. Set per Vercel project; a missing value silently
+  // disables push instead of failing the build, so keep it declared here.
+  readonly VITE_VAPID_PUBLIC_KEY: string;
 }
 
 interface ImportMeta {
