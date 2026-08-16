@@ -166,9 +166,7 @@ async def test_create_invitation_inserts_and_emails(mock_client, mock_send):
         property_id=UUID(PROPERTY_ID),
         mode="visitor_only",
     )
-    result = await VisitorInvitationService.create_invitation(
-        payload, UUID(TENANT), UUID(ADMIN_USER)
-    )
+    result = await VisitorInvitationService.create_invitation(payload, UUID(TENANT), UUID(ADMIN_USER))
 
     assert result.email == "nuevo@example.com"
     assert result.status == "pending"
@@ -294,14 +292,10 @@ async def test_submit_public_creates_contact_and_consent(mock_client, mock_recor
         full_name="Juan Pérez",
         rut="11.111.111-1",
         phone="+56911111111",
-        consent_evidence=ConsentEvidence(
-            ip="1.2.3.4", user_agent="ua", text_shown="ok", channel="web"
-        ),
+        consent_evidence=ConsentEvidence(ip="1.2.3.4", user_agent="ua", text_shown="ok", channel="web"),
     )
 
-    result = await VisitorInvitationService.submit_public(
-        "live-slug", payload, request_ip="1.2.3.4", user_agent="ua"
-    )
+    result = await VisitorInvitationService.submit_public("live-slug", payload, request_ip="1.2.3.4", user_agent="ua")
 
     assert result.contact_id == UUID(contact_id)
     assert result.requires_email_confirmation is False
@@ -355,9 +349,7 @@ async def test_submit_public_existing_account_path_b(mock_client, mock_record):
         consent_evidence=ConsentEvidence(ip="1.2.3.4", channel="web"),
     )
 
-    result = await VisitorInvitationService.submit_public(
-        "auth-slug", payload, request_ip="1.2.3.4", user_agent="ua"
-    )
+    result = await VisitorInvitationService.submit_public("auth-slug", payload, request_ip="1.2.3.4", user_agent="ua")
 
     assert result.user_id == UUID(auth_user_id)
     fake.auth.admin.create_user.assert_not_called()
