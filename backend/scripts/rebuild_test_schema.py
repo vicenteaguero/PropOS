@@ -1,0 +1,146 @@
+"""Rebuild the `propos_test` schema as a structural mirror of `public`.
+
+Why this exists
+---------------
+`supabase/migrations/20240601000002_propos_test_schema.sql` created propos_test
+by hand, listing 28 tables. Every migration since then added tables to `public`
+only, so the schema the integration suite runs against drifted into a partial,
+three-months-stale copy. There is a single Supabase project — `public` IS
+production — so the test schema has to be regenerated from the live structure
+rather than maintained by hand.
+
+What it does
+------------
+Drops and recreates `propos_test`, then clones every base table of `public` with
+`CREATE TABLE ... (LIKE public.<t> INCLUDING ...)`. Foreign keys are not carried
+over, matching the original design decision: tests do not exercise referential
+integrity across the mirror, and cross-schema FKs would point back at production
+rows.
+
+Safety
+------
+The only statements that name `public` are `LIKE public.<table>` clauses, which
+read a definition. Before anything executes, every statement is checked against
+a denylist of write verbs applied to `public`; a single match aborts the run.
+Use --dry-run to print the SQL and execute nothing.
+
+Usage:
+    poetry run python -m scripts.rebuild_test_schema [--dry-run] [--schema NAME]
+"""
+
+from __future__ import annotations
+
+import argparse
+import re
+import sys
+
+import psycopg
+from psycopg import sql
+
+from scripts.db_query import _conn_kwargs
+
+TEST_SCHEMA = "propos_test"
+
+# Roles that must keep working against the mirror. `agent_readonly` is the
+# NOBYPASSRLS login used by the agent's text-to-SQL tool; migration ...0002
+# still grants to its pre-rename name (`anita_readonly`), which no longer
+# exists, so the grant is re-applied here from the current role name.
+GRANT_ROLES_ALL = ("service_role",)
+GRANT_ROLES_SELECT = ("authenticated", "anon", "agent_readonly")
+
+# A statement matching any of these is a bug in this script, not a valid step.
+_FORBIDDEN = (
+    re.compile(r"\b(drop|truncate|delete\s+from|alter)\b[^;]*\bpublic\.", re.I),
+    re.compile(r"\bdrop\s+schema\s+(if\s+exists\s+)?public\b", re.I),
+    re.compile(r"\b(insert\s+into|update)\s+public\.", re.I),
+)
+
+
+def _existing_roles(cur: psycopg.Cursor, names: tuple[str, ...]) -> list[str]:
+    cur.execute("select rolname from pg_roles where rolname = any(%s)", (list(names),))
+    return [r[0] for r in cur.fetchall()]
+
+
+def _public_tables(cur: psycopg.Cursor) -> list[str]:
+    cur.execute(
+        """
+        select table_name
+        from information_schema.tables
+        where table_schema = 'public' and table_type = 'BASE TABLE'
+        order by table_name
+        """
+    )
+    return [r[0] for r in cur.fetchall()]
+
+
+def build_statements(cur: psycopg.Cursor, schema: str) -> list[sql.Composed]:
+    ident = sql.Identifier(schema)
+    stmts: list[sql.Composed] = [
+        sql.SQL("DROP SCHEMA IF EXISTS {} CASCADE").format(ident),
+        sql.SQL("CREATE SCHEMA {}").format(ident),
+    ]
+
+    tables = _public_tables(cur)
+    if not tables:
+        raise SystemExit("ERROR: public has no base tables — refusing to continue")
+
+    for table in tables:
+        stmts.append(
+            sql.SQL(
+                "CREATE TABLE {}.{} (LIKE public.{} INCLUDING DEFAULTS "
+                "INCLUDING CONSTRAINTS INCLUDING INDEXES INCLUDING GENERATED "
+                "INCLUDING IDENTITY)"
+            ).format(ident, sql.Identifier(table), sql.Identifier(table))
+        )
+
+    for role in _existing_roles(cur, GRANT_ROLES_ALL + GRANT_ROLES_SELECT):
+        r = sql.Identifier(role)
+        stmts.append(sql.SQL("GRANT USAGE ON SCHEMA {} TO {}").format(ident, r))
+        if role in GRANT_ROLES_ALL:
+            stmts.append(sql.SQL("GRANT ALL ON ALL TABLES IN SCHEMA {} TO {}").format(ident, r))
+            stmts.append(sql.SQL("ALTER DEFAULT PRIVILEGES IN SCHEMA {} GRANT ALL ON TABLES TO {}").format(ident, r))
+        else:
+            stmts.append(sql.SQL("GRANT SELECT ON ALL TABLES IN SCHEMA {} TO {}").format(ident, r))
+            stmts.append(sql.SQL("ALTER DEFAULT PRIVILEGES IN SCHEMA {} GRANT SELECT ON TABLES TO {}").format(ident, r))
+
+    return stmts
+
+
+def assert_safe(rendered: list[str]) -> None:
+    for stmt in rendered:
+        for pattern in _FORBIDDEN:
+            if pattern.search(stmt):
+                raise SystemExit(f"ABORT: statement would write to public:\n  {stmt}")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--dry-run", action="store_true", help="print the SQL, execute nothing")
+    parser.add_argument("--schema", default=TEST_SCHEMA, help=f"target schema (default: {TEST_SCHEMA})")
+    args = parser.parse_args()
+
+    if args.schema == "public":
+        raise SystemExit("ABORT: refusing to target 'public'")
+
+    with psycopg.connect(**_conn_kwargs()) as conn:
+        with conn.cursor() as cur:
+            statements = build_statements(cur, args.schema)
+            rendered = [s.as_string(conn) for s in statements]
+            assert_safe(rendered)
+
+            if args.dry_run:
+                print(";\n".join(rendered) + ";")
+                print(f"\n-- dry run: {len(rendered)} statements, nothing executed", file=sys.stderr)
+                return 0
+
+            for stmt in statements:
+                cur.execute(stmt)
+        conn.commit()
+
+    tables = len([s for s in rendered if s.startswith("CREATE TABLE")])
+    print(f"rebuilt schema {args.schema}: {tables} tables cloned from public")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
