@@ -13,6 +13,10 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ENV_FILE="$ROOT/.env"
 OUT_YAML="$ROOT/config/docker/cloudrun-env.yaml"
 PROD_FRONTEND_URL="https://prop-os-delta.vercel.app"
+# Staging frontend (branch `dev` -> Vercel project prop-os-edge). It talks to the
+# same Cloud Run service, so its origin must be allowed too or staging is dead on
+# CORS.
+EDGE_FRONTEND_URL="https://prop-os-edge.vercel.app"
 
 [ -f "$ENV_FILE" ] || { echo "ERROR: $ENV_FILE missing" >&2; exit 1; }
 
@@ -43,9 +47,12 @@ read_env "$ENV_FILE"
 # .env has dev values; these substitute the prod-correct ones.
 KV_APP_ENV="production"
 KV_LOG_LEVEL="info"
-KV_ALLOWED_ORIGINS='["'"$PROD_FRONTEND_URL"'"]'
+KV_ALLOWED_ORIGINS='["'"$PROD_FRONTEND_URL"'","'"$EDGE_FRONTEND_URL"'"]'
 
-# Sensitive keys -> Secret Manager
+# Sensitive keys -> Secret Manager.
+# Keys with no value in .env are skipped, and cloudbuild.yaml only mounts the
+# secrets that exist, so listing a not-yet-provisioned integration here is inert
+# until you fill it in.
 SECRETS=(
   SUPABASE_URL
   SUPABASE_ANON_KEY
@@ -56,6 +63,14 @@ SECRETS=(
   GROQ_API_KEY
   ANTHROPIC_API_KEY
   OPENAI_API_KEY
+  KAPSO_API_KEY
+  KAPSO_WEBHOOK_SECRET
+  KAPSO_PHONE_NUMBER_ID
+  RESEND_API_KEY
+  INTERNAL_JOBS_SECRET
+  AGENT_READONLY_DB_URL
+  EMAIL_IMAP_USER
+  EMAIL_IMAP_PASSWORD
 )
 
 # Non-secret keys -> cloudrun-env.yaml (committed to git)
@@ -64,14 +79,14 @@ NON_SECRETS=(
   LOG_LEVEL
   ALLOWED_ORIGINS
   VAPID_CONTACT_EMAIL
-  ANITA_PROVIDER
-  ANITA_MODEL
-  ANITA_FALLBACK_PROVIDER
-  ANITA_TRANSCRIBE_PROVIDER
-  ANITA_DAILY_BUDGET_USD
-  ANITA_MAX_TOOL_CALLS_PER_TURN
-  ANITA_TURN_TIMEOUT_SECONDS
-  ANITA_STRICT_JSON_RETRY
+  AGENT_PROVIDER
+  AGENT_MODEL
+  AGENT_FALLBACK_PROVIDER
+  AGENT_TRANSCRIBE_PROVIDER
+  AGENT_DAILY_BUDGET_USD
+  AGENT_MAX_TOOL_CALLS_PER_TURN
+  AGENT_TURN_TIMEOUT_SECONDS
+  AGENT_STRICT_JSON_RETRY
 )
 
 if [ "${SKIP_SECRETS:-}" = "1" ]; then
