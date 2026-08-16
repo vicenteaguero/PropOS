@@ -49,12 +49,22 @@ jobs:
             echo "missing SUPABASE_URL or SUPABASE_ANON_KEY secret — skipping"
             exit 0
           fi
-          code=$(curl -s -o /dev/null -w "%{http_code}" \
+          # A secret stored with surrounding quotes or a trailing slash yields an
+          # unresolvable host and curl exits with http=000, which read as "the
+          # project is paused" for months. Normalise before using it.
+          url=$(printf '%s' "$SUPABASE_URL" | tr -d '"'"'"' \t\r\n')
+          url=${url%/}
+          case "$url" in
+            https://*) ;;
+            *) echo "SUPABASE_URL secret is not an https URL (got ${#url} chars)"; exit 1 ;;
+          esac
+          code=$(curl -s --max-time 20 -o /dev/null -w "%{http_code}" \
             -H "apikey: $SUPABASE_ANON_KEY" \
-            "$SUPABASE_URL/rest/v1/?select=tenants" || true)
+            "$url/rest/v1/?select=tenants" || true)
           echo "supabase rest → http=$code"
           # 200 OK or 401/406 still proves the project is awake.
           case "$code" in
             200|401|404|406) exit 0 ;;
+            000) echo "curl could not reach $url — check the SUPABASE_URL secret"; exit 1 ;;
             *) echo "supabase ping failed"; exit 1 ;;
           esac
