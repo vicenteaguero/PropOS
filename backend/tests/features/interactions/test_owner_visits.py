@@ -188,3 +188,15 @@ def test_staff_are_never_grant_filtered():
     with pytest.raises(HTTPException) as exc:
         assert_property_granted(_user("LANDOWNER"), UUID(TENANT_ID), None)
     assert exc.value.status_code == 403
+
+
+def test_buyer_is_not_grant_scoped():
+    """Audit R3, P2-11 / N8 — recorded decision, not an oversight.
+
+    BUYER stays fully closed: the grant plumbing supports it, but no product
+    surface calls it. See the comment on `GRANT_SCOPED_ROLES`.
+    """
+    from app.features.grants.access import GRANT_SCOPED_ROLES, is_grant_scoped
+
+    assert GRANT_SCOPED_ROLES == ("LANDOWNER",)
+    assert is_grant_scoped(_user("BUYER")) is False

@@ -22,6 +22,19 @@ from app.core.supabase.client import get_supabase_client
 GRANTS_TABLE = "property_grants"
 
 # Roles whose reads must be intersected with their grants.
+#
+# BUYER ("Interesado") is deliberately NOT here — audit R3, P2-11 / N8. The
+# plumbing for it exists: `user_view` has a `buyer` value, `property_grants.view`
+# accepts it, and `sharing/service.py` already whitelists a `buyer` audience in
+# `audience_caps`. What does not exist is a product surface: `/buyer` renders an
+# empty dashboard, there is no per-property screen, and `docs/roles.md` states
+# the design has no buyer-facing property browsing at all.
+#
+# Adding the role here would open a read path nothing calls and nobody reviews.
+# When the buyer screen ships, the change is: add "BUYER" to this tuple, add it
+# to the reader role tuples in `documents/router.py` and `interactions/router.py`,
+# and key the audience projection off the caller's view instead of hardcoding
+# "owner" in `interactions/schemas.py`.
 GRANT_SCOPED_ROLES = ("LANDOWNER",)
 
 
