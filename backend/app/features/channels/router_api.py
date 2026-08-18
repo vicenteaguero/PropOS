@@ -9,7 +9,12 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from app.core.dependencies import get_current_user, get_tenant_id
+from app.core.dependencies import (
+    get_current_user,
+    get_tenant_id,
+    require_role,
+    require_scope,
+)
 from app.core.supabase.client import get_supabase_client
 
 
@@ -17,7 +22,17 @@ def _now() -> str:
     return datetime.now(UTC).isoformat()
 
 
-router = APIRouter(prefix="/client-chat", tags=["client-chat"])
+# The B2C inbox speaks to contacts through the brokerage's own WhatsApp number,
+# so every route here can impersonate the broker. Staff only, behind the same
+# `inbox` scope the PWA uses to show the section.
+router = APIRouter(
+    prefix="/client-chat",
+    tags=["client-chat"],
+    dependencies=[
+        Depends(require_role("ADMIN", "AGENT")),
+        Depends(require_scope("inbox")),
+    ],
+)
 
 
 class SendMessage(BaseModel):
