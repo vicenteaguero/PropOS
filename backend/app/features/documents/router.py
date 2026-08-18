@@ -15,7 +15,17 @@ from fastapi import (
     status,
 )
 
-from app.core.dependencies import get_current_user, get_tenant_id
+from app.core.dependencies import (
+    get_current_user,
+    get_tenant_id,
+    require_role,
+    require_scope,
+)
+from app.features.documents.access import (
+    STAFF_ROLES,
+    assert_document_granted,
+    assert_property_granted,
+)
 from app.features.documents.portal_service import PortalService
 from app.features.documents.schemas import (
     AnonymousUploadResponse,
@@ -35,7 +45,23 @@ from app.features.documents.schemas import (
 from app.features.documents.service import DocumentService
 from app.features.documents.share_service import ShareService
 
-router = APIRouter(tags=["documents"])
+# Split in two so the owner PWA keeps working without widening the repository:
+#
+# * `router` carries the scope gate and the two reads a LANDOWNER needs, each
+#   narrowed to the properties it was granted (see `access.py`).
+# * `staff_router` carries everything else — the full catalogue, every mutation
+#   and every share link — and is staff-only.
+#
+# `staff_router` is included into `router` at the bottom of this module, so it
+# inherits the scope gate and `main.py` still mounts a single `router`.
+router = APIRouter(
+    tags=["documents"],
+    dependencies=[Depends(require_scope("documents"))],
+)
+staff_router = APIRouter(
+    dependencies=[Depends(require_role(*STAFF_ROLES))],
+)
+OWNER_READ_ROLES = (*STAFF_ROLES, "LANDOWNER")
 
 
 async def _read_source_images(
@@ -74,18 +100,26 @@ async def _read_source_images(
 # ----------------------------- Documents -----------------------------
 
 
-@router.get("/documents", response_model=list[DocumentResponse])
+@router.get(
+    "/documents",
+    response_model=list[DocumentResponse],
+    dependencies=[Depends(require_role(*OWNER_READ_ROLES))],
+)
 async def list_documents(
     tenant_id: UUID = Depends(get_tenant_id),
     contact_id: UUID | None = Query(default=None),
     property_id: UUID | None = Query(default=None),
     area_id: UUID | None = Query(default=None),
     q: str | None = Query(default=None),
+    current_user: dict[str, Any] = Depends(get_current_user),
 ) -> list[dict]:
+    # A landowner may only list within one of its granted properties; staff see
+    # the whole tenant catalogue.
+    assert_property_granted(current_user, tenant_id, property_id)
     return await DocumentService.list_documents(tenant_id, contact_id, property_id, area_id, q)
 
 
-@router.get("/documents/{document_id}", response_model=DocumentResponse)
+@staff_router.get("/documents/{document_id}", response_model=DocumentResponse)
 async def get_document(
     document_id: UUID,
     tenant_id: UUID = Depends(get_tenant_id),
@@ -93,7 +127,7 @@ async def get_document(
     return await DocumentService.get_document(document_id, tenant_id)
 
 
-@router.post(
+@staff_router.post(
     "/documents",
     response_model=DocumentResponse,
     status_code=201,
@@ -141,7 +175,7 @@ async def create_document(
     )
 
 
-@router.patch("/documents/{document_id}", response_model=DocumentResponse)
+@staff_router.patch("/documents/{document_id}", response_model=DocumentResponse)
 async def update_document(
     document_id: UUID,
     payload: DocumentUpdate,
@@ -150,7 +184,7 @@ async def update_document(
     return await DocumentService.update_document(document_id, tenant_id, payload)
 
 
-@router.delete("/documents/{document_id}", status_code=204)
+@staff_router.delete("/documents/{document_id}", status_code=204)
 async def delete_document(
     document_id: UUID,
     tenant_id: UUID = Depends(get_tenant_id),
@@ -161,7 +195,7 @@ async def delete_document(
 # ----------------------------- Versions -----------------------------
 
 
-@router.post(
+@staff_router.post(
     "/documents/{document_id}/versions",
     response_model=DocumentResponse,
     status_code=201,
@@ -204,7 +238,7 @@ async def add_version(
     )
 
 
-@router.post(
+@staff_router.post(
     "/documents/{document_id}/versions/{version_id}/make-current",
     response_model=DocumentResponse,
 )
@@ -216,7 +250,7 @@ async def make_version_current(
     return await DocumentService.set_current_version(document_id, version_id, tenant_id)
 
 
-@router.post(
+@staff_router.post(
     "/documents/{document_id}/versions/{version_id}/restore-original",
     response_model=DocumentResponse,
 )
@@ -231,17 +265,24 @@ async def restore_original(
     )
 
 
-@router.get("/documents/{document_id}/versions/{version_id}/download")
+@router.get(
+    "/documents/{document_id}/versions/{version_id}/download",
+    dependencies=[Depends(require_role(*OWNER_READ_ROLES))],
+)
 async def download_version(
     document_id: UUID,
     version_id: UUID,
     tenant_id: UUID = Depends(get_tenant_id),
+    current_user: dict[str, Any] = Depends(get_current_user),
 ) -> dict:
+    # The owner PWA opens and downloads through this route, so it stays reachable
+    # for a landowner — but only for documents assigned to a granted property.
+    assert_document_granted(current_user, tenant_id, document_id)
     url, _ = await DocumentService.get_version_signed_url(version_id, tenant_id)
     return {"url": url}
 
 
-@router.get("/documents/{document_id}/versions/{version_id}/source-images")
+@staff_router.get("/documents/{document_id}/versions/{version_id}/source-images")
 async def get_version_source_images(
     document_id: UUID,
     version_id: UUID,
@@ -254,7 +295,7 @@ async def get_version_source_images(
 # ----------------------------- Assignments -----------------------------
 
 
-@router.post(
+@staff_router.post(
     "/documents/{document_id}/assignments",
     response_model=AssignmentResponse,
     status_code=201,
@@ -267,7 +308,7 @@ async def create_assignment(
     return await DocumentService.add_assignment(document_id, tenant_id, payload)
 
 
-@router.delete(
+@staff_router.delete(
     "/documents/{document_id}/assignments/{assignment_id}",
     status_code=204,
 )
@@ -282,7 +323,7 @@ async def delete_assignment(
 # ----------------------------- Share links -----------------------------
 
 
-@router.post(
+@staff_router.post(
     "/documents/{document_id}/share-links",
     response_model=ShareLinkResponse,
     status_code=201,
@@ -298,14 +339,14 @@ async def create_share_link(
     return await ShareService.create_share_link(tenant_id, UUID(current_user["id"]), payload)
 
 
-@router.get("/share-links", response_model=list[ShareLinkResponse])
+@staff_router.get("/share-links", response_model=list[ShareLinkResponse])
 async def list_share_links(
     tenant_id: UUID = Depends(get_tenant_id),
 ) -> list[dict]:
     return await ShareService.list_share_links(tenant_id)
 
 
-@router.patch("/share-links/{link_id}", response_model=ShareLinkResponse)
+@staff_router.patch("/share-links/{link_id}", response_model=ShareLinkResponse)
 async def update_share_link(
     link_id: UUID,
     payload: ShareLinkUpdate,
@@ -315,7 +356,7 @@ async def update_share_link(
     return await ShareService.update_share_link(link_id, tenant_id, UUID(current_user["id"]), payload)
 
 
-@router.delete("/share-links/{link_id}", status_code=204)
+@staff_router.delete("/share-links/{link_id}", status_code=204)
 async def delete_share_link(
     link_id: UUID,
     tenant_id: UUID = Depends(get_tenant_id),
@@ -341,7 +382,7 @@ async def public_share_password(slug: str, password: str = Form(...)) -> dict:
 # ----------------------------- Anonymous portals -----------------------------
 
 
-@router.post("/portals", response_model=PortalResponse, status_code=201)
+@staff_router.post("/portals", response_model=PortalResponse, status_code=201)
 async def create_portal(
     payload: PortalCreate,
     tenant_id: UUID = Depends(get_tenant_id),
@@ -350,14 +391,14 @@ async def create_portal(
     return await PortalService.create_portal(tenant_id, UUID(current_user["id"]), payload)
 
 
-@router.get("/portals", response_model=list[PortalResponse])
+@staff_router.get("/portals", response_model=list[PortalResponse])
 async def list_portals(
     tenant_id: UUID = Depends(get_tenant_id),
 ) -> list[dict]:
     return await PortalService.list_portals(tenant_id)
 
 
-@router.get("/portals/{portal_id}", response_model=PortalResponse)
+@staff_router.get("/portals/{portal_id}", response_model=PortalResponse)
 async def get_portal(
     portal_id: UUID,
     tenant_id: UUID = Depends(get_tenant_id),
@@ -365,7 +406,7 @@ async def get_portal(
     return await PortalService.get_portal(portal_id, tenant_id)
 
 
-@router.patch("/portals/{portal_id}", response_model=PortalResponse)
+@staff_router.patch("/portals/{portal_id}", response_model=PortalResponse)
 async def update_portal(
     portal_id: UUID,
     payload: PortalUpdate,
@@ -374,7 +415,7 @@ async def update_portal(
     return await PortalService.update_portal(portal_id, tenant_id, payload)
 
 
-@router.delete("/portals/{portal_id}", status_code=204)
+@staff_router.delete("/portals/{portal_id}", status_code=204)
 async def delete_portal(
     portal_id: UUID,
     tenant_id: UUID = Depends(get_tenant_id),
@@ -382,7 +423,7 @@ async def delete_portal(
     await PortalService.delete_portal(portal_id, tenant_id)
 
 
-@router.get(
+@staff_router.get(
     "/portals/{portal_id}/uploads",
     response_model=list[AnonymousUploadResponse],
 )
@@ -393,7 +434,7 @@ async def list_uploads(
     return await PortalService.list_uploads(portal_id, tenant_id)
 
 
-@router.post("/uploads/{upload_id}/promote", response_model=DocumentResponse)
+@staff_router.post("/uploads/{upload_id}/promote", response_model=DocumentResponse)
 async def promote_upload(
     upload_id: UUID,
     payload: PromoteUploadRequest,
@@ -409,7 +450,7 @@ async def promote_upload(
     )
 
 
-@router.post("/uploads/{upload_id}/reject", status_code=204)
+@staff_router.post("/uploads/{upload_id}/reject", status_code=204)
 async def reject_upload(
     upload_id: UUID,
     tenant_id: UUID = Depends(get_tenant_id),
@@ -447,3 +488,8 @@ async def public_portal_upload(
         consent=consent,
         password=password,
     )
+
+
+# `staff_router` last so the two owner-reachable reads above are matched first
+# and every staff route still inherits the `documents` scope gate.
+router.include_router(staff_router)
