@@ -70,14 +70,22 @@ def _apply_status(item: dict[str, Any], event_type: str) -> None:
     external_id = msg.get("id")
     if not external_id:
         return
+    # Scope the write: an unfiltered update by external id can stamp a row of
+    # another tenant. Delivery status is telemetry, so an unroutable event is
+    # dropped rather than applied instance-wide.
+    try:
+        tenant_id = resolve_tenant_id(extract_phone_number_id(item))
+    except TenantRoutingError as exc:
+        logger.warning("kapso_status_unrouted", event_type="kapso", external_id=external_id, error=str(exc))
+        return
     new_status = event_type.rsplit(".", 1)[-1]
     payload: dict[str, Any] = {"delivery_status": new_status}
     if new_status == "failed":
         err = msg.get("kapso", {}).get("status_error") or msg.get("errors")
         if err:
             payload["failure_reason"] = str(err)[:500]
-    db.table("client_messages").update(payload).eq("external_message_id", external_id).execute()
-    db.table("agent_messages").update(payload).eq("external_message_id", external_id).execute()
+    for table in ("client_messages", "agent_messages"):
+        db.table(table).update(payload).eq("tenant_id", tenant_id).eq("external_message_id", external_id).execute()
 
 
 async def _handle_message_batch(items: list[dict[str, Any]]) -> None:
