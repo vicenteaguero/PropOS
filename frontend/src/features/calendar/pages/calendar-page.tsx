@@ -24,16 +24,23 @@ import {
   Loader2,
   MapPin,
   Mic,
+  Pencil,
   Plus,
   Sparkles,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageLayout } from "@shared/components/page-layout";
 import { PageHeader } from "@shared/components/page-header";
+import { ConfirmDialog } from "@shared/components/confirm-dialog/confirm-dialog";
 import {
   AppShellScroll,
+  Chip,
+  Chips,
+  ErrorState,
+  PageSkeleton,
   Pill,
   ResponsiveSheet,
   Row,
@@ -46,8 +53,14 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useAuth } from "@shared/hooks/use-auth";
 import { AgentOverlay } from "@features/agent/components/agent-overlay";
-import { useCalendarFeed, useCreateEvent } from "../hooks/use-calendar";
-import type { CalendarItem } from "../api/calendar-api";
+import {
+  useCalendarFeed,
+  useCreateEvent,
+  useDeleteEvent,
+  useEvent,
+  useUpdateEvent,
+} from "../hooks/use-calendar";
+import type { CalendarItem, EventKind } from "../api/calendar-api";
 import type { PillTone } from "@shared/ui";
 
 /** Per-type tone + dot color + kind icon (semantic tokens only). */
@@ -59,6 +72,25 @@ const TYPE_META: Record<
   TASK: { tone: "warning", dot: "var(--color-warning)", label: "Tarea", icon: ListTodo },
   PAYMENT: { tone: "success", dot: "var(--color-success)", label: "Pago", icon: Banknote },
 };
+
+/** Event kinds in picker order, with their Spanish labels. */
+const KIND_ITEMS: { id: EventKind; label: string }[] = [
+  { id: "VISIT", label: "Visita" },
+  { id: "MEETING", label: "Reunión" },
+  { id: "CALL", label: "Llamada" },
+  { id: "DEADLINE", label: "Vencimiento" },
+  { id: "OTHER", label: "Otro" },
+];
+
+/** Narrows an arbitrary feed/API string to a known kind (falls back to OTHER). */
+function asKind(value: string | null | undefined): EventKind {
+  const hit = KIND_ITEMS.find((k) => k.id === value);
+  return hit ? hit.id : "OTHER";
+}
+
+function kindLabel(value: string | null | undefined): string {
+  return KIND_ITEMS.find((k) => k.id === value)?.label ?? "Otro";
+}
 
 const WEEKDAYS = ["L", "M", "M", "J", "V", "S", "D"];
 
@@ -113,6 +145,36 @@ function startMinutes(it: CalendarItem): number {
   return d.getHours() * 60 + d.getMinutes();
 }
 
+/** `datetime-local` value for an ISO string (empty when absent). */
+function toLocalInput(iso: string | null | undefined): string {
+  if (!iso) return "";
+  return format(new Date(iso), "yyyy-MM-dd'T'HH:mm");
+}
+
+/** ISO string for a `datetime-local` value (null when empty). */
+function toIso(local: string): string | null {
+  return local ? new Date(local).toISOString() : null;
+}
+
+/** Shared shape of the create + edit event forms. */
+interface EventFormState {
+  title: string;
+  kind: EventKind;
+  startsAt: string;
+  endsAt: string;
+  location: string;
+  remindAt: string;
+}
+
+const EMPTY_EVENT_FORM: EventFormState = {
+  title: "",
+  kind: "VISIT",
+  startsAt: "",
+  endsAt: "",
+  location: "",
+  remindAt: "",
+};
+
 /** Block height in px for an item, floored to a readable minimum. */
 function durationPx(it: CalendarItem): number {
   if (!it.start_at) return HOUR_PX;
@@ -131,9 +193,10 @@ export function CalendarPage() {
   const [cursor, setCursor] = useState(() => new Date());
   const [selected, setSelected] = useState(() => new Date());
   const [open, setOpen] = useState(false);
-  const [title, setTitle] = useState("");
-  const [startsAt, setStartsAt] = useState("");
+  const [form, setForm] = useState<EventFormState>(EMPTY_EVENT_FORM);
   const [detail, setDetail] = useState<CalendarItem | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [propoOpen, setPropoOpen] = useState(false);
 
   // Propo (agent pipeline) is backend ADMIN-only — mirror the Home gate.
@@ -223,6 +286,18 @@ export function CalendarPage() {
     queryEnd.toISOString(),
   );
   const create = useCreateEvent();
+  const update = useUpdateEvent();
+  const remove = useDeleteEvent();
+
+  // Only real events are editable: tasks and payments live in other tables and
+  // the feed row omits location, so the detail sheet loads the full row.
+  const editableId = detail?.item_type === "EVENT" ? detail.id : undefined;
+  const {
+    data: fullEvent,
+    isLoading: loadingEvent,
+    error: eventError,
+    refetch: refetchEvent,
+  } = useEvent(editableId);
 
   const itemsByDay = useMemo(() => {
     const m = new Map<string, CalendarItem[]>();
@@ -288,24 +363,79 @@ export function CalendarPage() {
 
   // Open the create sheet, optionally prefilled to a clicked day at 09:00.
   const openCreate = (day?: Date) => {
-    if (day) {
-      const at = new Date(day);
-      at.setHours(9, 0, 0, 0);
-      setStartsAt(format(at, "yyyy-MM-dd'T'HH:mm"));
-    }
+    const at = new Date(day ?? new Date());
+    if (day) at.setHours(9, 0, 0, 0);
+    setForm({ ...EMPTY_EVENT_FORM, startsAt: day ? format(at, "yyyy-MM-dd'T'HH:mm") : "" });
     setOpen(true);
   };
 
-  const submit = async () => {
-    if (!title.trim() || !startsAt) {
+  /** Shared guard for both forms: title + start required, end after start. */
+  const validate = (f: EventFormState): boolean => {
+    if (!f.title.trim() || !f.startsAt) {
       toast.error("Título y fecha son obligatorios");
-      return;
+      return false;
     }
-    await create.mutateAsync({ title: title.trim(), starts_at: new Date(startsAt).toISOString() });
-    setTitle("");
-    setStartsAt("");
+    if (f.endsAt && new Date(f.endsAt) <= new Date(f.startsAt)) {
+      toast.error("La hora de término debe ser posterior al inicio");
+      return false;
+    }
+    return true;
+  };
+
+  const submit = async () => {
+    if (!validate(form)) return;
+    await create.mutateAsync({
+      title: form.title.trim(),
+      kind: form.kind,
+      starts_at: new Date(form.startsAt).toISOString(),
+      ends_at: toIso(form.endsAt),
+      location: form.location.trim() || null,
+      remind_at: toIso(form.remindAt),
+    });
+    setForm(EMPTY_EVENT_FORM);
     setOpen(false);
     toast.success("Evento creado");
+  };
+
+  // Prefill from the full row (the button stays disabled until it lands, so a
+  // failed fetch can never blank fields the feed does not carry) and hand the
+  // sheet over from detail to edit.
+  const openEdit = () => {
+    if (!detail || !fullEvent) return;
+    setForm({
+      title: fullEvent.title ?? "",
+      kind: asKind(fullEvent.kind),
+      startsAt: toLocalInput(fullEvent.starts_at),
+      endsAt: toLocalInput(fullEvent.ends_at),
+      location: fullEvent.location ?? "",
+      remindAt: "",
+    });
+    setEditingId(detail.id);
+    setDetail(null);
+  };
+
+  const submitEdit = async () => {
+    if (!editingId || !validate(form)) return;
+    await update.mutateAsync({
+      id: editingId,
+      body: {
+        title: form.title.trim(),
+        kind: form.kind,
+        starts_at: new Date(form.startsAt).toISOString(),
+        ends_at: toIso(form.endsAt),
+        location: form.location.trim() || null,
+      },
+    });
+    setEditingId(null);
+    toast.success("Evento actualizado");
+  };
+
+  const confirmDelete = async () => {
+    if (!detail) return;
+    await remove.mutateAsync(detail.id);
+    setConfirmingDelete(false);
+    setDetail(null);
+    toast.success("Evento eliminado");
   };
 
   return (
@@ -357,12 +487,12 @@ export function CalendarPage() {
             </div>
 
             {error && (
-              <div className="mx-5 mb-3 rounded-2xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive lg:mx-8">
-                No se pudo cargar el calendario.
-                <Button variant="ghost" size="sm" className="ml-2" onClick={() => refetch()}>
-                  Reintentar
-                </Button>
-              </div>
+              <ErrorState
+                message="No se pudo cargar el calendario."
+                onRetry={() => refetch()}
+                compact
+                className="mx-5 mb-3 lg:mx-8"
+              />
             )}
           </div>
 
@@ -392,11 +522,7 @@ export function CalendarPage() {
               </div>
             )}
 
-            {isLoading && (
-              <div className="flex flex-1 items-center justify-center">
-                <Loader2 className="size-5 animate-spin text-muted-foreground" />
-              </div>
-            )}
+            {isLoading && <PageSkeleton variant="list" count={6} className="px-8 pt-2" />}
 
             {!isLoading && activeView === "month" && (
               <div className="flex min-h-0 flex-1 gap-6 px-8 pb-6 pt-2">
@@ -438,19 +564,7 @@ export function CalendarPage() {
         {/* Create flow */}
         <ResponsiveSheet open={open} onOpenChange={setOpen} title="Nuevo evento">
           <div className="mt-4 space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="e-title">Título</Label>
-              <Input id="e-title" value={title} onChange={(e) => setTitle(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="e-start">Fecha y hora</Label>
-              <Input
-                id="e-start"
-                type="datetime-local"
-                value={startsAt}
-                onChange={(e) => setStartsAt(e.target.value)}
-              />
-            </div>
+            <EventFormFields idPrefix="new" value={form} onChange={setForm} showRemind />
             <div className="flex flex-col gap-2 pt-2">
               <Button onClick={submit} disabled={create.isPending} variant="ink" size="block">
                 {create.isPending && <Loader2 className="size-4 animate-spin" />}
@@ -461,6 +575,31 @@ export function CalendarPage() {
                 size="block"
                 onClick={() => setOpen(false)}
                 disabled={create.isPending}
+              >
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        </ResponsiveSheet>
+
+        {/* Edit flow */}
+        <ResponsiveSheet
+          open={!!editingId}
+          onOpenChange={(o) => !o && setEditingId(null)}
+          title="Editar evento"
+        >
+          <div className="mt-4 space-y-4">
+            <EventFormFields idPrefix="edit" value={form} onChange={setForm} />
+            <div className="flex flex-col gap-2 pt-2">
+              <Button onClick={submitEdit} disabled={update.isPending} variant="ink" size="block">
+                {update.isPending && <Loader2 className="size-4 animate-spin" />}
+                Guardar
+              </Button>
+              <Button
+                variant="ghost"
+                size="block"
+                onClick={() => setEditingId(null)}
+                disabled={update.isPending}
               >
                 Cancelar
               </Button>
@@ -481,10 +620,13 @@ export function CalendarPage() {
         >
           {detail && (
             <div className="mt-4 space-y-4">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Pill tone={TYPE_META[detail.item_type].tone}>
                   {TYPE_META[detail.item_type].label}
                 </Pill>
+                {editableId && (
+                  <Pill tone="neutral">{kindLabel(fullEvent?.kind ?? detail.kind)}</Pill>
+                )}
                 <span className="text-sm font-medium text-muted-foreground">
                   {detail.all_day || !detail.start_at
                     ? "Todo el día"
@@ -493,9 +635,47 @@ export function CalendarPage() {
                       }`}
                 </span>
               </div>
+              {fullEvent?.location && (
+                <div className="flex items-center gap-2 text-sm text-foreground">
+                  <MapPin className="size-4 shrink-0 text-muted-foreground" strokeWidth={1.8} />
+                  <span className="min-w-0 truncate">{fullEvent.location}</span>
+                </div>
+              )}
               {detail.status && (
                 <div className="text-sm text-muted-foreground">
                   Estado: <span className="text-foreground">{detail.status}</span>
+                </div>
+              )}
+              {eventError && (
+                <ErrorState
+                  compact
+                  message="No se pudo cargar el detalle del evento."
+                  onRetry={() => refetchEvent()}
+                />
+              )}
+              {editableId && (
+                <div className="flex gap-2">
+                  <Button
+                    variant="secondary"
+                    className="flex-1 gap-2"
+                    onClick={openEdit}
+                    disabled={loadingEvent || !!eventError}
+                  >
+                    {loadingEvent ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Pencil className="size-4" strokeWidth={1.8} />
+                    )}
+                    Editar
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="flex-1 gap-2 text-destructive hover:text-destructive"
+                    onClick={() => setConfirmingDelete(true)}
+                  >
+                    <Trash2 className="size-4" strokeWidth={1.8} />
+                    Eliminar
+                  </Button>
                 </div>
               )}
               <Button variant="ghost" size="block" onClick={() => setDetail(null)}>
@@ -504,10 +684,106 @@ export function CalendarPage() {
             </div>
           )}
         </ResponsiveSheet>
+
+        <ConfirmDialog
+          open={confirmingDelete}
+          onOpenChange={setConfirmingDelete}
+          title="¿Eliminar evento?"
+          description={`«${detail?.title ?? "Sin título"}» se quitará de la agenda. Esta acción se puede revertir desde el administrador de datos.`}
+          confirmLabel="Eliminar"
+          variant="destructive"
+          loading={remove.isPending}
+          onConfirm={confirmDelete}
+        />
       </PageLayout>
 
       {canPropo && propoOpen && (
         <AgentOverlay onClose={() => setPropoOpen(false)} initialMode="voice" />
+      )}
+    </>
+  );
+}
+
+/** Shared fields for the create + edit event sheets. */
+function EventFormFields({
+  idPrefix,
+  value,
+  onChange,
+  showRemind = false,
+}: {
+  idPrefix: string;
+  value: EventFormState;
+  onChange: (next: EventFormState) => void;
+  /** Reminders are create-only: the PATCH schema has no `remind_at`. */
+  showRemind?: boolean;
+}) {
+  const set = <K extends keyof EventFormState>(key: K, next: EventFormState[K]) =>
+    onChange({ ...value, [key]: next });
+
+  return (
+    <>
+      <div className="space-y-1.5">
+        <Label htmlFor={`${idPrefix}-title`}>Título</Label>
+        <Input
+          id={`${idPrefix}-title`}
+          value={value.title}
+          onChange={(e) => set("title", e.target.value)}
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>Tipo</Label>
+        <Chips>
+          {KIND_ITEMS.map((k) => (
+            <Chip key={k.id} active={value.kind === k.id} onClick={() => set("kind", k.id)}>
+              {k.label}
+            </Chip>
+          ))}
+        </Chips>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label htmlFor={`${idPrefix}-start`}>Inicio</Label>
+          <Input
+            id={`${idPrefix}-start`}
+            type="datetime-local"
+            value={value.startsAt}
+            onChange={(e) => set("startsAt", e.target.value)}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor={`${idPrefix}-end`}>Término</Label>
+          <Input
+            id={`${idPrefix}-end`}
+            type="datetime-local"
+            value={value.endsAt}
+            onChange={(e) => set("endsAt", e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor={`${idPrefix}-location`}>Ubicación</Label>
+        <Input
+          id={`${idPrefix}-location`}
+          value={value.location}
+          onChange={(e) => set("location", e.target.value)}
+          placeholder="Dirección o lugar"
+        />
+      </div>
+
+      {showRemind && (
+        <div className="space-y-1.5">
+          <Label htmlFor={`${idPrefix}-remind`}>Recordatorio</Label>
+          <Input
+            id={`${idPrefix}-remind`}
+            type="datetime-local"
+            value={value.remindAt}
+            onChange={(e) => set("remindAt", e.target.value)}
+          />
+          <p className="text-xs text-muted-foreground">Opcional: te avisamos a esta hora.</p>
+        </div>
       )}
     </>
   );
@@ -1091,9 +1367,7 @@ function MobileCalendar({
       )}
 
       {isLoading ? (
-        <div className="flex justify-center py-12">
-          <Loader2 className="size-5 animate-spin text-muted-foreground" />
-        </div>
+        <PageSkeleton variant="list" count={4} />
       ) : mobileView === "day" ? (
         <div>
           <div className="flex items-baseline gap-2 px-5 pb-2 pt-1">
