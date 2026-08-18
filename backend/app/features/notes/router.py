@@ -5,14 +5,17 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 
-from app.core.dependencies import get_current_user, get_tenant_id, require_role
+from app.core.dependencies import get_current_user, get_tenant_id, require_role, require_scope
 from app.features.notes.schemas import NoteCreate, NoteResponse, NoteUpdate
 from app.features.notes.service import NoteService
 
 router = APIRouter(
     prefix="/notes",
     tags=["notes"],
-    dependencies=[Depends(require_role("ADMIN", "AGENT"))],
+    dependencies=[
+        Depends(require_role("ADMIN", "AGENT")),
+        Depends(require_scope("productividad")),
+    ],
 )
 
 

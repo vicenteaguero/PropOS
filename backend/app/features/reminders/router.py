@@ -5,14 +5,17 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 
-from app.core.dependencies import get_current_user, get_tenant_id, require_role
+from app.core.dependencies import get_current_user, get_tenant_id, require_role, require_scope
 from app.features.reminders.schemas import ReminderCreate, ReminderResponse
 from app.features.reminders.service import ReminderService
 
 router = APIRouter(
     prefix="/reminders",
     tags=["reminders"],
-    dependencies=[Depends(require_role("ADMIN", "AGENT"))],
+    dependencies=[
+        Depends(require_role("ADMIN", "AGENT")),
+        Depends(require_scope("productividad")),
+    ],
 )
 
 
