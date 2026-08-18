@@ -123,8 +123,61 @@ def _public_triggers(cur: psycopg.Cursor) -> list[str]:
     return [r[0] for r in cur.fetchall()]
 
 
+def _public_policies(cur: psycopg.Cursor) -> list[tuple[str, str, str, str, str, str | None, str | None]]:
+    """(table, policy, permissive, cmd, roles, using, with_check) for every policy in public.
+
+    Postgres has no `pg_get_policydef()`, so the CREATE POLICY statement is
+    reassembled from pg_policies. Without this the mirror carries no RLS at all
+    -- `CREATE TABLE ... (LIKE ...)` copies defaults, constraints and indexes,
+    but never row security -- so a green integration run proved nothing about
+    tenant isolation.
+    """
+    cur.execute(
+        """
+        select tablename, policyname, permissive, cmd,
+               array_to_string(roles, ', '), qual, with_check
+        from pg_policies
+        where schemaname = 'public'
+        order by tablename, policyname
+        """
+    )
+    return [tuple(r) for r in cur.fetchall()]
+
+
+def _rls_tables(cur: psycopg.Cursor) -> list[str]:
+    """Tables in public with row level security enabled."""
+    cur.execute(
+        """
+        select c.relname
+        from pg_class c join pg_namespace n on n.oid = c.relnamespace
+        where n.nspname = 'public' and c.relkind = 'r' and c.relrowsecurity
+        order by c.relname
+        """
+    )
+    return [r[0] for r in cur.fetchall()]
+
+
 def _quote(identifier: str) -> str:
     return '"' + identifier.replace('"', '""') + '"'
+
+
+def _qualify_public_calls(expr: str, schema: str, fn_names: set[str]) -> str:
+    """Point bare function calls in a policy body at the mirror's own clones.
+
+    `pg_policies.qual` renders calls unqualified -- `get_my_tenant_id()`, not
+    `public.get_my_tenant_id()` -- because public was on the search_path when
+    the policy was created. Replayed verbatim into the mirror, those calls
+    resolve through search_path and can land on the production function, which
+    reads production's `profiles`. Then the mirror's policies silently consult
+    production and the isolation test is worthless.
+    """
+    for name in sorted(fn_names, key=len, reverse=True):
+        expr = re.sub(
+            rf"(?<![\w.]){re.escape(name)}\s*\(",
+            f"{_quote(schema)}.{_quote(name)}(",
+            expr,
+        )
+    return expr
 
 
 def _reschema(ddl: str, schema: str) -> str:
@@ -176,6 +229,34 @@ def build_statements(cur: psycopg.Cursor, schema: str) -> list[sql.Composed]:
 
     for definition in _public_triggers(cur):
         stmts.append(sql.SQL(_reschema(definition, schema)))
+
+    # Row security. Copied after the triggers so every referenced object
+    # exists. Policy bodies go through _reschema so `public.get_my_tenant_id()`
+    # resolves against the mirror's own clone rather than production.
+    rls_tables = set(_rls_tables(cur))
+    mirrored = set(tables)
+    for table in sorted(rls_tables & mirrored):
+        stmts.append(sql.SQL("ALTER TABLE {}.{} ENABLE ROW LEVEL SECURITY").format(ident, sql.Identifier(table)))
+
+    fn_names = {
+        m.group(1)
+        for m in (re.search(r"(?is)FUNCTION\s+public\.\"?([\w]+)\"?\s*\(", d) for d in _public_functions(cur))
+        if m
+    }
+    for table, policy, permissive, cmd, roles, using, with_check in _public_policies(cur):
+        if table not in mirrored or not roles:
+            continue
+        parts = [
+            f"CREATE POLICY {_quote(policy)} ON {_quote(schema)}.{_quote(table)}",
+            f"AS {permissive}",
+            f"FOR {cmd}",
+            f"TO {roles}",
+        ]
+        if using:
+            parts.append(f"USING ({_qualify_public_calls(_reschema(using, schema), schema, fn_names)})")
+        if with_check:
+            parts.append(f"WITH CHECK ({_qualify_public_calls(_reschema(with_check, schema), schema, fn_names)})")
+        stmts.append(sql.SQL(" ".join(parts)))
 
     for role in _existing_roles(cur, GRANT_ROLES_ALL + GRANT_ROLES_SELECT):
         r = sql.Identifier(role)
