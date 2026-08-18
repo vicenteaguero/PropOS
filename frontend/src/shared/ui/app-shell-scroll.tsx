@@ -2,9 +2,10 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * Full-height desktop surface: on lg+ it pins to the viewport below the app
- * header and scrolls internally (kanban, time-grids). On mobile it's a normal
- * flow column. Single source for the `100dvh - header` calc.
+ * Full-height workstation surface: on md+ it pins to the viewport below the app
+ * header and scrolls internally (kanban, time-grids). On phones it's a normal
+ * flow column. Single source for the `100dvh - shell chrome` calc; md matches
+ * `useIsDesktop`.
  */
 export function AppShellScroll({
   children,
@@ -16,7 +17,7 @@ export function AppShellScroll({
   return (
     <div
       className={cn(
-        "flex flex-col lg:h-[calc(100dvh-var(--app-header-h,3.5rem)-var(--app-nav-h,0px))] lg:overflow-hidden",
+        "flex flex-col md:h-[calc(100dvh-var(--app-header-h,3.5rem)-var(--app-nav-h,0px))] md:overflow-hidden",
         className,
       )}
     >
