@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { apiRequest } from "@features/documents/api/http";
 import { useConversations } from "@features/client-chat/hooks/use-client-chat";
 import { useEmailThreads } from "@features/email/hooks/use-email";
+import { useOpportunities } from "@features/opportunities/hooks/use-opportunities";
 import { STAGE_LABELS } from "@features/opportunities/types";
 import { CHART_COLORS, CHART_HEIGHT } from "@shared/lib/chart-config";
 
@@ -25,6 +26,19 @@ interface PipelineRow {
   pipeline_stage: string;
   opp_count: number;
   expected_value_cents: number;
+}
+
+/** Only the fields the sale/rent split needs off `GET /v1/properties`. */
+interface PropertyListingRow {
+  id: string;
+  listing_kind: string;
+}
+
+/** Backend cap for both lists; the split degrades honestly past it. */
+const PAGE_LIMIT = 500;
+
+function pct(part: number, total: number): number {
+  return total === 0 ? 0 : Math.round((part / total) * 100);
 }
 
 const STAGE_ORDER = ["LEAD", "QUALIFIED", "VISIT", "OFFER", "RESERVATION", "CLOSED"];
@@ -58,6 +72,11 @@ const TOOLTIP_STYLE = {
  * "conversión lead→visita" KPIs. There is no backend query for response time,
  * and conversion is approximated from open-pipeline stage counts (no historical
  * funnel hook is exposed here). Rendered only what is available.
+ *
+ * The sale/rent split is NOT in `v_pipeline_status` (it groups by stage only),
+ * so it is joined here: open opportunities → their property → `listing_kind`.
+ * Opportunities whose property is missing or beyond the page limit are reported
+ * as unclassified instead of being silently dropped into one side.
  */
 export function CrmMetrics() {
   const pipeline = useQuery({
@@ -66,6 +85,13 @@ export function CrmMetrics() {
   });
   const convos = useConversations();
   const emails = useEmailThreads({});
+  // Same params as CrmPipeline, so both tabs share one cached response.
+  const opportunities = useOpportunities({ status: "OPEN", limit: PAGE_LIMIT });
+  const properties = useQuery({
+    queryKey: ["properties", "listing-kinds", PAGE_LIMIT],
+    queryFn: () => apiRequest<PropertyListingRow[]>(`/v1/properties?limit=${PAGE_LIMIT}`),
+    staleTime: 300_000,
+  });
 
   const stageData = useMemo(() => {
     const byStage = new Map<string, number>();
@@ -100,8 +126,31 @@ export function CrmMetrics() {
     ];
   }, [convos.data, emails.data]);
 
-  const isLoading = pipeline.isLoading || convos.isLoading || emails.isLoading;
-  const error = pipeline.error || convos.error || emails.error;
+  // Sale vs rent over the open pipeline. LEASE folds into "arriendo" — the
+  // Chilean term covers both.
+  const operation = useMemo(() => {
+    const kindById = new Map<string, string>();
+    for (const p of properties.data ?? []) kindById.set(p.id, p.listing_kind);
+    let sale = 0;
+    let rent = 0;
+    let unknown = 0;
+    for (const opp of opportunities.data ?? []) {
+      const kind = opp.property_id ? kindById.get(opp.property_id) : undefined;
+      if (kind === "SALE") sale += 1;
+      else if (kind === "RENT" || kind === "LEASE") rent += 1;
+      else unknown += 1;
+    }
+    return { sale, rent, unknown, classified: sale + rent };
+  }, [opportunities.data, properties.data]);
+
+  const isLoading =
+    pipeline.isLoading ||
+    convos.isLoading ||
+    emails.isLoading ||
+    opportunities.isLoading ||
+    properties.isLoading;
+  const error =
+    pipeline.error || convos.error || emails.error || opportunities.error || properties.error;
 
   if (isLoading) {
     return (
@@ -123,6 +172,8 @@ export function CrmMetrics() {
             void pipeline.refetch();
             void convos.refetch();
             void emails.refetch();
+            void opportunities.refetch();
+            void properties.refetch();
           }}
         >
           Reintentar
@@ -132,7 +183,11 @@ export function CrmMetrics() {
   }
 
   const totalContacts = (convos.data?.length ?? 0) + (emails.data?.length ?? 0);
-  const noData = stageData.length === 0 && channelData.length === 0 && totalContacts === 0;
+  const noData =
+    stageData.length === 0 &&
+    channelData.length === 0 &&
+    totalContacts === 0 &&
+    operation.classified === 0;
 
   if (noData) {
     return (
@@ -180,6 +235,43 @@ export function CrmMetrics() {
             </BarChart>
           </ResponsiveContainer>
         </div>
+      )}
+
+      {/* Sale vs rent. Two numbers, so tiles rather than a chart: the palette is
+          accent + neutrals, and a two-hue split would not separate reliably. */}
+      <h3 className="mb-1 mt-6 text-[16px] font-bold tracking-tight text-foreground">
+        Pipeline por operación
+      </h3>
+      <p className="mb-3 text-[12.5px] text-muted-foreground">
+        Oportunidades abiertas según el tipo de operación de la propiedad vinculada.
+      </p>
+      {operation.classified === 0 ? (
+        <p className="py-8 text-center text-sm text-muted-foreground">
+          Ninguna oportunidad abierta tiene una propiedad vinculada.
+        </p>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-2xl bg-secondary p-4 text-foreground">
+              <div className="text-[30px] font-bold tracking-tight">{operation.sale}</div>
+              <div className="mt-1 text-[13px] text-muted-foreground">
+                Venta · {pct(operation.sale, operation.classified)}%
+              </div>
+            </div>
+            <div className="rounded-2xl bg-secondary p-4 text-foreground">
+              <div className="text-[30px] font-bold tracking-tight">{operation.rent}</div>
+              <div className="mt-1 text-[13px] text-muted-foreground">
+                Arriendo · {pct(operation.rent, operation.classified)}%
+              </div>
+            </div>
+          </div>
+          {operation.unknown > 0 && (
+            <p className="mt-2 text-[12px] text-faint">
+              {operation.unknown} {operation.unknown === 1 ? "oportunidad" : "oportunidades"} sin
+              operación identificada.
+            </p>
+          )}
+        </>
       )}
 
       <h3 className="mb-3 mt-6 text-[16px] font-bold tracking-tight text-foreground">
