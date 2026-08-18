@@ -8,6 +8,7 @@ import { importsApi, type ImportPreview } from "../api/imports-api";
 
 const ENTITIES = [
   { id: "contacts", label: "Contactos" },
+  { id: "properties", label: "Propiedades" },
   { id: "transactions", label: "Transacciones" },
 ];
 
