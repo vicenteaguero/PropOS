@@ -29,6 +29,7 @@ import {
 import { imagesToPdf } from "../services/pdf-from-images";
 import { compressBlob } from "../services/image-compression";
 import { CameraCaptureDocument } from "./camera-capture-document";
+import { HOVER_REVEAL } from "@shared/ui";
 
 interface SourceDoc {
   id: string;
@@ -285,7 +286,7 @@ function SortablePage({
           e.stopPropagation();
           onRemove();
         }}
-        className="absolute right-1 top-1 z-10 rounded-full bg-destructive p-1 text-destructive-foreground opacity-0 transition-opacity group-hover:opacity-100"
+        className={`absolute right-1 top-1 z-10 rounded-full bg-destructive p-1 text-destructive-foreground ${HOVER_REVEAL}`}
         aria-label="Eliminar página"
       >
         <Trash2 className="size-3" />

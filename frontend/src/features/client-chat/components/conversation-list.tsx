@@ -1,5 +1,5 @@
 import { Archive, ArchiveRestore } from "lucide-react";
-import { BrandMark, Pill, type PillTone, RoundButton, Row } from "@shared/ui";
+import { BrandMark, Pill, type PillTone, RoundButton, Row, HOVER_REVEAL } from "@shared/ui";
 import { useArchiveConversation } from "../hooks/use-client-chat";
 import type { ClientConversation, ConversationStatus } from "../types";
 
@@ -72,7 +72,7 @@ export function ConversationList({ conversations, selectedId, onSelect }: Props)
               size={32}
               aria-label={isArchived ? "Restaurar" : "Archivar"}
               title={isArchived ? "Restaurar" : "Archivar"}
-              className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
+              className={`absolute right-4 top-1/2 -translate-y-1/2 ${HOVER_REVEAL}`}
               onClick={(e) => {
                 e.stopPropagation();
                 archive.mutate({ id: c.id, archived: !isArchived });
