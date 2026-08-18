@@ -33,6 +33,7 @@ class OpportunityService:
         person_id: UUID | None = None,
         property_id: UUID | None = None,
         limit: int = 200,
+        offset: int = 0,
     ) -> list[dict]:
         client = get_supabase_client()
         builder = (
@@ -41,7 +42,7 @@ class OpportunityService:
             .eq("tenant_id", str(tenant_id))
             .is_("deleted_at", "null")
             .order("created_at", desc=True)
-            .limit(limit)
+            .range(offset, offset + limit - 1)
         )
         if status:
             builder = builder.eq("status", status)

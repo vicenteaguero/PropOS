@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 
 from app.core.dependencies import get_current_user, get_tenant_id, require_role, require_scope
 from app.features.imports.service import ImportService
@@ -18,8 +18,12 @@ _ENTITIES = {"contacts", "transactions"}
 
 
 @router.get("")
-async def list_imports(tenant_id: UUID = Depends(get_tenant_id)) -> list[dict]:
-    return await ImportService.list_jobs(tenant_id)
+async def list_imports(
+    tenant_id: UUID = Depends(get_tenant_id),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+) -> list[dict]:
+    return await ImportService.list_jobs(tenant_id, limit, offset)
 
 
 @router.post("")

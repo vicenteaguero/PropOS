@@ -30,8 +30,10 @@ async def list_properties(
     tenant_id: UUID = Depends(get_tenant_id),
     q: str | None = Query(default=None),
     include_drafts: bool = Query(default=True),
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
 ) -> list[dict]:
-    return await PropertyService.list_properties(tenant_id, q, include_drafts)
+    return await PropertyService.list_properties(tenant_id, q, include_drafts, limit, offset)
 
 
 @router.get(

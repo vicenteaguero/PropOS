@@ -28,9 +28,10 @@ async def list_opportunities(
     stage: str | None = Query(default=None),
     person_id: UUID | None = Query(default=None),
     property_id: UUID | None = Query(default=None),
-    limit: int = Query(default=200, le=500),
+    limit: int = Query(default=200, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
 ) -> list[dict]:
-    return await OpportunityService.list_opportunities(tenant_id, status, stage, person_id, property_id, limit)
+    return await OpportunityService.list_opportunities(tenant_id, status, stage, person_id, property_id, limit, offset)
 
 
 @router.get("/{opp_id}", response_model=OpportunityResponse)

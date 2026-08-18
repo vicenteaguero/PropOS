@@ -35,6 +35,7 @@ class TransactionService:
         property_id: UUID | None = None,
         status: str | None = None,
         limit: int = 200,
+        offset: int = 0,
     ) -> list[dict]:
         client = get_supabase_client()
         builder = (
@@ -43,7 +44,7 @@ class TransactionService:
             .eq("tenant_id", str(tenant_id))
             .is_("deleted_at", "null")
             .order("occurred_at", desc=True)
-            .limit(limit)
+            .range(offset, offset + limit - 1)
         )
         if direction:
             builder = builder.eq("direction", direction)

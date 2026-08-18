@@ -30,6 +30,7 @@ async def list_contacts(
     include_drafts: bool = Query(default=True),
     include_deleted: bool = Query(default=False),
     property_id: UUID | None = Query(default=None),
+    offset: int = Query(default=0, ge=0),
 ) -> list[dict]:
     if property_id is not None:
         return await ContactService.list_contacts_by_property(
@@ -37,7 +38,7 @@ async def list_contacts(
         )
     if q and fuzzy:
         return await ContactService.search_fuzzy(tenant_id, q, limit)
-    return await ContactService.list_contacts(tenant_id, q, include_drafts, include_deleted)
+    return await ContactService.list_contacts(tenant_id, q, include_drafts, include_deleted, limit, offset)
 
 
 @router.get("/{contact_id}", response_model=ContactResponse)
