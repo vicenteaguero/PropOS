@@ -31,6 +31,7 @@ from app.features.agent.intent_registry import needs_pass_two, normalize_fields,
 from app.features.agent.llm_retry import LLMUnavailableError
 from app.features.agent.rate_limiter import QuotaExhaustedError
 from app.features.agent.postprocess import dedupe_actions, expand_money_units, normalize_rut
+from app.features.agent.pricing import cost_cents_exact
 from app.features.agent.resolver import resolve
 
 logger = get_logger("AGENT_CHAT")
@@ -228,8 +229,8 @@ async def _stream_turn(
         session_id,
         "assistant",
         blocks,
-        tokens_in=classification.tokens_in,
-        tokens_out=classification.tokens_out,
+        tokens_in=classification.tokens_in + pass2_in,
+        tokens_out=classification.tokens_out + pass2_out,
     )
 
     from datetime import UTC, datetime
@@ -340,6 +341,42 @@ def _format_response(intent: str, outcome: dict[str, Any], resolved) -> str:
     return "Listo."
 
 
+def _cost_cents_for_turn(
+    client,
+    session_id: UUID,
+    tokens_in: int,
+    tokens_out: int,
+) -> int | None:
+    """Integer cents to charge this row so the session total stays exact.
+
+    `agent_messages.cost_cents` is an INT and one turn costs a fraction of a
+    cent, so rounding each row independently writes 0 forever — the reason the
+    cost dashboard reported $0. Instead we round the session's *running* total
+    and store the delta: individual rows are 0 or 1, and the sum tracks the
+    real cost to within one cent per session.
+
+    Returns None when the model has no published price (honest NULL, not 0).
+    """
+    provider, model = settings.agent_provider, settings.agent_model
+    if cost_cents_exact(provider, model, 1, 1) is None:
+        return None
+
+    prior = (
+        client.table("agent_messages")
+        .select("tokens_in,tokens_out,cost_cents")
+        .eq("session_id", str(session_id))
+        .execute()
+        .data
+        or []
+    )
+    prior_in = sum(r.get("tokens_in") or 0 for r in prior)
+    prior_out = sum(r.get("tokens_out") or 0 for r in prior)
+    prior_cents = sum(r.get("cost_cents") or 0 for r in prior)
+
+    total = cost_cents_exact(provider, model, prior_in + tokens_in, prior_out + tokens_out) or 0.0
+    return max(0, round(total) - prior_cents)
+
+
 def _save_message(
     client,
     tenant_id: UUID,
@@ -349,7 +386,7 @@ def _save_message(
     tokens_in: int | None = None,
     tokens_out: int | None = None,
 ) -> str:
-    row = {
+    row: dict[str, Any] = {
         "tenant_id": str(tenant_id),
         "session_id": str(session_id),
         "role": role,
@@ -357,4 +394,11 @@ def _save_message(
         "tokens_in": tokens_in,
         "tokens_out": tokens_out,
     }
+    if tokens_in or tokens_out:
+        row["provider"] = settings.agent_provider
+        row["model"] = settings.agent_model
+        try:
+            row["cost_cents"] = _cost_cents_for_turn(client, session_id, tokens_in or 0, tokens_out or 0)
+        except Exception as exc:  # noqa: BLE001 - accounting must never drop a message
+            logger.warning("cost_accounting_failed", event_type="write", error=str(exc)[:200])
     return client.table("agent_messages").insert(row).execute().data[0]["id"]
