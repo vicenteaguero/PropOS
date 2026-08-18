@@ -190,8 +190,8 @@ export function AppLayout() {
         <main className="min-h-0 flex-1 overflow-y-auto">
           <Outlet />
         </main>
-        {/* FAB on tablet/mobile-sidebar shell; desktop uses the header ⌘K bar. */}
-        <div className="lg:hidden">
+        {/* FAB only where the header command bar is hidden (below md). */}
+        <div className="md:hidden">
           {(() => {
             // Propo is ADMIN-only (backend require_role ADMIN). Gate on view,
             // not scope-emptiness, so it never renders for non-admin roles.
