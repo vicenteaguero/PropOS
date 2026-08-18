@@ -86,7 +86,7 @@ function HeaderThemeToggle() {
       type="button"
       onClick={toggle}
       aria-label={isDark ? "Cambiar a claro" : "Cambiar a oscuro"}
-      className="flex size-9 items-center justify-center rounded-full text-foreground transition hover:bg-secondary active:scale-90"
+      className="flex size-11 items-center justify-center rounded-full text-foreground transition hover:bg-secondary active:scale-90"
     >
       {isDark ? <Moon className="size-[18px]" /> : <Sun className="size-[18px]" />}
     </button>
