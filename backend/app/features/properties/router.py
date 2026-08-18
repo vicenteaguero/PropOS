@@ -3,16 +3,24 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 
 from app.core.dependencies import get_current_user, get_tenant_id, require_dev_admin, require_role
 from app.features.grants.schemas import PropertyGrantResponse
 from app.features.grants.service import GrantService
 from app.features.properties.describe import generate_description
+from app.features.properties.photos import (
+    ALLOWED_IMAGE_MIME,
+    MAX_PHOTO_BYTES,
+    MAX_PHOTOS_PER_REQUEST,
+    PropertyNotFoundError,
+    PropertyPhotoService,
+)
 from app.features.properties.schemas import (
     GeneratedDescription,
     GenerateDescriptionRequest,
     PropertyCreate,
+    PropertyPhoto,
     PropertyResponse,
     PropertyUpdate,
 )
@@ -103,3 +111,78 @@ async def generate_property_description(
 )
 async def list_property_grants(property_id: UUID) -> list[dict]:
     return await GrantService.list_for_property(property_id)
+
+
+@router.get(
+    "/{property_id}/photos",
+    response_model=list[PropertyPhoto],
+    dependencies=[Depends(require_role("ADMIN", "AGENT", "LANDOWNER", "CONTENT"))],
+)
+async def list_property_photos(
+    property_id: UUID,
+    tenant_id: UUID = Depends(get_tenant_id),
+) -> list[dict]:
+    """Gallery for the property, including photos the agent attached over WhatsApp."""
+    try:
+        return await PropertyPhotoService.list_photos(property_id, tenant_id)
+    except PropertyNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found") from exc
+
+
+@router.post(
+    "/{property_id}/photos",
+    response_model=list[PropertyPhoto],
+    status_code=201,
+    dependencies=[Depends(require_role("ADMIN", "AGENT", "CONTENT"))],
+)
+async def upload_property_photos(
+    property_id: UUID,
+    files: list[UploadFile] = File(...),
+    tenant_id: UUID = Depends(get_tenant_id),
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> list[dict]:
+    if not files:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No files provided")
+    if len(files) > MAX_PHOTOS_PER_REQUEST:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"At most {MAX_PHOTOS_PER_REQUEST} photos per request",
+        )
+
+    payload: list[tuple[bytes, str | None, str | None]] = []
+    for upload in files:
+        mime = (upload.content_type or "").lower()
+        if mime not in ALLOWED_IMAGE_MIME:
+            raise HTTPException(
+                status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+                detail=f"Unsupported image type: {upload.content_type or 'unknown'}",
+            )
+        content = await upload.read()
+        if not content:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Empty file")
+        if len(content) > MAX_PHOTO_BYTES:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"Photo exceeds {MAX_PHOTO_BYTES // (1024 * 1024)}MB",
+            )
+        payload.append((content, mime, upload.filename))
+
+    try:
+        return await PropertyPhotoService.add_photos(property_id, tenant_id, UUID(current_user["id"]), payload)
+    except PropertyNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found") from exc
+
+
+@router.delete(
+    "/{property_id}/photos/{asset_id}",
+    status_code=204,
+    dependencies=[Depends(require_role("ADMIN", "AGENT", "CONTENT"))],
+)
+async def delete_property_photo(
+    property_id: UUID,
+    asset_id: UUID,
+    tenant_id: UUID = Depends(get_tenant_id),
+):
+    deleted = await PropertyPhotoService.delete_photo(asset_id, property_id, tenant_id)
+    if not deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Photo not found")
