@@ -9,6 +9,7 @@ import { EmptyState } from "@shared/components/empty-state/empty-state";
 import { ErrorState, PageSkeleton } from "@shared/ui";
 import { PageLayout } from "@shared/components/page-layout";
 import { PageHeader } from "@shared/components/page-header";
+import { ConfirmDialog } from "@shared/components/confirm-dialog/confirm-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useIsDesktop } from "@/hooks/use-mobile";
 import { useDeletePortal, usePortals } from "../hooks/use-portals";
@@ -23,6 +24,7 @@ export function PortalAdminPage() {
   const deletePortal = useDeletePortal();
   const [createOpen, setCreateOpen] = useState(false);
   const [qrOf, setQrOf] = useState<{ slug: string; title: string } | null>(null);
+  const [toDelete, setToDelete] = useState<{ id: string; title: string } | null>(null);
 
   return (
     // Desktop fills the app surface; mobile keeps the capped reading column.
@@ -110,15 +112,7 @@ export function PortalAdminPage() {
                     size="sm"
                     variant="ghost"
                     className="text-destructive"
-                    onClick={async () => {
-                      if (!confirm(`Eliminar enlace "${p.title}"?`)) return;
-                      try {
-                        await deletePortal.mutateAsync(p.id);
-                        toast.success("Enlace eliminado");
-                      } catch (e) {
-                        toast.error(e instanceof Error ? e.message : "Error");
-                      }
-                    }}
+                    onClick={() => setToDelete({ id: p.id, title: p.title })}
                   >
                     Eliminar
                   </Button>
@@ -140,6 +134,27 @@ export function PortalAdminPage() {
       </div>
 
       <PortalFormDialog open={createOpen} onOpenChange={setCreateOpen} />
+
+      <ConfirmDialog
+        open={!!toDelete}
+        onOpenChange={(o) => !o && setToDelete(null)}
+        title="Eliminar enlace"
+        description={`Se eliminará "${toDelete?.title ?? ""}". El enlace dejará de recibir documentos.`}
+        confirmLabel="Eliminar"
+        variant="destructive"
+        loading={deletePortal.isPending}
+        onConfirm={async () => {
+          if (!toDelete) return;
+          try {
+            await deletePortal.mutateAsync(toDelete.id);
+            toast.success("Enlace eliminado");
+          } catch (e) {
+            toast.error(e instanceof Error ? e.message : "Error");
+          } finally {
+            setToDelete(null);
+          }
+        }}
+      />
 
       <Dialog open={!!qrOf} onOpenChange={(o) => !o && setQrOf(null)}>
         <DialogContent className="max-w-sm">
