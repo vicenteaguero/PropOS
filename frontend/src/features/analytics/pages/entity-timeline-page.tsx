@@ -1,9 +1,8 @@
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
 import { apiRequest } from "@features/documents/api/http";
 import { PageLayout } from "@shared/components/page-layout";
-import { Pill, type PillTone } from "@shared/ui";
+import { ErrorState, PageSkeleton, Pill, type PillTone } from "@shared/ui";
 
 interface TimelineEvent {
   event_at: string;
@@ -15,10 +14,29 @@ interface TimelineEvent {
 }
 
 const TYPE_LABEL: Record<string, string> = {
-  audit: "Audit",
+  audit: "Auditoría",
   interaction: "Interacción",
   note: "Nota",
 };
+
+/** Column name → readable field name. Payload keys are an open vocabulary, so
+ *  unknown ones just lose their underscores instead of being dropped. */
+function fieldName(key: string): string {
+  const spaced = key.replace(/_/g, " ");
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
+/** Renders one payload value as text — never as a JSON blob. */
+function fieldValue(value: unknown): string {
+  if (value === null || value === undefined || value === "") return "—";
+  if (typeof value === "boolean") return value ? "Sí" : "No";
+  if (typeof value === "number") return value.toLocaleString("es-CL");
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) {
+    return value.length === 0 ? "—" : value.map((v) => fieldValue(v)).join(", ");
+  }
+  return JSON.stringify(value);
+}
 
 const TYPE_TONE: Record<string, PillTone> = {
   audit: "neutral",
@@ -28,7 +46,7 @@ const TYPE_TONE: Record<string, PillTone> = {
 
 export function EntityTimelinePage() {
   const { table, id } = useParams<{ table: string; id: string }>();
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["timeline", table, id],
     queryFn: () =>
       apiRequest<TimelineEvent[]>(`/v1/analytics/entity-timeline?table_name=${table}&row_id=${id}`),
@@ -47,16 +65,14 @@ export function EntityTimelinePage() {
       </div>
 
       <div className="px-5">
-        {isLoading && (
-          <div className="flex justify-center py-12">
-            <Loader2 className="size-5 animate-spin text-muted-foreground" />
-          </div>
-        )}
+        {isLoading && <PageSkeleton variant="list" count={4} />}
 
         {isError && (
-          <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
-            No pude cargar la cronología.
-          </div>
+          <ErrorState
+            message="No se pudo cargar la cronología."
+            error={error}
+            onRetry={() => refetch()}
+          />
         )}
 
         {!isLoading && !isError && data?.length === 0 && (
@@ -82,11 +98,31 @@ export function EntityTimelinePage() {
                 </span>
               </div>
               <p className="mt-2 text-xs text-muted-foreground">
-                source={e.source} {e.actor ? `· actor=${e.actor.slice(0, 8)}…` : ""}
+                Origen: {e.source}
+                {e.actor ? ` · Autor: ${e.actor.slice(0, 8)}…` : ""}
               </p>
-              <pre className="mt-2 overflow-x-auto rounded-xl bg-secondary p-3 text-xs text-foreground">
-                {JSON.stringify(e.payload, null, 2)}
-              </pre>
+              {Object.keys(e.payload).length > 0 && (
+                <>
+                  <dl className="mt-2 rounded-xl bg-secondary p-3 text-xs">
+                    {Object.entries(e.payload).map(([k, v]) => (
+                      <div key={k} className="flex gap-3 py-0.5">
+                        <dt className="w-40 shrink-0 text-muted-foreground">{fieldName(k)}</dt>
+                        <dd className="min-w-0 flex-1 break-words text-foreground">
+                          {fieldValue(v)}
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+                  <details className="mt-2">
+                    <summary className="cursor-pointer text-xs text-muted-foreground">
+                      Ver detalle técnico
+                    </summary>
+                    <pre className="mt-2 overflow-x-auto rounded-xl bg-secondary p-3 text-xs text-foreground">
+                      {JSON.stringify(e.payload, null, 2)}
+                    </pre>
+                  </details>
+                </>
+              )}
             </div>
           ))}
         </div>
