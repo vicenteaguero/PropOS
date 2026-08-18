@@ -489,6 +489,7 @@ $$;
 SELECT public.attach_audit('client_consents');       -- who consented, and who revoked it
 SELECT public.attach_audit('property_grants');       -- per-property access grants
 SELECT public.attach_audit('user_phones');           -- the binding that lets a phone drive the agent
+SELECT public.attach_audit('user_emails');           -- same binding for e-mail, and it carries a marketing purpose
 SELECT public.attach_audit('profiles');              -- role / is_active changes
 SELECT public.attach_audit('visitor_invitations');   -- external access to a property flow
 
