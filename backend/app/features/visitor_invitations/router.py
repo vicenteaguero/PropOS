@@ -6,6 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, File, Query, Request, UploadFile
 
 from app.core.dependencies import get_current_user, get_tenant_id, require_role
+from app.core.rate_limit import rate_limit
 from app.features.visitor_invitations.schemas import (
     InvitationCreate,
     InvitationPublicView,
@@ -96,21 +97,35 @@ async def expire_invitation(
 
 
 # ---------------------------------------------------------------- public
+# Anonymous by design — the invited visitor has no account yet. Rate limits cap
+# slug guessing and stop an anonymous uploader from filling the bucket.
 public_router = APIRouter(prefix="/public/visitor-invitations", tags=["visitor-invitations-public"])
 
 
-@public_router.get("/{slug}", response_model=InvitationPublicView)
+@public_router.get(
+    "/{slug}",
+    response_model=InvitationPublicView,
+    dependencies=[Depends(rate_limit("invitation_get", limit=60, window_seconds=60))],
+)
 async def resolve_public(slug: str) -> InvitationPublicView:
     return await VisitorInvitationService.resolve_public(slug)
 
 
-@public_router.post("/{slug}/upload-id", response_model=UploadIdResponse)
+@public_router.post(
+    "/{slug}/upload-id",
+    response_model=UploadIdResponse,
+    dependencies=[Depends(rate_limit("invitation_upload", limit=10, window_seconds=600))],
+)
 async def upload_id(slug: str, file: UploadFile = File(...)) -> UploadIdResponse:
     content = await file.read()
     return await VisitorInvitationService.upload_id_pdf(slug, content)
 
 
-@public_router.post("/{slug}/submit", response_model=SubmitResponse)
+@public_router.post(
+    "/{slug}/submit",
+    response_model=SubmitResponse,
+    dependencies=[Depends(rate_limit("invitation_submit", limit=10, window_seconds=600))],
+)
 async def submit(
     slug: str,
     payload: SubmitPayload,

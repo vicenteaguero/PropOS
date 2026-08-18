@@ -93,15 +93,18 @@ async def test_scope_restricted_admin_blocked(client_for, path):
     assert resp.status_code == 403
 
 
-def test_public_share_routes_stay_ungated():
+def test_public_share_routes_carry_no_auth_gate():
     """`/r/{slug}` and `/p/{slug}` are anonymous by design.
 
     They live on `public_router`, which `main.py` mounts separately, so the gate
-    added to the documents router must not reach them.
+    added to the documents router must not reach them. They do carry rate limits
+    (see `core/rate_limit.py`) — that is abuse control, not authorization.
     """
     public_paths = {"/r/{slug}", "/r/{slug}/verify-password", "/p/{slug}", "/p/{slug}/upload"}
     found = {
         route.path: route.dependencies for route in create_app().routes if getattr(route, "path", None) in public_paths
     }
     assert set(found) == public_paths
-    assert all(deps == [] for deps in found.values())
+    for path, deps in found.items():
+        names = {getattr(dep.dependency, "__qualname__", "").split(".")[0] for dep in deps}
+        assert names <= {"rate_limit"}, path

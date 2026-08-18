@@ -15,6 +15,7 @@ from fastapi import (
     status,
 )
 
+from app.core.rate_limit import by_ip, by_path_param, rate_limit
 from app.core.dependencies import (
     get_current_user,
     get_tenant_id,
@@ -366,15 +367,38 @@ async def delete_share_link(
 
 # ----------------------------- Public share resolver -----------------------------
 
+# Anonymous by design — no JWT reaches these. Rate limits are the only thing
+# standing between the share-link password and an unbounded guessing loop.
 public_router = APIRouter(tags=["public-share"])
 
 
-@public_router.get("/r/{slug}", response_model=ShareLinkPublicView)
+@public_router.get(
+    "/r/{slug}",
+    response_model=ShareLinkPublicView,
+    dependencies=[Depends(rate_limit("share_get", limit=60, window_seconds=60))],
+)
 async def public_share_get(slug: str) -> dict:
     return await ShareService.resolve_public(slug)
 
 
-@public_router.post("/r/{slug}/verify-password", response_model=ShareLinkPublicView)
+@public_router.post(
+    "/r/{slug}/verify-password",
+    response_model=ShareLinkPublicView,
+    dependencies=[
+        # Keyed on the slug: the attack targets one link, and rotating IPs is
+        # cheap. The per-caller cap sits on top so one host cannot sweep many
+        # links at once.
+        Depends(
+            rate_limit(
+                "share_password_slug",
+                limit=10,
+                window_seconds=300,
+                key=by_path_param("slug"),
+            )
+        ),
+        Depends(rate_limit("share_password_ip", limit=30, window_seconds=300, key=by_ip)),
+    ],
+)
 async def public_share_password(slug: str, password: str = Form(...)) -> dict:
     return await ShareService.resolve_public(slug, password)
 
@@ -462,12 +486,19 @@ async def reject_upload(
 # ----------------------------- Public portal -----------------------------
 
 
-@public_router.get("/p/{slug}")
+@public_router.get(
+    "/p/{slug}",
+    dependencies=[Depends(rate_limit("portal_get", limit=60, window_seconds=60))],
+)
 async def public_portal_get(slug: str) -> dict:
     return await PortalService.public_portal_view(slug)
 
 
-@public_router.post("/p/{slug}/upload")
+@public_router.post(
+    "/p/{slug}/upload",
+    # Anonymous writes land in our storage bucket, so this one is deliberately tight.
+    dependencies=[Depends(rate_limit("portal_upload", limit=10, window_seconds=600))],
+)
 async def public_portal_upload(
     slug: str,
     request: Request,
