@@ -2,7 +2,15 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, FileText, Loader2, Palette, Shield, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ErrorState, PageSkeleton, Pill, ResponsiveSheet, Row, SectionLabel } from "@shared/ui";
+import {
+  ErrorState,
+  PageSkeleton,
+  Pill,
+  ResponsiveSheet,
+  Row,
+  SectionLabel,
+  FOCUS_RING,
+} from "@shared/ui";
 import { useIsDesktop } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -133,7 +141,7 @@ export function SettingsPage() {
       onChange={(e) => setAgentName(e.target.value)}
       placeholder="Anita"
       aria-label="Nombre del agente"
-      className="h-9 w-28 rounded-lg border border-border bg-secondary px-3 text-right text-[15px] font-semibold text-foreground placeholder:font-normal placeholder:text-muted-foreground focus-visible:border-line-strong focus-visible:outline-none"
+      className={`h-9 w-28 rounded-lg border border-border bg-secondary px-3 text-right text-[15px] font-semibold text-foreground placeholder:font-normal placeholder:text-muted-foreground ${FOCUS_RING}`}
     />
   );
 

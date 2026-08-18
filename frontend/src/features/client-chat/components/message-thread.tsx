@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Bot, Check, Loader2, Send, UserCog } from "lucide-react";
-import { BrandMark, Pill, RoundButton } from "@shared/ui";
+import { BrandMark, Pill, RoundButton, FOCUS_RING } from "@shared/ui";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useConversationMessages, useSendMessage, useTakeover } from "../hooks/use-client-chat";
@@ -151,7 +151,7 @@ export function MessageThread({ conversation, onBack }: Props) {
             }}
             placeholder={inWindow ? "Escribe un mensaje..." : "Sólo plantillas (24h cerrada)"}
             disabled={!inWindow || send.isPending}
-            className="h-11 flex-1 rounded-full border border-border bg-secondary px-4 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-line-strong disabled:opacity-50"
+            className={`h-11 flex-1 rounded-full border border-border bg-secondary px-4 text-sm text-foreground transition placeholder:text-muted-foreground disabled:opacity-50 ${FOCUS_RING}`}
           />
           <RoundButton
             tone="ink"

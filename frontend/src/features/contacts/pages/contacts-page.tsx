@@ -6,7 +6,7 @@ import { PageLayout } from "@shared/components/page-layout";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
 import { useAuth } from "@shared/hooks/use-auth";
 import { useIsDesktop } from "@/hooks/use-mobile";
-import { Chip, Chips, MasterDetail, Pill, Row, type PillTone } from "@shared/ui";
+import { Chip, Chips, MasterDetail, Pill, Row, type PillTone, FOCUS_RING } from "@shared/ui";
 import { toast } from "sonner";
 import { useContacts, useCreateContact } from "../hooks/use-contacts";
 import { ContactFormDialog } from "../components/contact-form-dialog";
@@ -102,7 +102,7 @@ export function ContactsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar por nombre, teléfono o email"
-            className="h-12 w-full rounded-full border border-border bg-secondary pl-11 pr-4 text-[15px] text-foreground placeholder:text-muted-foreground focus-visible:border-line-strong focus-visible:outline-none"
+            className={`h-12 w-full rounded-full border border-border bg-secondary pl-11 pr-4 text-[15px] text-foreground placeholder:text-muted-foreground ${FOCUS_RING}`}
           />
         </div>
       </div>
