@@ -490,3 +490,6 @@ function aggregateFunnelLatestMonth(rows: FunnelRow[]) {
     count: byStage.get(stage) ?? 0,
   }));
 }
+
+// Default export so the router can code-split this page with React.lazy.
+export default AnalyticsPage;
