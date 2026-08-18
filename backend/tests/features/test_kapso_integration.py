@@ -170,3 +170,204 @@ def test_router_external_contact_no_match(monkeypatch):
     db = _supabase_table({"user_phones": []})
     monkeypatch.setattr("app.features.channels.router.get_supabase_client", lambda: db)
     assert ch_router._match_internal_user("+56000") is None
+
+
+# ─────────────── fake supabase that honours filters ───────────────
+
+_NOT_NULL = object()
+
+
+class _Not:
+    def __init__(self, query: _Query) -> None:
+        self._query = query
+
+    def is_(self, column: str, value: str):
+        self._query.filters.append((column, _NOT_NULL if value == "null" else value))
+        return self._query
+
+
+class _Query:
+    """Applies eq/not.is filters to canned rows and records writes."""
+
+    def __init__(self, store: _FakeDB, table: str) -> None:
+        self.store = store
+        self.table = table
+        self.filters: list[tuple[str, object]] = []
+        self._single = False
+        self._op = "select"
+        self._payload: dict | None = None
+
+    def select(self, *_a, **_k):
+        self._op = "select"
+        return self
+
+    def insert(self, row: dict):
+        self._op = "insert"
+        self._payload = row
+        return self
+
+    def update(self, row: dict):
+        self._op = "update"
+        self._payload = row
+        return self
+
+    def eq(self, column: str, value):
+        self.filters.append((column, value))
+        return self
+
+    def order(self, *_a, **_k):
+        return self
+
+    def limit(self, *_a, **_k):
+        return self
+
+    def single(self):
+        self._single = True
+        return self
+
+    @property
+    def not_(self):
+        return _Not(self)
+
+    def _matches(self, row: dict) -> bool:
+        for column, expected in self.filters:
+            if "->>" in column:
+                jsonb, key = column.split("->>", 1)
+                actual = (row.get(jsonb) or {}).get(key)
+            else:
+                actual = row.get(column)
+            if expected is _NOT_NULL:
+                if actual is None:
+                    return False
+            elif actual != expected:
+                return False
+        return True
+
+    def execute(self):
+        rows = [r for r in self.store.rows.get(self.table, []) if self._matches(r)]
+        if self._op == "insert":
+            row = {"id": f"{self.table}-{len(self.store.rows.get(self.table, [])) + 1}", **(self._payload or {})}
+            self.store.rows.setdefault(self.table, []).append(row)
+            self.store.inserts.append((self.table, self._payload or {}))
+            rows = [row]
+        elif self._op == "update":
+            for row in rows:
+                row.update(self._payload or {})
+            self.store.updates.append((self.table, dict(self.filters), self._payload or {}))
+
+        class R:
+            pass
+
+        result = R()
+        result.data = (rows[0] if rows else None) if self._single else rows
+        return result
+
+
+class _FakeDB:
+    def __init__(self, rows: dict[str, list[dict]] | None = None) -> None:
+        self.rows = {k: [dict(r) for r in v] for k, v in (rows or {}).items()}
+        self.inserts: list[tuple[str, dict]] = []
+        self.updates: list[tuple[str, dict, dict]] = []
+
+    def table(self, name: str):
+        return _Query(self, name)
+
+
+def _patch_db(monkeypatch, db: _FakeDB, *modules: str) -> None:
+    for module in modules:
+        monkeypatch.setattr(f"{module}.get_supabase_client", lambda: db)
+
+
+# ─────────────── tenant routing (P1-08) ───────────────
+
+TENANT_A = "aaaaaaaa-0000-0000-0000-000000000001"
+TENANT_B = "bbbbbbbb-0000-0000-0000-000000000002"
+
+
+def test_resolve_tenant_by_receiving_phone_number_id(monkeypatch):
+    from app.features.channels import tenant_routing
+
+    db = _FakeDB(
+        {
+            "tenants": [
+                {"id": TENANT_A, "settings": {"kapso_phone_number_id": "111"}},
+                {"id": TENANT_B, "settings": {"kapso_phone_number_id": "222"}},
+            ]
+        }
+    )
+    _patch_db(monkeypatch, db, "app.features.channels.tenant_routing")
+    assert tenant_routing.resolve_tenant_id("222") == TENANT_B
+
+
+def test_resolve_tenant_raises_when_unmapped_and_multi_tenant(monkeypatch):
+    from app.features.channels import tenant_routing
+
+    db = _FakeDB({"tenants": [{"id": TENANT_A, "settings": {}}, {"id": TENANT_B, "settings": {}}]})
+    _patch_db(monkeypatch, db, "app.features.channels.tenant_routing")
+    with pytest.raises(tenant_routing.TenantRoutingError):
+        tenant_routing.resolve_tenant_id("999")
+
+
+def test_resolve_tenant_falls_back_to_only_tenant(monkeypatch):
+    from app.features.channels import tenant_routing
+
+    db = _FakeDB({"tenants": [{"id": TENANT_A, "settings": {}}]})
+    _patch_db(monkeypatch, db, "app.features.channels.tenant_routing")
+    assert tenant_routing.resolve_tenant_id(None) == TENANT_A
+
+
+def test_extract_phone_number_id_prefers_item_level():
+    from app.features.channels import tenant_routing
+
+    assert tenant_routing.extract_phone_number_id({"phone_number_id": "111"}) == "111"
+    assert tenant_routing.extract_phone_number_id({"conversation": {"phone_number_id": "222"}}) == "222"
+    assert tenant_routing.extract_phone_number_id({"message": {}}) is None
+
+
+def test_contact_lookup_is_tenant_scoped(monkeypatch):
+    """Same phone in two tenants: the receiving tenant's contact wins."""
+    from app.features.channels import client_agent
+
+    db = _FakeDB(
+        {
+            "contacts": [
+                {"id": "contact-b", "tenant_id": TENANT_B, "phone": "+56911111111", "full_name": "Ajeno"},
+                {"id": "contact-a", "tenant_id": TENANT_A, "phone": "+56911111111", "full_name": "Propio"},
+            ]
+        }
+    )
+    _patch_db(monkeypatch, db, "app.features.channels.client_agent")
+    contact = client_agent._ensure_contact_from_phone(TENANT_A, "+56911111111")
+    assert contact["id"] == "contact-a"
+
+
+def test_unknown_phone_creates_contact_in_receiving_tenant(monkeypatch):
+    from app.features.channels import client_agent
+
+    db = _FakeDB({"contacts": [{"id": "contact-b", "tenant_id": TENANT_B, "phone": "+56922222222"}]})
+    _patch_db(monkeypatch, db, "app.features.channels.client_agent")
+    contact = client_agent._ensure_contact_from_phone(TENANT_A, "+56922222222", "Nuevo")
+    assert contact["tenant_id"] == TENANT_A
+    assert db.inserts[0][0] == "contacts"
+
+
+def test_conversation_lookup_is_tenant_scoped(monkeypatch):
+    from app.features.channels import client_agent
+
+    db = _FakeDB(
+        {
+            "client_conversations": [
+                {"id": "conv-b", "tenant_id": TENANT_B, "contact_id": "contact-1", "source": "whatsapp"}
+            ]
+        }
+    )
+    _patch_db(monkeypatch, db, "app.features.channels.client_agent")
+    conv = client_agent._ensure_conversation(TENANT_A, {"id": "contact-1", "tenant_id": TENANT_A}, "+569", None)
+    assert conv["tenant_id"] == TENANT_A
+    assert conv["id"] != "conv-b"
+
+
+def test_default_tenant_resolver_is_gone():
+    from app.features.channels import client_agent
+
+    assert not hasattr(client_agent, "_resolve_default_tenant")

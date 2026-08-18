@@ -24,6 +24,11 @@ from typing import Any
 
 from app.core.logging.logger import get_logger
 from app.core.supabase.client import get_supabase_client
+from app.features.channels.tenant_routing import (
+    TenantRoutingError,
+    extract_phone_number_id,
+    resolve_tenant_id,
+)
 
 logger = get_logger("CHANNEL_ROUTER")
 
@@ -109,9 +114,17 @@ async def _handle_message_batch(items: list[dict[str, Any]]) -> None:
         )
         return
 
-    # External contact → Client Agent. For now still text-only path: use the
-    # original concatenation behaviour. Media for B2C is out of scope for this
-    # ship (covered by client_messages.media_url already).
+    # External contact → Client Agent. The sender's phone says nothing about
+    # which inmobiliaria this belongs to; the *receiving* number does.
+    try:
+        tenant_id = resolve_tenant_id(extract_phone_number_id(first))
+    except TenantRoutingError as exc:
+        logger.error("kapso_inbound_unrouted", event_type="kapso", phone=phone_e164, error=str(exc))
+        return
+
+    # For now still text-only path: use the original concatenation behaviour.
+    # Media for B2C is out of scope for this ship (covered by
+    # client_messages.media_url already).
     parts: list[str] = []
     external_ids: list[str] = []
     for it in items:
@@ -131,6 +144,7 @@ async def _handle_message_batch(items: list[dict[str, Any]]) -> None:
     from app.features.channels.client_agent import handle_inbound_client
 
     await handle_inbound_client(
+        tenant_id=tenant_id,
         phone_e164=phone_e164,
         user_text=user_text,
         external_message_id=primary_external_id,

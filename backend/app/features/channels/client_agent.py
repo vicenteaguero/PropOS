@@ -43,6 +43,7 @@ NO prometas precios, NO confirmes disponibilidad, NO firmes nada en nombre del b
 
 async def handle_inbound_client(
     *,
+    tenant_id: str,
     phone_e164: str,
     user_text: str,
     external_message_id: str | None,
@@ -51,7 +52,9 @@ async def handle_inbound_client(
 ) -> None:
     db = get_supabase_client()
 
-    # Idempotency.
+    # Idempotency. Meta message ids are globally unique, so this stays
+    # instance-wide on purpose: a narrower check could replay a message that
+    # an earlier (mis-routed) delivery already answered.
     if external_message_id:
         dup = (
             db.table("client_messages")
@@ -64,8 +67,8 @@ async def handle_inbound_client(
         if dup:
             return
 
-    contact = _ensure_contact_from_phone(phone_e164, contact_name)
-    conv = _ensure_conversation(contact, phone_e164, external_thread_id)
+    contact = _ensure_contact_from_phone(tenant_id, phone_e164, contact_name)
+    conv = _ensure_conversation(tenant_id, contact, phone_e164, external_thread_id)
 
     db.table("client_messages").insert(
         {
@@ -122,16 +125,29 @@ async def handle_inbound_client(
 
 
 def _ensure_contact_from_phone(
+    tenant_id: str,
     phone_e164: str,
     contact_name: str | None = None,
 ) -> dict[str, Any]:
+    """Find (or create) the contact **inside the receiving tenant**.
+
+    The phone lookup must stay tenant-scoped: the same number can exist as a
+    contact of several inmobiliarias, and the service-role client bypasses
+    RLS, so an unscoped match hands the conversation to whichever tenant
+    happened to save the number first.
+    """
     db = get_supabase_client()
     rows = (
-        db.table("contacts").select("id, tenant_id, full_name, phone").eq("phone", phone_e164).limit(1).execute().data
+        db.table("contacts")
+        .select("id, tenant_id, full_name, phone")
+        .eq("tenant_id", tenant_id)
+        .eq("phone", phone_e164)
+        .limit(1)
+        .execute()
+        .data
     )
     if rows:
         return rows[0]
-    tenant_id = _resolve_default_tenant()
     inserted = (
         db.table("contacts")
         .insert(
@@ -149,15 +165,8 @@ def _ensure_contact_from_phone(
     return inserted
 
 
-def _resolve_default_tenant() -> str:
-    db = get_supabase_client()
-    rows = db.table("tenants").select("id").limit(1).execute().data
-    if not rows:
-        raise RuntimeError("no tenant configured for inbound contact")
-    return rows[0]["id"]
-
-
 def _ensure_conversation(
+    tenant_id: str,
     contact: dict[str, Any],
     phone_e164: str,
     external_thread_id: str | None,
@@ -166,6 +175,7 @@ def _ensure_conversation(
     rows = (
         db.table("client_conversations")
         .select("*")
+        .eq("tenant_id", tenant_id)
         .eq("contact_id", contact["id"])
         .eq("source", "whatsapp")
         .order("last_message_at", desc=True)
@@ -179,7 +189,7 @@ def _ensure_conversation(
         db.table("client_conversations")
         .insert(
             {
-                "tenant_id": contact["tenant_id"],
+                "tenant_id": tenant_id,
                 "contact_id": contact["id"],
                 "source": "whatsapp",
                 "external_thread_id": external_thread_id,
