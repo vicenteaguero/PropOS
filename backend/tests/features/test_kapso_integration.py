@@ -154,11 +154,41 @@ def test_dispatcher_window_outside_24h_blocks_freeform(monkeypatch):
 # ─────────────────────── channel router identity ───────────────────────
 
 
+def _phones_db(phone_row: dict | None, membership: dict | None) -> _FakeDB:
+    return _FakeDB(
+        {
+            "user_phones": [phone_row] if phone_row else [],
+            "tenant_memberships": [membership] if membership else [],
+        }
+    )
+
+
+def _verified_phone(**overrides) -> dict:
+    return {
+        "user_id": "u1",
+        "tenant_id": "t1",
+        "phone_e164": "+56999",
+        "verified_at": "2026-07-01T00:00:00+00:00",
+        **overrides,
+    }
+
+
+def _admin_membership(**overrides) -> dict:
+    return {
+        "user_id": "u1",
+        "tenant_id": "t1",
+        "role": "ADMIN",
+        "admin_scope": [],
+        "is_active": True,
+        **overrides,
+    }
+
+
 def test_router_internal_user_match(monkeypatch):
     from app.features.channels import router as ch_router
 
-    db = _supabase_table({"user_phones": [{"user_id": "u1", "tenant_id": "t1", "phone_e164": "+56999"}]})
-    monkeypatch.setattr("app.features.channels.router.get_supabase_client", lambda: db)
+    db = _phones_db(_verified_phone(), _admin_membership())
+    _patch_db(monkeypatch, db, "app.features.channels.router")
     match = ch_router._match_internal_user("+56999")
     assert match is not None
     assert match["user_id"] == "u1"
@@ -167,9 +197,74 @@ def test_router_internal_user_match(monkeypatch):
 def test_router_external_contact_no_match(monkeypatch):
     from app.features.channels import router as ch_router
 
-    db = _supabase_table({"user_phones": []})
-    monkeypatch.setattr("app.features.channels.router.get_supabase_client", lambda: db)
+    db = _phones_db(None, None)
+    _patch_db(monkeypatch, db, "app.features.channels.router")
     assert ch_router._match_internal_user("+56000") is None
+
+
+# ─────────────── internal-user gate (P2-08) ───────────────
+
+
+def test_unverified_phone_is_not_internal(monkeypatch):
+    from app.features.channels import router as ch_router
+
+    db = _phones_db(_verified_phone(verified_at=None), _admin_membership())
+    _patch_db(monkeypatch, db, "app.features.channels.router")
+    assert ch_router._match_internal_user("+56999") is None
+
+
+def test_non_admin_phone_is_not_internal(monkeypatch):
+    from app.features.channels import router as ch_router
+
+    db = _phones_db(_verified_phone(), _admin_membership(role="AGENT"))
+    _patch_db(monkeypatch, db, "app.features.channels.router")
+    assert ch_router._match_internal_user("+56999") is None
+
+
+def test_admin_without_agent_scope_is_not_internal(monkeypatch):
+    from app.features.channels import router as ch_router
+
+    db = _phones_db(_verified_phone(), _admin_membership(admin_scope=["documents"]))
+    _patch_db(monkeypatch, db, "app.features.channels.router")
+    assert ch_router._match_internal_user("+56999") is None
+
+
+def test_admin_with_agent_scope_is_internal(monkeypatch):
+    from app.features.channels import router as ch_router
+
+    db = _phones_db(_verified_phone(), _admin_membership(admin_scope=["agent", "inbox"]))
+    _patch_db(monkeypatch, db, "app.features.channels.router")
+    assert ch_router._match_internal_user("+56999") is not None
+
+
+def test_inactive_membership_is_not_internal(monkeypatch):
+    from app.features.channels import router as ch_router
+
+    db = _phones_db(_verified_phone(), _admin_membership(is_active=False))
+    _patch_db(monkeypatch, db, "app.features.channels.router")
+    assert ch_router._match_internal_user("+56999") is None
+
+
+def test_phone_without_membership_falls_back_to_profile(monkeypatch):
+    from app.features.channels import router as ch_router
+
+    db = _FakeDB(
+        {
+            "user_phones": [_verified_phone()],
+            "tenant_memberships": [],
+            "profiles": [{"id": "u1", "tenant_id": "t1", "role": "ADMIN", "admin_scope": [], "is_active": True}],
+        }
+    )
+    _patch_db(monkeypatch, db, "app.features.channels.router")
+    assert ch_router._match_internal_user("+56999") is not None
+
+
+def test_phone_with_no_access_row_is_not_internal(monkeypatch):
+    from app.features.channels import router as ch_router
+
+    db = _phones_db(_verified_phone(), None)
+    _patch_db(monkeypatch, db, "app.features.channels.router")
+    assert ch_router._match_internal_user("+56999") is None
 
 
 # ─────────────── fake supabase that honours filters ───────────────

@@ -189,13 +189,69 @@ def is_forwarded(msg: dict[str, Any]) -> bool:
 
 
 def _match_internal_user(phone_e164: str) -> dict[str, Any] | None:
+    """Resolve an inbound number to an internal user allowed to drive Propo.
+
+    A match here bypasses the agent router's ``require_role("ADMIN")`` +
+    ``require_scope("agent")`` gate, so the same conditions are re-checked
+    against the phone's own tenant: the number must be verified and the user
+    must be an active ADMIN holding the ``agent`` scope.
+    """
     db = get_supabase_client()
     rows = (
         db.table("user_phones")
-        .select("user_id, tenant_id, phone_e164")
+        .select("user_id, tenant_id, phone_e164, verified_at")
         .eq("phone_e164", phone_e164)
+        .not_.is_("verified_at", "null")
         .limit(1)
         .execute()
         .data
     )
-    return rows[0] if rows else None
+    if not rows:
+        return None
+    row = rows[0]
+    if not row.get("verified_at"):
+        return None
+    if not _has_agent_access(row["user_id"], row["tenant_id"]):
+        logger.warning(
+            "kapso_internal_user_denied",
+            event_type="kapso",
+            user_id=row["user_id"],
+            tenant_id=row["tenant_id"],
+        )
+        return None
+    return row
+
+
+def _has_agent_access(user_id: str, tenant_id: str) -> bool:
+    """Active ADMIN membership in ``tenant_id`` with the ``agent`` scope."""
+    db = get_supabase_client()
+    rows = (
+        db.table("tenant_memberships")
+        .select("role, admin_scope, is_active")
+        .eq("user_id", user_id)
+        .eq("tenant_id", tenant_id)
+        .limit(1)
+        .execute()
+        .data
+    )
+    if not rows:
+        # Pre-membership rows: fall back to the denormalized profile snapshot.
+        rows = (
+            db.table("profiles")
+            .select("role, admin_scope, is_active")
+            .eq("id", user_id)
+            .eq("tenant_id", tenant_id)
+            .limit(1)
+            .execute()
+            .data
+        )
+    if not rows:
+        return False
+    row = rows[0]
+    if row.get("is_active") is False:
+        return False
+    if row.get("role") != "ADMIN":
+        return False
+    admin_scope = row.get("admin_scope") or []
+    # Empty scope = full admin, same rule as core.dependencies.require_scope.
+    return not admin_scope or "agent" in admin_scope
