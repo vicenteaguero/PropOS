@@ -33,7 +33,7 @@ export function PageLayout({
     return (
       <div
         className={cn(
-          "flex min-h-[calc(100dvh-var(--app-header-h,0px))] w-full items-center justify-center",
+          "flex min-h-[calc(100dvh-var(--app-header-h,0px)-var(--app-nav-h,0px))] w-full items-center justify-center",
           !noPadding && "px-4 py-6 md:px-6 md:py-8",
           className,
         )}

@@ -332,7 +332,8 @@ export function SettingsPage() {
 
   // ---- Mobile: unchanged single-column flow ----
   return (
-    <PageLayout width="md" noPadding className="pb-28">
+    // No bottom-nav pad here — the shell's <main> already clears --app-nav-h.
+    <PageLayout width="md" noPadding className="pb-6">
       <div className="px-5 pt-5 pb-1">
         <h1 className="text-[26px] font-bold leading-tight tracking-tight text-foreground">
           Configuración

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
   CalendarDays,
@@ -63,12 +63,36 @@ function NavTab({
   );
 }
 
+/**
+ * Publishes the nav's rendered height to `--app-nav-h` on <html> and clears it
+ * on unmount. Measuring beats a constant: the nav loses tabs when a role lacks
+ * a scope, and its bottom pad is `env(safe-area-inset-bottom)`, which differs
+ * per device and is 0 in the browser but ~34px in the installed PWA.
+ */
+function usePublishNavHeight(ref: React.RefObject<HTMLElement | null>) {
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const root = document.documentElement;
+    const publish = () => root.style.setProperty("--app-nav-h", `${el.offsetHeight}px`);
+    publish();
+    const ro = new ResizeObserver(publish);
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      root.style.removeProperty("--app-nav-h");
+    };
+  }, [ref]);
+}
+
 export function MobileBottomNav() {
   const { user, memberships, switchTenant, signOut } = useAuth();
   const { theme, toggle } = useThemeMode();
   const navigate = useNavigate();
   const [propoOpen, setPropoOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
+  const navRef = useRef<HTMLElement>(null);
+  usePublishNavHeight(navRef);
 
   if (!user) return null;
 
@@ -87,7 +111,13 @@ export function MobileBottomNav() {
 
   return (
     <>
-      <nav className="fixed inset-x-0 bottom-0 z-40 px-3.5 pt-1.5 pb-[max(1rem,env(safe-area-inset-bottom))]">
+      {/* z-50 so transient bottom-anchored chrome (the iOS install nudge) can
+          never bury the only navigation this shell has. */}
+      <nav
+        ref={navRef}
+        aria-label="Navegación principal"
+        className="fixed inset-x-0 bottom-0 z-50 px-3.5 pt-1.5 pb-[max(1rem,env(safe-area-inset-bottom))]"
+      >
         <div className="mx-auto flex max-w-md items-center justify-around rounded-[2rem] border border-border bg-card px-2 py-2 shadow-[0_6px_26px_rgba(0,0,0,0.18)]">
           <NavTab to={base} end icon={Home} label="Inicio" />
           {allow("crm") && <NavTab to={`${base}/bandeja`} icon={Users} label="CRM" />}
