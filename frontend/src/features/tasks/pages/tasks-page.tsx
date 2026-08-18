@@ -18,7 +18,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { PageLayout } from "@shared/components/page-layout";
 import { PageHeader } from "@shared/components/page-header";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
-import { Chip, Chips, Pill, ResponsiveSheet, Row, RoundButton, SectionLabel } from "@shared/ui";
+import {
+  Chip,
+  Chips,
+  ErrorState,
+  PageSkeleton,
+  Pill,
+  ResponsiveSheet,
+  Row,
+  RoundButton,
+  SectionLabel,
+} from "@shared/ui";
 import { toast } from "sonner";
 import { useCreateTask, useDeleteTask, useTasks, useUpdateTask } from "../hooks/use-tasks";
 import { useCreateReminder } from "../hooks/use-reminders";
@@ -486,18 +496,13 @@ export function TasksPage() {
         />
       </div>
 
-      {isLoading && (
-        <div className="flex justify-center py-12">
-          <Loader2 className="size-5 animate-spin text-muted-foreground" />
-        </div>
-      )}
+      {isLoading && <PageSkeleton variant="list" count={5} />}
       {error && (
-        <div className="mx-5 rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive lg:mx-8">
-          No se pudieron cargar las tareas.
-          <Button variant="ghost" size="sm" className="ml-2" onClick={() => refetch()}>
-            Reintentar
-          </Button>
-        </div>
+        <ErrorState
+          message="No se pudieron cargar las tareas."
+          onRetry={() => refetch()}
+          className="mx-5 lg:mx-8"
+        />
       )}
       {!isLoading && !error && (data?.length ?? 0) === 0 && (
         <EmptyState
