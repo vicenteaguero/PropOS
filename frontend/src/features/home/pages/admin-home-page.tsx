@@ -30,7 +30,16 @@ import type { CalendarItem } from "@features/calendar/api/calendar-api";
 import { apiRequest } from "@features/documents/api/http";
 import { UfButton } from "@features/uf/components/uf-button";
 import { AgentOverlay } from "@features/agent/components/agent-overlay";
-import { BottomSheet, Pill, Row, SectionLabel, WorkspacePill, type PillTone } from "@shared/ui";
+import {
+  BottomSheet,
+  ErrorState,
+  PageSkeleton,
+  Pill,
+  Row,
+  SectionLabel,
+  WorkspacePill,
+  type PillTone,
+} from "@shared/ui";
 import { useIsDesktop } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 
@@ -82,6 +91,36 @@ function ServiceTile({ tile, onClick }: { tile: Tile; onClick: () => void }) {
   );
 }
 
+/**
+ * KPI text for a counted query. Loading shows an ellipsis and a failure shows a
+ * dash, so an outage never renders as a real zero.
+ */
+function statValue(isPending: boolean, isError: boolean, value: number): string {
+  if (isPending) return "…";
+  if (isError) return "—";
+  return String(value);
+}
+
+/** Mobile pipeline tile — one stage count. */
+function PipelineStat({
+  value,
+  label,
+  pending,
+}: {
+  value: number;
+  label: string;
+  pending: boolean;
+}) {
+  return (
+    <div className="flex-1 rounded-2xl bg-secondary px-3.5 py-3">
+      <div className="text-2xl font-bold tracking-tight text-foreground">
+        {pending ? "…" : value}
+      </div>
+      <div className="mt-1 truncate text-[12.5px] text-muted-foreground">{label}</div>
+    </div>
+  );
+}
+
 /** Desktop KPI card — single-line: icon · value · label. */
 function Kpi({ label, value, icon: Icon }: { label: string; value: string; icon: LucideIcon }) {
   return (
@@ -115,18 +154,18 @@ export function AdminHomePage() {
   const tenantName =
     memberships.find((m) => m.tenantId === user?.tenantId)?.tenantName ?? "Workspace";
 
-  const { data: contacts } = useContacts({ limit: 50 });
-  const recent = (contacts ?? []).slice(0, isDesktop ? 6 : 4);
+  const contactsQ = useContacts({ limit: 50 });
+  const recent = (contactsQ.data ?? []).slice(0, isDesktop ? 6 : 4);
 
   // Pipeline counts for the mobile "Pipeline" pills.
-  const { data: openOpps } = useOpportunities({ status: "OPEN", limit: 100 });
-  const leadsActivos = (openOpps ?? []).length;
+  const oppsQ = useOpportunities({ status: "OPEN", limit: 100 });
+  const openOpps = oppsQ.data ?? [];
+  const leadsActivos = openOpps.length;
+  const enVisita = openOpps.filter((o) => o.pipeline_stage === "VISIT").length;
   // OFFER + RESERVATION are the negotiation-stage opportunities.
-  const negociacion = (openOpps ?? []).filter(
+  const negociacion = openOpps.filter(
     (o) => o.pipeline_stage === "OFFER" || o.pipeline_stage === "RESERVATION",
   ).length;
-  // NOTE: no unread source yet — placeholder until an unread/messages count exists.
-  const sinLeer = 0;
 
   // Today's agenda + KPIs (desktop dashboard only — cheap single-day window).
   const today = new Date();
@@ -143,8 +182,9 @@ export function AdminHomePage() {
     queryKey: ["analytics", "pending-count"],
     queryFn: () => apiRequest("/v1/analytics/pending-count"),
     staleTime: 30_000,
-    enabled: isDesktop && allow("pendientes"),
+    enabled: allow("pendientes"),
   });
+  const pendingCount = pendingQuery.data?.pending_count ?? 0;
 
   const tiles: Tile[] = [
     { to: `${base}/bandeja`, label: "CRM", icon: Users, scope: "crm" },
@@ -191,7 +231,18 @@ export function AdminHomePage() {
 
   const recentList = (
     <div>
-      {recent.length === 0 ? (
+      {contactsQ.isError ? (
+        <div className="p-4">
+          <ErrorState
+            compact
+            message="No se pudieron cargar las personas."
+            error={contactsQ.error}
+            onRetry={() => contactsQ.refetch()}
+          />
+        </div>
+      ) : contactsQ.isPending ? (
+        <PageSkeleton variant="list" count={isDesktop ? 6 : 4} />
+      ) : recent.length === 0 ? (
         <p className="px-5 py-6 text-center text-sm text-muted-foreground lg:px-4">
           Aún no hay contactos.
         </p>
@@ -229,12 +280,24 @@ export function AdminHomePage() {
 
           {/* KPI strip */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <Kpi label="Personas en tu CRM" value={String((contacts ?? []).length)} icon={Users} />
-            <Kpi label="Eventos hoy" value={String(todayItems.length)} icon={CalendarDays} />
+            <Kpi
+              label="Personas en tu CRM"
+              value={statValue(
+                contactsQ.isPending,
+                contactsQ.isError,
+                (contactsQ.data ?? []).length,
+              )}
+              icon={Users}
+            />
+            <Kpi
+              label="Eventos hoy"
+              value={statValue(todayFeed.isPending, todayFeed.isError, todayItems.length)}
+              icon={CalendarDays}
+            />
             {allow("pendientes") && (
               <Kpi
                 label="Pendientes por revisar"
-                value={String(pendingQuery.data?.pending_count ?? 0)}
+                value={statValue(pendingQuery.isPending, pendingQuery.isError, pendingCount)}
                 icon={Inbox}
               />
             )}
@@ -246,8 +309,17 @@ export function AdminHomePage() {
               Tu día · {format(today, "EEEE d 'de' MMMM", { locale: es })}
             </SectionLabel>
             <div className="mt-2 rounded-2xl border border-border">
-              {todayFeed.isLoading ? (
-                <p className="px-4 py-8 text-center text-sm text-muted-foreground">Cargando…</p>
+              {todayFeed.isError ? (
+                <div className="p-4">
+                  <ErrorState
+                    compact
+                    message="No se pudo cargar tu agenda de hoy."
+                    error={todayFeed.error}
+                    onRetry={() => todayFeed.refetch()}
+                  />
+                </div>
+              ) : todayFeed.isPending ? (
+                <PageSkeleton variant="list" count={3} />
               ) : todayItems.length === 0 ? (
                 <div className="flex flex-col items-center gap-2 px-4 py-12 text-center">
                   <CalendarDays className="size-9 text-faint" strokeWidth={1.5} />
@@ -308,13 +380,21 @@ export function AdminHomePage() {
         <WorkspacePill label={tenantName} onClick={() => setWsOpen(true)} />
         <div className="flex items-center gap-2">
           <UfButton />
-          <button
-            type="button"
-            aria-label="Notificaciones"
-            className="flex size-10 items-center justify-center rounded-full bg-secondary text-foreground transition active:scale-90"
-          >
-            <Bell className="size-[18px]" strokeWidth={1.9} />
-          </button>
+          {allow("pendientes") && (
+            <button
+              type="button"
+              aria-label={pendingCount > 0 ? `Pendientes (${pendingCount})` : "Pendientes"}
+              onClick={() => navigate(`${base}/pendientes`)}
+              className="relative flex size-10 items-center justify-center rounded-full bg-secondary text-foreground transition active:scale-90"
+            >
+              <Bell className="size-[18px]" strokeWidth={1.9} />
+              {pendingCount > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 min-w-[18px] rounded-full bg-destructive px-1 text-center text-[10px] font-bold leading-[18px] text-destructive-foreground">
+                  {pendingCount > 99 ? "99+" : pendingCount}
+                </span>
+              )}
+            </button>
+          )}
         </div>
       </div>
 
@@ -389,20 +469,22 @@ export function AdminHomePage() {
       <SectionLabel action="Ver CRM" onAction={() => navigate(`${base}/bandeja`)}>
         Pipeline
       </SectionLabel>
-      <div className="flex gap-2 px-5 pt-2 pb-6">
-        <div className="flex-1 rounded-2xl bg-secondary px-3.5 py-3">
-          <div className="text-2xl font-bold tracking-tight text-foreground">{leadsActivos}</div>
-          <div className="mt-1 truncate text-[12.5px] text-muted-foreground">Leads activos</div>
+      {oppsQ.isError ? (
+        <div className="px-5 pt-2 pb-6">
+          <ErrorState
+            compact
+            message="No se pudo cargar el pipeline."
+            error={oppsQ.error}
+            onRetry={() => oppsQ.refetch()}
+          />
         </div>
-        <div className="flex-1 rounded-2xl bg-secondary px-3.5 py-3">
-          <div className="text-2xl font-bold tracking-tight text-foreground">{sinLeer}</div>
-          <div className="mt-1 truncate text-[12.5px] text-muted-foreground">Sin leer</div>
+      ) : (
+        <div className="flex gap-2 px-5 pt-2 pb-6">
+          <PipelineStat value={leadsActivos} label="Leads activos" pending={oppsQ.isPending} />
+          <PipelineStat value={enVisita} label="En visita" pending={oppsQ.isPending} />
+          <PipelineStat value={negociacion} label="Negociación" pending={oppsQ.isPending} />
         </div>
-        <div className="flex-1 rounded-2xl bg-secondary px-3.5 py-3">
-          <div className="text-2xl font-bold tracking-tight text-foreground">{negociacion}</div>
-          <div className="mt-1 truncate text-[12.5px] text-muted-foreground">Negociación</div>
-        </div>
-      </div>
+      )}
 
       {allow("crm") && (
         <>
