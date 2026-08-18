@@ -82,8 +82,10 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      # No --passWithNoTests. Combined with a glob that skipped `.test.tsx`, it
+      # reported "Unit tests ✓" for a run that collected nothing at all.
       - name: Unit tests
-        run: npm test -- --passWithNoTests
+        run: npm test
 
       - name: Build
         run: npm run build
