@@ -118,23 +118,50 @@ class PendingService:
             for key, chosen_id in disambiguation.items():
                 payload[key] = str(chosen_id)
 
+        from datetime import UTC, datetime
+
+        # Claim-first, like `jobs/service.run_due_reminders`. The status check
+        # above is a read, so a double click (or a retry after a timeout, or two
+        # tabs) could run the dispatcher twice and create two domain rows from
+        # one proposal. Flipping pending->accepted in a single filtered UPDATE
+        # means only one caller can proceed.
+        reviewed_at = datetime.now(UTC).isoformat()
+        claimed = (
+            client.table(PENDING_TABLE)
+            .update({"status": "accepted", "reviewer_user": str(reviewer_user), "reviewed_at": reviewed_at})
+            .eq("id", str(proposal_id))
+            .eq("tenant_id", str(tenant_id))
+            .eq("status", "pending")
+            .execute()
+            .data
+        )
+        if not claimed:
+            raise ValueError(f"Proposal {proposal_id} is already being accepted")
+
         # Attribution for the universal audit_log trigger (migration 0033).
         # Shared with the dispatcher's auto-commit path.
         agent_session_id = UUID(proposal["agent_session_id"])
-        with agent_attribution(agent_session_id):
-            target_table, created_row_id = dispatcher(
-                payload=payload,
-                tenant_id=tenant_id,
-                user_id=reviewer_user,
-                agent_session_id=agent_session_id,
-            )
-
-        from datetime import UTC, datetime
+        try:
+            with agent_attribution(agent_session_id):
+                target_table, created_row_id = dispatcher(
+                    payload=payload,
+                    tenant_id=tenant_id,
+                    user_id=reviewer_user,
+                    agent_session_id=agent_session_id,
+                )
+        except Exception:
+            # Release the claim so the user can fix the payload and retry
+            # instead of being left with a proposal marked accepted that wrote
+            # nothing.
+            client.table(PENDING_TABLE).update({"status": "pending", "reviewer_user": None, "reviewed_at": None}).eq(
+                "id", str(proposal_id)
+            ).eq("tenant_id", str(tenant_id)).eq("status", "accepted").execute()
+            raise
 
         update = {
             "status": "accepted",
             "reviewer_user": str(reviewer_user),
-            "reviewed_at": datetime.now(UTC).isoformat(),
+            "reviewed_at": reviewed_at,
             "review_note": note,
             "target_table": target_table,
             "created_row_id": str(created_row_id),
