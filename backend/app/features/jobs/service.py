@@ -139,3 +139,15 @@ async def run_due_reminders() -> dict[str, int]:
     )
     return {"sent": sent, "failed": failed, "recovered": recovered, "claimed": len(claimed)}
 
+
+async def refresh_analytics() -> dict[str, Any]:
+    """Rebuild the analytics materialized views (nightly cron).
+
+    Runs on the service-role client: migration 46 revoked EXECUTE on
+    ``refresh_analytics()`` from ``authenticated``, so a user-scoped client
+    would be denied.
+    """
+    client = get_supabase_client()
+    client.rpc("refresh_analytics", {}).execute()
+    logger.info("refresh_analytics", event_type="job")
+    return {"refreshed": True}

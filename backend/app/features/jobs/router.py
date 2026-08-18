@@ -31,6 +31,12 @@ async def run_due_reminders(x_internal_key: str | None = Header(default=None)) -
     return await service.run_due_reminders()
 
 
+@router.post("/refresh-analytics")
+async def refresh_analytics(x_internal_key: str | None = Header(default=None)) -> dict[str, Any]:
+    _verify_internal_key(x_internal_key)
+    return await service.refresh_analytics()
+
+
 @router.post("/email-sync")
 async def email_sync(x_internal_key: str | None = Header(default=None)) -> dict[str, Any]:
     _verify_internal_key(x_internal_key)
