@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, FileText, Loader2, Palette, Shield, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Pill, ResponsiveSheet, Row, SectionLabel } from "@shared/ui";
+import { ErrorState, PageSkeleton, Pill, ResponsiveSheet, Row, SectionLabel } from "@shared/ui";
 import { useIsDesktop } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -99,11 +99,26 @@ export function SettingsPage() {
     onError: (err) => toast.error(err instanceof Error ? err.message : "No se pudo guardar"),
   });
 
-  if (tenantQ.isLoading || meQ.isLoading) {
+  if (tenantQ.isPending || meQ.isPending) {
     return (
       <PageLayout width="md" noPadding>
-        <div className="flex justify-center py-16">
-          <Loader2 className="size-5 animate-spin text-muted-foreground" />
+        <PageSkeleton variant="list" count={5} className="pt-6" />
+      </PageLayout>
+    );
+  }
+
+  // The form is hydrated from `tenantQ.data`. Without it the inputs keep their
+  // `useState` defaults, so rendering the form here would let Guardar overwrite
+  // the real tenant settings with those defaults.
+  if (!tenantQ.data) {
+    return (
+      <PageLayout width="md" noPadding>
+        <div className="px-5 pt-6">
+          <ErrorState
+            message="No se pudo cargar la configuración del workspace. Reintentá antes de editar."
+            error={tenantQ.error}
+            onRetry={() => tenantQ.refetch()}
+          />
         </div>
       </PageLayout>
     );
@@ -211,7 +226,16 @@ export function SettingsPage() {
             <DesktopCard title="Perfil">
               <AvatarUploader user={meQ.data} />
             </DesktopCard>
-          ) : null}
+          ) : (
+            <DesktopCard title="Perfil">
+              <ErrorState
+                compact
+                message="No se pudo cargar tu perfil."
+                error={meQ.error}
+                onRetry={() => meQ.refetch()}
+              />
+            </DesktopCard>
+          )}
 
           {/* Agente IA */}
           <DesktopCard title="Agente IA">
@@ -318,7 +342,18 @@ export function SettingsPage() {
         </p>
       </div>
 
-      {meQ.data ? <AvatarUploader user={meQ.data} /> : null}
+      {meQ.data ? (
+        <AvatarUploader user={meQ.data} />
+      ) : (
+        <div className="px-5 pt-3">
+          <ErrorState
+            compact
+            message="No se pudo cargar tu perfil."
+            error={meQ.error}
+            onRetry={() => meQ.refetch()}
+          />
+        </div>
+      )}
 
       {/* Agente IA */}
       <SectionLabel className="mb-2 mt-2">Agente IA</SectionLabel>
