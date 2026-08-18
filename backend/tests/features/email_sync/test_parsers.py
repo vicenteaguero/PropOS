@@ -163,3 +163,112 @@ def test_no_marketing_regex_false_positive():
     # Sanity: a plain promotional subject matches no portal.
     assert not any(p.search("¡Tasación con 20% de descuento!") for p in LEAD_SUBJECT_PATTERNS.values())
     assert re.compile
+
+
+YAPO_BODY = "ID de anuncio 32015937 ID Externo: 32327 Nombre: Verónica Teléfono: 0056 957181497"
+
+TOCTOC_BODY = """Datos del interesado
+Nombre y apellido: María Soto Pérez
+Correo: maria.soto@gmail.com
+Teléfono: +56 9 9090 5082
+Mensaje: Hola, quiero visitar la casa
+Código de propiedad: 34589"""
+
+PI_BODY = """Recibiste un contacto por tu publicación.
+Nombre: Juan Pablo Díaz
+Email: jp.diaz@outlook.com
+Celular: 912345678
+Consulta: ¿sigue disponible?"""
+
+
+class TestContactExtraction:
+    def test_name_stops_at_the_next_label_on_one_line(self):
+        from app.features.email_sync.parsers import extract_contact_name
+
+        assert extract_contact_name(YAPO_BODY) == "Verónica"
+
+    def test_name_and_surname_label(self):
+        from app.features.email_sync.parsers import extract_contact_name
+
+        assert extract_contact_name(TOCTOC_BODY) == "María Soto Pérez"
+
+    def test_phone_with_country_prefix_zeros(self):
+        from app.features.email_sync.parsers import extract_contact_phone
+
+        assert extract_contact_phone(YAPO_BODY) == "+56957181497"
+
+    def test_phone_spaced_e164(self):
+        from app.features.email_sync.parsers import extract_contact_phone
+
+        assert extract_contact_phone(TOCTOC_BODY) == "+56990905082"
+
+    def test_phone_from_celular_label(self):
+        from app.features.email_sync.parsers import extract_contact_phone
+
+        assert extract_contact_phone(PI_BODY) == "+56912345678"
+
+    def test_bare_mobile_without_label(self):
+        from app.features.email_sync.parsers import extract_contact_phone
+
+        assert extract_contact_phone("Te dejo mi número +56 9 8877 6655 saludos") == "+56988776655"
+
+    def test_email_label_wins(self):
+        from app.features.email_sync.parsers import extract_contact_email
+
+        assert extract_contact_email(TOCTOC_BODY) == "maria.soto@gmail.com"
+
+    def test_portal_addresses_are_never_the_lead(self):
+        from app.features.email_sync.parsers import extract_contact_email
+
+        body = "Enviado por no-reply@portalinmobiliario.cl. Responder a soporte@yapo.cl"
+        assert extract_contact_email(body) is None
+
+    def test_nothing_extracted_from_a_bare_body(self):
+        from app.features.email_sync.parsers import (
+            extract_contact_email,
+            extract_contact_name,
+            extract_contact_phone,
+        )
+
+        body = "Tu publicación recibió 12 visitas esta semana."
+        assert extract_contact_name(body) is None
+        assert extract_contact_phone(body) is None
+        assert extract_contact_email(body) is None
+
+
+class TestFormatClPhone:
+    @pytest.mark.parametrize(
+        "raw,expected",
+        [
+            ("+56 9 9090 5082", "+56990905082"),
+            ("0056957181497", "+56957181497"),
+            ("912345678", "+56912345678"),
+            ("12345678", "+56912345678"),
+            ("(56) 9-9090-5082", "+56990905082"),
+            ("123", None),
+            ("", None),
+            (None, None),
+        ],
+    )
+    def test_e164_forms(self, raw, expected):
+        from app.features.email_sync.parsers import format_cl_phone
+
+        assert format_cl_phone(raw) == expected
+
+
+class TestClassifyEmailPopulatesTheLead:
+    def test_yapo_lead_carries_name_and_phone(self):
+        lead = classify_email("Yapo.cl - Interesado en anuncio no. 28645748", YAPO_BODY)
+        assert lead is not None
+        assert lead.contact_name == "Verónica"
+        assert lead.contact_phone == "+56957181497"
+        assert lead.property_external_id == "32327"
+
+    def test_toctoc_lead_carries_the_full_identity(self):
+        lead = classify_email("TOCTOC.com - Solicitud de contacto a la propiedad 34589", TOCTOC_BODY)
+        assert lead is not None
+        assert (lead.contact_name, lead.contact_phone, lead.contact_email) == (
+            "María Soto Pérez",
+            "+56990905082",
+            "maria.soto@gmail.com",
+        )
