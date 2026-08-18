@@ -48,7 +48,11 @@ jupyter-mcp-server = "^1.0.2"
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-addopts = "--cov=app --cov-report=term-missing --cov-fail-under=70 -m 'not integration'"
+# cov-fail-under is the *measured* floor, not a target. It sat at 70 while the
+# suite ran at 53, so every caller passed --no-cov to get a green run and the
+# gate never fired once. A ratchet only works if it is armed: raise this number
+# when coverage rises, never lower it to make a red run go green.
+addopts = "--cov=app --cov-report=term-missing --cov-fail-under=53 -m 'not integration'"
 markers = [
     "integration: hits real Supabase + LLM providers (slow, costs tokens)",
     "whisper: hits Groq Whisper (rate-limited 20 req/min, only run when measuring STT quality)",

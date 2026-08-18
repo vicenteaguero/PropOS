@@ -1,10 +1,13 @@
 name: CI
 
 # Gate for every push and PR: lint + unit tests on the backend, typecheck +
-# build on the frontend. Integration tests are excluded (they need a live
-# Supabase project). Coverage runs but does not fail the build yet — the gate in
-# pyproject.toml is 70% while the suite sits at ~53%; ratchet it up instead of
-# lowering the pyproject value.
+# build on the frontend. Integration tests are excluded here — they need a live
+# Supabase project and burn LLM tokens, so they run in the `integration` job on
+# a nightly schedule and on demand.
+#
+# Coverage is enforced. The threshold in pyproject.toml is the measured floor,
+# so a PR that adds uncovered code fails this job instead of quietly diluting
+# the number. Raise the floor when coverage rises; do not lower it to go green.
 
 on:
   push:
@@ -51,8 +54,16 @@ jobs:
       - name: Ruff format check
         run: poetry run ruff format --check .
 
-      - name: Pytest (unit, no coverage gate)
-        run: poetry run pytest -q --no-cov
+      - name: Pytest (unit + coverage gate)
+        run: poetry run pytest -q --cov-report=xml
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/coverage.xml
+          if-no-files-found: warn
 
   frontend:
     name: Frontend (eslint + prettier + tsc + build)
