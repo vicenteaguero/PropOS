@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import threading
+import time
 from dataclasses import dataclass, field
 from typing import Any
 from uuid import UUID
@@ -22,11 +24,58 @@ class TenantSnapshot:
     recent_transactions: list[dict[str, Any]] = field(default_factory=list)
 
 
-def load_snapshot(tenant_id: UUID) -> TenantSnapshot:
+# The snapshot costs 9 sequential PostgREST round-trips, and it sat on the hot
+# path of every turn (voice included). Cache it per tenant with a short TTL —
+# same shape as `text_to_sql._SCHEMA_CACHE`. Writes made by the agent call
+# `invalidate_snapshot` so the next turn sees the row it just created.
+_SNAPSHOT_TTL_SECONDS = 60.0
+_SNAPSHOT_CACHE_MAX = 64
+_snapshot_cache: dict[str, tuple[float, TenantSnapshot]] = {}
+_snapshot_lock = threading.Lock()
+
+
+def invalidate_snapshot(tenant_id: UUID | str | None = None) -> None:
+    """Drop the cached snapshot so the next ``load_snapshot`` refetches.
+
+    Called after the agent writes a row: the resolver reads the snapshot, so a
+    contact created this turn must be visible on the next one.
+    """
+    with _snapshot_lock:
+        if tenant_id is None:
+            _snapshot_cache.clear()
+        else:
+            _snapshot_cache.pop(str(tenant_id), None)
+
+
+def load_snapshot(tenant_id: UUID, *, force_refresh: bool = False) -> TenantSnapshot:
     """Load tenant context for Agent's system prompt.
 
-    Cached in-process per session in chat.py (one snapshot per session, not turn).
+    Cached in-process per tenant for ``_SNAPSHOT_TTL_SECONDS``; pass
+    ``force_refresh=True`` to bypass.
     """
+    key = str(tenant_id)
+    now = time.monotonic()
+
+    if not force_refresh:
+        with _snapshot_lock:
+            hit = _snapshot_cache.get(key)
+        if hit is not None and (now - hit[0]) < _SNAPSHOT_TTL_SECONDS:
+            return hit[1]
+
+    snapshot = _fetch_snapshot(tenant_id)
+
+    with _snapshot_lock:
+        if len(_snapshot_cache) >= _SNAPSHOT_CACHE_MAX:
+            stale = [k for k, (at, _) in _snapshot_cache.items() if (now - at) >= _SNAPSHOT_TTL_SECONDS]
+            for k in stale:
+                _snapshot_cache.pop(k, None)
+            if len(_snapshot_cache) >= _SNAPSHOT_CACHE_MAX:
+                _snapshot_cache.clear()
+        _snapshot_cache[key] = (now, snapshot)
+    return snapshot
+
+
+def _fetch_snapshot(tenant_id: UUID) -> TenantSnapshot:
     client = get_supabase_client()
     tid = str(tenant_id)
 

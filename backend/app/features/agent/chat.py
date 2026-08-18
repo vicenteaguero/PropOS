@@ -24,7 +24,7 @@ from app.core.config.settings import settings
 from app.core.logging.logger import get_logger
 from app.core.supabase.client import get_supabase_client
 from app.features.agent.classifier import classify, extract_details
-from app.features.agent.context import load_snapshot
+from app.features.agent.context import invalidate_snapshot, load_snapshot
 from app.features.agent.dispatcher import dispatch
 from app.features.agent.intent_registry import get as get_intent_spec
 from app.features.agent.intent_registry import needs_pass_two, normalize_fields, real_captures
@@ -150,6 +150,9 @@ async def run_chat_turn(
                 }
             )
         elif outcome.get("kind") == "executed":
+            # The row we just wrote must be resolvable next turn, so drop the
+            # cached snapshot the resolver reads from.
+            invalidate_snapshot(tenant_id)
             executed_rows.append(
                 {
                     "kind": outcome.get("proposal_kind", ""),
