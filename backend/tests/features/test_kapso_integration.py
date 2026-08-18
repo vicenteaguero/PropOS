@@ -733,3 +733,82 @@ def test_blocked_reply_degrades_to_handoff(monkeypatch):
     conv = db.rows["client_conversations"][0]
     assert conv["ai_enabled"] is False
     assert conv["metadata"]["ai_handoff_reason"] == "output_guard"
+
+
+# ─────────────── private media bucket (P1-02) ───────────────
+
+
+def test_agent_media_path_is_tenant_first():
+    from app.features.channels import agent_adapter
+
+    path = agent_adapter._media_path(TENANT_A, "session-1", "msg-1", "jpg")
+    assert path == f"{TENANT_A}/agent/session-1/msg-1.jpg"
+    assert path.split("/")[0] == TENANT_A
+
+
+def test_store_media_returns_path_not_public_url(monkeypatch):
+    from app.core.supabase import storage
+    from app.features.channels import agent_adapter
+
+    uploaded: list[tuple[str, str, str]] = []
+
+    def _fake_upload(bucket, path, content, mime_type):
+        uploaded.append((bucket, path, mime_type))
+
+    monkeypatch.setattr(agent_adapter.storage, "upload_object", _fake_upload)
+    result = agent_adapter._store_media(
+        b"bytes",
+        "image/jpeg",
+        tenant_id=TENANT_A,
+        session_id="session-1",
+        message_id="msg-1",
+    )
+
+    assert result == f"{TENANT_A}/agent/session-1/msg-1.jpg"
+    assert not result.startswith("http")
+    assert uploaded == [(storage.MEDIA_BUCKET, result, "image/jpeg")]
+
+
+def test_store_media_returns_none_and_logs_on_failure(monkeypatch):
+    from app.features.channels import agent_adapter
+
+    def _boom(*_a, **_k):
+        raise RuntimeError("row-level security")
+
+    monkeypatch.setattr(agent_adapter.storage, "upload_object", _boom)
+    assert (
+        agent_adapter._store_media(
+            b"bytes",
+            "image/jpeg",
+            tenant_id=TENANT_A,
+            session_id="session-1",
+            message_id="msg-1",
+        )
+        is None
+    )
+
+
+def test_object_path_accepts_paths_and_legacy_public_urls():
+    from app.core.supabase import storage
+
+    assert storage.object_path("media", f"{TENANT_A}/agent/s/m.jpg") == f"{TENANT_A}/agent/s/m.jpg"
+    legacy = f"https://x.supabase.co/storage/v1/object/public/media/agent/{TENANT_A}/s/m.jpg"
+    assert storage.object_path("media", legacy) == f"agent/{TENANT_A}/s/m.jpg"
+    assert storage.object_path("media", "https://example.com/elsewhere.jpg") is None
+    assert storage.object_path("media", "") is None
+
+
+def test_signed_url_for_ref_signs_the_derived_path(monkeypatch):
+    from app.core.supabase import storage
+
+    signed: list[tuple[str, str]] = []
+
+    def _fake_signed_url(bucket, path, expires_in=3600):
+        signed.append((bucket, path))
+        return f"https://signed/{path}?token=abc"
+
+    monkeypatch.setattr(storage, "signed_url", _fake_signed_url)
+    url = storage.signed_url_for_ref("media", f"{TENANT_A}/agent/s/m.jpg")
+
+    assert url == f"https://signed/{TENANT_A}/agent/s/m.jpg?token=abc"
+    assert signed == [("media", f"{TENANT_A}/agent/s/m.jpg")]
