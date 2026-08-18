@@ -92,9 +92,9 @@ the full matrix and the exact semantics; the short version:
 
 Both failures are **403** `{"detail": "Insufficient permissions"}` (dev-admin says
 `"Dev admin required"`). In the tables below, `ADMIN AGENT` means either role
-passes; `+ \`documents\`` means a `require_scope("documents")` also applies. Where a
-router-level gate and a route-level gate both apply, the table shows the
-intersection — the effective set.
+passes; a trailing `+ documents` means a `require_scope("documents")` also
+applies. Where a router-level gate and a route-level gate both apply, the table
+shows the intersection — the effective set.
 
 Some endpoints narrow further **inside** the handler: a LANDOWNER reading
 documents or interactions is restricted to the properties it holds a grant for
