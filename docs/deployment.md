@@ -218,3 +218,42 @@ until their secret is provisioned.
 enumerate the deployment's wiring. `make deploy-verify`, the post-deploy smoke
 test in `config/docker/cloudbuild.yaml` and `.github/workflows/keepalive.yml`
 all poll `/health/ready`, and all three now exit non-zero when it is not 200.
+
+## Outbound email (Resend)
+
+`RESEND_FROM_EMAIL` must stay on a domain that is **verified in Resend**. The only
+verified one is `anaida.cl`; the previous default (`no-reply@propos.dev`) was never
+verified, so every send failed with a 403 that surfaced only in the dispatcher log.
+Confirm before changing the sender:
+
+```bash
+curl -s https://api.resend.com/domains -H "Authorization: Bearer $RESEND_API_KEY"
+```
+
+### DNS authentication status (checked 2026-08-18)
+
+| Record | Host | State |
+|---|---|---|
+| DKIM | `resend._domainkey.anaida.cl` | verified |
+| SPF | `send.anaida.cl` (TXT + MX) | verified |
+| DMARC | `_dmarc.anaida.cl` | `v=DMARC1; p=none;` — **weak** |
+
+DKIM and SPF are correct, and DMARC passes through DKIM alignment (the From domain
+is `anaida.cl` and the DKIM signature is on that domain; Resend uses
+`send.anaida.cl` only as the Return-Path). So mail authenticates.
+
+What is missing is policy strength. `p=none` with no `rua=` neither enforces
+anything nor collects reports, which is why the first delivery to Outlook carried a
+"You don't often get email from…" sender-identification warning. At volume that
+costs inbox placement.
+
+**Recommended change** (DNS, at the registrar — not in this repo):
+
+```
+_dmarc.anaida.cl  TXT  "v=DMARC1; p=none; rua=mailto:dmarc@anaida.cl; fo=1"
+```
+
+Collect reports for two or three weeks, confirm every legitimate sender aligns, then
+tighten to `p=quarantine` and eventually `p=reject`. Do not jump straight to
+enforcement: any other system sending as `@anaida.cl` (the broker's own mail client,
+a portal, a CRM) would start bouncing silently.
