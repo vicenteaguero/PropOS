@@ -15,6 +15,7 @@ from uuid import UUID
 from app.core.config.settings import settings
 from app.core.logging.logger import get_logger
 from app.features.agent.llm_retry import with_retry
+from app.features.agent.rate_limiter import QuotaExhaustedError, get_rate_limiter
 from app.features.agent.tools.query_sql import run_query_sql
 
 logger = get_logger("AGENT_TEXT_SQL")
@@ -128,9 +129,23 @@ async def generate_and_run_sql(
         base_url="https://api.groq.com/openai/v1",
         timeout=20.0,
     )
+
+    # Pass 2 of a freeform question is a real call against the same Groq quota
+    # as the classifier. Skipping the limiter here made it under-count, so the
+    # provider returned 429s the user saw as "hubo un error al consultar".
+    limiter = get_rate_limiter()
+    est_tokens = (len(system) + len(user_msg)) // 4
     try:
-        completion = await with_retry(
-            lambda: client.chat.completions.create(
+        # Tighter than the default budget: the dispatcher runs this call in a
+        # worker thread it only waits 30s for.
+        await limiter.acquire(settings.agent_provider, settings.agent_model, est_tokens, max_wait=10.0)
+    except QuotaExhaustedError as exc:
+        logger.warning("text_to_sql_quota_exhausted", window=exc.window, wait_seconds=int(exc.wait_seconds))
+        return {"kind": "error", "reason": "quota_exhausted"}
+
+    try:
+        raw_response = await with_retry(
+            lambda: client.chat.completions.with_raw_response.create(
                 model=settings.agent_model,
                 messages=[
                     {"role": "system", "content": system},
@@ -144,6 +159,17 @@ async def generate_and_run_sql(
     except Exception as exc:
         logger.warning("text_to_sql_llm_failed", error=str(exc))
         return {"kind": "error", "reason": f"llm_failed: {exc}"}
+
+    completion = raw_response.parse()
+    usage = completion.usage
+    actual = (usage.prompt_tokens if usage else 0) + (usage.completion_tokens if usage else 0)
+    if actual:
+        limiter.record_response(
+            settings.agent_provider,
+            settings.agent_model,
+            actual,
+            headers=dict(raw_response.headers),
+        )
 
     raw = (completion.choices[0].message.content or "").strip()
     sql = raw.strip().strip("`").strip()
