@@ -1,6 +1,8 @@
 # Procedimiento manual de Solicitud de Derechos (DSAR)
 
-> Ley N° 21.719, Arts. 14–15. Plazo legal: **30 días corridos** desde recepción, prorrogable 30 días más con aviso al titular. Procedimiento manual — no hay portal automatizado en v3. Versión 1.0 — 2026-05-10.
+> Ley N° 21.719, Arts. 14–15. Plazo legal: **30 días corridos** desde recepción, prorrogable 30 días más con aviso al titular. Procedimiento manual — no hay portal automatizado en v3. Versión 2.0 — 2026-08-16.
+>
+> **Cambios v1.0 → v2.0.** La v1.0 nunca se ejecutó contra el esquema real y sus tres comandos principales fallaban: consultaba una tabla `people` que no existe (la tabla del CRM es `contacts`), llamaba a `/admin/people/<id>/export` (la ruta real es `/admin/compliance/contacts/{contact_id}/export`) y actualizaba `media_files.owner_id`, columna que no existe. Todo lo de abajo está alineado con el esquema y la API vigentes.
 
 ## 1. Llega un email a `privacidad@propos.cl`
 
@@ -38,76 +40,97 @@ Saludos,
 
 ## 3. Buscar al titular en la base
 
+La tabla del CRM es `contacts`. No existe ninguna tabla `people`; lo que sí existe es `person_aliases`, que guarda los nombres alternativos con los que el asistente reconoce al titular.
+
 ```sql
 -- Reemplazar :rut o :email
-SELECT id, full_name, email, rut, tenant_id, created_at
-FROM people
+SELECT id, full_name, email, rut, tenant_id, created_at, deleted_at, erased_at
+FROM contacts
 WHERE rut = :rut OR email = :email;
+
+-- El titular puede estar registrado con otro nombre; buscar también por alias.
+SELECT c.id, c.full_name, c.email, a.alias
+FROM person_aliases a
+JOIN contacts c ON c.id = a.person_id
+WHERE a.alias ILIKE :nombre;
 ```
 
-Si hay múltiples coincidencias, exigir más datos antes de actuar.
+Si hay múltiples coincidencias, exigir más datos antes de actuar. Si la fila trae `erased_at` no nulo, el titular ya ejerció supresión: es un tombstone sin datos personales y no hay nada que entregar ni que borrar de nuevo.
+
+Ejecutar con `make query SQL="..."` (ver `CLAUDE.md` § DB para el fallback cuando el atajo está roto).
 
 ## 4. Ejecutar el derecho
 
 ### Acceso / Portabilidad
 
 ```bash
-# Endpoint backend
+# ADMIN-only. El titular debe vivir en el tenant activo; para otro tenant,
+# cambiar el X-Tenant-Id.
 curl -H "Authorization: Bearer <admin-token>" \
      -H "X-Tenant-Id: <tenant>" \
-     https://<api>/admin/people/<person_id>/export \
-     -o export-<person_id>.json
+     https://<api>/admin/compliance/contacts/<contact_id>/export \
+     -o export-<contact_id>.json
 ```
+
+El bundle incluye: la fila del contacto, el estado de consentimiento con su evidencia, alias, interacciones y sus targets, notas, tareas, las conversaciones y mensajes de WhatsApp del titular (`client_conversations` / `client_messages`), los consentimientos por canal (`client_consents`), los emails vinculados (`email_messages`) y las transcripciones de audio con sus `media_files` alcanzables.
 
 Enviar al titular por email cifrado o link efímero. Conservar copia del export en `docs/internal-plans/dsar-YYYY-MM-DD-<id>.json` (gitignored) durante 5 años como evidencia.
 
 ### Rectificación
 
-Editar campos directos en `people` desde la UI admin. El audit_log universal registra el cambio automáticamente.
+Editar los campos del contacto desde la UI admin del CRM (`PATCH /contacts/{contact_id}`). El `audit_log` universal registra el cambio automáticamente.
 
 ### Cancelación / Supresión
 
-```sql
--- Soft delete + programar purga real en 30 días
-UPDATE people
-SET deleted_at = now(),
-    consent = jsonb_set(coalesce(consent, '{}'::jsonb), '{revoked_at}', to_jsonb(now()))
-WHERE id = :person_id;
+La supresión **no** es el soft delete del CRM. `DELETE /contacts/{contact_id}` solo marca `deleted_at` y conserva íntegros el RUT, el teléfono y el email — sirve para ordenar la bandeja, no para responder un Art. 14.
 
--- Si tienen documentos sensibles asociados:
-UPDATE media_files
-SET purge_after = now() + interval '30 days'
-WHERE owner_id = :person_id;
-```
+La supresión real es `ComplianceService.erase_subject(contact_id, tenant_id, reason=...)` (`backend/app/features/compliance/service.py`), que en un solo paso:
 
-Si hay obligación de retención (factura SII, contrato vigente): explicar al titular que los datos quedan **bloqueados** (sin uso comercial) por X años, no borrados.
+1. Convierte el contacto en tombstone: sobrescribe nombre, email, teléfono, RUT, fecha de nacimiento, dirección, notas y metadata, y estampa `erased_at`. Sobreviven `id` y `tenant_id` para que las FK que apuntan al contacto sigan siendo válidas.
+2. Borra sus `person_aliases`.
+3. Programa la purga de los `media_files` alcanzables desde sus interacciones (`interactions.raw_transcript_id → agent_transcripts.media_file_id`, el único vínculo contacto↔media que existe en el esquema) con 30 días de gracia.
+4. **Redacta** los snapshots de `audit_log`: reemplaza los campos con datos personales por `"[redacted]"` sin borrar ninguna fila, así el ledger sigue siendo append-only y auditable.
+
+> **Pendiente de cableado:** todavía no hay una ruta HTTP que la exponga (`compliance/router.py` no la publica) ni un job de retención que ejecute la purga programada. Hasta que estén, invocarla desde una consola del backend y correr `run_retention_sweep()` a mano; ambos pasos quedan registrados en `audit_log`.
+
+Si hay obligación de retención (factura SII, contrato vigente): explicar al titular que los datos quedan **bloqueados** (sin uso comercial) por X años, no borrados — ver "Bloqueo temporal".
 
 ### Oposición (a una finalidad específica)
 
-```sql
-UPDATE people
-SET consent = jsonb_set(coalesce(consent, '{}'::jsonb), '{purposes}',
-    (SELECT to_jsonb(array_remove(
-        (consent->'purposes')::text[]::text[], :purpose
-    )) FROM people WHERE id = :person_id))
-WHERE id = :person_id;
+Vía API, que es lo que además deja la traza:
+
+```bash
+curl -X DELETE \
+     -H "Authorization: Bearer <admin-token>" \
+     -H "X-Tenant-Id: <tenant>" \
+     -H "Content-Type: application/json" \
+     -d '{"purposes": ["marketing"]}' \
+     https://<api>/compliance/contacts/<contact_id>/consent
 ```
 
-Ejemplo `:purpose` = `"marketing"` o `"whatsapp_marketing"`.
+Quita esa finalidad de `contacts.consent.purposes`; si no queda ninguna, además estampa `revoked_at`. Omitir `purposes` (o mandar `null`) revoca el consentimiento completo.
+
+Finalidades reconocidas por el gate: `operacional`, `marketing`, `email`, `whatsapp`. Las tres últimas requieren consentimiento — sin registro vigente, el envío se rechaza.
+
+El opt-out de WhatsApp vive en una tabla distinta (`client_consents`, por canal) y se ejerce con `DELETE /client-chat/consents/{contact_id}?channel=whatsapp`.
 
 ### Bloqueo temporal
 
+No hay endpoint dedicado todavía; se escribe directo:
+
 ```sql
-UPDATE people
+UPDATE contacts
 SET consent = jsonb_set(coalesce(consent, '{}'::jsonb), '{blocked_at}', to_jsonb(now()))
-WHERE id = :person_id;
+WHERE id = :contact_id AND tenant_id = :tenant_id;
 ```
 
-Las consultas de marketing/notificaciones deben respetar este flag (a implementar cuando se conecten esas features).
+El bloqueo **sí** tiene efecto técnico: `evaluate_consent` lo antepone a cualquier consentimiento vigente y detiene todas las finalidades, incluida la operacional. Para levantarlo, poner `blocked_at` en `null`.
 
 ### Decisión automatizada
 
-PropOS no toma decisiones automatizadas — todas las propuestas de Anita pasan por `pending_proposals` con aprobación humana. Responder al titular confirmando este hecho.
+PropOS no toma decisiones con efectos jurídicos sobre el titular, pero **sí ejecuta acciones sin aprobación humana**: 10 de los 12 intents del asistente tienen `auto_commit=True` y escriben directo en el CRM (crear contacto, registrar interacción, crear tarea, nota, evento, propiedad, campaña…). Solo `update_person` y `log_transaction` pasan por `pending_proposals` con revisión humana.
+
+Responder al titular con ese detalle — no con la frase "todo lo aprueba una persona", que no es cierta. Toda escritura del asistente queda en `audit_log` con `source='agent'` y su `agent_session_id`, así que es reconstruible cuál acción fue automática.
 
 ## 5. Responder al titular
 
