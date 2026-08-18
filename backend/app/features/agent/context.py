@@ -6,7 +6,10 @@ from dataclasses import dataclass, field
 from typing import Any
 from uuid import UUID
 
+from app.core.logging.logger import get_logger
 from app.core.supabase.client import get_supabase_client
+
+logger = get_logger("AGENT_CONTEXT")
 
 
 @dataclass
@@ -135,3 +138,73 @@ def _fetch_snapshot(tenant_id: UUID) -> TenantSnapshot:
         .execute()
         .data,
     )
+
+
+# ── Server-side entity lookup ────────────────────────────────────────
+#
+# The snapshot is capped at 30 rows per entity, ordered by recency, so the
+# resolver went blind past record 30: "anota que llamé a Pedro Soto" stopped
+# resolving as the base grew and started duplicating contacts. The snapshot
+# stays as prompt/context material; identity resolution falls back to this
+# tenant-scoped ILIKE lookup when the in-memory pass finds nothing.
+
+# entity -> (table, columns, searchable label columns)
+_SEARCHABLE: dict[str, tuple[str, str, tuple[str, ...]]] = {
+    "people": ("contacts", "id,full_name,type,phone,email", ("full_name",)),
+    "properties": ("properties", "id,title,status,address", ("title", "address")),
+    "projects": ("projects", "id,name,kind,status", ("name",)),
+    "organizations": ("organizations", "id,name,kind", ("name",)),
+}
+
+_SEARCH_LIMIT = 20
+_MIN_TERM_LENGTH = 3
+
+
+def _search_terms(query: str) -> list[str]:
+    """The whole string first, then its longest words.
+
+    "Pedro Soto" matches "Pedro Soto Vergara" whole; a stored "Soto, Pedro"
+    only matches on a single token.
+    """
+    query = " ".join(query.split())
+    if not query:
+        return []
+    terms = [query]
+    words = sorted({w for w in query.split() if len(w) >= _MIN_TERM_LENGTH}, key=len, reverse=True)
+    terms.extend(w for w in words[:2] if w != query)
+    return terms
+
+
+def search_entities(tenant_id: UUID, entity: str, query: str, *, limit: int = _SEARCH_LIMIT) -> list[dict[str, Any]]:
+    """Tenant-scoped ILIKE lookup for one entity kind. Never raises."""
+    spec = _SEARCHABLE.get(entity)
+    if spec is None or not query or not query.strip():
+        return []
+    table, columns, label_keys = spec
+
+    client = get_supabase_client()
+    tid = str(tenant_id)
+    found: dict[str, dict[str, Any]] = {}
+    try:
+        for term in _search_terms(query):
+            pattern = f"%{term}%"
+            for column in label_keys:
+                rows = (
+                    client.table(table)
+                    .select(columns)
+                    .eq("tenant_id", tid)
+                    .is_("deleted_at", "null")
+                    .ilike(column, pattern)
+                    .limit(limit)
+                    .execute()
+                    .data
+                    or []
+                )
+                for row in rows:
+                    found.setdefault(str(row["id"]), row)
+            if found:
+                break
+    except Exception as exc:  # noqa: BLE001 - a lookup miss must not break the turn
+        logger.warning("entity_lookup_failed", event_type="read", entity=entity, error=str(exc)[:200])
+        return []
+    return list(found.values())[:limit]

@@ -12,13 +12,14 @@ Output:
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 from uuid import UUID
 
 from rapidfuzz import fuzz, process
 
-from app.features.agent.context import TenantSnapshot
+from app.features.agent.context import TenantSnapshot, search_entities
 
 MIN_SCORE = 70
 AMBIGUITY_GAP = 8
@@ -53,7 +54,33 @@ class ResolvedFields:
     ambiguity_summary: list[dict[str, Any]] = field(default_factory=list)
 
 
-def _resolve_one(query: str, choices: list[dict[str, Any]], label_keys: tuple[str, ...]) -> FieldResolution:
+def _resolve_one(
+    query: str,
+    choices: list[dict[str, Any]],
+    label_keys: tuple[str, ...],
+    *,
+    fallback: Callable[[str], list[dict[str, Any]]] | None = None,
+) -> FieldResolution:
+    """Fuzzy-match `query` against `choices`, widening to the DB if it misses.
+
+    `choices` is the snapshot (30 most recent rows per entity). When nothing in
+    it clears `MIN_SCORE`, `fallback` fetches tenant-scoped candidates by name
+    so older records stay reachable, and the fuzzy pass reruns over both.
+    """
+    matched = _match(query, choices, label_keys)
+    if matched.status != "not_found" or fallback is None or not query:
+        return matched
+
+    extra = fallback(query)
+    if not extra:
+        return matched
+
+    known = {str(row.get("id")) for row in choices}
+    widened = list(choices) + [row for row in extra if str(row.get("id")) not in known]
+    return _match(query, widened, label_keys)
+
+
+def _match(query: str, choices: list[dict[str, Any]], label_keys: tuple[str, ...]) -> FieldResolution:
     """Run rapidfuzz against `choices`, returning a `FieldResolution`."""
     if not query or not choices:
         return FieldResolution(raw=query, status="not_found")
@@ -95,13 +122,27 @@ def _resolve_one(query: str, choices: list[dict[str, Any]], label_keys: tuple[st
 CREATE_INTENTS = {"create_person", "create_organization"}
 
 
-def resolve(fields: dict[str, Any], snapshot: TenantSnapshot, *, intent: str = "") -> ResolvedFields:
-    """Annotate classifier fields with snapshot IDs.
+def resolve(
+    fields: dict[str, Any],
+    snapshot: TenantSnapshot,
+    *,
+    intent: str = "",
+    lookup: Callable[[UUID, str, str], list[dict[str, Any]]] | None = None,
+) -> ResolvedFields:
+    """Annotate classifier fields with tenant IDs.
 
     For ``create_*`` intents the person/org name is the NEW entity — we
     don't try to match it against existing rows, just keep the raw text
     so the dispatcher can write it to the proposal payload.
+
+    ``lookup`` is the server-side widening used when the snapshot misses;
+    defaults to ``context.search_entities`` and is injectable for tests.
     """
+    search = lookup if lookup is not None else search_entities
+
+    def _fallback(entity: str) -> Callable[[str], list[dict[str, Any]]]:
+        return lambda q: search(snapshot.tenant_id, entity, q)
+
     resolved = ResolvedFields()
     leftover = dict(fields)
     is_create = intent in CREATE_INTENTS
@@ -110,16 +151,18 @@ def resolve(fields: dict[str, Any], snapshot: TenantSnapshot, *, intent: str = "
         if is_create and intent == "create_person":
             resolved.person = FieldResolution(raw=str(q), status="not_found")
         else:
-            resolved.person = _resolve_one(str(q), snapshot.people, ("full_name",))
+            resolved.person = _resolve_one(str(q), snapshot.people, ("full_name",), fallback=_fallback("people"))
     if q := leftover.pop("property", None):
-        resolved.property = _resolve_one(str(q), snapshot.properties, ("title", "address"))
+        resolved.property = _resolve_one(
+            str(q), snapshot.properties, ("title", "address"), fallback=_fallback("properties")
+        )
     if q := leftover.pop("project", None):
-        resolved.project = _resolve_one(str(q), snapshot.projects, ("name",))
+        resolved.project = _resolve_one(str(q), snapshot.projects, ("name",), fallback=_fallback("projects"))
     if q := leftover.pop("org", None):
         if is_create and intent == "create_organization":
             resolved.org = FieldResolution(raw=str(q), status="not_found")
         else:
-            resolved.org = _resolve_one(str(q), snapshot.organizations, ("name",))
+            resolved.org = _resolve_one(str(q), snapshot.organizations, ("name",), fallback=_fallback("organizations"))
 
     resolved.extras = leftover
 
