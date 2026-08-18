@@ -46,7 +46,10 @@ TEST_SCHEMA = "propos_test"
 # still grants to its pre-rename name (`anita_readonly`), which no longer
 # exists, so the grant is re-applied here from the current role name.
 GRANT_ROLES_ALL = ("service_role",)
-GRANT_ROLES_SELECT = ("authenticated", "anon", "agent_readonly")
+# `anon` and `authenticated` are deliberately absent: the mirror is exposed
+# through PostgREST, so granting them SELECT publishes the whole schema to
+# anyone holding the publishable key. See migration 20240601000045.
+GRANT_ROLES_SELECT = ("agent_readonly",)
 
 # A statement matching any of these is a bug in this script, not a valid step.
 _FORBIDDEN = (
