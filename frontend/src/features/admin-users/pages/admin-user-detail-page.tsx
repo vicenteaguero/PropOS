@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageLayout } from "@shared/components/page-layout";
-import { ErrorState, PageSkeleton, Pill, SectionLabel } from "@shared/ui";
+import { ErrorState, PageSkeleton, Pill, SectionLabel, FOCUS_RING } from "@shared/ui";
 import { toast } from "sonner";
 import { useAuth } from "@shared/hooks/use-auth";
 import { label } from "@shared/lib/labels";
@@ -22,8 +22,7 @@ import {
   useUpdateMembership,
 } from "@features/admin-users/hooks/use-admin-users";
 
-const SELECT_CLASS =
-  "h-9 w-full rounded-xl border border-border bg-background px-3 text-sm focus-visible:border-line-strong focus-visible:outline-none";
+const SELECT_CLASS = `h-9 w-full rounded-xl border border-border bg-background px-3 text-sm ${FOCUS_RING}`;
 
 function initials(name: string): string {
   return name

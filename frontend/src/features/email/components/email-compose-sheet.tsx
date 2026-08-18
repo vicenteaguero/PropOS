@@ -3,7 +3,7 @@ import { Loader2, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ResponsiveSheet } from "@shared/ui";
+import { ResponsiveSheet, FOCUS_RING } from "@shared/ui";
 import { EntityCombobox } from "@features/documents/components/entity-combobox";
 import { useContacts } from "@features/contacts/hooks/use-contacts";
 import type { Contact } from "@features/contacts/types";
@@ -120,7 +120,7 @@ export function EmailComposeSheet({ open, onOpenChange, onSent }: Props) {
             onChange={(e) => setBody(e.target.value)}
             rows={7}
             placeholder="Escribí tu mensaje…"
-            className="w-full resize-none rounded-2xl border border-border bg-secondary px-4 py-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-line-strong"
+            className={`w-full resize-none rounded-2xl border border-border bg-secondary px-4 py-3 text-sm text-foreground transition placeholder:text-muted-foreground ${FOCUS_RING}`}
           />
         </div>
 

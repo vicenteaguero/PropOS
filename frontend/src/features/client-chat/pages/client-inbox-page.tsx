@@ -9,6 +9,7 @@ import {
   PageSkeleton,
   Segmented,
   type SegmentedItem,
+  FOCUS_RING,
 } from "@shared/ui";
 import { useConversations } from "../hooks/use-client-chat";
 import { ConversationList } from "../components/conversation-list";
@@ -78,7 +79,7 @@ export function ClientInboxPage() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Buscar teléfono..."
-            className="h-11 w-full rounded-full border border-border bg-secondary pl-10 pr-4 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-line-strong"
+            className={`h-11 w-full rounded-full border border-border bg-secondary pl-10 pr-4 text-sm text-foreground transition placeholder:text-muted-foreground ${FOCUS_RING}`}
           />
         </div>
         <Chips>

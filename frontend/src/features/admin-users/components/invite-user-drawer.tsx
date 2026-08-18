@@ -3,7 +3,7 @@ import { Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { BottomSheet } from "@shared/ui";
+import { BottomSheet, FOCUS_RING } from "@shared/ui";
 import { toast } from "sonner";
 import { useInviteUser } from "@features/admin-users/hooks/use-admin-users";
 
@@ -13,8 +13,7 @@ interface Props {
   currentTenantId: string | undefined;
 }
 
-const SELECT_CLASS =
-  "h-10 w-full rounded-xl border border-border bg-background px-3 text-sm focus-visible:border-line-strong focus-visible:outline-none";
+const SELECT_CLASS = `h-10 w-full rounded-xl border border-border bg-background px-3 text-sm ${FOCUS_RING}`;
 
 export function InviteUserDrawer({ open, onOpenChange, currentTenantId }: Props) {
   const invite = useInviteUser();

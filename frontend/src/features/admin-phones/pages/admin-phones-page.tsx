@@ -5,15 +5,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageLayout } from "@shared/components/page-layout";
 import { ConfirmDialog } from "@shared/components/confirm-dialog/confirm-dialog";
-import { Pill, Row, SectionLabel } from "@shared/ui";
+import { Pill, Row, SectionLabel, FOCUS_RING } from "@shared/ui";
 import { useIsDesktop } from "@/hooks/use-mobile";
 import { userPhonesApi, type AppUser, type UserPhone } from "../api/user-phones-api";
 import { useAgentName } from "@core/branding/agent-branding";
 
 const ROLES = ["ADMIN", "AGENT", "LANDOWNER", "BUYER", "CONTENT"];
 
-const SELECT_CLASS =
-  "h-10 w-full rounded-xl border border-border bg-background px-3 text-sm focus-visible:border-line-strong focus-visible:outline-none";
+const SELECT_CLASS = `h-10 w-full rounded-xl border border-border bg-background px-3 text-sm ${FOCUS_RING}`;
 
 export function AdminPhonesPage() {
   const agentName = useAgentName();

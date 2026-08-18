@@ -18,6 +18,7 @@ import {
   type PreflightResponse,
 } from "../api/visitor-invitations";
 import { toast } from "sonner";
+import { FOCUS_RING } from "@shared/ui";
 
 interface Props {
   open: boolean;
@@ -130,7 +131,7 @@ export function NewInvitationDialog({ open, onOpenChange, defaultPropertyId }: P
               id="vi_property"
               value={propertyId}
               onChange={(e) => setPropertyId(e.target.value)}
-              className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
+              className={`flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm ${FOCUS_RING}`}
             >
               <option value="">
                 {propertiesQuery.isLoading ? "Cargando…" : "Selecciona propiedad"}
