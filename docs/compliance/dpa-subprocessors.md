@@ -1,6 +1,6 @@
 # Sub-encargados y Cláusulas Contractuales (DPA + SCC)
 
-> Ley N° 21.719, Art. 27 — transferencias internacionales. PropOS contrata los siguientes sub-encargados para procesar datos por cuenta de los responsables (CETER, ANAIDA). Versión 1.1 — 2026-07-02 (corrige el estado de Groq: la v1.0 lo declaraba deshabilitado siendo el único proveedor de IA en uso).
+> Ley N° 21.719, Art. 27 — transferencias internacionales. PropOS contrata los siguientes sub-encargados para procesar datos por cuenta de los responsables (CETER, ANAIDA). Versión 1.2 — 2026-08-16 (la v1.1 corrigió el estado de Groq; esta agrega el kill switch que la v1.1 declaraba inexistente).
 
 ## Estrategia
 
@@ -30,16 +30,41 @@ Checklist por vendor — marcar cuando se acepte/archive el DPA. Evidencia (scre
 - [ ] **Anthropic** — Console → Settings → Privacy → DPA.
 - [ ] **Resend** — Dashboard → Settings → Legal → DPA.
 - [ ] **Cerebras** — No expone DPA en dashboard; enviar email a `legal@cerebras.ai` solicitando DPA estándar. Archivar respuesta. Requerido **solo si** se activa Cerebras (hoy sin uso).
-- [ ] **Groq — BLOQUEANTE.** Solicitar DPA estándar a `legal@groq.com` y archivar respuesta. Groq ya procesa el 100% de los prompts y audios en producción, así que este DPA está vencido de hecho: obtenerlo antes de cargar datos reales de clientes, o gatear el STT/LLM tras un flag apagado mientras tanto (ese flag hoy **no existe** en el código).
+- [ ] **Groq — BLOQUEANTE.** Solicitar DPA estándar a `legal@groq.com` y archivar respuesta. Groq ya procesa el 100% de los prompts y audios en producción, así que este DPA está vencido de hecho: obtenerlo antes de cargar datos reales de clientes. Mientras no esté firmado, la mitigación es el kill switch `AI_PROCESSING_ENABLED` (ver más abajo); si se cargan datos reales de clientes antes de la firma, ponerlo en `false`.
 - [ ] **Kapso** — Verificar DPA bilateral en contrato BSP existente; si falta, solicitar a contacto comercial. Requerido antes de habilitar `WHATSAPP_BROADCAST_ENABLED=true`.
 
-## Estado real de la IA (verificado 2026-07-02)
+## Estado real de la IA (verificado 2026-08-16)
 
-El código llama a `https://api.groq.com/openai/v1` de forma fija en
-`agent/classifier.py`, `agent/tools/text_to_sql.py` y `agent/transcribe.py`.
+El código llama a `https://api.groq.com/openai/v1` de forma fija en cinco
+lugares: `agent/classifier.py`, `agent/tools/text_to_sql.py`,
+`agent/transcribe.py`, `properties/describe.py` y `channels/client_agent.py`.
 `settings.agent_provider` solo elige la ventana de rate-limit, no el proveedor.
-No hay flag que apague el STT. Cualquier cambio de proveedor debe actualizar
-esta tabla y `rat.yaml` **antes** del despliegue.
+Cualquier cambio de proveedor debe actualizar esta tabla y `rat.yaml` **antes**
+del despliegue.
+
+### Kill switch `AI_PROCESSING_ENABLED`
+
+Existe desde 2026-08-16 (`backend/app/core/ai_guard.py`, `settings.ai_processing_enabled`).
+
+- **Qué hace.** `assert_ai_processing_enabled()` corta la llamada al
+  sub-encargado y devuelve `503` con un detalle explícito. Falla ruidosamente a
+  propósito: un corte silencioso se le presentaría al corredor como "consulté la
+  base y no hay resultados", que es una respuesta falsa, no una degradación.
+- **Cómo se acciona.** Variable de entorno `AI_PROCESSING_ENABLED=false` en el
+  servicio de Cloud Run. Es un cambio de configuración, no un despliegue de
+  código: no hay que rebuildear ni revertir commits. Vuelve a `true` para
+  reactivar. Default `true`.
+- **Cuándo accionarlo.** (a) si Groq no firma el DPA y hay que cargar datos
+  reales de clientes; (b) ante un incidente de seguridad del proveedor; (c) si
+  la APDP requiere detener la transferencia internacional.
+- **Qué NO cubre.** Es un corte de la transferencia hacia adelante. No borra lo
+  ya enviado ni las transcripciones ya persistidas — eso lo hace el sweep de
+  retención (`compliance/service.py::run_retention_sweep`, 90 días).
+- **Pendiente de cableado.** El flag y su guard existen y están cubiertos por
+  tests, pero las cinco llamadas a Groq todavía no lo invocan: `features/agent/**`
+  y `features/channels/**` son de otro carril. Hasta que llamen a
+  `assert_ai_processing_enabled()`, el único corte efectivo sigue siendo
+  desetear `GROQ_API_KEY`.
 
 ## Política de cambio
 
