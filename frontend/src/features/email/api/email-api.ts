@@ -40,12 +40,21 @@ function qs(params: Record<string, unknown>): string {
   return s ? `?${s}` : "";
 }
 
+export interface SendEmailInput {
+  to: string;
+  subject: string;
+  body: string;
+  contact_id?: string | null;
+}
+
 export const emailApi = {
   listThreads: (params: { status?: string; contact_id?: string; q?: string } = {}) =>
     apiRequest<EmailThread[]>(`/v1/email/threads${qs({ ...params })}`),
   getThread: (id: string) => apiRequest<EmailThreadDetail>(`/v1/email/threads/${id}`),
   reply: (id: string, body: string) =>
     apiRequest<unknown>(`/v1/email/threads/${id}/reply`, { method: "POST", body: { body } }),
+  send: (input: SendEmailInput) =>
+    apiRequest<EmailThread>("/v1/email/send", { method: "POST", body: input }),
   archive: (id: string) =>
     apiRequest<unknown>(`/v1/email/threads/${id}/archive`, { method: "POST", body: {} }),
 };
