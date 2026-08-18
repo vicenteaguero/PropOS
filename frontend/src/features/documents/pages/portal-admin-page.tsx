@@ -5,8 +5,8 @@ import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { LoadingSpinner } from "@shared/components/loading-spinner/loading-spinner";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
+import { ErrorState, PageSkeleton } from "@shared/ui";
 import { PageLayout } from "@shared/components/page-layout";
 import { PageHeader } from "@shared/components/page-header";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -19,7 +19,7 @@ import { UploadsReview } from "../components/uploads-review";
 export function PortalAdminPage() {
   const navigate = useNavigate();
   const isDesktop = useIsDesktop();
-  const { data: portals, isLoading } = usePortals();
+  const { data: portals, isLoading, error, refetch } = usePortals();
   const deletePortal = useDeletePortal();
   const [createOpen, setCreateOpen] = useState(false);
   const [qrOf, setQrOf] = useState<{ slug: string; title: string } | null>(null);
@@ -42,13 +42,19 @@ export function PortalAdminPage() {
         }
       />
 
-      {isLoading && (
-        <div className="flex justify-center py-8">
-          <LoadingSpinner />
-        </div>
+      {isLoading && <PageSkeleton variant="list" count={3} className="py-4" />}
+
+      {/* Without this branch a failed load renders neither list, nor empty, nor
+          error — just the header over blank space. */}
+      {error && (
+        <ErrorState
+          message="No se pudieron cargar los enlaces."
+          error={error}
+          onRetry={() => refetch()}
+        />
       )}
 
-      {!isLoading && portals && portals.length === 0 && (
+      {!isLoading && !error && portals && portals.length === 0 && (
         <EmptyState
           title="Sin enlaces"
           description="Crea un enlace para recibir documentos desde fuera del equipo."
