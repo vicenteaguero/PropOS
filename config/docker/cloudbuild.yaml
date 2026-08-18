@@ -14,6 +14,12 @@
 #      build when it does not come up. A skipped secret is not an error (see 2),
 #      but a revision that cannot reach the database is, and until now nothing in
 #      the pipeline turned that into a red build.
+#   4. Waits for GitHub Actions to go green on this commit before deploying.
+#      This trigger fires on push to main independently of CI, so a commit that
+#      broke the suite used to build and deploy anyway. Branch protection is the
+#      usual fix and needs repo-admin rights; gating here needs none. It runs in
+#      parallel with the image build, so it costs wall-clock time only when CI is
+#      slower than docker. Emergency override: _SKIP_CI_GATE=true.
 #
 # Sizing: one container serves the Kapso webhook, the Cloud Scheduler jobs and
 # both Vercel frontends, and some handlers still call the synchronous Supabase
@@ -25,8 +31,25 @@
 # whole service down. Change this file, not the live service: a
 # `gcloud run services update` is overwritten by the next deploy.
 steps:
+  # python:3.12-slim rather than the gcloud builder: the gate is pure stdlib and
+  # this image is ~45MB, so it starts before docker has finished pulling layers.
+  - name: "python:3.12-slim"
+    id: ci-gate
+    waitFor: ["-"] # start immediately, in parallel with the image build
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        if [ "$_SKIP_CI_GATE" = "true" ]; then
+          echo "!! _SKIP_CI_GATE=true — deploying without checking CI"
+          exit 0
+        fi
+        python3 scripts/check_ci_status.py --repo "$_GH_REPO" --sha "$COMMIT_SHA"
+
   - name: "gcr.io/cloud-builders/docker"
     id: build-push
+    waitFor: ["-"] # independent of the gate; only `deploy` waits for both
     entrypoint: bash
     args:
       - -c
@@ -49,6 +72,7 @@ steps:
 
   - name: "gcr.io/cloud-builders/gcloud"
     id: deploy
+    waitFor: ["ci-gate", "build-push"]
     entrypoint: bash
     args:
       - -c
@@ -140,3 +164,7 @@ options:
 substitutions:
   _IMAGE_BASE: us-central1-docker.pkg.dev/propos-489401/propos/api
   _REGION: us-central1
+  _GH_REPO: vicenteaguero/PropOS
+  # Escape hatch for a deploy that cannot wait for CI (GitHub outage, incident
+  # rollforward): gcloud builds submit --substitutions=_SKIP_CI_GATE=true
+  _SKIP_CI_GATE: "false"

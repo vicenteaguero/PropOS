@@ -29,19 +29,84 @@ Two things follow from that table and are easy to forget:
 
 Pushing to `main`:
 
-1. **GitHub Actions `CI`** — ruff + pytest (unit only) + eslint + prettier +
-   tsc + vitest + build. Runs on `main`, `dev` and every PR. It does not gate
-   the deploys below; they run in parallel.
+1. **GitHub Actions `CI`** — ruff + pytest with the coverage gate, eslint +
+   prettier + tsc + vitest + build, and the migration checks. Runs on `main`,
+   `dev` and every PR.
 2. **Vercel `prop-os`** — production deploy. Any other branch produces a preview
    deploy in the same project, which is why a push to `dev` shows up in
    `prop-os` as `Preview` and in `prop-os-edge` as `Production`.
 3. **Cloud Build `propos-api-deploy`** — only when the push touches `backend/**`
    or `config/docker/**`. Builds `config/docker/backend.prod.Dockerfile`, tags
-   the image with the commit SHA *and* `latest`, and deploys to Cloud Run.
+   the image with the commit SHA *and* `latest`, deploys to Cloud Run, and smoke
+   tests the result.
 
 The trigger itself lives only in GCP (the legacy GitHub app cannot be scripted
 without an installation id). `make deploy-trigger-list` shows it;
 `make deploy-trigger-setup` prints the settings to recreate it by hand.
+
+### CI gates the backend deploy
+
+Cloud Build fires on the push, not on the CI result, so for a long time a commit
+that broke the suite still built an image and ran `gcloud run deploy`. The
+`ci-gate` step in `config/docker/cloudbuild.yaml` closes that: it polls the
+GitHub Checks API for the commit and refuses to deploy unless
+`Backend (ruff + pytest)`, `Frontend (…)` and `Migrations (…)` all succeeded.
+
+- The repository is public, so the Checks API answers with no token, no secret
+  and no extra IAM. Anonymous calls are capped at 60/hour per IP; a deploy uses
+  a handful.
+- The gate runs in **parallel** with the image build, so it only adds wall-clock
+  time when CI is slower than docker.
+- It **fails closed**. An unreachable API, a renamed CI job or a check that never
+  reports all block the deploy rather than waving it through.
+- Renaming a job in `ci.yml` means updating `REQUIRED_CHECKS` in
+  `scripts/check_ci_status.py`, or the gate stalls until it times out.
+
+Emergency deploy without waiting for CI:
+
+```bash
+gcloud builds submit --config config/docker/cloudbuild.yaml \
+  --substitutions=_SKIP_CI_GATE=true .
+```
+
+Manual `make deploy-backend` builds have no commit SHA, so the gate does not
+apply — whoever runs it is the gate.
+
+### Branch protection (not enabled)
+
+The pipeline gate above stops a red commit reaching Cloud Run, but nothing stops
+it reaching `main` in the first place: `gh api repos/:owner/:repo/branches/main/protection`
+returns **404** and there are no rulesets. Enabling it needs repo-admin rights.
+Run this as the repository owner:
+
+```bash
+gh api -X PUT repos/vicenteaguero/PropOS/branches/main/protection \
+  --input - <<'JSON'
+{
+  "required_status_checks": {
+    "strict": true,
+    "contexts": [
+      "Backend (ruff + pytest)",
+      "Frontend (eslint + prettier + tsc + build)",
+      "Migrations (naming + ordering)"
+    ]
+  },
+  "enforce_admins": false,
+  "required_pull_request_reviews": null,
+  "restrictions": null,
+  "allow_force_pushes": false,
+  "allow_deletions": false
+}
+JSON
+```
+
+`enforce_admins: false` deliberately: with a single maintainer, locking the
+owner out of an emergency push costs more than it buys. Verify with:
+
+```bash
+gh api repos/vicenteaguero/PropOS/branches/main/protection \
+  --jq '.required_status_checks.contexts'
+```
 
 ## Configuration
 
@@ -112,7 +177,7 @@ Production).
 
 ```bash
 make deploy-backend        # build + deploy Cloud Run, bypassing the trigger
-make deploy-verify         # curl /health on the live service
+make deploy-verify         # poll /health/ready on the live service
 make deploy-frontend-edge  # publish the frontend to prop-os-edge (staging)
 ```
 
