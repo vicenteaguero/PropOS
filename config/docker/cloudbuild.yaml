@@ -10,6 +10,10 @@
 #      which would mean the whole deploy pipeline breaks the moment we add a
 #      not-yet-provisioned integration. Instead, features stay dark until their
 #      secret is created, and the next deploy picks it up with no edit here.
+#   3. Smoke tests the deployed revision against /health/ready and fails the
+#      build when it does not come up. A skipped secret is not an error (see 2),
+#      but a revision that cannot reach the database is, and until now nothing in
+#      the pipeline turned that into a red build.
 #
 # Sizing: one container serves the Kapso webhook, the Cloud Scheduler jobs and
 # both Vercel frontends, and some handlers still call the synchronous Supabase
@@ -94,6 +98,40 @@ steps:
           --cpu=1 \
           --env-vars-file=config/docker/cloudrun-env.yaml \
           --set-secrets="$$SECRETS"
+
+  - name: "gcr.io/cloud-builders/gcloud"
+    id: smoke-test
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        URL="$$(gcloud run services describe propos-api --region=$_REGION --format='value(status.url)')"
+        echo "==> smoke testing $$URL"
+
+        # /health is a constant: it answers 200 with a rotated Supabase key, a
+        # paused project or an unmounted secret. /health/ready reads a row and
+        # checks the core secrets, so a build that produced a running-but-useless
+        # revision goes red here instead of shipping green.
+        for i in 1 2 3 4 5 6; do
+          CODE="$$(curl -s --max-time 20 -o /workspace/ready.json -w '%{http_code}' "$$URL/health/ready" || echo 000)"
+          echo "attempt $$i -> http=$$CODE"
+          if [ "$$CODE" = "200" ]; then
+            cat /workspace/ready.json; echo ""
+            echo "==> revision is ready"
+            exit 0
+          fi
+          sleep 10
+        done
+
+        echo "--- last response body ---"
+        cat /workspace/ready.json 2>/dev/null || true
+        echo ""
+        echo "DEPLOY FAILED READINESS. Traffic is already on the new revision."
+        echo "Roll back with:  make deploy-rollback REV=<previous-revision>"
+        gcloud run revisions list --service=propos-api --region=$_REGION \
+          --format='table(metadata.name,status.conditions[0].lastTransitionTime)' --limit=5 || true
+        exit 1
 
 options:
   logging: CLOUD_LOGGING_ONLY
