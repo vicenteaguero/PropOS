@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from app.core.supabase.client import get_supabase_client
+from app.features.compliance.service import PURPOSE_EMAIL, ComplianceService
 from app.features.notifications.email.client import send_email
 
 THREADS = "email_threads"
@@ -91,6 +92,14 @@ class EmailSyncService:
             .execute()
             .data
         )
+        # Ley 21.719 Art. 14 — the block and objection rights have to bite
+        # somewhere. This is the one outbound e-mail path in the product, so
+        # it is where a revoked or blocked contact stops receiving mail. A
+        # thread with no linked contact is not gated: there is no subject to
+        # check, and transactional auth mail does not route through here.
+        if thread.get("contact_id"):
+            await ComplianceService.assert_can_process(thread["contact_id"], tenant_id, PURPOSE_EMAIL)
+
         in_reply_to = last_in[0]["message_id"] if last_in else None
         references = (last_in[0].get("references_ids") or []) if last_in else []
         if in_reply_to and in_reply_to not in references:
