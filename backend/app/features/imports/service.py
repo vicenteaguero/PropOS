@@ -104,7 +104,7 @@ class ImportService:
         return {"import_id": str(import_id), "inserted_rows": inserted}
 
     @staticmethod
-    async def list_jobs(tenant_id: UUID) -> list[dict]:
+    async def list_jobs(tenant_id: UUID, limit: int = 50, offset: int = 0) -> list[dict]:
         client = get_supabase_client()
         return (
             client.table("import_jobs")
@@ -112,7 +112,7 @@ class ImportService:
             .eq("tenant_id", str(tenant_id))
             .is_("deleted_at", "null")
             .order("created_at", desc=True)
-            .limit(50)
+            .range(offset, offset + limit - 1)
             .execute()
             .data
         )

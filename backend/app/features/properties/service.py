@@ -32,11 +32,19 @@ class PropertyService:
         tenant_id: UUID,
         query: str | None = None,
         include_drafts: bool = True,
+        limit: int = 100,
+        offset: int = 0,
     ) -> list[dict]:
         client = get_supabase_client()
         logger.info("listing", event_type="query", tenant_id=str(tenant_id))
+        # Always bounded: an unlimited select is truncated at db-max-rows with
+        # no error, so the caller can't tell a short page from the whole table.
         builder = (
-            client.table(PROPERTIES_TABLE).select("*").eq("tenant_id", str(tenant_id)).order("created_at", desc=True)
+            client.table(PROPERTIES_TABLE)
+            .select("*")
+            .eq("tenant_id", str(tenant_id))
+            .order("created_at", desc=True)
+            .range(offset, offset + limit - 1)
         )
         if not include_drafts:
             builder = builder.eq("is_draft", False)

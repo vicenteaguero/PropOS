@@ -132,3 +132,58 @@ async def test_summary_without_rows_returns_zeroed_totals(mock_client):
     assert out["income_cents"] == 0
     assert out["net_cents"] == 0
     assert out["by_currency"] == {}
+
+
+class TestPagedScan:
+    def test_walks_pages_until_short_page(self):
+        from app.features.finance.service import PAGE_SIZE, _fetch_all
+
+        pages = [
+            [{"direction": "IN", "status": "COMPLETED", "amount_cents": 1, "currency": "CLP"}] * PAGE_SIZE,
+            [{"direction": "IN", "status": "COMPLETED", "amount_cents": 1, "currency": "CLP"}] * 7,
+        ]
+        calls: list[tuple[int, int]] = []
+
+        def make_builder():
+            builder = MagicMock()
+
+            def _range(start, end):
+                calls.append((start, end))
+                builder.execute.return_value = MagicMock(data=pages[len(calls) - 1])
+                return builder
+
+            builder.range.side_effect = _range
+            return builder
+
+        rows = _fetch_all(make_builder)
+
+        assert len(rows) == PAGE_SIZE + 7
+        assert calls == [(0, PAGE_SIZE - 1), (PAGE_SIZE, 2 * PAGE_SIZE - 1)]
+
+    def test_stops_at_max_pages(self):
+        from app.features.finance.service import MAX_PAGES, PAGE_SIZE, _fetch_all
+
+        full_page = [{"direction": "IN", "status": "COMPLETED", "amount_cents": 1, "currency": "CLP"}] * PAGE_SIZE
+
+        def make_builder():
+            builder = MagicMock()
+            builder.range.return_value = builder
+            builder.execute.return_value = MagicMock(data=full_page)
+            return builder
+
+        rows = _fetch_all(make_builder)
+
+        assert len(rows) == MAX_PAGES * PAGE_SIZE
+
+
+@pytest.mark.asyncio
+@patch("app.features.finance.service.get_supabase_client")
+async def test_summary_requests_a_bounded_range(mock_client):
+    from app.features.finance.service import PAGE_SIZE
+
+    builder = _builder_returning([])
+    mock_client.return_value.table.return_value = builder
+
+    await FinanceService.summary(TENANT_ID)
+
+    builder.range.assert_called_once_with(0, PAGE_SIZE - 1)

@@ -29,10 +29,11 @@ async def list_transactions(
     campaign_id: UUID | None = Query(default=None),
     property_id: UUID | None = Query(default=None),
     status: str | None = Query(default=None),
-    limit: int = Query(default=200, le=500),
+    limit: int = Query(default=200, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
 ) -> list[dict]:
     return await TransactionService.list_transactions(
-        tenant_id, direction, category, project_id, campaign_id, property_id, status, limit
+        tenant_id, direction, category, project_id, campaign_id, property_id, status, limit, offset
     )
 
 
