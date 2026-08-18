@@ -2,10 +2,12 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.core.config.settings import settings
 from app.core.dependencies import get_tenant_id, require_role, require_scope
+from app.features.compliance.service import ConsentDeniedError
+from app.features.email_sync.compose import EmailComposeService, SendEmailRequest
 from app.features.email_sync.schemas import (
     EmailThreadDetail,
     EmailThreadResponse,
@@ -45,3 +47,21 @@ async def reply(thread_id: UUID, payload: ReplyRequest, tenant_id: UUID = Depend
 @router.post("/threads/{thread_id}/archive", response_model=EmailThreadResponse)
 async def archive(thread_id: UUID, tenant_id: UUID = Depends(get_tenant_id)) -> dict:
     return await EmailSyncService.archive_thread(thread_id, tenant_id)
+
+
+@router.post("/send", response_model=EmailThreadResponse, status_code=201)
+async def send_new_email(payload: SendEmailRequest, tenant_id: UUID = Depends(get_tenant_id)) -> dict:
+    """Start a thread with someone who has not written first. Delivery via Resend."""
+    try:
+        return await EmailComposeService.send(
+            tenant_id,
+            str(payload.to),
+            payload.subject,
+            payload.body,
+            payload.contact_id,
+        )
+    except ConsentDeniedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Contact has not consented to email contact",
+        ) from exc
