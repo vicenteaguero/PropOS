@@ -14,12 +14,15 @@ import { Calendar, Flag, Loader2, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { PageLayout } from "@shared/components/page-layout";
 import { PageHeader } from "@shared/components/page-header";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
 import { Chip, Chips, Pill, ResponsiveSheet, Row, RoundButton, SectionLabel } from "@shared/ui";
 import { toast } from "sonner";
 import { useCreateTask, useDeleteTask, useTasks, useUpdateTask } from "../hooks/use-tasks";
+import { useCreateReminder } from "../hooks/use-reminders";
+import { TaskEntityPicker, linkToRelated, type TaskLink } from "../components/task-entity-picker";
 import type { Task } from "../api/tasks-api";
 
 /* ------------------------------------------------------------------ *
@@ -48,6 +51,13 @@ const FILTERS: { id: "all" | Bucket; label: string }[] = [
   { id: "Esta semana", label: "Esta semana" },
   { id: "Más adelante", label: "Más adelante" },
   { id: "Sin fecha", label: "Sin fecha" },
+];
+
+/** Form priority choices — same scale the list renders through `priorityPill`. */
+const PRIORITY_OPTIONS: { value: number; label: string }[] = [
+  { value: 0, label: "Normal" },
+  { value: 1, label: "Media" },
+  { value: 2, label: "Alta" },
 ];
 
 /** Priority pill: backend orders desc, higher = more urgent. 0 → none. */
@@ -337,10 +347,17 @@ export function TasksPage() {
   const create = useCreateTask();
   const update = useUpdateTask();
   const del = useDeleteTask();
+  const createReminder = useCreateReminder();
 
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [dueAt, setDueAt] = useState("");
+  const [remindAt, setRemindAt] = useState("");
+  const [priority, setPriority] = useState(0);
+  const [link, setLink] = useState<TaskLink | null>(null);
+  // Bumped on reset so the entity picker drops its internal mode + query.
+  const [formKey, setFormKey] = useState(0);
   const [filter, setFilter] = useState<"all" | Bucket>("all");
   const [period, setPeriod] = useState<Period>("today");
 
@@ -375,20 +392,68 @@ export function TasksPage() {
     (b) => filter === "all" || b === filter,
   );
 
+  const resetForm = () => {
+    setTitle("");
+    setDescription("");
+    setDueAt("");
+    setRemindAt("");
+    setPriority(0);
+    setLink(null);
+    setFormKey((k) => k + 1);
+  };
+
+  /** Picking a due date pre-fills the reminder so the task actually notifies. */
+  const handleDueChange = (value: string) => {
+    if (!remindAt || remindAt === dueAt) setRemindAt(value);
+    setDueAt(value);
+  };
+
   const submit = async () => {
     if (!title.trim()) {
       toast.error("Agregá un título");
       return;
     }
-    await create.mutateAsync({
-      title: title.trim(),
-      due_at: dueAt ? new Date(dueAt).toISOString() : null,
-    });
-    setTitle("");
-    setDueAt("");
+    let task;
+    try {
+      task = await create.mutateAsync({
+        title: title.trim(),
+        description: description.trim() || null,
+        priority,
+        due_at: dueAt ? new Date(dueAt).toISOString() : null,
+        related: linkToRelated(link),
+      });
+    } catch {
+      // `useCreateTask` already toasts; keep the sheet open so the user retries.
+      return;
+    }
+
+    // The reminder is a separate row: `TaskCreate` carries no `remind_at`, so
+    // without this second call the task never reaches the push dispatcher.
+    let reminderFailed = false;
+    if (remindAt) {
+      try {
+        await createReminder.mutateAsync({
+          target_table: "tasks",
+          target_row_id: task.id,
+          remind_at: new Date(remindAt).toISOString(),
+          message: task.title,
+        });
+      } catch {
+        reminderFailed = true;
+      }
+    }
+
+    resetForm();
     setOpen(false);
-    toast.success("Tarea creada");
+    if (reminderFailed) {
+      toast.warning("Tarea creada, pero no se pudo agendar el recordatorio");
+    } else {
+      toast.success("Tarea creada");
+    }
   };
+
+  /** Both mutations block the form: the task and its reminder land together. */
+  const busy = create.isPending || createReminder.isPending;
 
   const complete = (id: string) => update.mutate({ id, body: { status: "DONE" } });
   const remove = (id: string) => del.mutate(id);
@@ -558,11 +623,25 @@ export function TasksPage() {
         </>
       )}
 
-      <ResponsiveSheet open={open} onOpenChange={setOpen} title="Nueva tarea">
+      <ResponsiveSheet
+        open={open}
+        onOpenChange={setOpen}
+        title="Nueva tarea"
+        className="max-h-[88dvh] overflow-y-auto"
+      >
         <div className="mt-4 space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="t-title">Título</Label>
             <Input id="t-title" value={title} onChange={(e) => setTitle(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="t-desc">Detalle (opcional)</Label>
+            <Textarea
+              id="t-desc"
+              rows={2}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="t-due">Vence (opcional)</Label>
@@ -570,20 +649,45 @@ export function TasksPage() {
               id="t-due"
               type="datetime-local"
               value={dueAt}
-              onChange={(e) => setDueAt(e.target.value)}
+              onChange={(e) => handleDueChange(e.target.value)}
             />
           </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="t-remind">Recordatorio (opcional)</Label>
+            <Input
+              id="t-remind"
+              type="datetime-local"
+              value={remindAt}
+              onChange={(e) => setRemindAt(e.target.value)}
+            />
+            <p className="text-[12px] text-muted-foreground">
+              Te avisamos con una notificación push a esa hora.
+            </p>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Prioridad</Label>
+            <Chips className="pb-0">
+              {PRIORITY_OPTIONS.map((p) => (
+                <Chip
+                  key={p.value}
+                  active={priority === p.value}
+                  onClick={() => setPriority(p.value)}
+                >
+                  {p.label}
+                </Chip>
+              ))}
+            </Chips>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Vincular a</Label>
+            <TaskEntityPicker key={formKey} value={link} onChange={setLink} disabled={busy} />
+          </div>
           <div className="flex flex-col gap-2 pt-2">
-            <Button onClick={submit} disabled={create.isPending} variant="ink" size="block">
-              {create.isPending && <Loader2 className="size-4 animate-spin" />}
+            <Button onClick={submit} disabled={busy} variant="ink" size="block">
+              {busy && <Loader2 className="size-4 animate-spin" />}
               Crear
             </Button>
-            <Button
-              variant="ghost"
-              size="block"
-              onClick={() => setOpen(false)}
-              disabled={create.isPending}
-            >
+            <Button variant="ghost" size="block" onClick={() => setOpen(false)} disabled={busy}>
               Cancelar
             </Button>
           </div>
