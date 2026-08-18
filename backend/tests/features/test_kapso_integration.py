@@ -812,3 +812,51 @@ def test_signed_url_for_ref_signs_the_derived_path(monkeypatch):
 
     assert url == f"https://signed/{TENANT_A}/agent/s/m.jpg?token=abc"
     assert signed == [("media", f"{TENANT_A}/agent/s/m.jpg")]
+
+
+# ─────────────── delivery status scoping (P3) ───────────────
+
+
+def _status_db() -> _FakeDB:
+    return _FakeDB(
+        {
+            "tenants": [
+                {"id": TENANT_A, "settings": {"kapso_phone_number_id": "111"}},
+                {"id": TENANT_B, "settings": {"kapso_phone_number_id": "222"}},
+            ],
+            "client_messages": [
+                {"id": "m-a", "tenant_id": TENANT_A, "external_message_id": "wamid.1", "delivery_status": "sent"},
+                {"id": "m-b", "tenant_id": TENANT_B, "external_message_id": "wamid.1", "delivery_status": "sent"},
+            ],
+            "agent_messages": [],
+        }
+    )
+
+
+def test_status_update_only_touches_the_owning_tenant(monkeypatch):
+    from app.features.channels import router as ch_router
+
+    db = _status_db()
+    _patch_db(monkeypatch, db, "app.features.channels.router", "app.features.channels.tenant_routing")
+    ch_router._apply_status(
+        {"phone_number_id": "111", "message": {"id": "wamid.1"}},
+        "whatsapp.message.delivered",
+    )
+
+    by_id = {row["id"]: row for row in db.rows["client_messages"]}
+    assert by_id["m-a"]["delivery_status"] == "delivered"
+    assert by_id["m-b"]["delivery_status"] == "sent"
+
+
+def test_unroutable_status_event_is_dropped(monkeypatch):
+    from app.features.channels import router as ch_router
+
+    db = _status_db()
+    _patch_db(monkeypatch, db, "app.features.channels.router", "app.features.channels.tenant_routing")
+    ch_router._apply_status(
+        {"phone_number_id": "999", "message": {"id": "wamid.1"}},
+        "whatsapp.message.delivered",
+    )
+
+    assert [row["delivery_status"] for row in db.rows["client_messages"]] == ["sent", "sent"]
+    assert db.updates == []
