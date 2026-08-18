@@ -1,5 +1,6 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { TOUCH_TARGET_HIT_AREA, TOUCH_TARGET_PX } from "./touch-target";
 
 export type RoundButtonTone = "muted" | "ink" | "ghost";
 
@@ -31,6 +32,8 @@ export function RoundButton({
       style={{ width: size, height: size }}
       className={cn(
         "inline-flex shrink-0 items-center justify-center rounded-full transition active:scale-90 disabled:pointer-events-none disabled:opacity-50",
+        // Below 44px the painted circle stays put but the tappable box grows.
+        size < TOUCH_TARGET_PX && TOUCH_TARGET_HIT_AREA,
         TONE[tone],
         className,
       )}
