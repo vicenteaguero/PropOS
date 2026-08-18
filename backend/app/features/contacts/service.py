@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -119,11 +120,23 @@ class ContactService:
         if aliases:
             ContactService._set_aliases(UUID(contact["id"]), tenant_id, aliases)
 
-        if consent_evidence is not None:
-            try:
-                from app.features.compliance.schemas import ConsentEvidence, ConsentGrantRequest
-                from app.features.compliance.service import ComplianceService
+        # Consent capture is explicit or absent — never assumed. Ley 21.719
+        # Art. 12 needs the evidence (base de licitud, finalidades, text shown);
+        # a contact created without it is left with `consent = NULL`, which the
+        # gate in compliance/service.py reads as "no consent recorded" and
+        # refuses for marketing, e-mail and WhatsApp.
+        if consent_evidence is None:
+            logger.warning(
+                "consent_not_captured",
+                event_type="write",
+                contact_id=contact["id"],
+                reason="no consent_evidence supplied by caller",
+            )
+        else:
+            from app.features.compliance.schemas import ConsentEvidence, ConsentGrantRequest
+            from app.features.compliance.service import ComplianceService
 
+            try:
                 evidence_model = (
                     consent_evidence
                     if isinstance(consent_evidence, ConsentEvidence)
@@ -135,13 +148,29 @@ class ContactService:
                     version=consent_version,
                 )
                 await ComplianceService.record_consent(UUID(contact["id"]), tenant_id, grant)
-            except Exception as exc:  # noqa: BLE001
-                logger.warning(
+            except Exception as exc:
+                # Swallowing this used to leave a contact that looked consented
+                # and had no evidence behind it. Mark the row so the gap is
+                # findable, then let the caller fail: losing legal evidence
+                # silently is worse than a failed create.
+                logger.error(
                     "consent_record_failed",
                     event_type="write",
                     contact_id=contact["id"],
                     error=str(exc),
                 )
+                try:
+                    client.table(CONTACTS_TABLE).update(
+                        {"consent": {"purposes": [], "capture_failed_at": datetime.now(UTC).isoformat()}}
+                    ).eq("id", contact["id"]).eq("tenant_id", str(tenant_id)).execute()
+                except Exception as marker_exc:  # noqa: BLE001 — the raise below is the signal
+                    logger.error(
+                        "consent_failure_marker_failed",
+                        event_type="write",
+                        contact_id=contact["id"],
+                        error=str(marker_exc),
+                    )
+                raise
 
         logger.info("created", event_type="write", contact_id=contact["id"])
         return contact
