@@ -48,6 +48,12 @@ def _exec_psycopg(db_url: str, sql: str, tenant_id: UUID, intent: str) -> dict[s
         with psycopg.connect(db_url, options="-c statement_timeout=3000") as conn:
             with conn.cursor() as cur:
                 cur.execute("SELECT set_config('request.jwt.claims', %s, true)", (claims,))
+                # The RLS policies for `agent_readonly` resolve the tenant through
+                # public.get_my_tenant_id(), which reads this GUC first. Its fallback
+                # is `profiles WHERE id = auth.uid()`, and auth.uid() needs a `sub`
+                # claim that this connection never carries -- so without this line
+                # every policy evaluates against NULL and the query returns no rows.
+                cur.execute("SELECT set_config('app.current_tenant_id', %s, true)", (str(tenant_id),))
                 cur.execute(sql)
                 cols = [d.name for d in cur.description] if cur.description else []
                 rows = cur.fetchall()
