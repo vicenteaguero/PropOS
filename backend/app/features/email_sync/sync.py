@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import email
 import imaplib
+from dataclasses import asdict
 from email.header import decode_header, make_header
 from email.utils import getaddresses, parsedate_to_datetime
 from typing import Any
@@ -19,7 +20,7 @@ import anyio
 from app.core.config.settings import settings
 from app.core.logging.logger import get_logger
 from app.core.supabase.client import get_supabase_client
-from app.features.email_sync.parsers import classify_email
+from app.features.email_sync.parsers import ParsedLead, classify_email, normalize_phone
 
 logger = get_logger("EMAIL_SYNC")
 
@@ -79,37 +80,57 @@ def _ensure_account(client, tenant_id: str) -> dict[str, Any]:
     )
 
 
-def _match_or_create_contact(client, tenant_id: str, from_email: str, from_name: str) -> str | None:
-    if not from_email:
+def _match_or_create_contact(
+    client,
+    tenant_id: str,
+    *,
+    email: str | None = None,
+    name: str | None = None,
+    phone: str | None = None,
+) -> str | None:
+    """Find the person behind a message, or create them.
+
+    Matching goes phone-first: portal leads share the portal's no-reply
+    address, so keying on e-mail alone collapses every buyer of a portal into
+    one contact. The phone is the identity the broker actually calls.
+    """
+    if not (email or phone or name):
         return None
-    found = (
-        client.table("contacts")
-        .select("id")
-        .eq("tenant_id", tenant_id)
-        .eq("email", from_email)
-        .is_("deleted_at", "null")
-        .limit(1)
-        .execute()
-        .data
-    )
-    if found:
-        return found[0]["id"]
+
+    base = client.table("contacts").select("id").eq("tenant_id", tenant_id).is_("deleted_at", "null")
+    key = normalize_phone(phone)
+    if key:
+        found = base.ilike("phone", f"%{key}").limit(1).execute().data
+        if found:
+            return found[0]["id"]
+    if email:
+        base = client.table("contacts").select("id").eq("tenant_id", tenant_id).is_("deleted_at", "null")
+        found = base.eq("email", email).limit(1).execute().data
+        if found:
+            return found[0]["id"]
+
     # Deterministic parse → auto-create the lead (not human-gated).
-    created = (
-        client.table("contacts")
-        .insert(
-            {
-                "tenant_id": tenant_id,
-                "full_name": from_name or from_email,
-                "email": from_email,
-                "type": "BUYER",
-                "source": "import",
-            }
-        )
-        .execute()
-        .data[0]
-    )
+    row = {
+        "tenant_id": tenant_id,
+        "full_name": name or email or phone,
+        "type": "BUYER",
+        "source": "import",
+    }
+    if email:
+        row["email"] = email
+    if phone:
+        row["phone"] = phone
+    created = client.table("contacts").insert(row).execute().data[0]
     return created["id"]
+
+
+def _lead_identity(lead: ParsedLead | None) -> dict[str, str | None] | None:
+    """The buyer's own contact details, when the parser found any."""
+    if not lead:
+        return None
+    if not (lead.contact_email or lead.contact_phone or lead.contact_name):
+        return None
+    return {"email": lead.contact_email, "name": lead.contact_name, "phone": lead.contact_phone}
 
 
 def _is_duplicate(exc: Exception) -> bool:
@@ -160,7 +181,9 @@ def _sync_account_blocking(account: dict[str, Any], tenant_id: str) -> dict[str,
 
             lead = classify_email(subject, body, from_email)
             portal = lead.portal if lead else None
-            contact_id = _match_or_create_contact(client, tenant_id, from_email, from_name)
+            # A portal lead is *about* someone; the From: header is the portal.
+            identity = _lead_identity(lead) or {"email": from_email, "name": from_name, "phone": None}
+            contact_id = _match_or_create_contact(client, tenant_id, **identity)
 
             # Thread: follow References to a known root, else subject+counterpart.
             root_id = references[0] if references else (in_reply_to or message_id)
@@ -217,7 +240,7 @@ def _sync_account_blocking(account: dict[str, Any], tenant_id: str) -> dict[str,
                         "imap_uid": uid_int,
                         "is_lead_email": bool(lead),
                         "portal": portal,
-                        "parsed_lead": {"property_external_id": lead.property_external_id} if lead else None,
+                        "parsed_lead": asdict(lead) if lead else None,
                         "contact_id": contact_id,
                     }
                 ).execute()
