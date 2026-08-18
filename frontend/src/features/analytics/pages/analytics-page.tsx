@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2, RefreshCw } from "lucide-react";
-import { RoundButton } from "@shared/ui";
+import { toast } from "sonner";
+import { ErrorState, RoundButton } from "@shared/ui";
 import { apiRequest } from "@features/documents/api/http";
 import { formatCLP } from "@/lib/locale-cl";
 import { PageLayout } from "@shared/components/page-layout";
@@ -101,7 +102,12 @@ export function AnalyticsPage() {
 
   const refresh = useMutation({
     mutationFn: () => apiRequest<{ ok: boolean }>("/v1/analytics/refresh", { method: "POST" }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["analytics"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["analytics"] });
+      toast.success("Vistas actualizadas");
+    },
+    onError: (err) =>
+      toast.error(err instanceof Error ? err.message : "No se pudieron refrescar las vistas"),
   });
 
   const totalIn = (revenue.data ?? [])
@@ -143,22 +149,30 @@ export function AnalyticsPage() {
 
       {/* KPIs — 3-up on mobile, spread across the full width on desktop. */}
       <div className="grid grid-cols-2 gap-3 px-5 md:grid-cols-3 lg:px-8 lg:gap-4">
-        <StatCard label="Ingresos totales" value={formatCLP(totalIn / 100)} tone="ink" />
-        <StatCard label="Gastos totales" value={formatCLP(totalOut / 100)} tone="destructive" />
+        <StatCard
+          label="Ingresos totales"
+          value={statText(revenue, formatCLP(totalIn / 100))}
+          tone="ink"
+        />
+        <StatCard
+          label="Gastos totales"
+          value={statText(revenue, formatCLP(totalOut / 100))}
+          tone="destructive"
+        />
         <StatCard
           label={`Pendientes ${agentName}`}
-          value={String(pending.data?.pending_count ?? 0)}
+          value={statText(pending, String(pending.data?.pending_count ?? 0))}
         />
       </div>
 
       {/* Charts */}
       <div className="mt-3 grid grid-cols-1 gap-3 px-5 lg:mt-4 lg:grid-cols-2 lg:gap-4 lg:px-8">
         <ChartCard title="Revenue mensual">
-          {revenue.isLoading ? (
-            <ChartLoading />
-          ) : revenueByMonth.length === 0 ? (
-            <ChartEmpty>Sin transacciones aún.</ChartEmpty>
-          ) : (
+          <ChartBody
+            query={revenue}
+            isEmpty={revenueByMonth.length === 0}
+            emptyLabel="Sin transacciones aún."
+          >
             <ChartFrame>
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={revenueByMonth}>
@@ -193,15 +207,15 @@ export function AnalyticsPage() {
                 </LineChart>
               </ResponsiveContainer>
             </ChartFrame>
-          )}
+          </ChartBody>
         </ChartCard>
 
         <ChartCard title="Funnel (último mes)">
-          {funnel.isLoading ? (
-            <ChartLoading />
-          ) : funnelLatest.length === 0 ? (
-            <ChartEmpty>Sin oportunidades aún.</ChartEmpty>
-          ) : (
+          <ChartBody
+            query={funnel}
+            isEmpty={funnelLatest.length === 0}
+            emptyLabel="Sin oportunidades aún."
+          >
             <ChartFrame>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={funnelLatest}>
@@ -217,7 +231,7 @@ export function AnalyticsPage() {
                 </BarChart>
               </ResponsiveContainer>
             </ChartFrame>
-          )}
+          </ChartBody>
         </ChartCard>
       </div>
 
@@ -225,11 +239,11 @@ export function AnalyticsPage() {
       <div className="mt-3 grid grid-cols-1 gap-3 px-5 lg:mt-4 lg:grid-cols-3 lg:gap-4 lg:px-8">
         <div className="lg:col-span-2">
           <ChartCard title="Ad ROI por campaña">
-            {adRoi.isLoading ? (
-              <ChartLoading />
-            ) : (adRoi.data?.length ?? 0) === 0 ? (
-              <ChartEmpty>Sin campañas aún.</ChartEmpty>
-            ) : (
+            <ChartBody
+              query={adRoi}
+              isEmpty={(adRoi.data?.length ?? 0) === 0}
+              emptyLabel="Sin campañas aún."
+            >
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
@@ -283,18 +297,18 @@ export function AnalyticsPage() {
                   </tbody>
                 </table>
               </div>
-            )}
+            </ChartBody>
           </ChartCard>
         </div>
 
         {/* Pipeline activo — third column on desktop, full width on mobile. */}
         <div className="lg:col-span-1">
           <ChartCard title="Pipeline activo">
-            {pipeline.isLoading ? (
-              <ChartLoading />
-            ) : (pipeline.data?.length ?? 0) === 0 ? (
-              <ChartEmpty>Sin pipeline activo.</ChartEmpty>
-            ) : (
+            <ChartBody
+              query={pipeline}
+              isEmpty={(pipeline.data?.length ?? 0) === 0}
+              emptyLabel="Sin pipeline activo."
+            >
               <div>
                 {[...(pipeline.data ?? [])]
                   .sort(
@@ -318,7 +332,7 @@ export function AnalyticsPage() {
                     </div>
                   ))}
               </div>
-            )}
+            </ChartBody>
           </ChartCard>
         </div>
       </div>
@@ -381,6 +395,55 @@ function ChartFrame({ children }: { children: React.ReactNode }) {
       {children}
     </div>
   );
+}
+
+/** Minimal shape the chart/KPI helpers need from a query result. */
+interface QueryState {
+  isPending: boolean;
+  isError: boolean;
+  error: unknown;
+  refetch: () => void;
+}
+
+/**
+ * KPI text for a query-backed figure. A failed query renders a dash instead of
+ * a formatted zero, which would read as a real business number.
+ */
+function statText(query: { isPending: boolean; isError: boolean }, text: string): string {
+  if (query.isPending) return "…";
+  if (query.isError) return "—";
+  return text;
+}
+
+/**
+ * Branches a chart body across loading / error / empty / data. Without the error
+ * branch a failed materialized view renders as "no data yet", so the admin reads
+ * an outage as a real business figure.
+ */
+function ChartBody({
+  query,
+  isEmpty,
+  emptyLabel,
+  children,
+}: {
+  query: QueryState;
+  isEmpty: boolean;
+  emptyLabel: string;
+  children: React.ReactNode;
+}) {
+  if (query.isError) {
+    return (
+      <ErrorState
+        compact
+        message="No se pudo cargar este gráfico."
+        error={query.error}
+        onRetry={() => query.refetch()}
+      />
+    );
+  }
+  if (query.isPending) return <ChartLoading />;
+  if (isEmpty) return <ChartEmpty>{emptyLabel}</ChartEmpty>;
+  return <>{children}</>;
 }
 
 function ChartLoading() {
