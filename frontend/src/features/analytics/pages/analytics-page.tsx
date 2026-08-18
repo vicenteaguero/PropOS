@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { ErrorState, RoundButton } from "@shared/ui";
 import { apiRequest } from "@features/documents/api/http";
 import { formatCLP } from "@/lib/locale-cl";
+import { label } from "@shared/lib/labels";
 import { PageLayout } from "@shared/components/page-layout";
 import { CHART_COLORS, CHART_HEIGHT } from "@shared/lib/chart-config";
 import { useAgentName } from "@core/branding/agent-branding";
@@ -167,7 +168,7 @@ export function AnalyticsPage() {
 
       {/* Charts */}
       <div className="mt-3 grid grid-cols-1 gap-3 px-5 lg:mt-4 lg:grid-cols-2 lg:gap-4 lg:px-8">
-        <ChartCard title="Revenue mensual">
+        <ChartCard title="Ingresos por mes">
           <ChartBody
             query={revenue}
             isEmpty={revenueByMonth.length === 0}
@@ -210,7 +211,7 @@ export function AnalyticsPage() {
           </ChartBody>
         </ChartCard>
 
-        <ChartCard title="Funnel (último mes)">
+        <ChartCard title="Embudo (último mes)">
           <ChartBody
             query={funnel}
             isEmpty={funnelLatest.length === 0}
@@ -238,7 +239,7 @@ export function AnalyticsPage() {
       {/* Ad ROI (wide table) + active pipeline (compact) share the width on desktop. */}
       <div className="mt-3 grid grid-cols-1 gap-3 px-5 lg:mt-4 lg:grid-cols-3 lg:gap-4 lg:px-8">
         <div className="lg:col-span-2">
-          <ChartCard title="Ad ROI por campaña">
+          <ChartCard title="ROI por campaña">
             <ChartBody
               query={adRoi}
               isEmpty={(adRoi.data?.length ?? 0) === 0}
@@ -324,7 +325,7 @@ export function AnalyticsPage() {
                       }
                     >
                       <span className="text-sm font-medium text-foreground">
-                        {p.pipeline_stage}
+                        {label("pipelineStage", p.pipeline_stage)}
                       </span>
                       <span className="text-sm text-muted-foreground">
                         {p.opp_count} • {formatCLP(p.expected_value_cents / 100)}
@@ -485,7 +486,7 @@ function aggregateFunnelLatestMonth(rows: FunnelRow[]) {
     byStage.set(r.pipeline_stage, (byStage.get(r.pipeline_stage) ?? 0) + r.opp_count);
   }
   return STAGE_ORDER.filter((s) => byStage.has(s)).map((stage) => ({
-    stage,
+    stage: label("pipelineStage", stage),
     count: byStage.get(stage) ?? 0,
   }));
 }
