@@ -37,6 +37,27 @@ logger = get_logger("AGENT_RATE_LIMIT")
 _MIN = 60.0
 _DAY = 86_400.0
 
+# Upper bound on how long `acquire` will block before giving up. Sized to cover
+# one full minute window (the caller genuinely should wait for those to drain)
+# but never a daily one: `_Bucket.time_until_room` returns `span_seconds` when
+# the request cannot fit, which for rpd/tpd is 86_400 — sleeping that long
+# leaves the SSE stream hanging until Cloud Run kills the worker.
+MAX_WAIT_SECONDS = 65.0
+
+
+class QuotaExhaustedError(RuntimeError):
+    """The provider window cannot fit this call within `max_wait`.
+
+    Callers translate it into a user-facing message instead of blocking.
+    """
+
+    def __init__(self, provider: str, model: str, window: str, wait_seconds: float) -> None:
+        super().__init__(f"{provider}/{model} quota exhausted on {window} (needs {int(wait_seconds)}s)")
+        self.provider = provider
+        self.model = model
+        self.window = window
+        self.wait_seconds = wait_seconds
+
 
 @dataclass
 class _Bucket:
@@ -142,45 +163,83 @@ class RateLimiter:
             bucket.add(now, cost)
         return None
 
-    async def acquire(self, provider: str, model: str, est_tokens: int) -> None:
+    def _check_budget(
+        self,
+        provider: str,
+        model: str,
+        wait: tuple[str, float],
+        remaining: float,
+        est_tokens: int,
+    ) -> None:
+        """Raise when the next sleep would blow the caller's wait budget."""
+        window, seconds = wait
+        if seconds > remaining:
+            logger.warning(
+                "rate_limit_exhausted",
+                event_type="rate_limit",
+                provider=provider,
+                model=model,
+                window=window,
+                wait_ms=int(seconds * 1000),
+                est_tokens=est_tokens,
+            )
+            raise QuotaExhaustedError(provider, model, window, seconds)
+        logger.info(
+            "rate_limit_wait",
+            event_type="rate_limit",
+            provider=provider,
+            model=model,
+            window=window,
+            wait_ms=int(seconds * 1000),
+            est_tokens=est_tokens,
+        )
+
+    async def acquire(
+        self,
+        provider: str,
+        model: str,
+        est_tokens: int,
+        *,
+        max_wait: float = MAX_WAIT_SECONDS,
+    ) -> None:
+        """Block until the call fits, or raise `QuotaExhaustedError`.
+
+        `max_wait` is a budget across the whole acquire, not per sleep, so a
+        request that can never fit (cost above the cap) still terminates.
+        """
         state = self._state_for(provider, model)
         if state is None:
             return
+        remaining = max_wait
         while True:
             with state.lock:
                 wait = self._compute_wait(state, est_tokens)
             if wait is None:
                 return
-            logger.info(
-                "rate_limit_wait",
-                event_type="rate_limit",
-                provider=provider,
-                model=model,
-                window=wait[0],
-                wait_ms=int(wait[1] * 1000),
-                est_tokens=est_tokens,
-            )
+            self._check_budget(provider, model, wait, remaining, est_tokens)
+            remaining -= wait[1]
             await asyncio.sleep(wait[1] + 0.05)
 
-    def acquire_sync(self, provider: str, model: str, est_tokens: int) -> None:
+    def acquire_sync(
+        self,
+        provider: str,
+        model: str,
+        est_tokens: int,
+        *,
+        max_wait: float = MAX_WAIT_SECONDS,
+    ) -> None:
         """Blocking variant for callers outside an event loop (e.g. Whisper)."""
         state = self._state_for(provider, model)
         if state is None:
             return
+        remaining = max_wait
         while True:
             with state.lock:
                 wait = self._compute_wait(state, est_tokens)
             if wait is None:
                 return
-            logger.info(
-                "rate_limit_wait",
-                event_type="rate_limit",
-                provider=provider,
-                model=model,
-                window=wait[0],
-                wait_ms=int(wait[1] * 1000),
-                est_tokens=est_tokens,
-            )
+            self._check_budget(provider, model, wait, remaining, est_tokens)
+            remaining -= wait[1]
             time.sleep(wait[1] + 0.05)
 
     def record_response(

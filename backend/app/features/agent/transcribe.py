@@ -162,9 +162,14 @@ def _transcribe_groq(file: IO[bytes], filename: str, vocab: str | None = None) -
     except ImportError as exc:
         raise TranscriptionError("openai package not installed") from exc
 
-    from app.features.agent.rate_limiter import get_rate_limiter
+    from app.features.agent.rate_limiter import QuotaExhaustedError, get_rate_limiter
 
-    get_rate_limiter().acquire_sync("groq", "whisper-large-v3", est_tokens=0)
+    try:
+        get_rate_limiter().acquire_sync("groq", "whisper-large-v3", est_tokens=0)
+    except QuotaExhaustedError as exc:
+        # Surfaces as 503 through the router instead of parking the request
+        # until the daily Whisper window rolls over.
+        raise TranscriptionError(str(exc)) from exc
 
     client = OpenAI(
         api_key=settings.groq_api_key,
