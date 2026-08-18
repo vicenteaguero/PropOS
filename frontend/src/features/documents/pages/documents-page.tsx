@@ -243,7 +243,7 @@ export function DocumentsPage() {
   // ---- Desktop (lg+): master-detail — filter rail · grid · preview pane. ----
   return (
     <PageLayout width="app" noPadding>
-      <div className="flex h-[calc(100dvh-var(--app-header-h,3.5rem))] flex-col overflow-hidden">
+      <div className="flex h-[calc(100dvh-var(--app-header-h,3.5rem)-var(--app-nav-h,0px))] flex-col overflow-hidden">
         {/* Top bar: title + Enlaces */}
         <div className="flex items-start justify-between gap-3 border-b border-border px-8 py-5">
           <div className="space-y-1">

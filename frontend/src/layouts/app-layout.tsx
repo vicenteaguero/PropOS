@@ -129,8 +129,11 @@ export function AppLayout() {
   // in the center FAB, so no separate AgentFAB here).
   if (shellMode === "bottom-nav") {
     return (
-      <div className="flex min-h-dvh flex-col bg-background">
-        <main className="flex-1 pb-28">
+      // This shell has NO header, so --app-header-h must read 0 here or every
+      // viewport-pinned primitive below subtracts 56px that doesn't exist.
+      // --app-nav-h is published by MobileBottomNav from its own measured box.
+      <div className="flex min-h-dvh flex-col bg-background [--app-header-h:0px]">
+        <main id="main-content" className="flex-1 pb-[var(--app-nav-h,0px)]">
           <Outlet />
         </main>
         <MobileBottomNav />

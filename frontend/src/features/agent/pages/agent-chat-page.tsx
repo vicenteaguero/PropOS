@@ -167,7 +167,7 @@ export function AgentChatPage() {
   const sessions = sessionsQuery.data as SessionSummary[] | undefined;
 
   return (
-    <div className="flex h-[calc(100dvh-var(--app-header-h))]">
+    <div className="flex h-[calc(100dvh-var(--app-header-h)-var(--app-nav-h,0px))]">
       {/* Desktop: persistent conversations rail */}
       <aside className="hidden w-72 shrink-0 flex-col border-r border-border lg:flex">
         <div className="flex shrink-0 items-center justify-between px-4 py-3.5">

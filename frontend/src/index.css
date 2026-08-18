@@ -83,6 +83,14 @@
  *  :root = LIGHT defaults; .dark = DARK (overrides by source order). */
 :root {
   --app-header-h: 3.5rem;
+  /* Strip occupied by the floating mobile bottom nav, safe-area pad included.
+   * Published from the live DOM by MobileBottomNav (see its ResizeObserver) so
+   * the number tracks the rendered nav instead of a magic constant that drifts
+   * when a role hides a tab. 0 in every shell that has no bottom nav — the
+   * sidebar shell simply never mounts it. Layout primitives that pin to the
+   * viewport (MasterDetail, AppShellScroll, PageLayout) subtract BOTH this and
+   * --app-header-h, and exactly one of the two is non-zero at a time. */
+  --app-nav-h: 0px;
   --radius: 0.625rem;
 
   /* tenant brand accent — hue injected inline per workspace by ThemeController.

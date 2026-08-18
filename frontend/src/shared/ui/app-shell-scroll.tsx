@@ -16,7 +16,7 @@ export function AppShellScroll({
   return (
     <div
       className={cn(
-        "flex flex-col lg:h-[calc(100dvh-var(--app-header-h,3.5rem))] lg:overflow-hidden",
+        "flex flex-col lg:h-[calc(100dvh-var(--app-header-h,3.5rem)-var(--app-nav-h,0px))] lg:overflow-hidden",
         className,
       )}
     >
