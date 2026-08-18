@@ -76,7 +76,18 @@ export default defineConfig({
         importScripts: ["push-sw.js"],
         maximumFileSizeToCacheInBytes: 12 * 1024 * 1024,
         globPatterns: ["**/*.{js,css,html,ico,png,svg,webp,woff,woff2,mjs}"],
-        globIgnores: ["logo.png"],
+        // Precache is an eager download on first load, so it cancels out code
+        // splitting: a lazily-imported chunk listed here ships to every user
+        // regardless. Keep the heavy, route-specific bundles out — the
+        // CacheFirst runtimeCaching rule below still caches them permanently
+        // on first real use, so offline access survives after one visit.
+        globIgnores: [
+          "logo.png",
+          "assets/heic2any-*.js", // HEIC decode, iOS photo upload only
+          "assets/vendor-pdf-*.js", // pdf-lib + react-pdf, document viewer only
+          "assets/vendor-charts-*.js", // recharts, analytics pages only
+          "pdfjs/**", // worker already has its own CacheFirst rule
+        ],
         runtimeCaching: devPwa
           ? [{ urlPattern: /.*/, handler: "NetworkOnly" }]
           : [
