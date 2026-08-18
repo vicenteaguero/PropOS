@@ -5,6 +5,7 @@ import {
   Check,
   Loader2,
   Megaphone,
+  Pencil,
   Plus,
   Receipt,
   Wallet,
@@ -14,7 +15,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageLayout } from "@shared/components/page-layout";
-import { Chip, Chips, Pill, ResponsiveSheet, Row, type PillTone } from "@shared/ui";
+import {
+  Chip,
+  Chips,
+  ErrorState,
+  PageSkeleton,
+  Pill,
+  ResponsiveSheet,
+  Row,
+  type PillTone,
+} from "@shared/ui";
 import { useIsDesktop } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import {
@@ -22,9 +32,16 @@ import {
   useCreateTransaction,
   useFinanceSummary,
   useTransactions,
+  useUpdateTransaction,
 } from "../hooks/use-finance";
-import { TX_CATEGORIES, type Transaction, type TxDirection } from "../api/finance-api";
+import {
+  TX_CATEGORIES,
+  type Transaction,
+  type TxDirection,
+  type TxStatus,
+} from "../api/finance-api";
 import { CommissionCalculator } from "../components/commission-calculator";
+import { ReceiptPicker } from "../components/receipt-picker";
 
 /** Spanish labels for the transaction category enum (UI Spanish, code English). */
 const TX_CATEGORY: Record<string, string> = {
@@ -86,6 +103,32 @@ const KIND_FILTERS: { id: KindFilter; label: string }[] = [
   { id: "PAYMENT", label: "Pagos" },
 ];
 
+/** Shared shape of the create + edit transaction forms. */
+interface TxFormState {
+  direction: TxDirection;
+  category: string;
+  amount: string;
+  description: string;
+  pending: boolean;
+  dueAt: string;
+  receiptDocumentId: string | null;
+}
+
+const EMPTY_TX_FORM: TxFormState = {
+  direction: "IN",
+  category: "COMMISSION",
+  amount: "",
+  description: "",
+  pending: false,
+  dueAt: "",
+  receiptDocumentId: null,
+};
+
+/** `date` input value for an ISO string (empty when absent). */
+function toDateInput(iso: string | null): string {
+  return iso ? new Date(iso).toISOString().slice(0, 10) : "";
+}
+
 function matchesKind(t: Transaction, kind: KindFilter): boolean {
   switch (kind) {
     case "COMMISSION":
@@ -106,34 +149,80 @@ export function FinancePage() {
   const { data: summary } = useFinanceSummary();
   const { data: txs, isLoading, error, refetch } = useTransactions();
   const create = useCreateTransaction();
+  const update = useUpdateTransaction();
   const complete = useCompleteTransaction();
 
   const [kind, setKind] = useState<KindFilter>("ALL");
   const [open, setOpen] = useState(false);
-  const [direction, setDirection] = useState<TxDirection>("IN");
-  const [category, setCategory] = useState<string>("COMMISSION");
-  const [amount, setAmount] = useState("");
-  const [pending, setPending] = useState(false);
-  const [dueAt, setDueAt] = useState("");
+  const [editing, setEditing] = useState<Transaction | null>(null);
+  const [form, setForm] = useState<TxFormState>(EMPTY_TX_FORM);
 
   const filtered = useMemo(() => (txs ?? []).filter((t) => matchesKind(t, kind)), [txs, kind]);
 
+  const openCreate = () => {
+    setForm(EMPTY_TX_FORM);
+    setOpen(true);
+  };
+
+  const openEdit = (t: Transaction) => {
+    setForm({
+      direction: t.direction,
+      category: t.category,
+      amount: String(t.amount_cents / 100),
+      description: t.description ?? "",
+      pending: t.status === "PENDING",
+      dueAt: toDateInput(t.due_at),
+      receiptDocumentId: t.receipt_document_id,
+    });
+    setEditing(t);
+  };
+
   const submit = async () => {
-    if (!amount) {
+    if (!form.amount) {
       toast.error("Ingresá un monto");
       return;
     }
     await create.mutateAsync({
-      direction,
-      category,
-      amount_cents: Math.round(Number(amount) * 100),
-      status: pending ? "PENDING" : "COMPLETED",
-      due_at: pending && dueAt ? new Date(dueAt).toISOString() : null,
+      direction: form.direction,
+      category: form.category,
+      amount_cents: Math.round(Number(form.amount) * 100),
+      status: form.pending ? "PENDING" : "COMPLETED",
+      due_at: form.pending && form.dueAt ? new Date(form.dueAt).toISOString() : null,
+      description: form.description.trim() || null,
+      receipt_document_id: form.receiptDocumentId,
     });
-    setAmount("");
-    setDueAt("");
+    setForm(EMPTY_TX_FORM);
     setOpen(false);
     toast.success("Transacción registrada");
+  };
+
+  const submitEdit = async () => {
+    if (!editing) return;
+    if (!form.amount) {
+      toast.error("Ingresá un monto");
+      return;
+    }
+    // Only the pending/settled pair is toggled here — a cancelled transaction
+    // keeps its status.
+    const status: TxStatus = form.pending
+      ? "PENDING"
+      : editing.status === "PENDING"
+        ? "COMPLETED"
+        : editing.status;
+    await update.mutateAsync({
+      id: editing.id,
+      body: {
+        direction: form.direction,
+        category: form.category,
+        amount_cents: Math.round(Number(form.amount) * 100),
+        status,
+        due_at: form.pending && form.dueAt ? new Date(form.dueAt).toISOString() : null,
+        description: form.description.trim() || null,
+        receipt_document_id: form.receiptDocumentId,
+      },
+    });
+    setEditing(null);
+    toast.success("Transacción actualizada");
   };
 
   // Secondary KPIs shared by the mobile ink card and the desktop card row.
@@ -145,18 +234,13 @@ export function FinancePage() {
 
   const transactionsBlock = (
     <>
-      {isLoading && (
-        <div className="flex justify-center py-12">
-          <Loader2 className="size-5 animate-spin text-muted-foreground" />
-        </div>
-      )}
+      {isLoading && <PageSkeleton variant="list" count={5} />}
       {error && (
-        <div className="mx-5 rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive lg:mx-0">
-          No se pudieron cargar las transacciones.
-          <Button variant="ghost" size="sm" className="ml-2" onClick={() => refetch()}>
-            Reintentar
-          </Button>
-        </div>
+        <ErrorState
+          message="No se pudieron cargar las transacciones."
+          onRetry={() => refetch()}
+          className="mx-5 lg:mx-0"
+        />
       )}
       {!isLoading && !error && filtered.length === 0 && (
         <p className="py-8 text-center text-sm text-muted-foreground">Sin transacciones.</p>
@@ -214,6 +298,16 @@ export function FinancePage() {
                         <Check className="size-4" strokeWidth={2} />
                       </Button>
                     )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-8 text-muted-foreground"
+                      title="Editar"
+                      aria-label="Editar transacción"
+                      onClick={() => openEdit(t)}
+                    >
+                      <Pencil className="size-4" strokeWidth={1.8} />
+                    </Button>
                   </div>
                 }
               />
@@ -288,18 +382,30 @@ export function FinancePage() {
                       {t.direction === "IN" ? "+" : "−"}
                       {clp(t.amount_cents)}
                     </td>
-                    <td className="py-2.5 pl-3 pr-4 text-right">
-                      {t.status === "PENDING" && (
+                    <td className="py-2.5 pl-3 pr-4">
+                      <div className="flex items-center justify-end gap-1">
+                        {t.status === "PENDING" && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-8 text-success"
+                            title="Marcar pagado"
+                            onClick={() => complete.mutate(t.id)}
+                          >
+                            <Check className="size-4" strokeWidth={2} />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="size-8 text-success"
-                          title="Marcar pagado"
-                          onClick={() => complete.mutate(t.id)}
+                          className="size-8 text-muted-foreground"
+                          title="Editar"
+                          aria-label="Editar transacción"
+                          onClick={() => openEdit(t)}
                         >
-                          <Check className="size-4" strokeWidth={2} />
+                          <Pencil className="size-4" strokeWidth={1.8} />
                         </Button>
-                      )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -328,7 +434,7 @@ export function FinancePage() {
           size="icon-lg"
           className="rounded-full"
           aria-label="Nueva transacción"
-          onClick={() => setOpen(true)}
+          onClick={openCreate}
         >
           <Plus className="size-5" strokeWidth={1.8} />
         </Button>
@@ -405,61 +511,7 @@ export function FinancePage() {
 
       <ResponsiveSheet open={open} onOpenChange={setOpen} title="Nueva transacción">
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Tipo</Label>
-              <select
-                value={direction}
-                onChange={(e) => setDirection(e.target.value as TxDirection)}
-                className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm"
-              >
-                <option value="IN">Ingreso</option>
-                <option value="OUT">Gasto</option>
-              </select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Categoría</Label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm"
-              >
-                {TX_CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {categoryLabel(c)}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="f-amount">Monto (CLP)</Label>
-            <Input
-              id="f-amount"
-              type="number"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-            />
-          </div>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={pending}
-              onChange={(e) => setPending(e.target.checked)}
-            />
-            Pendiente (por cobrar / por pagar)
-          </label>
-          {pending && (
-            <div className="space-y-1.5">
-              <Label htmlFor="f-due">Vence</Label>
-              <Input
-                id="f-due"
-                type="date"
-                value={dueAt}
-                onChange={(e) => setDueAt(e.target.value)}
-              />
-            </div>
-          )}
+          <TransactionFormFields idPrefix="new" value={form} onChange={setForm} />
           <div className="flex justify-end gap-2 pt-1">
             <Button variant="ghost" onClick={() => setOpen(false)} disabled={create.isPending}>
               Cancelar
@@ -471,6 +523,122 @@ export function FinancePage() {
           </div>
         </div>
       </ResponsiveSheet>
+
+      <ResponsiveSheet
+        open={!!editing}
+        onOpenChange={(o) => !o && setEditing(null)}
+        title="Editar transacción"
+      >
+        <div className="space-y-3">
+          <TransactionFormFields idPrefix="edit" value={form} onChange={setForm} />
+          <div className="flex justify-end gap-2 pt-1">
+            <Button variant="ghost" onClick={() => setEditing(null)} disabled={update.isPending}>
+              Cancelar
+            </Button>
+            <Button onClick={submitEdit} disabled={update.isPending} className="gap-2">
+              {update.isPending && <Loader2 className="size-4 animate-spin" />}
+              Guardar
+            </Button>
+          </div>
+        </div>
+      </ResponsiveSheet>
     </PageLayout>
+  );
+}
+
+/** Shared fields for the create + edit transaction sheets. */
+function TransactionFormFields({
+  idPrefix,
+  value,
+  onChange,
+}: {
+  idPrefix: string;
+  value: TxFormState;
+  onChange: (next: TxFormState) => void;
+}) {
+  const set = <K extends keyof TxFormState>(key: K, next: TxFormState[K]) =>
+    onChange({ ...value, [key]: next });
+
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label htmlFor={`${idPrefix}-direction`}>Tipo</Label>
+          <select
+            id={`${idPrefix}-direction`}
+            value={value.direction}
+            onChange={(e) => set("direction", e.target.value as TxDirection)}
+            className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm"
+          >
+            <option value="IN">Ingreso</option>
+            <option value="OUT">Gasto</option>
+          </select>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor={`${idPrefix}-category`}>Categoría</Label>
+          <select
+            id={`${idPrefix}-category`}
+            value={value.category}
+            onChange={(e) => set("category", e.target.value)}
+            className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm"
+          >
+            {TX_CATEGORIES.map((c) => (
+              <option key={c} value={c}>
+                {categoryLabel(c)}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor={`${idPrefix}-description`}>Descripción</Label>
+        <Input
+          id={`${idPrefix}-description`}
+          value={value.description}
+          onChange={(e) => set("description", e.target.value)}
+          placeholder="Comisión venta Los Aromos 123"
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor={`${idPrefix}-amount`}>Monto (CLP)</Label>
+        <Input
+          id={`${idPrefix}-amount`}
+          type="number"
+          value={value.amount}
+          onChange={(e) => set("amount", e.target.value)}
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>Boleta</Label>
+        <ReceiptPicker
+          value={value.receiptDocumentId}
+          onChange={(documentId) => set("receiptDocumentId", documentId)}
+        />
+      </div>
+
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={value.pending}
+          onChange={(e) => set("pending", e.target.checked)}
+        />
+        Pendiente (por cobrar / por pagar)
+      </label>
+
+      {value.pending && (
+        <div className="space-y-1.5">
+          <Label htmlFor={`${idPrefix}-due`}>Vence</Label>
+          <Input
+            id={`${idPrefix}-due`}
+            type="date"
+            value={value.dueAt}
+            onChange={(e) => set("dueAt", e.target.value)}
+          />
+        </div>
+      )}
+    </>
   );
 }

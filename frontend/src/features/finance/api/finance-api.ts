@@ -42,6 +42,7 @@ export interface TransactionInput {
   status?: TxStatus;
   due_at?: string | null;
   description?: string | null;
+  receipt_document_id?: string | null;
 }
 
 export interface FinanceSummary {
