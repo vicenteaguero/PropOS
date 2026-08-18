@@ -3,6 +3,16 @@ import { apiRequest } from "@features/documents/api/http";
 export type TaskStatus = "OPEN" | "IN_PROGRESS" | "BLOCKED" | "DONE" | "CANCELLED";
 export type TaskKind = "TODO" | "PENDING" | "GOAL" | "OBJECTIVE" | "PLAN";
 
+/**
+ * Polymorphic entity links on a task. Keys mirror what the agent dispatcher
+ * writes into `tasks.related` — `people` holds contact ids, not profile ids.
+ */
+export interface TaskRelated {
+  properties?: string[];
+  people?: string[];
+  projects?: string[];
+}
+
 export interface Task {
   id: string;
   tenant_id: string;
@@ -13,7 +23,7 @@ export interface Task {
   priority: number;
   due_at: string | null;
   completed_at: string | null;
-  related: Record<string, unknown>;
+  related: TaskRelated;
   created_at: string;
 }
 
@@ -24,6 +34,7 @@ export interface TaskInput {
   due_at?: string | null;
   priority?: number;
   status?: TaskStatus;
+  related?: TaskRelated;
 }
 
 function qs(params: Record<string, unknown>): string {
