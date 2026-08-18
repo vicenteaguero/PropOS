@@ -31,9 +31,22 @@ export default defineConfig({
       registerType: "autoUpdate",
       devOptions: { enabled: devPwa },
       manifest: {
+        // `id` pins the app identity across start_url changes — without it a
+        // later start_url edit registers as a DIFFERENT app and users end up
+        // with two icons on the home screen.
+        id: "/",
         name: "PropOS",
         short_name: "PropOS",
+        description: "Plataforma de operaciones inmobiliarias multi-tenant.",
+        lang: "es-CL",
+        dir: "ltr",
         display: "standalone",
+        // Deliberately no `orientation` lock: the installed app has to work in
+        // iPad landscape, where it gets the full sidebar + master-detail layout.
+        scope: "/",
+        categories: ["business", "productivity"],
+        // Splash colors follow the app's dark default; the live status bar is
+        // re-pointed per theme at runtime (see core/theme/theme.ts).
         background_color: "#000000",
         theme_color: "#000000",
         start_url: "/",

@@ -25,9 +25,23 @@ export function getStoredTheme(): Theme {
   return isTheme(raw) ? raw : DEFAULT_THEME;
 }
 
+/** Matches --background in index.css for each theme. */
+const THEME_COLOR: Record<Theme, string> = { dark: "#000000", light: "#ffffff" };
+
+/**
+ * Keeps <meta name="theme-color"> on the active theme. The installed PWA paints
+ * its status bar and window chrome from this tag, so leaving it pinned to the
+ * dark value put a black bar above a white app for every light-theme user.
+ */
+function applyThemeColor(theme: Theme): void {
+  const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+  if (meta) meta.content = THEME_COLOR[theme];
+}
+
 export function applyTheme(theme: Theme): void {
   if (typeof document === "undefined") return;
   document.documentElement.classList.toggle("dark", theme === "dark");
+  applyThemeColor(theme);
 }
 
 export function setTheme(theme: Theme): void {
