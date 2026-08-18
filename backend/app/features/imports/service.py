@@ -8,11 +8,18 @@ from uuid import UUID
 from app.core.supabase.client import get_supabase_client
 from app.features.contacts.schemas import ContactCreate
 from app.features.imports.mappings import coerce_row, map_header
+from app.features.properties.schemas import PropertyCreate
 from app.features.transactions.schemas import TransactionCreate
 
 MAX_ROWS = 5000
-_VALIDATORS = {"contacts": ContactCreate, "transactions": TransactionCreate}
-_TABLE = {"contacts": "contacts", "transactions": "transactions"}
+_VALIDATORS = {
+    "contacts": ContactCreate,
+    "transactions": TransactionCreate,
+    "properties": PropertyCreate,
+}
+_TABLE = {"contacts": "contacts", "transactions": "transactions", "properties": "properties"}
+# `properties` has no `source` column — stamping it would fail the insert.
+_HAS_SOURCE_COLUMN = {"contacts", "transactions"}
 
 
 class ImportService:
@@ -92,7 +99,8 @@ class ImportService:
         for r in valid_rows:
             r["tenant_id"] = str(tenant_id)
             r["created_by"] = str(created_by)
-            r["source"] = "import"
+            if entity in _HAS_SOURCE_COLUMN:
+                r["source"] = "import"
 
         inserted = 0
         if valid_rows:
