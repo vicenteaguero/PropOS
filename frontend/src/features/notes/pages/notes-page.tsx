@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { PageLayout } from "@shared/components/page-layout";
 import { PageHeader } from "@shared/components/page-header";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
-import { Pill } from "@shared/ui";
+import { Pill, HOVER_REVEAL } from "@shared/ui";
 import { useAuth } from "@shared/hooks/use-auth";
 import { useAgentName } from "@core/branding/agent-branding";
 import { useThemeMode } from "@core/theme/theme-provider";
@@ -162,7 +162,7 @@ export function NotesPage() {
             type="button"
             onClick={() => del.mutate(note.id)}
             aria-label="Eliminar nota"
-            className="text-faint opacity-0 transition group-hover:opacity-100 hover:text-destructive"
+            className={`text-faint hover:text-destructive ${HOVER_REVEAL}`}
           >
             <Trash2 className="size-4" />
           </button>

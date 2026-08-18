@@ -9,6 +9,7 @@ export {
   TOUCH_TARGET_HIT_AREA,
   TOUCH_TARGET_PX,
 } from "./touch-target";
+export { HOVER_REVEAL } from "./hover-reveal";
 export { Chips, Chip } from "./chips";
 export { Segmented, type SegmentedItem } from "./segmented";
 export { SectionLabel } from "./section-label";

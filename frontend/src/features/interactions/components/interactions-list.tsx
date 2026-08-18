@@ -24,7 +24,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Chip, Chips, RoundButton, Row } from "@shared/ui";
+import { Chip, Chips, RoundButton, Row, HOVER_REVEAL } from "@shared/ui";
 import { useIsDesktop } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import {
@@ -184,7 +184,7 @@ export function InteractionsList({ personId, propertyId }: Props) {
                 <RoundButton
                   tone="ghost"
                   size={32}
-                  className="text-muted-foreground opacity-0 transition group-hover:opacity-100 hover:text-destructive"
+                  className={`text-muted-foreground hover:text-destructive ${HOVER_REVEAL}`}
                   onClick={() => del.mutate(it.id)}
                   aria-label="Eliminar interacción"
                 >
