@@ -30,7 +30,7 @@ from .seed_agent import SeedHandles, cleanup, seed
 
 RESULTS_PATH = Path(__file__).parent / "results.jsonl"
 _ROWS_BEFORE: dict[str, int] = {}
-_ROWS_AT_SESSION_START = 0
+_RAN_ANY = False
 
 
 def _row_count() -> int:
@@ -46,14 +46,12 @@ def _append(record: dict[str, object]) -> None:
         f.write(json.dumps(record, ensure_ascii=False) + "\n")
 
 
-def pytest_sessionstart(session: pytest.Session) -> None:
-    # Remember the baseline so a plain unit run, which collects this directory
-    # but executes none of it, does not append a summary to a stale file.
-    global _ROWS_AT_SESSION_START
-    _ROWS_AT_SESSION_START = _row_count()
-
-
 def pytest_runtest_setup(item: pytest.Item) -> None:
+    # Only fires for items under this directory, which is what marks the run as
+    # an agent run: a plain unit run collects this conftest but executes none of
+    # it, and must not append a summary to the previous run's file.
+    global _RAN_ANY
+    _RAN_ANY = True
     _ROWS_BEFORE[item.nodeid] = _row_count()
 
 
@@ -87,8 +85,8 @@ def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo):  # type
 
 
 def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
-    if _row_count() <= _ROWS_AT_SESSION_START:
-        return  # nothing ran in this directory
+    if not _RAN_ANY:
+        return
 
     rows = []
     if RESULTS_PATH.exists():
