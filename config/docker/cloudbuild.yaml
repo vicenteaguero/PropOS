@@ -10,6 +10,16 @@
 #      which would mean the whole deploy pipeline breaks the moment we add a
 #      not-yet-provisioned integration. Instead, features stay dark until their
 #      secret is created, and the next deploy picks it up with no edit here.
+#
+# Sizing: one container serves the Kapso webhook, the Cloud Scheduler jobs and
+# both Vercel frontends, and some handlers still call the synchronous Supabase
+# client (plus a blocking 30s Whisper request) straight from the event loop. At
+# --max-instances=1 a single audio transcription or email-sync run queues every
+# other request behind it, including webhooks that Kapso retries and then drops.
+# Three instances of 1Gi cost nothing while idle -- Cloud Run bills per request,
+# and --min-instances stays 0 -- but they stop one slow handler from taking the
+# whole service down. Change this file, not the live service: a
+# `gcloud run services update` is overwritten by the next deploy.
 steps:
   - name: "gcr.io/cloud-builders/docker"
     id: build-push
@@ -79,8 +89,8 @@ steps:
           --allow-unauthenticated \
           --port=8000 \
           --min-instances=0 \
-          --max-instances=1 \
-          --memory=512Mi \
+          --max-instances=3 \
+          --memory=1Gi \
           --cpu=1 \
           --env-vars-file=config/docker/cloudrun-env.yaml \
           --set-secrets="$$SECRETS"
