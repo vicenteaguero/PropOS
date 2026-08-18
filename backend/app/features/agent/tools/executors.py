@@ -8,6 +8,8 @@ registered via ``register_all_dispatchers``.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
@@ -64,6 +66,36 @@ def _create_proposal(
     }
 
 
+# ---------- Multi-step write safety ----------
+
+
+@contextmanager
+def _rollback_on_failure(client, table: str, row_ids: list[str]) -> Iterator[None]:
+    """Undo `row_ids` in `table` when the follow-up writes fail.
+
+    PostgREST has no transaction spanning several calls, so a failed
+    participants insert used to leave an orphan interaction behind *and* the
+    dispatcher then queued a proposal for the same action — accepting it
+    created a second interaction, doubling the timeline and the metrics.
+    Compensating deletes keep each executor all-or-nothing.
+    """
+    try:
+        yield
+    except Exception:
+        for row_id in row_ids:
+            try:
+                client.table(table).delete().eq("id", str(row_id)).execute()
+            except Exception as cleanup_exc:  # noqa: BLE001 - report, never mask the original
+                logger.error(
+                    "rollback_failed",
+                    event_type="write",
+                    table=table,
+                    row_id=str(row_id),
+                    error=str(cleanup_exc)[:200],
+                )
+        raise
+
+
 # ---------- Accept dispatchers (registered with pending/service.py) ----------
 
 
@@ -106,36 +138,37 @@ def _accept_log_interaction(payload, tenant_id, user_id, agent_session_id):
         payload["occurred_at"] = datetime.now(UTC).isoformat()
     row = client.table("interactions").insert(payload).execute().data[0]
 
-    if participants:
-        client.table("interaction_participants").insert(
-            [
+    with _rollback_on_failure(client, "interactions", [row["id"]]):
+        if participants:
+            client.table("interaction_participants").insert(
+                [
+                    {
+                        "tenant_id": str(tenant_id),
+                        "interaction_id": row["id"],
+                        "person_id": str(p),
+                    }
+                    for p in participants
+                ]
+            ).execute()
+
+        if property_id:
+            client.table("interaction_targets").insert(
                 {
                     "tenant_id": str(tenant_id),
                     "interaction_id": row["id"],
-                    "person_id": str(p),
+                    "target_kind": "PROPERTY",
+                    "property_id": str(property_id),
                 }
-                for p in participants
-            ]
-        ).execute()
-
-    if property_id:
-        client.table("interaction_targets").insert(
-            {
-                "tenant_id": str(tenant_id),
-                "interaction_id": row["id"],
-                "target_kind": "PROPERTY",
-                "property_id": str(property_id),
-            }
-        ).execute()
-    if project_id:
-        client.table("interaction_targets").insert(
-            {
-                "tenant_id": str(tenant_id),
-                "interaction_id": row["id"],
-                "target_kind": "PROJECT",
-                "project_id": str(project_id),
-            }
-        ).execute()
+            ).execute()
+        if project_id:
+            client.table("interaction_targets").insert(
+                {
+                    "tenant_id": str(tenant_id),
+                    "interaction_id": row["id"],
+                    "target_kind": "PROJECT",
+                    "project_id": str(project_id),
+                }
+            ).execute()
 
     return ("interactions", UUID(row["id"]))
 
@@ -164,15 +197,16 @@ def _accept_create_task(payload, tenant_id, user_id, agent_session_id):
     payload["source"] = "agent"
     row = client.table("tasks").insert(payload).execute().data[0]
     if remind_at:
-        _create_reminder_row(
-            client,
-            tenant_id=tenant_id,
-            user_id=user_id,
-            target_table="tasks",
-            target_row_id=row["id"],
-            remind_at=remind_at,
-            message=payload.get("title"),
-        )
+        with _rollback_on_failure(client, "tasks", [row["id"]]):
+            _create_reminder_row(
+                client,
+                tenant_id=tenant_id,
+                user_id=user_id,
+                target_table="tasks",
+                target_row_id=row["id"],
+                remind_at=remind_at,
+                message=payload.get("title"),
+            )
     return ("tasks", UUID(row["id"]))
 
 
@@ -185,15 +219,16 @@ def _accept_create_event(payload, tenant_id, user_id, agent_session_id):
     payload["source"] = "agent"
     row = client.table("events").insert(payload).execute().data[0]
     if remind_at:
-        _create_reminder_row(
-            client,
-            tenant_id=tenant_id,
-            user_id=user_id,
-            target_table="events",
-            target_row_id=row["id"],
-            remind_at=remind_at,
-            message=payload.get("title"),
-        )
+        with _rollback_on_failure(client, "events", [row["id"]]):
+            _create_reminder_row(
+                client,
+                tenant_id=tenant_id,
+                user_id=user_id,
+                target_table="events",
+                target_row_id=row["id"],
+                remind_at=remind_at,
+                message=payload.get("title"),
+            )
     return ("events", UUID(row["id"]))
 
 
@@ -364,7 +399,8 @@ def _accept_attach_photos_to_property(payload, tenant_id, user_id, agent_session
         for idx, fid in enumerate(file_ids)
     ]
     if rows:
-        client.table("media_assets").insert(rows).execute()
+        with _rollback_on_failure(client, "media_files", [str(fid) for fid in file_ids]):
+            client.table("media_assets").insert(rows).execute()
     return ("media_assets", UUID(property_id))
 
 
@@ -399,7 +435,8 @@ def _accept_create_document_from_photos(payload, tenant_id, user_id, agent_sessi
         for idx, fid in enumerate(file_ids)
     ]
     if rows:
-        client.table("media_assets").insert(rows).execute()
+        with _rollback_on_failure(client, "documents", [doc_row["id"]]):
+            client.table("media_assets").insert(rows).execute()
     return ("documents", UUID(doc_row["id"]))
 
 
