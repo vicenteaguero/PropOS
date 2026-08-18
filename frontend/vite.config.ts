@@ -146,6 +146,7 @@ export default defineConfig({
           ],
           "vendor-supabase": ["@supabase/supabase-js"],
           "vendor-pdf": ["pdf-lib", "react-pdf", "pdfjs-dist"],
+          "vendor-charts": ["recharts"],
           "vendor-dnd": ["@dnd-kit/core", "@dnd-kit/sortable", "@dnd-kit/utilities"],
           "vendor-misc": [
             "browser-image-compression",
