@@ -71,6 +71,48 @@ class InteractionUpdate(BaseModel):
     sentiment: InteractionSentiment | None = None
 
 
+# Capability strings the broker grants per interaction via `audience_caps`
+# (see `sharing/service.py`). "owner" is the audience the Dueño reads.
+OWNER_AUDIENCE = "owner"
+CAP_VIEW = "view"
+CAP_VIEW_VISITOR_IDENTITY = "view_visitor_identity"
+
+
+class OwnerVisitResponse(BaseModel):
+    """What the Dueño sees of a visit — deliberately narrower than the staff view.
+
+    No `body`, no participants, no `created_by`: the owner learns that a visit
+    happened and how long it lasted. The `summary` names the visitor, so it is
+    only carried when the broker granted `view_visitor_identity` on that row.
+    """
+
+    id: UUID
+    kind: InteractionKind
+    occurred_at: datetime | None = None
+    duration_minutes: int | None = None
+    summary: str | None = None
+    audience_caps: dict[str, list[str]] = {}
+
+    @classmethod
+    def from_row(cls, row: dict[str, Any]) -> OwnerVisitResponse:
+        caps = row.get("audience_caps") or {}
+        owner_caps = caps.get(OWNER_AUDIENCE) or []
+        return cls(
+            id=row["id"],
+            kind=row["kind"],
+            occurred_at=row.get("occurred_at"),
+            duration_minutes=row.get("duration_minutes"),
+            summary=row.get("summary") if CAP_VIEW_VISITOR_IDENTITY in owner_caps else None,
+            audience_caps=caps,
+        )
+
+
+def shared_with_owner(row: dict[str, Any]) -> bool:
+    """Sharing is opt-in per interaction — the broker must grant `view`."""
+    caps = row.get("audience_caps") or {}
+    return CAP_VIEW in (caps.get(OWNER_AUDIENCE) or [])
+
+
 class InteractionResponse(InteractionBase):
     id: UUID
     tenant_id: UUID
