@@ -28,26 +28,53 @@ def _validate_caps(caps: dict, allowed: set[str]) -> None:
 
 
 class SharingService:
+    """Both writers filter on `tenant_id`.
+
+    These updates run through the service-role client, which bypasses RLS — an
+    id alone is enough to reach any row in the database. Matching on the active
+    tenant as well turns a cross-tenant write into the 404 it should be.
+    """
+
     @staticmethod
-    async def set_document_sharing(document_id: UUID, audience_caps: dict, property_id: UUID | None = None) -> dict:
+    async def set_document_sharing(
+        document_id: UUID,
+        tenant_id: UUID,
+        audience_caps: dict,
+        property_id: UUID | None = None,
+    ) -> dict:
         _validate_caps(audience_caps, ALLOWED_DOC_CAPS)
         client = get_supabase_client()
         patch: dict = {"audience_caps": audience_caps}
         if property_id is not None:
+            # Never let a document point at another tenant's property.
+            owns = (
+                client.table("properties")
+                .select("id")
+                .eq("id", str(property_id))
+                .eq("tenant_id", str(tenant_id))
+                .limit(1)
+                .execute()
+                .data
+            )
+            if not owns:
+                raise HTTPException(status_code=404, detail="Property not found")
             patch["property_id"] = str(property_id)
-        resp = client.table("documents").update(patch).eq("id", str(document_id)).execute()
+        resp = (
+            client.table("documents").update(patch).eq("id", str(document_id)).eq("tenant_id", str(tenant_id)).execute()
+        )
         if not resp.data:
             raise HTTPException(status_code=404, detail="Document not found")
         return resp.data[0]
 
     @staticmethod
-    async def set_interaction_sharing(interaction_id: UUID, audience_caps: dict) -> dict:
+    async def set_interaction_sharing(interaction_id: UUID, tenant_id: UUID, audience_caps: dict) -> dict:
         _validate_caps(audience_caps, ALLOWED_VISIT_CAPS)
         client = get_supabase_client()
         resp = (
             client.table("interactions")
             .update({"audience_caps": audience_caps})
             .eq("id", str(interaction_id))
+            .eq("tenant_id", str(tenant_id))
             .execute()
         )
         if not resp.data:
