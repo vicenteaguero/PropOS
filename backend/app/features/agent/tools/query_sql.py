@@ -27,7 +27,7 @@ def run_query_sql(args: dict[str, Any], tenant_id: UUID) -> dict[str, Any]:
         return {"error": "missing sql"}
 
     try:
-        sql = validate_and_normalize(sql_in)
+        sql = validate_and_normalize(sql_in, tenant_id=tenant_id)
     except GuardError as exc:
         return {"error": "sql_rejected", "reason": str(exc), "intent": intent}
 

@@ -17,30 +17,15 @@ from app.core.logging.logger import get_logger
 from app.features.agent.llm_retry import with_retry
 from app.features.agent.rate_limiter import QuotaExhaustedError, get_rate_limiter
 from app.features.agent.tools.query_sql import run_query_sql
+from app.features.agent.tools.sql_guard import EXPOSED_TABLES
 
 logger = get_logger("AGENT_TEXT_SQL")
 
 # Tables we expose to the model. Keep tight — every table costs prompt
 # tokens and increases the chance of writing a confused JOIN.
-_EXPOSED_TABLES = (
-    "properties",
-    "contacts",
-    "people",
-    "organizations",
-    "interactions",
-    "interaction_participants",
-    "interaction_targets",
-    "tasks",
-    "transactions",
-    "projects",
-    "project_properties",
-    "campaigns",
-    "documents",
-    "notes",
-    "tags",
-    "taggings",
-    "pending_proposals",
-)
+# Single source of truth: `sql_guard` rejects anything outside this set, so the
+# prompt must advertise exactly the same list.
+_EXPOSED_TABLES = tuple(sorted(EXPOSED_TABLES))
 
 _SCHEMA_CACHE: dict[str, Any] = {"at": 0.0, "text": ""}
 _SCHEMA_TTL_SECONDS = 300.0
@@ -95,7 +80,12 @@ Genera UNA consulta SQL Postgres (un solo SELECT) que responda la pregunta del u
 
 Reglas estrictas:
 - SOLO SELECT. Nada de INSERT/UPDATE/DELETE/DDL.
-- Filtra siempre por tenant_id cuando la tabla lo tenga (te lo paso en el prompt).
+- OBLIGATORIO: cada tabla del FROM y de cada JOIN lleva su propio
+  `tenant_id = '<el tenant_id que te paso>'`, calificado con el alias de esa
+  tabla (ej: `FROM interactions i JOIN contacts c ON ... WHERE
+  i.tenant_id = '<uuid>' AND c.tenant_id = '<uuid>'`). Una consulta a la que le
+  falte el predicado en alguna tabla se rechaza.
+- Usa SOLO las tablas del esquema de abajo. Nada de information_schema ni pg_*.
 - Excluye filas con deleted_at IS NOT NULL si la columna existe.
 - Usa LIMIT 100 como máximo si no hay agregación.
 - Devuelve SOLO la sentencia SQL. Sin comentarios, sin markdown, sin explicación.
