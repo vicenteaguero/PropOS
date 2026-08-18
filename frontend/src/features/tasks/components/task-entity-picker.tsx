@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Chip, Chips } from "@shared/ui";
 import { EntityCombobox } from "@features/documents/components/entity-combobox";
 import { useContacts, useProperties } from "@features/documents/hooks/use-entities";
@@ -42,21 +42,30 @@ interface Props {
 export function TaskEntityPicker({ value, onChange, disabled }: Props) {
   const [mode, setMode] = useState<Mode>(value?.kind ?? "NONE");
   const [query, setQuery] = useState(value?.label ?? "");
+  // What the last pick resolved to. The combobox fires onSelect and then the
+  // text change in the same tick, so comparing against the `value` prop would
+  // still see the previous link and wipe the pick that just happened.
+  const pickedLabel = useRef<string | null>(value?.label ?? null);
 
   // Only the active tab queries; the other stays idle instead of prefetching.
   const properties = useProperties(query, { enabled: mode === "PROPERTY" });
   const contacts = useContacts(query, { enabled: mode === "CONTACT" });
 
+  const pick = (link: TaskLink | null) => {
+    pickedLabel.current = link?.label ?? null;
+    onChange(link);
+  };
+
   const pickMode = (next: Mode) => {
     setMode(next);
     setQuery("");
-    onChange(null);
+    pick(null);
   };
 
   // Typing after a pick invalidates it — the link must match what is shown.
   const handleQuery = (text: string) => {
     setQuery(text);
-    if (value && text.trim() !== value.label.trim()) onChange(null);
+    if (pickedLabel.current && text.trim() !== pickedLabel.current.trim()) pick(null);
   };
 
   return (
@@ -73,7 +82,7 @@ export function TaskEntityPicker({ value, onChange, disabled }: Props) {
         <EntityCombobox<PropertyLite>
           value={query}
           onChange={handleQuery}
-          onSelect={(p) => onChange(p ? { kind: "PROPERTY", id: p.id, label: p.title } : null)}
+          onSelect={(p) => pick(p ? { kind: "PROPERTY", id: p.id, label: p.title } : null)}
           items={properties.data ?? []}
           getLabel={(p) => p.title}
           getKey={(p) => p.id}
@@ -89,7 +98,7 @@ export function TaskEntityPicker({ value, onChange, disabled }: Props) {
         <EntityCombobox<ContactLite>
           value={query}
           onChange={handleQuery}
-          onSelect={(c) => onChange(c ? { kind: "CONTACT", id: c.id, label: c.full_name } : null)}
+          onSelect={(c) => pick(c ? { kind: "CONTACT", id: c.id, label: c.full_name } : null)}
           items={contacts.data ?? []}
           getLabel={(c) => c.full_name}
           getKey={(c) => c.id}
