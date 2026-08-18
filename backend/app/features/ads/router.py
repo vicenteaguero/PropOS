@@ -4,11 +4,17 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 
-from app.core.dependencies import get_tenant_id
+from app.core.dependencies import get_tenant_id, require_role
 from app.features.campaigns.schemas import AdCreate, AdResponse, AdUpdate
 from app.features.campaigns.service import AdService
 
-router = APIRouter(prefix="/ads", tags=["ads"])
+# Campaign ads are internal marketing data — LANDOWNER/BUYER have no business
+# reading or deleting them.
+router = APIRouter(
+    prefix="/ads",
+    tags=["ads"],
+    dependencies=[Depends(require_role("ADMIN", "AGENT"))],
+)
 
 
 @router.get("", response_model=list[AdResponse])

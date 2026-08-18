@@ -5,11 +5,16 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 
-from app.core.dependencies import get_current_user, get_tenant_id
+from app.core.dependencies import get_current_user, get_tenant_id, require_role
 from app.features.places.schemas import PlaceCreate, PlaceResponse, PlaceUpdate
 from app.features.places.service import PlaceService
 
-router = APIRouter(prefix="/places", tags=["places"])
+# Shared CRM taxonomy: staff-only, like the tags it sits next to.
+router = APIRouter(
+    prefix="/places",
+    tags=["places"],
+    dependencies=[Depends(require_role("ADMIN", "AGENT"))],
+)
 
 
 @router.get("", response_model=list[PlaceResponse])

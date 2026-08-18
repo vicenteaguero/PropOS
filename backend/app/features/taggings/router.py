@@ -5,11 +5,16 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 
-from app.core.dependencies import get_current_user, get_tenant_id
+from app.core.dependencies import get_current_user, get_tenant_id, require_role
 from app.features.tags.schemas import TaggingCreate, TaggingResponse
 from app.features.tags.service import TagService
 
-router = APIRouter(prefix="/taggings", tags=["taggings"])
+# Taggings carry the CRM segmentation; an ungated DELETE here wipes it.
+router = APIRouter(
+    prefix="/taggings",
+    tags=["taggings"],
+    dependencies=[Depends(require_role("ADMIN", "AGENT"))],
+)
 
 
 @router.get("", response_model=list[TaggingResponse])
