@@ -110,7 +110,7 @@ class OpportunityService:
         """
         from datetime import timedelta
 
-        from app.features.finance.calc import commission
+        from app.features.finance.calc import DEFAULT_CURRENCY, commission
 
         value = opp.get("expected_value_cents")
         if not value:
@@ -139,6 +139,9 @@ class OpportunityService:
                 "direction": "IN",
                 "category": "COMMISSION",
                 "amount_cents": calc["gross_cents"],
+                # The deal's own currency: defaulting to CLP would book a UF
+                # receivable as pesos, off by ~40.000x.
+                "currency": opp.get("currency") or DEFAULT_CURRENCY,
                 "status": "PENDING",
                 "occurred_at": datetime.now(UTC).isoformat(),
                 "due_at": due,
