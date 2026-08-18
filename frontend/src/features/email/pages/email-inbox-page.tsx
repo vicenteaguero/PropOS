@@ -1,9 +1,18 @@
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
+import { PenSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
-import { BrandMark, MasterDetail, Pill, type PillTone, Row } from "@shared/ui";
+import {
+  BrandMark,
+  ErrorState,
+  MasterDetail,
+  PageSkeleton,
+  Pill,
+  type PillTone,
+  Row,
+} from "@shared/ui";
 import { useEmailThreads } from "../hooks/use-email";
+import { EmailComposeSheet } from "../components/email-compose-sheet";
 import { EmailThreadView } from "../components/email-thread-view";
 
 function fmt(ts: string | null): string {
@@ -21,6 +30,7 @@ function statusLabel(status: string): string {
 
 export function EmailInboxPage() {
   const [selected, setSelected] = useState<string | null>(null);
+  const [composeOpen, setComposeOpen] = useState(false);
   const { data: threads, isLoading, error, refetch } = useEmailThreads({ status: "OPEN" });
 
   // Left column: header + thread list, with its own loading / error / empty states.
@@ -30,33 +40,33 @@ export function EmailInboxPage() {
         <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-secondary">
           <BrandMark brand="titan" size={22} />
         </span>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h1 className="text-[25px] font-bold leading-tight tracking-tight text-foreground">
             Correos
           </h1>
           <p className="text-[13px] text-muted-foreground">Leads de portales y conversaciones.</p>
         </div>
+        <Button size="sm" className="shrink-0 gap-1.5" onClick={() => setComposeOpen(true)}>
+          <PenSquare className="size-4" strokeWidth={1.8} /> Nuevo
+        </Button>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {isLoading && (
-          <div className="flex justify-center py-12">
-            <Loader2 className="size-5 animate-spin text-muted-foreground" />
-          </div>
-        )}
+        {isLoading && <PageSkeleton variant="list" count={6} />}
         {error && (
-          <div className="m-5 rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
-            No se pudieron cargar los correos.
-            <Button variant="ghost" size="sm" className="ml-2" onClick={() => refetch()}>
-              Reintentar
-            </Button>
-          </div>
+          <ErrorState
+            message="No se pudieron cargar los correos."
+            onRetry={() => refetch()}
+            className="m-5"
+          />
         )}
         {!isLoading && !error && (threads?.length ?? 0) === 0 && (
           <div className="px-5 py-6">
             <EmptyState
               title="Sin correos"
-              description="Cuando se sincronice el buzón, los leads de portales aparecerán acá."
+              description="Cuando se sincronice el buzón, los leads de portales aparecerán acá. También podés escribir vos primero."
+              actionLabel="Nuevo correo"
+              onAction={() => setComposeOpen(true)}
             />
           </div>
         )}
@@ -95,19 +105,26 @@ export function EmailInboxPage() {
   );
 
   return (
-    <MasterDetail
-      selected={!!selected}
-      list={list}
-      listWidth="24rem"
-      detail={
-        selected ? (
-          <EmailThreadView threadId={selected} onBack={() => setSelected(null)} />
-        ) : (
-          <div className="flex h-full items-center justify-center p-6 text-sm text-muted-foreground">
-            Seleccioná una conversación.
-          </div>
-        )
-      }
-    />
+    <>
+      <MasterDetail
+        selected={!!selected}
+        list={list}
+        listWidth="24rem"
+        detail={
+          selected ? (
+            <EmailThreadView threadId={selected} onBack={() => setSelected(null)} />
+          ) : (
+            <div className="flex h-full items-center justify-center p-6 text-sm text-muted-foreground">
+              Seleccioná una conversación.
+            </div>
+          )
+        }
+      />
+      <EmailComposeSheet
+        open={composeOpen}
+        onOpenChange={setComposeOpen}
+        onSent={(threadId) => setSelected(threadId)}
+      />
+    </>
   );
 }
