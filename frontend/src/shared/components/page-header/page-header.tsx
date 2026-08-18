@@ -15,7 +15,7 @@ export function PageHeader({ title, description, actions, backTo, className }: P
   return (
     <div className={cn("mb-6 space-y-2", className)}>
       {backTo && (
-        <Button variant="ghost" size="sm" asChild className="-ml-2 h-8 px-2">
+        <Button variant="ghost" size="sm" asChild className="-ml-2 min-h-11 px-2">
           <Link to={backTo}>
             <ArrowLeft className="size-4" />
             Volver
