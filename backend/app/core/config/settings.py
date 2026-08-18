@@ -107,7 +107,10 @@ class Settings(BaseSettings):
 
     # Resend (transactional email)
     resend_api_key: str = ""
-    resend_from_email: str = "PropOS <no-reply@propos.dev>"
+    # propos.dev is not a verified sender in Resend; anaida.cl is. A default
+    # pointing at an unverified domain fails every send with a 403 that only
+    # shows up in the dispatcher log.
+    resend_from_email: str = "PropOS <no-reply@anaida.cl>"
     app_base_url: str = "https://prop-os-delta.vercel.app"
 
     # Internal cron endpoints (Cloud Scheduler → POST /internal/jobs/*).
