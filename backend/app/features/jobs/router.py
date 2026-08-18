@@ -4,6 +4,8 @@ user JWT — they are invoked by Cloud Scheduler, not the browser.
 
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import APIRouter, Header, HTTPException, status
 
 from app.core.config.settings import settings
@@ -30,7 +32,7 @@ async def run_due_reminders(x_internal_key: str | None = Header(default=None)) -
 
 
 @router.post("/email-sync")
-async def email_sync(x_internal_key: str | None = Header(default=None)) -> dict[str, int]:
+async def email_sync(x_internal_key: str | None = Header(default=None)) -> dict[str, Any]:
     _verify_internal_key(x_internal_key)
     from app.features.email_sync.sync import run_all_active_accounts
 
