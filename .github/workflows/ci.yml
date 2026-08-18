@@ -14,6 +14,9 @@ on:
     branches: [main, dev]
   pull_request:
   workflow_dispatch: {}
+  # Nightly, for the integration job only. 06:00 UTC = 02:00 in Chile.
+  schedule:
+    - cron: "0 6 * * *"
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -100,3 +103,75 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  integration:
+    name: Integration (live Supabase + LLM)
+    # Never on push or PR: these tests hit the real Supabase project and spend
+    # Groq tokens, so they run nightly and on demand instead of on every commit.
+    # Until this job existed the 50 integration tests ran only when somebody
+    # remembered `make test-agent` — the last recorded results were 3 months old.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      # Same DB, mirror schema. conftest refuses to run if PostgREST does not
+      # expose it, so a misconfigured run cannot write to production.
+      AGENT_TEST_SCHEMA: propos_test
+      SUPABASE_DB_SCHEMA: propos_test
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      ALLOWED_ORIGINS: '["http://localhost:5173"]'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Poetry
+        run: pipx install poetry==2.4.1
+
+      - name: Cache virtualenv
+        uses: actions/cache@v4
+        with:
+          path: backend/.venv
+          key: venv-${{ runner.os }}-py312-${{ hashFiles('backend/poetry.lock') }}
+
+      - name: Install dependencies
+        run: |
+          poetry config virtualenvs.in-project true
+          poetry install --no-interaction
+
+      # A missing secret must not read as a passing suite. Report exactly what
+      # is absent and skip the run instead of failing on a confusing traceback.
+      - name: Check required secrets
+        id: secrets
+        run: |
+          missing=""
+          for key in SUPABASE_URL SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY GROQ_API_KEY; do
+            eval "value=\${$key:-}"
+            [ -z "$value" ] && missing="$missing $key"
+          done
+          if [ -n "$missing" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Integration tests skipped::Missing repo secrets:$missing. Set them with 'gh secret set <NAME>'. Nothing was verified by this run."
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Pytest (integration)
+        if: steps.secrets.outputs.ready == 'true'
+        run: poetry run pytest tests/integration -m 'integration and not whisper' -q --no-cov
+
+      - name: Upload agent capability matrix
+        if: always() && steps.secrets.outputs.ready == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-results
+          path: backend/tests/integration/agent/results.jsonl
+          if-no-files-found: warn
