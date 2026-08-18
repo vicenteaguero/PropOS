@@ -1,6 +1,15 @@
 import { useMemo, useState } from "react";
-import { Loader2, Search } from "lucide-react";
-import { BrandMark, Chip, Chips, MasterDetail, Segmented, type SegmentedItem } from "@shared/ui";
+import { Search } from "lucide-react";
+import {
+  BrandMark,
+  Chip,
+  Chips,
+  ErrorState,
+  MasterDetail,
+  PageSkeleton,
+  Segmented,
+  type SegmentedItem,
+} from "@shared/ui";
 import { useConversations } from "../hooks/use-client-chat";
 import { ConversationList } from "../components/conversation-list";
 import { ConversationAside } from "../components/conversation-aside";
@@ -26,10 +35,8 @@ export function ClientInboxPage() {
   const [view, setView] = useState<"active" | "archived">("active");
   const [tab, setTab] = useState<ConversationStatus | "all">("open");
   const [query, setQuery] = useState("");
-  const { data: conversations = [], isLoading } = useConversations(
-    tab === "all" ? undefined : tab,
-    view === "archived",
-  );
+  const conversationsQ = useConversations(tab === "all" ? undefined : tab, view === "archived");
+  const conversations = useMemo(() => conversationsQ.data ?? [], [conversationsQ.data]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   // Default time-window: last 30 days (filter client-side).
@@ -90,10 +97,18 @@ export function ClientInboxPage() {
       />
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {isLoading ? (
-          <div className="flex justify-center p-10">
-            <Loader2 className="size-5 animate-spin text-muted-foreground" />
+        {conversationsQ.isError ? (
+          // A failed fetch must not look like an empty inbox: real WhatsApp
+          // messages would silently go unanswered inside the 24h window.
+          <div className="p-5">
+            <ErrorState
+              message="No se pudieron cargar las conversaciones."
+              error={conversationsQ.error}
+              onRetry={() => conversationsQ.refetch()}
+            />
           </div>
+        ) : conversationsQ.isPending ? (
+          <PageSkeleton variant="list" count={6} />
         ) : (
           <ConversationList
             conversations={filtered}
