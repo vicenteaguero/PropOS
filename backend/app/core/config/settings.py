@@ -44,6 +44,20 @@ class Settings(BaseSettings):
     # rolling 24h via the agent_user_turns_today RPC.
     agent_turns_per_user_per_day: int = 50
 
+    # Kill switch for every outbound call to the AI sub-processor (Groq: LLM +
+    # Whisper STT). Ley 21.719 Art. 27 — the DPA with Groq is still unsigned
+    # (docs/compliance/dpa-subprocessors.md), so the RAT's mitigation is an
+    # operable interruptor: set AI_PROCESSING_ENABLED=false and the transfer
+    # stops on the next revision, with no code change and no rollback.
+    ai_processing_enabled: bool = True
+
+    # Retention windows, in days. Read by the compliance retention sweep; each
+    # is env-overridable so a policy change does not need a code deploy.
+    # Defaults mirror docs/compliance/rat.yaml.
+    retention_webhook_events_days: int = 60  # rat.yaml whatsapp_kapso
+    retention_agent_transcripts_days: int = 90  # rat.yaml ia_anita
+    retention_audit_log_days: int = 1825  # rat.yaml auditoria — 5 years
+
     # Kapso (WhatsApp BSP)
     kapso_api_key: str = ""
     kapso_webhook_secret: str = ""
