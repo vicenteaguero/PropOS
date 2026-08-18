@@ -28,6 +28,7 @@ from app.features.agent.context import invalidate_snapshot, load_snapshot
 from app.features.agent.dispatcher import dispatch
 from app.features.agent.intent_registry import get as get_intent_spec
 from app.features.agent.intent_registry import needs_pass_two, normalize_fields, real_captures
+from app.features.agent.llm_retry import LLMUnavailableError
 from app.features.agent.postprocess import dedupe_actions, expand_money_units, normalize_rut
 from app.features.agent.resolver import resolve
 
@@ -40,7 +41,38 @@ async def run_chat_turn(
     user_id: UUID,
     user_text: str,
 ) -> AsyncIterator[dict[str, Any]]:
-    """Run one turn end-to-end. Streams events for the frontend."""
+    """Run one turn end-to-end, streaming events for the frontend.
+
+    Anything the turn raises is caught here and rendered as a Spanish `text`
+    event followed by `done`. The frontend only understands text/tool_use/done,
+    and an SSE stream that just stops looks like a frozen chat.
+    """
+    try:
+        async for event in _stream_turn(session_id, tenant_id, user_id, user_text):
+            yield event
+    except LLMUnavailableError as exc:
+        logger.warning("turn_llm_unavailable", event_type="llm", session_id=str(session_id), error=str(exc)[:200])
+        yield {
+            "type": "text",
+            "text": "El proveedor de IA no está respondiendo. Probá de nuevo en unos segundos. 🙏",
+        }
+        yield {"type": "done", "proposals_created": [], "executed_rows": [], "error": "llm_unavailable"}
+    except Exception as exc:  # noqa: BLE001
+        logger.error("turn_failed", event_type="error", session_id=str(session_id), error=str(exc)[:300])
+        yield {
+            "type": "text",
+            "text": "Se me cayó algo procesando eso. Volvé a intentarlo y, si sigue, avisá al equipo. 🙏",
+        }
+        yield {"type": "done", "proposals_created": [], "executed_rows": [], "error": "turn_failed"}
+
+
+async def _stream_turn(
+    session_id: UUID,
+    tenant_id: UUID,
+    user_id: UUID,
+    user_text: str,
+) -> AsyncIterator[dict[str, Any]]:
+    """The turn itself. Raises; `run_chat_turn` is the degradation boundary."""
     client = get_supabase_client()
     t0 = time.perf_counter()
 
