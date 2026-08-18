@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from functools import partial
+from io import BytesIO
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -16,6 +17,7 @@ from app.core.dependencies import (
     require_scope,
 )
 from app.core.supabase.client import get_supabase_client
+from app.features.agent.audio_store import store_voice_note
 from app.features.agent.chat import run_chat_turn
 from app.features.agent.schemas import (
     AgentSessionResponse,
@@ -302,7 +304,10 @@ async def create_transcript(
     tenant_id: UUID = Depends(get_tenant_id),
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> dict:
-    """Upload audio → server STT (Whisper) → persist transcript."""
+    """Upload audio → server STT (Whisper) → persist audio + transcript."""
+    filename = audio.filename or "audio.webm"
+    raw = await audio.read()
+
     # `transcribe_audio` is fully synchronous (HTTP call to Whisper + a handful
     # of Supabase reads for the vocab). Calling it inline would block the event
     # loop for every other request on this worker until Groq answers.
@@ -310,13 +315,28 @@ async def create_transcript(
         result = await anyio.to_thread.run_sync(
             partial(
                 transcribe_audio,
-                audio.file,
-                audio.filename or "audio.webm",
+                BytesIO(raw),
+                filename,
                 tenant_id=tenant_id,
             )
         )
     except TranscriptionError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    # Keep the original audio: it is the primary evidence behind an amount or
+    # an address the broker dictated, and the only way to reprocess a bad
+    # transcription later.
+    if media_file_id is None:
+        media_file_id = await anyio.to_thread.run_sync(
+            partial(
+                store_voice_note,
+                raw,
+                tenant_id=tenant_id,
+                user_id=current_user["id"],
+                filename=filename,
+                mime=audio.content_type,
+            )
+        )
 
     client = get_supabase_client()
     row = (
