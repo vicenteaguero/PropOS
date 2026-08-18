@@ -5,21 +5,31 @@ Cloud Run scales to zero and can run multiple instances, so PropOS uses
 Each job is an HTTP POST to an internal endpoint, authenticated by a shared
 secret header (`X-Internal-Key`), not a user JWT.
 
+**Region is `us-central1`**, the same as the Cloud Run service. Cloud Scheduler
+rejects `us-east2` outright (`INVALID_ARGUMENT: Location 'us-east2' is not a
+valid location`), so any command copied with that region fails before it reaches
+the API — this document used to instruct exactly that.
+
 ## Endpoints
 
 | Job | Method + path | Cadence | Endpoint | Scheduler job |
 |-----|---------------|---------|----------|---------------|
 | Due reminders | `POST /api/v1/internal/jobs/run-due-reminders` | every 5 min | live | **not created** |
-| Email sync | `POST /api/v1/internal/jobs/email-sync` | every 5 min | live | **not created** |
-| Refresh analytics MVs | `POST /api/v1/internal/jobs/refresh-analytics` | every 15 min | **missing** | **not created** |
+| Refresh analytics MVs | `POST /api/v1/internal/jobs/refresh-analytics` | every 15 min | live | **not created** |
+| Email sync | `POST /api/v1/internal/jobs/email-sync` | every 5 min | live | **out of scope for v0.1.0** |
 
-> **Production state (verified 2026-07-02): no Cloud Scheduler job exists.**
-> `INTERNAL_JOBS_SECRET` was never added to `sync_cloud_env.sh` or to the
-> `--set-secrets` list in `config/docker/cloudbuild.yaml`, so the endpoints answer
-> `503` in prod even if a job were created. Consequence: reminders never fire and
-> portal leads are never ingested. The analytics materialized views have no
-> refresh endpoint at all — they only update when an admin presses the manual
-> refresh button. Fixing this is Gate A of the v0.1.0 remediation plan.
+> **Production state (verified 2026-08-18): no Cloud Scheduler job exists** in
+> `us-central1` or `us-east1`. The wiring is done — `INTERNAL_JOBS_SECRET` is in
+> the `SECRETS` array of `scripts/sync_cloud_env.sh` and in the `--set-secrets`
+> list of `config/docker/cloudbuild.yaml` — but the secret has no value in `.env`
+> yet, so Secret Manager has nothing to mount and the endpoints answer `503`.
+> Consequence today: reminders never fire and the analytics materialized views
+> only refresh when an admin presses the manual button.
+>
+> Email sync is a separate matter: the Titan mailbox is out of scope for
+> v0.1.0, and `scripts/sync_cloud_env.sh` pins `EMAIL_SYNC_ENABLED=false` in the
+> generated Cloud Run env. Do not create that job until the mailbox is back in
+> scope.
 
 All internal endpoints return:
 - `503` if `INTERNAL_JOBS_SECRET` is unset (feature disabled)
@@ -31,38 +41,58 @@ Cloud Scheduler is safe.
 
 ## Setup
 
-1. Set the secret on the Cloud Run service and in `.env`:
+1. Generate the secret, put it in `.env`, and push it to Secret Manager:
 
    ```bash
-   # generate once
-   openssl rand -hex 32
-   # then add to .env (local) and the Cloud Run service env (prod):
-   #   INTERNAL_JOBS_SECRET=<value>
+   openssl rand -hex 32          # add to .env as INTERNAL_JOBS_SECRET=<value>
+   make deploy-secrets-sync      # creates the `internal-jobs-secret` secret
    ```
 
-2. Create the scheduler jobs (replace `<API_URL>` and `<SECRET>`):
+   Then push a commit touching `backend/**` or `config/docker/**` so the trigger
+   redeploys and mounts it. Confirm with:
 
    ```bash
+   make deploy-verify            # detail.integrations.internal_jobs == "on"
+   ```
+
+2. Create the scheduler jobs. `API_URL` is the Cloud Run URL, `SECRET` the value
+   from step 1:
+
+   ```bash
+   API_URL=$(gcloud run services describe propos-api --region us-central1 --format='value(status.url)')
+   SECRET=<the value from .env>
+
    gcloud scheduler jobs create http propos-reminders \
-     --location=us-east2 \
+     --location=us-central1 \
      --schedule="*/5 * * * *" \
-     --uri="https://<API_URL>/api/v1/internal/jobs/run-due-reminders" \
+     --uri="$API_URL/api/v1/internal/jobs/run-due-reminders" \
      --http-method=POST \
-     --headers="X-Internal-Key=<SECRET>" \
+     --headers="X-Internal-Key=$SECRET" \
      --attempt-deadline=120s
 
-   # P4 — email sync:
-   gcloud scheduler jobs create http propos-email-sync \
-     --location=us-east2 \
-     --schedule="*/5 * * * *" \
-     --uri="https://<API_URL>/api/v1/internal/jobs/email-sync" \
+   gcloud scheduler jobs create http propos-refresh-analytics \
+     --location=us-central1 \
+     --schedule="*/15 * * * *" \
+     --uri="$API_URL/api/v1/internal/jobs/refresh-analytics" \
      --http-method=POST \
-     --headers="X-Internal-Key=<SECRET>" \
+     --headers="X-Internal-Key=$SECRET" \
      --attempt-deadline=300s
    ```
 
-3. Verify: `gcloud scheduler jobs run propos-reminders --location=us-east2` then
-   check Cloud Run logs for the `JOBS` event.
+3. Verify:
+
+   ```bash
+   gcloud scheduler jobs run propos-reminders --location=us-central1
+   gcloud scheduler jobs list --location=us-central1
+   ```
+
+   Then check Cloud Run logs for the `JOBS` event. Logs are JSON in production,
+   so filter on `jsonPayload.event_type="job"` rather than scanning text.
+
+`GET /health/ready` reports `detail.jobs.reminders_overdue`: reminders still
+`PENDING` more than 15 minutes past due. A non-zero count there means the
+reminders job is not running, which is the symptom this whole document exists to
+prevent.
 
 > Hardening note (post-v0.1.0): swap the shared-secret header for OIDC tokens
 > (`--oidc-service-account-email`) so the endpoint validates a Google-signed
