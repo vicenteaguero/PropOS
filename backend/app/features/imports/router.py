@@ -14,7 +14,7 @@ router = APIRouter(
     dependencies=[Depends(require_role("ADMIN")), Depends(require_scope("datos"))],
 )
 
-_ENTITIES = {"contacts", "transactions"}
+_ENTITIES = {"contacts", "transactions", "properties"}
 
 
 @router.get("")
