@@ -99,15 +99,34 @@ steps:
         EMAIL_IMAP_USER=email-imap-user
         EMAIL_IMAP_PASSWORD=email-imap-password"
 
+        # Optional by design: the AI providers we do not use, and the Titan
+        # mailbox, which is deliberately out of scope. Anything else missing is
+        # a broken deploy, not a feature that is merely off -- an unmounted
+        # secret produces a green build with a dead feature, which is
+        # indistinguishable from the state this pipeline is meant to fix.
+        OPTIONAL="anthropic-api-key openai-api-key email-imap-user email-imap-password"
+
         SECRETS=""
+        MISSING=""
         for pair in $$PAIRS; do
           name="$${pair#*=}"
           if gcloud secrets describe "$$name" >/dev/null 2>&1; then
             SECRETS="$${SECRETS:+$$SECRETS,}$$pair:latest"
+          elif echo "$$OPTIONAL" | grep -qw "$$name"; then
+            echo "skip optional secret (not provisioned): $$name"
           else
-            echo "skip secret (not provisioned): $$name"
+            echo "MISSING required secret: $$name"
+            MISSING="$${MISSING:+$$MISSING }$$name"
           fi
         done
+
+        if [ -n "$$MISSING" ]; then
+          echo "ERROR: required secrets are not provisioned: $$MISSING" >&2
+          echo "Run 'make deploy-secrets-sync' with the values present in .env," >&2
+          echo "and confirm the build service account holds roles/secretmanager.viewer" >&2
+          echo "-- without it 'gcloud secrets describe' fails and every secret looks absent." >&2
+          exit 1
+        fi
         echo "==> mounting secrets: $$SECRETS"
 
         gcloud run deploy propos-api \

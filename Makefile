@@ -215,7 +215,8 @@ deploy-setup: gcloud-auth
 	gcloud artifacts repositories create propos --repository-format=docker --location=$(GCP_REGION) || true
 	@bash scripts/log.sh DEPLOY "🔑" "Granting Cloud Build SA roles"
 	@PROJECT_NUM=$$(gcloud projects describe $(GCP_PROJECT_ID) --format='value(projectNumber)'); \
-		SA="$$PROJECT_NUM-compute@developer.gserviceaccount.com"; \
+		SA="$${CLOUD_BUILD_SA:-propos-cloudbuild@$(GCP_PROJECT_ID).iam.gserviceaccount.com}"; \
+		echo "  target SA: $$SA (the trigger runs as this one, not the compute default)"; \
 		for role in run.admin iam.serviceAccountUser artifactregistry.writer secretmanager.secretAccessor secretmanager.viewer; do \
 			gcloud projects add-iam-policy-binding $(GCP_PROJECT_ID) \
 				--member="serviceAccount:$$SA" \
