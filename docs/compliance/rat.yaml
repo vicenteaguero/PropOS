@@ -1,7 +1,11 @@
 # Registro de Actividades de Tratamiento (RAT)
 # Ley N° 21.719 (Chile), Art. 15 ter.
 # Aplica a las marcas operadas en PropOS: CETER y ANAIDA.
-# Versión 1.1 — 2026-05-16. Mantener actualizado a mano cuando se agregue un nuevo tratamiento.
+# Versión 1.2 — 2026-08-16. Mantener actualizado a mano cuando se agregue un nuevo tratamiento.
+#
+# v1.1 -> v1.2: corregida la declaración de aprobación humana del asistente IA
+# (ver nota de ia_anita) y anotadas las retenciones que ahora tienen ejecutor
+# real en compliance/service.py + migración 20240601000051.
 #
 # RUTs marcados "pendiente-constitucion-spa" se actualizan cuando las SpAs
 # CETER y ANAIDA queden constituidas formalmente. Fecha objetivo: 2026-Q3.
@@ -66,12 +70,12 @@ tratamientos:
     transferencia_internacional:
       destino: "Estados Unidos"
       mecanismo: "SCC del proveedor"
-    retencion: "30 días si el proceso falla; 6 años si concluye"
+    retencion: "30 días si el proceso falla; 6 años si concluye (media_files.purge_after, purgado por el retention sweep)"
     medidas_seguridad: [cifrado_reposo, signed_urls_efimeras, audit_log_lecturas, bucket_privado]
 
   - id: ia_anita
     nombre: "Asistente IA Anita"
-    finalidad: "Apoyar al corredor en consultas sobre el CRM, redacción de mensajes y propuestas de acciones (que el humano siempre aprueba antes de ejecutar)."
+    finalidad: "Apoyar al corredor en consultas sobre el CRM, redacción de mensajes y ejecución de acciones sobre sus propios datos de gestión."
     categorias_titulares: [usuarios_internos, contactos_referenciados_en_prompts]
     categorias_datos: [identificacion, contacto, mensajes, contexto_crm]
     base_licitud: contrato
@@ -79,19 +83,38 @@ tratamientos:
     sub_encargados: [Groq]
     transferencia_internacional:
       destino: "Estados Unidos"
-      mecanismo: "DPA + SCC del proveedor LLM — DPA con Groq PENDIENTE"
-    retencion: "90 días"
-    medidas_seguridad: [pending_proposals_con_aprobacion_humana, audit_log, opt_out_training_provider]
+      mecanismo: "DPA + SCC del proveedor LLM — DPA con Groq PENDIENTE; mitigado por kill switch AI_PROCESSING_ENABLED"
+    retencion: "90 días (transcripciones purgadas por compliance_purge_agent_transcripts)"
+    medidas_seguridad: [aprobacion_humana_parcial, kill_switch_AI_PROCESSING_ENABLED, audit_log, opt_out_training_provider]
     nota: |
       Corregido 2026-07-02. El único proveedor LLM/STT en uso es Groq Inc. (US),
       hardcodeado en agent/classifier.py, agent/tools/text_to_sql.py y
-      agent/transcribe.py. Anthropic y Cerebras NO procesan datos hoy (el swap
-      por proveedor quedó diferido post-v0.1.0).
+      agent/transcribe.py (más properties/describe.py y channels/client_agent.py).
+      Anthropic y Cerebras NO procesan datos hoy (el swap por proveedor quedó
+      diferido post-v0.1.0).
       Groq Whisper STT está ACTIVO: todas las notas de voz del asistente se
       envían a Groq. La versión anterior de este registro decía que el STT
       estaba deshabilitado vía ANITA_STT_ENABLED=false — ese flag no existe en
       el código. DPA con Groq requerido (Art. 27); ver dpa-subprocessors.md.
       El audio se transcribe pero no se persiste en media_files.
+
+      Corregido 2026-08-16 — aprobación humana. Las versiones anteriores de
+      este registro declaraban que "el humano siempre aprueba antes de
+      ejecutar". Es falso: en agent/intent_registry.py el default es
+      auto_commit=True y solo dos de los doce intents lo sobrescriben
+      (update_person y log_transaction). Los otros diez —crear contacto,
+      registrar interacción, crear tarea, evento, nota, organización,
+      propiedad, campaña, adjuntar fotos, crear documento desde fotos—
+      escriben directo en el CRM sin pasar por pending_proposals.
+      No hay decisiones automatizadas con efectos jurídicos ni elaboración de
+      perfiles sobre el titular (Art. 8 bis): las acciones son de gestión
+      interna del corredor. Toda escritura queda en audit_log con
+      source='agent' y su agent_session_id, así que es reconstruible cuál
+      acción fue automática y cuál humana.
+
+      Kill switch (2026-08-16). AI_PROCESSING_ENABLED=false corta toda llamada
+      al sub-encargado de IA sin desplegar código. Es la mitigación operativa
+      mientras el DPA con Groq siga sin firmar; ver core/ai_guard.py.
 
   - id: whatsapp_kapso
     nombre: "Comunicación WhatsApp vía Kapso (BSP)"
@@ -104,7 +127,7 @@ tratamientos:
     transferencia_internacional:
       destino: "Estados Unidos / Internacional"
       mecanismo: "DPA + SCC con Kapso; Meta opera bajo sus propios términos"
-    retencion: "24 meses; webhooks crudos 60 días"
+    retencion: "24 meses; webhooks crudos 60 días (kapso_webhook_events.purge_after, purgado por compliance_purge_webhook_events)"
     medidas_seguridad: [HMAC_webhook, RLS_por_tenant, audit_log]
     nota: "Broadcast/marketing masivo deshabilitado por flag WHATSAPP_BROADCAST_ENABLED=false hasta validar consentimientos."
 
@@ -133,5 +156,5 @@ tratamientos:
     transferencia_internacional:
       destino: "Estados Unidos"
       mecanismo: "SCC del proveedor"
-    retencion: "5 años (alineado con plazo APDP)"
-    medidas_seguridad: [tabla_inmutable_via_trigger, RLS_admin_only]
+    retencion: "5 años (alineado con plazo APDP); purga vía compliance_purge_audit_log, único camino de borrado desde 20240601000047"
+    medidas_seguridad: [tabla_append_only_sin_politica_delete, RLS_admin_only, redaccion_de_PII_ante_supresion]
