@@ -6,6 +6,7 @@ import { useConversations } from "@features/client-chat/hooks/use-client-chat";
 import { useEmailThreads } from "@features/email/hooks/use-email";
 import { useContacts } from "@features/contacts/hooks/use-contacts";
 import { CONTACT_TYPE_LABELS, type ContactType } from "@features/contacts/types";
+import type { UserProfile } from "@shared/types/auth";
 import { PageLayout } from "@shared/components/page-layout";
 import { PageHeader } from "@shared/components/page-header";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
@@ -62,6 +63,18 @@ const FILTERS = [
 ];
 
 /**
+ * Métricas reads `/v1/analytics/pipeline`, which the backend gates with
+ * `require_role("ADMIN")` + `require_scope("analytics")` — an empty scope means
+ * full admin. The bandeja route itself is open to AGENT, so the tab has to
+ * mirror that gate or an AGENT gets a 403 from a tab we offered them.
+ */
+function canSeeMetrics(user: UserProfile | null): boolean {
+  if (!user || user.role !== "ADMIN") return false;
+  const scope = user.adminScope ?? [];
+  return scope.length === 0 || scope.includes("analytics");
+}
+
+/**
  * CRM screen — a tabbed surface over Bandeja / Pipeline / Métricas.
  *
  * Bandeja merges recent WhatsApp + Email activity into one list and routes into
@@ -75,6 +88,15 @@ export function BandejaPage() {
   const base = `/${(user?.role ?? "ADMIN").toLowerCase()}`;
   const [tab, setTab] = useState<Tab>("bandeja");
   const [filter, setFilter] = useState<FilterId>("todos");
+
+  const showMetrics = canSeeMetrics(user);
+  const tabs = useMemo(
+    () => (showMetrics ? TABS : TABS.filter((t) => t.id !== "metricas")),
+    [showMetrics],
+  );
+  // Falling back keeps the surface coherent if the tab disappears mid-session
+  // (e.g. switching into a workspace where the user is not a full admin).
+  const activeTab: Tab = tab === "metricas" && !showMetrics ? "bandeja" : tab;
 
   const convos = useConversations();
   const emails = useEmailThreads({});
@@ -249,16 +271,16 @@ export function BandejaPage() {
             className="mb-0"
           />
           <Segmented
-            items={TABS}
-            value={tab}
+            items={tabs}
+            value={activeTab}
             onChange={(id) => setTab(id as Tab)}
             className="shrink-0 border-b-0 px-0"
           />
         </div>
 
-        {tab === "bandeja" && bandejaBody(true)}
-        {tab === "pipeline" && <CrmPipeline />}
-        {tab === "metricas" && <CrmMetrics />}
+        {activeTab === "bandeja" && bandejaBody(true)}
+        {activeTab === "pipeline" && <CrmPipeline />}
+        {activeTab === "metricas" && <CrmMetrics />}
       </PageLayout>
     );
   }
@@ -269,12 +291,12 @@ export function BandejaPage() {
       <PageHeader title="CRM" description="Conversaciones, pipeline y métricas en un solo lugar." />
 
       <div className="mb-4">
-        <Segmented items={TABS} value={tab} onChange={(id) => setTab(id as Tab)} />
+        <Segmented items={tabs} value={activeTab} onChange={(id) => setTab(id as Tab)} />
       </div>
 
-      {tab === "bandeja" && bandejaBody(false)}
-      {tab === "pipeline" && <CrmPipeline />}
-      {tab === "metricas" && <CrmMetrics />}
+      {activeTab === "bandeja" && bandejaBody(false)}
+      {activeTab === "pipeline" && <CrmPipeline />}
+      {activeTab === "metricas" && <CrmMetrics />}
     </PageLayout>
   );
 }
