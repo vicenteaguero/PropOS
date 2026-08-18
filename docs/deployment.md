@@ -129,7 +129,27 @@ turning production on, tracked separately from this deployment wiring.
 
 ## Health
 
-`GET /health` returns a static `{"status":"healthy"}` — it proves the process is
-up, not that Supabase, Groq or any secret is reachable. `make deploy-verify` and
-`.github/workflows/keepalive.yml` both rely on it, so treat a green health check
-as "the container started", nothing more.
+Two endpoints, two different questions.
+
+`GET /health` is liveness: a static `{"status":"healthy"}` that proves the
+process is up and nothing else. It is what a restart policy should poll, and it
+cannot fail for any reason short of a dead container.
+
+`GET /health/ready` is readiness. It reads one row through PostgREST and checks
+that the core secrets are present, so a rotated Supabase key, a free-tier
+project paused for inactivity or an unmounted secret answer **503** instead of
+green. Optional integrations (Kapso, Resend, internal jobs, `agent_readonly`,
+email sync) are reported but never fail the check — they are off on purpose
+until their secret is provisioned.
+
+```json
+{"status":"ready","checks":{"database":"ok","secrets":"ok"},
+ "detail":{"missing_secrets":[],"integrations":{"whatsapp_kapso":"off"},
+           "jobs":{"status":"ok","reminders_overdue":0}}}
+```
+
+`detail` is only included outside production, or when the request carries
+`X-Internal-Key: $INTERNAL_JOBS_SECRET` — a public endpoint should not
+enumerate the deployment's wiring. `make deploy-verify`, the post-deploy smoke
+test in `config/docker/cloudbuild.yaml` and `.github/workflows/keepalive.yml`
+all poll `/health/ready`, and all three now exit non-zero when it is not 200.

@@ -247,11 +247,19 @@ deploy-backend: gcloud-auth
 	@bash scripts/log.sh DEPLOY "✅" "Deployed. URL:"
 	@gcloud run services describe propos-api --region $(GCP_REGION) --format='value(status.url)'
 
+# Readiness, not liveness. /health is a constant that cannot fail while the
+# process lives, so it used to pass with a rotated Supabase key or a paused
+# project; /health/ready actually talks to the database. Pass the internal key
+# (from .env) and the response also lists which integrations are dark.
 deploy-verify:
-	@bash scripts/log.sh DEPLOY "🔍" "Health check"
+	@bash scripts/log.sh DEPLOY "🔍" "Readiness check"
 	@URL=$$(gcloud run services describe propos-api --region $(GCP_REGION) --format='value(status.url)' 2>/dev/null); \
 		if [ -z "$$URL" ]; then echo "service not deployed yet" && exit 1; fi; \
-		curl -sf "$$URL/health" && echo "" || echo "FAIL"
+		CODE=$$(curl -s --max-time 30 -o /tmp/propos-ready.json -w '%{http_code}' \
+			-H "X-Internal-Key: $$INTERNAL_JOBS_SECRET" "$$URL/health/ready" || echo 000); \
+		cat /tmp/propos-ready.json 2>/dev/null; echo ""; \
+		if [ "$$CODE" != "200" ]; then echo "NOT READY (http=$$CODE) — $$URL"; exit 1; fi; \
+		echo "ready — $$URL"
 
 # Production frontend deploys ONLY via `git push origin main` (Vercel project
 # prop-os). Both .vercel/project.json files link to prop-os-edge, so a local
