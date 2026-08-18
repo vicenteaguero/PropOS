@@ -8,6 +8,7 @@ from app.core.config import settings as settings_module
 from app.features.jobs import service as jobs_service
 
 JOBS_PATH = "/api/v1/internal/jobs/run-due-reminders"
+ANALYTICS_PATH = "/api/v1/internal/jobs/refresh-analytics"
 
 
 def _reminders_table(due: list[dict] | None = None, claimed: list[dict] | None = None) -> MagicMock:
@@ -48,6 +49,32 @@ async def test_jobs_200_on_correct_key(mock_client, client, monkeypatch):
 
     assert response.status_code == 200
     assert response.json() == {"sent": 0, "failed": 0, "recovered": 0, "claimed": 0}
+
+
+class TestRefreshAnalyticsEndpoint:
+    @pytest.mark.asyncio
+    async def test_503_when_secret_unset(self, client, monkeypatch):
+        monkeypatch.setattr(settings_module.settings, "internal_jobs_secret", "", raising=False)
+        assert (await client.post(ANALYTICS_PATH)).status_code == 503
+
+    @pytest.mark.asyncio
+    async def test_403_on_wrong_key(self, client, monkeypatch):
+        monkeypatch.setattr(settings_module.settings, "internal_jobs_secret", "s3cret", raising=False)
+        response = await client.post(ANALYTICS_PATH, headers={"X-Internal-Key": "nope"})
+        assert response.status_code == 403
+
+    @pytest.mark.asyncio
+    @patch("app.features.jobs.service.get_supabase_client")
+    async def test_200_calls_the_rpc_with_the_service_role_client(self, mock_client, client, monkeypatch):
+        monkeypatch.setattr(settings_module.settings, "internal_jobs_secret", "s3cret", raising=False)
+
+        response = await client.post(ANALYTICS_PATH, headers={"X-Internal-Key": "s3cret"})
+
+        assert response.status_code == 200
+        assert response.json() == {"refreshed": True}
+        # Migration 46 revoked EXECUTE from `authenticated`; only service-role works.
+        mock_client.assert_called_once_with()
+        mock_client.return_value.rpc.assert_called_once_with("refresh_analytics", {})
 
 
 class TestStuckRecovery:
