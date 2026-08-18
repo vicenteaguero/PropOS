@@ -31,3 +31,17 @@ def test_coerce_transaction_invalid_amount():
 def test_coerce_contact_type_upper():
     out = coerce_row("contacts", {"type": "buyer"})
     assert out["type"] == "BUYER"
+
+
+def test_coerce_contact_rut_canonicalized():
+    out = coerce_row("contacts", {"rut": "20.442.436-5"})
+    assert out["rut"] == "20442436-5"
+
+
+def test_coerce_contact_rut_blank_becomes_none():
+    assert coerce_row("contacts", {"rut": "  "})["rut"] is None
+
+
+def test_coerce_contact_bad_rut_left_raw_for_the_validator():
+    # Must not raise: one bad row cannot abort the whole file.
+    assert coerce_row("contacts", {"rut": "20442436-9"})["rut"] == "20442436-9"

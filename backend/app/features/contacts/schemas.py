@@ -5,8 +5,9 @@ from enum import Enum
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, field_validator
 
+from app.core.rut import parse_rut
 from app.features.compliance.schemas import ConsentEvidence
 
 
@@ -42,6 +43,11 @@ class ContactCreate(ContactBase):
     consent_purposes: list[str] = ["operacional"]
     consent_version: str = "1.0"
 
+    @field_validator("rut")
+    @classmethod
+    def _canonical_rut(cls, value: str | None) -> str | None:
+        return parse_rut(value)
+
 
 class ContactUpdate(BaseModel):
     full_name: str | None = None
@@ -54,6 +60,11 @@ class ContactUpdate(BaseModel):
     notes: str | None = None
     metadata: dict[str, Any] | None = None
     is_draft: bool | None = None
+
+    @field_validator("rut")
+    @classmethod
+    def _canonical_rut(cls, value: str | None) -> str | None:
+        return parse_rut(value)
 
 
 class ContactResponse(ContactBase):

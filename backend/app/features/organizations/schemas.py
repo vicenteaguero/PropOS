@@ -5,7 +5,9 @@ from enum import Enum
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, field_validator
+
+from app.core.rut import parse_rut
 
 
 class OrganizationKind(str, Enum):
@@ -33,7 +35,10 @@ class OrganizationBase(BaseModel):
 
 
 class OrganizationCreate(OrganizationBase):
-    pass
+    @field_validator("rut")
+    @classmethod
+    def _canonical_rut(cls, value: str | None) -> str | None:
+        return parse_rut(value)
 
 
 class OrganizationUpdate(BaseModel):
@@ -46,6 +51,11 @@ class OrganizationUpdate(BaseModel):
     address: str | None = None
     notes: str | None = None
     metadata: dict[str, Any] | None = None
+
+    @field_validator("rut")
+    @classmethod
+    def _canonical_rut(cls, value: str | None) -> str | None:
+        return parse_rut(value)
 
 
 class OrganizationResponse(OrganizationBase):

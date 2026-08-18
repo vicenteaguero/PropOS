@@ -6,6 +6,8 @@ raw CSV row into the dict the domain table expects (typing amounts, etc.).
 
 from __future__ import annotations
 
+from app.core.rut import parse_rut
+
 CONTACT_ALIASES = {
     "nombre": "full_name",
     "name": "full_name",
@@ -63,6 +65,17 @@ def coerce_row(entity: str, row: dict) -> dict:
             out["direction"] = str(out["direction"]).strip().upper()
         if out.get("category"):
             out["category"] = str(out["category"]).strip().upper()
-    if entity == "contacts" and out.get("type"):
-        out["type"] = str(out["type"]).strip().upper()
+    if entity == "contacts":
+        if out.get("type"):
+            out["type"] = str(out["type"]).strip().upper()
+        if "rut" in out:
+            # Canonicalize here, not just in the validator: `commit` inserts the
+            # staged row, so a dotted "20.442.436-5" would reach the table raw.
+            # A bad RUT is left as-is so the schema validator rejects that one
+            # row with a message instead of failing the whole file.
+            raw_rut = str(out["rut"] or "").strip()
+            try:
+                out["rut"] = parse_rut(raw_rut) if raw_rut else None
+            except ValueError:
+                out["rut"] = raw_rut
     return out
