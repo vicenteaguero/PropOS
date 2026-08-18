@@ -371,3 +371,152 @@ def test_default_tenant_resolver_is_gone():
     from app.features.channels import client_agent
 
     assert not hasattr(client_agent, "_resolve_default_tenant")
+
+
+# ─────────────── opt-out (P1-10) ───────────────
+
+
+def test_opt_out_keywords_match_whole_message():
+    from app.features.channels import client_agent
+
+    for text in ("STOP", "baja", "Salir.", "  ELIMINAR  ", "cancelar", "unsubscribe"):
+        assert client_agent.is_opt_out_request(text) is True
+
+
+def test_opt_out_phrases_match_anywhere():
+    from app.features.channels import client_agent
+
+    for text in (
+        "por favor dar de baja mi número",
+        "No me escriban más",
+        "quiero que eliminen mis datos",
+        "revoco mi consentimiento para whatsapp",
+    ):
+        assert client_agent.is_opt_out_request(text) is True
+
+
+def test_ordinary_messages_are_not_opt_out():
+    from app.features.channels import client_agent
+
+    for text in (
+        "quiero cancelar la visita del martes",
+        "hola, me interesa el depto de Ñuñoa",
+        "puedo salir a verlo mañana?",
+        "",
+    ):
+        assert client_agent.is_opt_out_request(text) is False
+
+
+def test_inbound_reply_does_not_revive_revoked_consent(monkeypatch):
+    """A revoked contact stays revoked no matter what they answer."""
+    from app.features.channels import client_agent
+
+    db = _FakeDB(
+        {
+            "client_consents": [
+                {
+                    "id": "consent-1",
+                    "tenant_id": TENANT_A,
+                    "contact_id": "contact-1",
+                    "channel": "whatsapp",
+                    "opted_in_at": None,
+                    "opted_out_at": "2026-08-01T00:00:00+00:00",
+                }
+            ]
+        }
+    )
+    _patch_db(monkeypatch, db, "app.features.channels.client_agent")
+    client_agent._record_inbound_consent(TENANT_A, "contact-1")
+
+    consent = db.rows["client_consents"][0]
+    assert consent["opted_out_at"] == "2026-08-01T00:00:00+00:00"
+    assert consent["opted_in_at"] is None
+    assert db.updates == []
+
+
+def test_first_inbound_still_records_opt_in(monkeypatch):
+    from app.features.channels import client_agent
+
+    db = _FakeDB({"client_consents": []})
+    _patch_db(monkeypatch, db, "app.features.channels.client_agent")
+    client_agent._record_inbound_consent(TENANT_A, "contact-1")
+
+    assert db.inserts[0][0] == "client_consents"
+    assert db.inserts[0][1]["opted_in_at"]
+
+
+def test_record_opt_out_revokes_existing_consent(monkeypatch):
+    from app.features.channels import client_agent
+
+    db = _FakeDB(
+        {
+            "client_consents": [
+                {
+                    "id": "consent-1",
+                    "tenant_id": TENANT_A,
+                    "contact_id": "contact-1",
+                    "channel": "whatsapp",
+                    "opted_in_at": "2026-07-01T00:00:00+00:00",
+                    "opted_out_at": None,
+                }
+            ]
+        }
+    )
+    _patch_db(monkeypatch, db, "app.features.channels.client_agent")
+    client_agent._record_opt_out(TENANT_A, "contact-1")
+
+    consent = db.rows["client_consents"][0]
+    assert consent["opted_in_at"] is None
+    assert consent["opted_out_at"]
+
+
+def test_opt_out_message_confirms_and_skips_the_llm(monkeypatch):
+    """STOP must revoke, answer with the confirmation, and never reach the LLM."""
+    import asyncio
+
+    from app.features.channels import client_agent
+
+    db = _FakeDB(
+        {
+            "contacts": [{"id": "contact-1", "tenant_id": TENANT_A, "phone": "+56911111111"}],
+            "client_conversations": [
+                {
+                    "id": "conv-1",
+                    "tenant_id": TENANT_A,
+                    "contact_id": "contact-1",
+                    "source": "whatsapp",
+                    "ai_enabled": True,
+                    "status": "open",
+                }
+            ],
+            "client_consents": [],
+        }
+    )
+    _patch_db(monkeypatch, db, "app.features.channels.client_agent")
+
+    sent: list[str] = []
+
+    async def _fake_send_text(_phone, text):
+        sent.append(text)
+        return {"messages": [{"id": "wamid.out"}]}
+
+    async def _explode(*_a, **_k):
+        raise AssertionError("LLM must not be called on an opt-out message")
+
+    monkeypatch.setattr(client_agent.kapso_client, "send_text", _fake_send_text)
+    monkeypatch.setattr(client_agent, "_generate_reply", _explode)
+
+    asyncio.run(
+        client_agent.handle_inbound_client(
+            tenant_id=TENANT_A,
+            phone_e164="+56911111111",
+            user_text="BAJA",
+            external_message_id="wamid.in",
+            external_thread_id="thread-1",
+        )
+    )
+
+    assert sent == [client_agent.OPT_OUT_REPLY]
+    consent = db.rows["client_consents"][0]
+    assert consent["opted_out_at"]
+    assert consent["opted_in_at"] is None

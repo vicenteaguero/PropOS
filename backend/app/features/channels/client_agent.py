@@ -13,6 +13,8 @@ Differs from Agent:
 
 from __future__ import annotations
 
+import re
+import unicodedata
 from datetime import UTC, datetime
 from typing import Any
 
@@ -39,6 +41,47 @@ Si pide agendar una visita, confirma fecha/hora tentativa y dile que el broker c
 Si la consulta es ambigua o requiere decisión humana (precio, oferta, comisión), responde
 "Te paso con un asesor en breve" y NO inventes datos.
 NO prometas precios, NO confirmes disponibilidad, NO firmes nada en nombre del broker."""
+
+
+# Whole-message revocation keywords (Meta opt-out convention).
+OPT_OUT_KEYWORDS = frozenset(
+    {
+        "stop",
+        "baja",
+        "salir",
+        "eliminar",
+        "cancelar",
+        "unsubscribe",
+        "desuscribir",
+        "desuscribirme",
+        "desinscribir",
+        "remover",
+    }
+)
+
+# Unambiguous revocation phrases, matched anywhere in the message.
+OPT_OUT_PHRASES = (
+    "dar de baja",
+    "darme de baja",
+    "darse de baja",
+    "no me escriban",
+    "no me escribas",
+    "no me contacten",
+    "no me contacte",
+    "no contactar",
+    "no quiero recibir",
+    "no quiero mas mensajes",
+    "revoco mi consentimiento",
+    "retiro mi consentimiento",
+)
+
+# Same intent, too many conjugations to enumerate ("elimina/eliminen/borren…").
+OPT_OUT_PATTERNS = (re.compile(r"\b(borr|elimin|suprim)\w*\s+(todos\s+)?mis\s+datos\b"),)
+
+OPT_OUT_REPLY = (
+    "Listo, no te enviaremos más mensajes por WhatsApp. "
+    "Si fue un error, escríbele a un asesor por otro medio para reactivarlos."
+)
 
 
 async def handle_inbound_client(
@@ -84,6 +127,14 @@ async def handle_inbound_client(
         "id", conv["id"]
     ).execute()
 
+    # Opt-out keywords are handled before anything else touches consent or the
+    # LLM: a revocation must never be answered by the assistant, and must never
+    # be counted as an inbound opt-in.
+    if is_opt_out_request(user_text):
+        _record_opt_out(conv["tenant_id"], contact["id"])
+        await _send_reply(conv, phone_e164, OPT_OUT_REPLY)
+        return
+
     # Auto-record inbound consent (replying counts as opt-in for utility).
     _record_inbound_consent(conv["tenant_id"], contact["id"])
 
@@ -95,6 +146,12 @@ async def handle_inbound_client(
     if not reply:
         return
 
+    await _send_reply(conv, phone_e164, reply)
+
+
+async def _send_reply(conv: dict[str, Any], phone_e164: str, text: str) -> None:
+    """Persist the outbound turn, ship it via Kapso, track delivery."""
+    db = get_supabase_client()
     msg = (
         db.table("client_messages")
         .insert(
@@ -103,7 +160,7 @@ async def handle_inbound_client(
                 "conversation_id": conv["id"],
                 "direction": "outbound",
                 "sender_type": "agent_ai",
-                "content": reply,
+                "content": text,
                 "delivery_status": "queued",
             }
         )
@@ -111,7 +168,7 @@ async def handle_inbound_client(
         .data[0]
     )
     try:
-        resp = await kapso_client.send_text(phone_e164, reply)
+        resp = await kapso_client.send_text(phone_e164, text)
         ext = (resp.get("messages") or [{}])[0].get("id")
         db.table("client_messages").update({"delivery_status": "sent", "external_message_id": ext}).eq(
             "id", msg["id"]
@@ -203,11 +260,35 @@ def _ensure_conversation(
     )
 
 
-def _record_inbound_consent(tenant_id: str, contact_id: str) -> None:
+def _normalize_for_keywords(text: str) -> str:
+    decomposed = unicodedata.normalize("NFD", text.strip().lower())
+    without_accents = "".join(c for c in decomposed if not unicodedata.combining(c))
+    return re.sub(r"\s+", " ", re.sub(r"[^\w\s]", " ", without_accents)).strip()
+
+
+def is_opt_out_request(text: str) -> bool:
+    """True when the contact is revoking consent for this channel.
+
+    Single keywords only match a *whole* message, so "quiero cancelar la
+    visita del martes" stays an ordinary message; the multi-word phrases are
+    unambiguous enough to match anywhere.
+    """
+    normalized = _normalize_for_keywords(text)
+    if not normalized:
+        return False
+    if normalized in OPT_OUT_KEYWORDS:
+        return True
+    if any(phrase in normalized for phrase in OPT_OUT_PHRASES):
+        return True
+    return any(pattern.search(normalized) for pattern in OPT_OUT_PATTERNS)
+
+
+def _record_opt_out(tenant_id: str, contact_id: str) -> None:
+    """Revoke WhatsApp consent — Ley 21.719 Art. 12 + Meta opt-out policy."""
     db = get_supabase_client()
     existing = (
         db.table("client_consents")
-        .select("id, opted_in_at")
+        .select("id")
         .eq("tenant_id", tenant_id)
         .eq("contact_id", contact_id)
         .eq("channel", "whatsapp")
@@ -215,6 +296,39 @@ def _record_inbound_consent(tenant_id: str, contact_id: str) -> None:
         .execute()
         .data
     )
+    revocation = {"opted_out_at": _now(), "opted_in_at": None, "method": "inbound_reply"}
+    if existing:
+        db.table("client_consents").update(revocation).eq("id", existing[0]["id"]).execute()
+    else:
+        db.table("client_consents").insert(
+            {
+                "tenant_id": tenant_id,
+                "contact_id": contact_id,
+                "channel": "whatsapp",
+                **revocation,
+            }
+        ).execute()
+    logger.info("client_agent_opt_out", event_type="compliance", contact_id=contact_id, tenant_id=tenant_id)
+
+
+def _record_inbound_consent(tenant_id: str, contact_id: str) -> None:
+    db = get_supabase_client()
+    existing = (
+        db.table("client_consents")
+        .select("id, opted_in_at, opted_out_at")
+        .eq("tenant_id", tenant_id)
+        .eq("contact_id", contact_id)
+        .eq("channel", "whatsapp")
+        .limit(1)
+        .execute()
+        .data
+    )
+    if existing and existing[0].get("opted_out_at"):
+        # Revoked. Answering a message is not a renewed consent: re-opt-in
+        # has to be an explicit informed act (Ley 21.719 Art. 12), captured
+        # by a broker through the consents endpoint.
+        logger.info("client_agent_consent_kept_revoked", event_type="compliance", contact_id=contact_id)
+        return
     if existing and existing[0].get("opted_in_at"):
         return
     if existing:
