@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2 } from "lucide-react";
 import { useAuth } from "@shared/hooks/use-auth";
 import { useConversations } from "@features/client-chat/hooks/use-client-chat";
 import { useEmailThreads } from "@features/email/hooks/use-email";
@@ -10,9 +9,18 @@ import type { UserProfile } from "@shared/types/auth";
 import { PageLayout } from "@shared/components/page-layout";
 import { PageHeader } from "@shared/components/page-header";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
-import { Row, Segmented, Pill, Chips, Chip, BrandMark, type PillTone } from "@shared/ui";
+import {
+  Row,
+  Segmented,
+  Pill,
+  Chips,
+  Chip,
+  BrandMark,
+  ErrorState,
+  PageSkeleton,
+  type PillTone,
+} from "@shared/ui";
 import { useIsDesktop } from "@/hooks/use-mobile";
-import { Button } from "@/components/ui/button";
 import { CrmPipeline } from "../components/crm-pipeline";
 import { CrmMetrics } from "../components/crm-metrics";
 
@@ -173,27 +181,17 @@ export function BandejaPage() {
   const goTo = (channel: Channel) =>
     navigate(channel === "whatsapp" ? `${base}/client-inbox` : `${base}/correos`);
 
-  const loading = (
-    <div className="flex justify-center py-12">
-      <Loader2 className="size-5 animate-spin text-muted-foreground" />
-    </div>
-  );
+  const loading = <PageSkeleton variant="list" count={5} />;
 
   const errorBox = (
-    <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
-      No se pudo cargar la bandeja.
-      <Button
-        variant="ghost"
-        size="sm"
-        className="ml-2"
-        onClick={() => {
-          void convos.refetch();
-          void emails.refetch();
-        }}
-      >
-        Reintentar
-      </Button>
-    </div>
+    <ErrorState
+      message="No se pudo cargar la bandeja."
+      onRetry={() => {
+        void convos.refetch();
+        void emails.refetch();
+      }}
+      compact
+    />
   );
 
   const empty = <EmptyState title="Bandeja vacía" description="No hay conversaciones recientes." />;
