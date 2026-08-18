@@ -21,6 +21,7 @@ from datetime import UTC, datetime, timedelta
 
 from app.core.config.settings import settings
 from app.core.logging.logger import get_logger
+from app.core.supabase import storage
 from app.core.supabase.client import get_supabase_client
 from app.features.agent.chat import run_chat_turn
 from app.features.agent.transcribe import transcribe_audio
@@ -34,7 +35,7 @@ from app.features.integrations.kapso import client as kapso_client
 
 logger = get_logger("AGENT_WHATSAPP")
 
-MEDIA_BUCKET = "media"
+MEDIA_BUCKET = storage.MEDIA_BUCKET
 
 
 async def handle_inbound_agent_batch(
@@ -144,7 +145,7 @@ async def handle_inbound_agent_batch(
             except Exception as exc:  # noqa: BLE001
                 logger.exception("kapso_image_download_failed", event_type="kapso", error=str(exc))
                 continue
-            media_url = _store_media(
+            stored_path = _store_media(
                 blob,
                 mime,
                 tenant_id=tenant_id,
@@ -162,8 +163,10 @@ async def handle_inbound_agent_batch(
                     "is_forwarded": forwarded,
                     "media_kapso_id": media_id,
                     "media_mime": mime,
-                    "media_url": media_url,
-                    "media_status": "unprocessed",
+                    "media_url": stored_path,
+                    # 'failed' keeps a lost upload out of the unprocessed
+                    # buffer instead of pointing Agent at nothing.
+                    "media_status": "unprocessed" if stored_path else "failed",
                 }
             ).execute()
             image_count += 1
@@ -222,6 +225,16 @@ def _transcribe(blob: bytes, mime: str, *, tenant_id: UUID) -> str | None:
     return text or None
 
 
+def _media_path(tenant_id: str, session_id: str, message_id: str, ext: str) -> str:
+    """Tenant-first layout.
+
+    The frontend uploads as ``{tenant_id}/{type}/…``; keeping the tenant in
+    the first segment here too lets one storage policy
+    (``foldername(name)[1] = tenant``) cover every writer of the bucket.
+    """
+    return f"{tenant_id}/agent/{session_id}/{message_id}.{ext}"
+
+
 def _store_media(
     blob: bytes,
     mime: str,
@@ -230,15 +243,25 @@ def _store_media(
     session_id: str,
     message_id: str,
 ) -> str | None:
-    """Upload bytes to Supabase Storage. Returns public URL or None on error."""
-    db = get_supabase_client()
+    """Upload bytes to the private ``media`` bucket.
+
+    Returns the bucket-relative path — reads sign it via
+    ``core.supabase.storage.signed_url_for_ref`` — or None when the upload
+    failed, which the caller records so the loss is visible in the row.
+    """
     ext = (mimetypes.guess_extension(mime) or ".bin").lstrip(".")
-    path = f"agent/{tenant_id}/{session_id}/{message_id}.{ext}"
+    path = _media_path(tenant_id, session_id, message_id, ext)
     try:
-        db.storage.from_(MEDIA_BUCKET).upload(path, blob, {"content-type": mime, "upsert": "true"})
-        return db.storage.from_(MEDIA_BUCKET).get_public_url(path)
+        storage.upload_object(MEDIA_BUCKET, path, blob, mime)
+        return path
     except Exception as exc:  # noqa: BLE001
-        logger.exception("agent_whatsapp_store_failed", event_type="kapso", error=str(exc))
+        logger.exception(
+            "agent_whatsapp_store_failed",
+            event_type="storage",
+            tenant_id=tenant_id,
+            path=path,
+            error=str(exc),
+        )
         return None
 
 
