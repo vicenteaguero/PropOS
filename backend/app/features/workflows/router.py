@@ -5,7 +5,12 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 
-from app.core.dependencies import get_current_user, get_tenant_id
+from app.core.dependencies import (
+    get_current_user,
+    get_tenant_id,
+    require_role,
+    require_scope,
+)
 from app.features.workflows.schemas import (
     WorkflowCreate,
     WorkflowResponse,
@@ -14,7 +19,16 @@ from app.features.workflows.schemas import (
 )
 from app.features.workflows.service import WorkflowService
 
-router = APIRouter(prefix="/workflows", tags=["workflows"])
+# Only ADMIN/AGENT get a Workflows page in the shell, behind the `workflows`
+# scope — mirror that on the API.
+router = APIRouter(
+    prefix="/workflows",
+    tags=["workflows"],
+    dependencies=[
+        Depends(require_role("ADMIN", "AGENT")),
+        Depends(require_scope("workflows")),
+    ],
+)
 
 
 @router.get("", response_model=list[WorkflowResponse])

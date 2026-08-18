@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, require_role
 from app.features.uf.schemas import UfPoint, UfRefreshResponse, UfTodayResponse
 from app.features.uf.service import (
     UfFetchError,
@@ -11,7 +11,13 @@ from app.features.uf.service import (
     get_today_with_deltas,
 )
 
-router = APIRouter(prefix="/uf", tags=["uf"])
+# UF is an internal-tools widget. Reading it is staff-only; refreshing it hits
+# an external API and schedules a backfill, so that stays ADMIN-only.
+router = APIRouter(
+    prefix="/uf",
+    tags=["uf"],
+    dependencies=[Depends(require_role("ADMIN", "AGENT"))],
+)
 
 
 @router.get("/today", response_model=UfTodayResponse)
@@ -26,7 +32,11 @@ async def get_uf_today(_=Depends(get_current_user)) -> UfTodayResponse:
     )
 
 
-@router.post("/refresh", response_model=UfRefreshResponse)
+@router.post(
+    "/refresh",
+    response_model=UfRefreshResponse,
+    dependencies=[Depends(require_role("ADMIN"))],
+)
 async def refresh_uf(
     background_tasks: BackgroundTasks,
     _=Depends(get_current_user),

@@ -5,7 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 
-from app.core.dependencies import get_current_user, get_tenant_id
+from app.core.dependencies import get_current_user, get_tenant_id, require_role
 from app.features.projects.schemas import (
     ProjectCreate,
     ProjectResponse,
@@ -13,7 +13,13 @@ from app.features.projects.schemas import (
 )
 from app.features.projects.service import ProjectService
 
-router = APIRouter(prefix="/projects", tags=["projects"])
+# Projects are internal pipeline objects — external roles never create or
+# delete them.
+router = APIRouter(
+    prefix="/projects",
+    tags=["projects"],
+    dependencies=[Depends(require_role("ADMIN", "AGENT"))],
+)
 
 
 @router.get("", response_model=list[ProjectResponse])
