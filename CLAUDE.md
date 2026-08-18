@@ -4,7 +4,9 @@ Multi-tenant real estate operations platform. PWA-first, Spanish UI, dark theme 
 
 > ⚠️ **This repo is PUBLIC** (`github.com/vicenteaguero/PropOS`) while the deployment is live. Never commit `.env`, service-role keys, mailbox credentials, customer data, or security findings that are still unpatched. Gitignored on purpose: `docs/audits/*`, `docs/research/`, `docs/internal*/`, `docs/versions/*.pdf`, `notebooks/`, `backend/notebooks/`, `data/`, `.mcp.json`.
 
-**Current state**: v0.1.0 is code-complete-ish but not production-wired — see `docs/versions/v0.1.0.md` for real per-feature status and `docs/audits/README.md` for where the (local-only) audit reports live. Latest audit R2, 2026-07-02, at commit `201e586`: ~60% ready for internal daily use, 12–18 days of work across Gate A (turn prod on), Gate B (missing spec surfaces), Gate C (data integrity).
+**Current state**: the R3 audit (2026-08-16) and its full remediation (2026-08-18) are done — 123 of 124 findings closed and re-verified against the live system, plus three defects the audit had missed. Production is on: 13 secrets mounted, two Cloud Scheduler jobs running, outbound email verified, free-form analytics returning rows. See `docs/audits/v0.1.0-r3/R3-CLOSURE.md` for what changed and `docs/versions/v0.1.0.md` for per-feature status. Re-run the verification any time with `cd backend && poetry run python -m scripts.audit_r3_verify`.
+
+Two things are deliberately still off: **Titan/IMAP email-sync** (owner's call — delicate production mailbox, `EMAIL_SYNC_ENABLED=false`, no credentials provisioned) and **WhatsApp inbound**, which needs the webhook URL pasted into the Kapso dashboard — there is no API for it.
 
 ## Stack
 
@@ -41,7 +43,11 @@ docs/{architecture,api,api-conventions,roles,disaster-recovery}.md
 Format: `<type>(<scope>): :gitmoji: <english lowercase summary>`
 
 Strict rules:
-- **1 commit = 1 file.** Never bundle. `git add <file>` then commit, repeat.
+- **1 commit = 1 change.** One finding, one bug, one surface — not one file. A change that needs a
+  migration plus the code that makes it work belongs in a single commit, because either half alone is
+  broken. When the work traces to an audit finding, put the id in the subject: `[P1-07]`.
+  (This replaces the older one-file-per-commit rule, which split coupled changes into commits that
+  could not be reviewed or reverted on their own.)
 - **Subject only, no body.** One line.
 - **No `Co-Authored-By` footer.** Never add Claude trailer.
 - **English summary**, lowercase.
@@ -49,6 +55,7 @@ Strict rules:
 
 Examples:
 - `feat(db): :sparkles: add migration to extend contact_type enum values`
+- `fix(agent): :lock: scope agent_readonly to exposed tables and set tenant guc [P1-07]`
 - `refactor(projects): :recycle: update project status labels and variants`
 - `chore(cleanup): :wastebasket: archive v0 prototype`
 
