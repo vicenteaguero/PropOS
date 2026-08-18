@@ -1,6 +1,10 @@
+import json
 import os
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from typing import Annotated
+
+from pydantic import field_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 # Env vars from before the anita -> agent rename. `extra="ignore"` means a
 # leftover ANITA_* is silently dropped and the field falls back to its default,
@@ -17,7 +21,37 @@ class Settings(BaseSettings):
     supabase_service_role_key: str
     app_env: str = "development"
     log_level: str = "debug"
-    allowed_origins: list[str] = ["http://localhost:5173", "https://prop-os-delta.vercel.app"]
+    allowed_origins: Annotated[list[str], NoDecode] = [
+        "http://localhost:5173",
+        "https://prop-os-delta.vercel.app",
+    ]
+
+    @field_validator("allowed_origins", mode="before")
+    @classmethod
+    def _parse_allowed_origins(cls, v: object) -> object:
+        """Accept a JSON array, a comma-separated list, or an unquoted array.
+
+        `.env` stores this as a JSON array. pydantic-settings parses that fine
+        when it reads the file itself, but a shell that sources `.env`
+        (`set -a && . ./.env`) strips the inner double quotes, so the process
+        sees `[a,b]` and startup dies with an opaque
+        `error parsing value for field "allowed_origins"`. Makefile:115 already
+        works around it by re-exporting the value; anything else that sources
+        `.env` -- a script, a debugger, a shell -- hit the wall instead.
+        """
+        if not isinstance(v, str):
+            return v
+        raw = v.strip()
+        if raw.startswith("[") and raw.endswith("]"):
+            try:
+                parsed = json.loads(raw)
+            except json.JSONDecodeError:
+                # Quotes eaten by the shell: `["a","b"]` arrived as `[a,b]`.
+                raw = raw[1:-1]
+            else:
+                return parsed if isinstance(parsed, list) else v
+        return [item.strip() for item in raw.split(",") if item.strip()]
+
     vapid_private_key: str = ""
     vapid_public_key: str = ""
     vapid_contact_email: str = "admin@propos.app"
