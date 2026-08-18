@@ -352,10 +352,32 @@ def _sync_account_blocking(account: dict[str, Any], tenant_id: str) -> dict[str,
             pass
 
 
-async def run_all_active_accounts() -> dict[str, int]:
-    if not settings.email_sync_enabled or not settings.email_imap_password or not settings.email_sync_tenant_id:
-        logger.info("email_sync_disabled", event_type="job")
-        return {"fetched": 0, "leads": 0}
+REQUIRED_SETTINGS = (
+    ("EMAIL_SYNC_ENABLED", "email_sync_enabled"),
+    ("EMAIL_SYNC_TENANT_ID", "email_sync_tenant_id"),
+    ("EMAIL_IMAP_USER", "email_imap_user"),
+    ("EMAIL_IMAP_PASSWORD", "email_imap_password"),
+)
+
+
+def missing_settings() -> list[str]:
+    """Env keys the sync needs but doesn't have, by their env-var names."""
+    return [env_name for env_name, attr in REQUIRED_SETTINGS if not getattr(settings, attr, None)]
+
+
+async def run_all_active_accounts() -> dict[str, Any]:
+    missing = missing_settings()
+    if missing:
+        # Naming the gap matters: the old early return answered 200 with an
+        # empty summary, so a mailbox that was never configured looked exactly
+        # like a mailbox with no new mail.
+        logger.warning(
+            "email_sync_disabled",
+            event_type="job",
+            missing=missing,
+            hint="set these in the backend env and in scripts/sync_cloud_env.sh NON_SECRETS",
+        )
+        return {"fetched": 0, "leads": 0, "skipped": True, "missing": missing}
 
     tenant_id = settings.email_sync_tenant_id
     client = get_supabase_client()
@@ -365,6 +387,6 @@ async def run_all_active_accounts() -> dict[str, int]:
     except Exception as exc:  # noqa: BLE001
         client.table("email_accounts").update({"last_error": str(exc)[:300]}).eq("id", account["id"]).execute()
         logger.error("email_sync_failed", event_type="error", error=str(exc)[:300])
-        return {"fetched": 0, "leads": 0}
+        return {"fetched": 0, "leads": 0, "error": str(exc)[:300]}
     logger.info("email_sync_done", event_type="job", **result)
     return result
