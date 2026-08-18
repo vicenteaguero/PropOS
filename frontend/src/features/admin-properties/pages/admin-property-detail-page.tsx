@@ -14,13 +14,21 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { LoadingSpinner } from "@shared/components/loading-spinner/loading-spinner";
-import { NavMark, Pill, Row, SectionLabel, type PillTone } from "@shared/ui";
+import {
+  ErrorState,
+  NavMark,
+  PageSkeleton,
+  Pill,
+  Row,
+  SectionLabel,
+  type PillTone,
+} from "@shared/ui";
 import { PageLayout } from "@shared/components/page-layout";
 import { apiRequest } from "@features/documents/api/http";
 import { toast } from "sonner";
 import { propertiesApi, type PropertyInput } from "../api/properties-api";
 import { PropertyFormDialog } from "../components/property-form-dialog";
+import { PropertyGallery } from "../components/property-gallery";
 
 interface ApiGrant {
   id: string;
@@ -82,30 +90,33 @@ export function AdminPropertyDetailPage() {
 
   if (propQ.isLoading) {
     return (
-      <div className="flex flex-1 items-center justify-center py-16">
-        <LoadingSpinner size="md" />
-      </div>
+      <PageLayout width="sm" className="lg:max-w-none">
+        <PageSkeleton variant="detail" />
+      </PageLayout>
     );
   }
 
   if (propQ.error || !propQ.data) {
     return (
-      <div className="mx-auto flex w-full max-w-md flex-col items-center justify-center gap-4 px-5 py-16 text-center">
-        <h2 className="text-lg font-semibold text-foreground">No se pudo cargar la propiedad</h2>
-        <p className="text-sm text-muted-foreground">
-          {propQ.error instanceof Error
-            ? propQ.error.message
-            : "Es posible que se haya eliminado o que el enlace sea incorrecto."}
-        </p>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => navigate("/admin/properties")}>
-            <ArrowLeft className="size-4" strokeWidth={1.8} /> Propiedades
-          </Button>
-          <Button size="sm" onClick={() => propQ.refetch()}>
-            Reintentar
-          </Button>
-        </div>
-      </div>
+      <PageLayout width="sm" className="lg:max-w-none">
+        <ErrorState
+          error={propQ.error}
+          message={
+            propQ.error
+              ? undefined
+              : "No se encontró la propiedad. Es posible que se haya eliminado."
+          }
+          onRetry={() => propQ.refetch()}
+        />
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-3 gap-1.5"
+          onClick={() => navigate("/admin/properties")}
+        >
+          <ArrowLeft className="size-4" strokeWidth={1.8} /> Propiedades
+        </Button>
+      </PageLayout>
     );
   }
 
@@ -145,21 +156,17 @@ export function AdminPropertyDetailPage() {
       {/* Desktop: 2-column (gallery/title/specs/tabs left · location/interesados right).
           Mobile: single column in DOM order — unchanged. */}
       <div className="lg:grid lg:grid-cols-[1.6fr_1fr] lg:items-start lg:gap-8 lg:px-8">
-        {/* Gallery placeholder */}
+        {/* Gallery */}
         <div className="px-5 lg:col-start-1 lg:row-start-1 lg:px-0">
-          <div className="relative h-52 w-full overflow-hidden rounded-2xl bg-gradient-to-br from-secondary to-muted text-foreground lg:h-72">
-            <div
-              className="absolute inset-0 opacity-[0.04]"
-              style={{
-                backgroundImage:
-                  "repeating-linear-gradient(45deg, currentColor 0 14px, transparent 14px 28px)",
-              }}
-            />
-            <div className="absolute left-3 top-3 flex items-center gap-2">
-              <Pill tone={op.tone}>{op.label}</Pill>
-              {p.is_draft && <Pill tone="neutral">Borrador</Pill>}
-            </div>
-          </div>
+          <PropertyGallery
+            propertyId={p.id}
+            overlay={
+              <>
+                <Pill tone={op.tone}>{op.label}</Pill>
+                {p.is_draft && <Pill tone="neutral">Borrador</Pill>}
+              </>
+            }
+          />
         </div>
 
         {/* Title + price */}
