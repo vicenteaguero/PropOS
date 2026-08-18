@@ -133,6 +133,73 @@ def _lead_identity(lead: ParsedLead | None) -> dict[str, str | None] | None:
     return {"email": lead.contact_email, "name": lead.contact_name, "phone": lead.contact_phone}
 
 
+def _resolve_property_id(client, tenant_id: str, external_id: str | None) -> str | None:
+    """Portal listing id → our property, via the publication that carries it."""
+    if not external_id:
+        return None
+    found = (
+        client.table("publications")
+        .select("property_id")
+        .eq("tenant_id", tenant_id)
+        .eq("external_id", external_id)
+        .is_("deleted_at", "null")
+        .limit(1)
+        .execute()
+        .data
+    )
+    return found[0]["property_id"] if found else None
+
+
+def _log_lead_interaction(
+    client,
+    tenant_id: str,
+    *,
+    lead: ParsedLead,
+    contact_id: str | None,
+    subject: str,
+    body: str,
+    sent_at: str | None,
+) -> None:
+    """Mirror a portal lead into the interactions timeline.
+
+    Without this the contact shows up as 'sin actividad' no matter how many
+    portal enquiries they sent: the unified timeline and the activity metrics
+    both read `interactions`, not `email_messages`.
+    """
+    row: dict[str, Any] = {
+        "tenant_id": tenant_id,
+        "kind": "EMAIL",
+        "channel": lead.portal,
+        "summary": subject[:300] or f"Lead de {lead.portal}",
+        "body": body[:20000],
+        "source": "import",
+    }
+    if sent_at:
+        row["occurred_at"] = sent_at
+    interaction_id = client.table("interactions").insert(row).execute().data[0]["id"]
+
+    if contact_id:
+        client.table("interaction_participants").insert(
+            {
+                "tenant_id": tenant_id,
+                "interaction_id": interaction_id,
+                "person_id": contact_id,
+                "role": "LEAD",
+            }
+        ).execute()
+
+    property_id = _resolve_property_id(client, tenant_id, lead.property_external_id)
+    if property_id:
+        client.table("interaction_targets").insert(
+            {
+                "tenant_id": tenant_id,
+                "interaction_id": interaction_id,
+                "target_kind": "PROPERTY",
+                "property_id": property_id,
+            }
+        ).execute()
+
+
 def _is_duplicate(exc: Exception) -> bool:
     """True when an insert failed because the row already exists (safe to skip)."""
     s = str(exc).lower()
@@ -247,6 +314,20 @@ def _sync_account_blocking(account: dict[str, Any], tenant_id: str) -> dict[str,
                 fetched += 1
                 if lead:
                     leads += 1
+                    try:
+                        _log_lead_interaction(
+                            client,
+                            tenant_id,
+                            lead=lead,
+                            contact_id=contact_id,
+                            subject=subject,
+                            body=body,
+                            sent_at=sent_at,
+                        )
+                    except Exception as exc:  # noqa: BLE001
+                        # Derived row: the e-mail is already stored, so never
+                        # block the cursor on the timeline mirror.
+                        logger.warning("lead_interaction_failed", message_id=message_id, error=str(exc)[:200])
                 if not blocked:
                     committed_uid = uid_int
             except Exception as exc:  # noqa: BLE001
