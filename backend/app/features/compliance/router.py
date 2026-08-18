@@ -14,7 +14,14 @@ from app.features.compliance.schemas import (
 )
 from app.features.compliance.service import ComplianceService
 
-router = APIRouter(prefix="/compliance", tags=["compliance"])
+# Consent is the legal record that unblocks outbound messaging (Ley 21.719), and
+# the grant route stamps the caller's own IP/UA as evidence. Only staff may
+# write it — the sibling admin router below stays ADMIN-only.
+router = APIRouter(
+    prefix="/compliance",
+    tags=["compliance"],
+    dependencies=[Depends(require_role("ADMIN", "AGENT"))],
+)
 
 
 @router.post("/contacts/{contact_id}/consent")
