@@ -1,8 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
 import { apiRequest } from "@features/documents/api/http";
 import { PageLayout } from "@shared/components/page-layout";
-import { Pill } from "@shared/ui";
+import { ErrorState, PageSkeleton, Pill } from "@shared/ui";
 import { CHART_COLORS, CHART_HEIGHT } from "@shared/lib/chart-config";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useAgentName } from "@core/branding/agent-branding";
@@ -40,7 +39,7 @@ const TOOLTIP_STYLE = {
 
 export function AgentCostPage() {
   const agentName = useAgentName();
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["analytics", "agent-cost"],
     queryFn: () => apiRequest<AgentCost>("/v1/analytics/agent-cost"),
   });
@@ -48,17 +47,21 @@ export function AgentCostPage() {
   if (isLoading) {
     return (
       <PageLayout width="lg" noPadding className="lg:max-w-none">
-        <div className="flex min-h-[40vh] justify-center">
-          <Loader2 className="size-5 animate-spin text-muted-foreground" />
+        <div className="px-5 pt-6 lg:px-8">
+          <PageSkeleton variant="detail" />
         </div>
       </PageLayout>
     );
   }
-  if (isError || !data) {
+  if (!data) {
     return (
       <PageLayout width="lg" noPadding className="lg:max-w-none">
-        <div className="mx-5 mt-6 rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive lg:mx-8">
-          No pude cargar costos.
+        <div className="mx-5 mt-6 lg:mx-8">
+          <ErrorState
+            message="No se pudieron cargar los costos."
+            error={error}
+            onRetry={() => refetch()}
+          />
         </div>
       </PageLayout>
     );
@@ -120,11 +123,11 @@ export function AgentCostPage() {
                 <thead>
                   <tr className="border-b border-border text-left text-xs text-muted-foreground">
                     <th className="py-2.5 pr-4 font-medium">Sesión</th>
-                    <th className="py-2.5 pr-4 font-medium">Última msg</th>
-                    <th className="py-2.5 pr-4 font-medium">Provider</th>
+                    <th className="py-2.5 pr-4 font-medium">Último mensaje</th>
+                    <th className="py-2.5 pr-4 font-medium">Proveedor</th>
                     <th className="py-2.5 pr-4 font-medium">Mensajes</th>
-                    <th className="py-2.5 pr-4 font-medium">Tokens in</th>
-                    <th className="py-2.5 pr-4 font-medium">Tokens out</th>
+                    <th className="py-2.5 pr-4 font-medium">Tokens entrada</th>
+                    <th className="py-2.5 pr-4 font-medium">Tokens salida</th>
                     <th className="py-2.5 pr-4 font-medium">Costo</th>
                   </tr>
                 </thead>
