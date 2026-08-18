@@ -131,14 +131,36 @@ class UserService:
         return resp.data
 
     @staticmethod
-    async def get_user_detail(user_id: UUID) -> dict:
-        """Detail used by admin user-detail page: profile + memberships + emails + grants."""
+    async def get_user_detail(user_id: UUID, tenant_id: UUID) -> dict:
+        """Detail used by admin user-detail page: profile + memberships + emails + grants.
+
+        Scoped to the caller's tenant. Without `tenant_id` this route accepted any
+        user id and answered with that user's profile, every membership they hold,
+        their addresses and their property grants joined to the property title and
+        address -- so an admin of one tenant could read another tenant's people and
+        portfolio by guessing or harvesting a uuid. The service-role client bypasses
+        RLS, so nothing else was standing in the way.
+        """
         client = get_supabase_client()
+
+        membership = (
+            client.table(MEMBERSHIPS_TABLE)
+            .select("id")
+            .eq("user_id", str(user_id))
+            .eq("tenant_id", str(tenant_id))
+            .limit(1)
+            .execute()
+            .data
+        )
+        if not membership:
+            raise HTTPException(status_code=404, detail="User not found")
+
         profile = client.table(PROFILES_TABLE).select("*").eq("id", str(user_id)).single().execute().data
         memberships = (
             client.table(MEMBERSHIPS_TABLE)
             .select("*, tenants(id, name, slug)")
             .eq("user_id", str(user_id))
+            .eq("tenant_id", str(tenant_id))
             .execute()
             .data
         )
@@ -146,6 +168,7 @@ class UserService:
             client.table(USER_EMAILS_TABLE)
             .select("*")
             .eq("user_id", str(user_id))
+            .eq("tenant_id", str(tenant_id))
             .order("is_primary", desc=True)
             .execute()
             .data
@@ -154,6 +177,7 @@ class UserService:
             client.table("property_grants")
             .select("*, properties(id, title, address)")
             .eq("user_id", str(user_id))
+            .eq("tenant_id", str(tenant_id))
             .execute()
             .data
         )

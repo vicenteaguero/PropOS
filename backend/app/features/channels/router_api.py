@@ -181,6 +181,7 @@ async def upsert_consent(
         "created_by": current_user["id"],
     }
     if existing:
+        # tenant-safe: row resolved by primary key from a tenant-scoped read
         return db.table("client_consents").update(base).eq("id", existing[0]["id"]).execute().data[0]
     return db.table("client_consents").insert(base).execute().data[0]
 

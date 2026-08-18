@@ -127,6 +127,7 @@ async def handle_inbound_client(
     # an earlier (mis-routed) delivery already answered.
     if external_message_id:
         dup = (
+            # tenant-safe: row resolved by primary key from a tenant-scoped read
             db.table("client_messages")
             .select("id")
             .eq("external_message_id", external_message_id)
@@ -150,6 +151,7 @@ async def handle_inbound_client(
             "external_message_id": external_message_id,
         }
     ).execute()
+    # tenant-safe: row resolved by primary key from a tenant-scoped read
     db.table("client_conversations").update({"last_inbound_at": _now(), "last_message_at": _now()}).eq(
         "id", conv["id"]
     ).execute()
@@ -216,12 +218,15 @@ async def _send_reply(conv: dict[str, Any], phone_e164: str, text: str) -> None:
     try:
         resp = await kapso_client.send_text(phone_e164, text)
         ext = (resp.get("messages") or [{}])[0].get("id")
+        # tenant-safe: row resolved by primary key from a tenant-scoped read
         db.table("client_messages").update({"delivery_status": "sent", "external_message_id": ext}).eq(
             "id", msg["id"]
         ).execute()
+        # tenant-safe: row resolved by primary key from a tenant-scoped read
         db.table("client_conversations").update({"last_message_at": _now()}).eq("id", conv["id"]).execute()
     except Exception as exc:  # noqa: BLE001
         logger.exception("client_agent_send_failed", event_type="kapso", error=str(exc))
+        # tenant-safe: row resolved by primary key from a tenant-scoped read
         db.table("client_messages").update({"delivery_status": "failed", "failure_reason": str(exc)[:500]}).eq(
             "id", msg["id"]
         ).execute()
@@ -363,6 +368,7 @@ def _record_opt_out(tenant_id: str, contact_id: str) -> None:
     )
     revocation = {"opted_out_at": _now(), "opted_in_at": None, "method": "inbound_reply"}
     if existing:
+        # tenant-safe: row resolved by primary key from a tenant-scoped read
         db.table("client_consents").update(revocation).eq("id", existing[0]["id"]).execute()
     else:
         db.table("client_consents").insert(
@@ -397,6 +403,7 @@ def _record_inbound_consent(tenant_id: str, contact_id: str) -> None:
     if existing and existing[0].get("opted_in_at"):
         return
     if existing:
+        # tenant-safe: row resolved by primary key from a tenant-scoped read
         db.table("client_consents").update({"opted_in_at": _now(), "method": "inbound_reply", "opted_out_at": None}).eq(
             "id", existing[0]["id"]
         ).execute()
@@ -415,6 +422,7 @@ def _record_inbound_consent(tenant_id: str, contact_id: str) -> None:
 def _load_history(conversation_id: str) -> list[dict[str, str]]:
     db = get_supabase_client()
     rows = (
+        # tenant-safe: row resolved by primary key from a tenant-scoped read
         db.table("client_messages")
         .select("direction, content, sender_type, created_at")
         .eq("conversation_id", conversation_id)

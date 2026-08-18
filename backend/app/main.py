@@ -135,6 +135,7 @@ async def _probe_jobs() -> dict[str, Any]:
     def _query() -> dict[str, Any]:
         client = get_supabase_client()
         overdue = (
+            # tenant-safe: readiness probe counts across all tenants by design
             client.table("reminders")
             .select("id", count="exact")
             .eq("status", "PENDING")

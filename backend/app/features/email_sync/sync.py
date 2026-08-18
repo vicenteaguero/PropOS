@@ -341,6 +341,7 @@ def _sync_account_blocking(account: dict[str, Any], tenant_id: str) -> dict[str,
                     logger.warning("email_insert_failed", message_id=message_id, error=str(exc)[:200])
                     blocked = True
 
+        # tenant-safe: scoped to the configured mailbox account, which carries the tenant
         client.table("email_accounts").update(
             {"last_seen_uid": committed_uid, "last_synced_at": "now()", "last_error": None}
         ).eq("id", account["id"]).execute()
@@ -385,6 +386,7 @@ async def run_all_active_accounts() -> dict[str, Any]:
     try:
         result = await anyio.to_thread.run_sync(_sync_account_blocking, account, tenant_id)
     except Exception as exc:  # noqa: BLE001
+        # tenant-safe: scoped to the configured mailbox account, which carries the tenant
         client.table("email_accounts").update({"last_error": str(exc)[:300]}).eq("id", account["id"]).execute()
         logger.error("email_sync_failed", event_type="error", error=str(exc)[:300])
         return {"fetched": 0, "leads": 0, "error": str(exc)[:300]}

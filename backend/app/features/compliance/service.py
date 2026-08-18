@@ -491,6 +491,7 @@ class ComplianceService:
 
         media_ids = _subject_media_file_ids(client, contact_id, tenant_id)
         if media_ids:
+            # tenant-safe: operates on ids already resolved under the subject's tenant
             client.table("media_files").update(
                 {"purge_after": (now + timedelta(days=ERASURE_MEDIA_GRACE_DAYS)).isoformat()}
             ).in_("id", media_ids).execute()
@@ -592,6 +593,7 @@ class ComplianceService:
                 or []
             )
             targets = (
+                # tenant-safe: operates on ids already resolved under the subject's tenant
                 client.table("interaction_targets").select("*").in_("interaction_id", interaction_ids).execute().data
                 or []
             )

@@ -387,6 +387,7 @@ def _cost_cents_for_turn(
         return None
 
     prior = (
+        # tenant-safe: scoped by agent session, which is itself tenant-bound
         client.table("agent_messages")
         .select("tokens_in,tokens_out,cost_cents")
         .eq("session_id", str(session_id))

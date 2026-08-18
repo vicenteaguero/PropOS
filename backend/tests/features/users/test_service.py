@@ -132,3 +132,28 @@ async def test_delete_user(mock_client):
     await UserService.delete_user(MOCK_USER_ID, MOCK_TENANT_ID)
 
     mock_client.return_value.table.assert_called_with("profiles")
+
+
+@pytest.mark.asyncio
+async def test_user_detail_refuses_a_user_from_another_tenant() -> None:
+    """An admin must not be able to read a user outside their own tenant.
+
+    `GET /users/{id}` took no tenant at all, so any uuid answered with that
+    user's profile, every membership they hold, their addresses, and their
+    property grants joined to the property title and address. The service-role
+    client bypasses RLS, so the missing predicate was the only thing between an
+    admin of one tenant and another tenant's people and portfolio.
+    """
+    from fastapi import HTTPException
+
+    from app.features.users.service import UserService
+
+    client = MagicMock()
+    # Membership probe comes back empty: the user is not in the caller's tenant.
+    client.table.return_value.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value.data = []
+
+    with patch("app.features.users.service.get_supabase_client", return_value=client):
+        with pytest.raises(HTTPException) as exc:
+            await UserService.get_user_detail(uuid4(), uuid4())
+
+    assert exc.value.status_code == 404

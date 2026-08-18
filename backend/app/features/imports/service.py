@@ -106,6 +106,7 @@ class ImportService:
         if valid_rows:
             inserted = len(client.table(table).insert(valid_rows).execute().data or [])
 
+        # tenant-safe: import job resolved by primary key under the caller's tenant
         client.table("import_jobs").update(
             {"status": "COMMITTED", "inserted_rows": inserted, "committed_at": datetime.now(UTC).isoformat()}
         ).eq("id", str(import_id)).execute()
