@@ -276,29 +276,39 @@ async def test_audio_action_chain(spec: dict, provider: str, seed_handles: SeedH
         if any(_action_matches(c, exp) for c in out["tool_calls"]):
             matched.append(exp["tool"])
 
-    # v2 single-call pipeline picks ONE intent per turn. For multi-action
-    # scenarios we accept "at least one expected tool fired" as success.
-    is_multi = len(expected) > 1
-    all_matched = len(matched) >= 1 if is_multi else len(matched) == len(expected)
+    observed = [c["name"] for c in out["tool_calls"]]
+    missing = [e["tool"] for e in expected if e["tool"] not in matched]
+    # Every expected action must fire with matching arguments. This used to
+    # pass a two-tool scenario on one tool ("len(matched) >= 1"), which turned
+    # "logged the visit but never created the follow-up task" — silent lost
+    # work for the broker — into a green run.
+    failures: list[str] = []
+    if missing:
+        fired_but_wrong_args = [t for t in missing if t in observed]
+        detail = f" (fired with non-matching args: {fired_but_wrong_args})" if fired_but_wrong_args else ""
+        failures.append(f"missing actions {missing}{detail}; observed={observed}")
 
-    if spec.get("expected_no_proposals"):
-        all_matched = all_matched and len(out["proposals"]) == 0
+    if spec.get("expected_no_proposals") and out["proposals"]:
+        failures.append(f"expected no proposals, got {out['proposals']}")
 
     if needles := spec.get("expected_text_contains"):
-        all_matched = all_matched and all(n in out["text"] for n in needles)
+        absent = [n for n in needles if n not in out["text"]]
+        if absent:
+            failures.append(f"reply is missing {absent}; text={out['text']!r}")
 
     _record(
         f"action_chain:{spec['scenario_id']}::{spec['register']}",
         provider=provider,
-        passed=all_matched,
+        passed=not failures,
         prompt=prompt,
         expected_tools=[e["tool"] for e in expected],
         matched_tools=matched,
-        observed_tools=[c["name"] for c in out["tool_calls"]],
+        observed_tools=observed,
         latency_ms=out["latency_ms"],
         proposals=out["proposals"],
+        failures=failures,
     )
-    assert all_matched
+    assert not failures, f"{spec['scenario_id']}::{spec['register']}: " + "; ".join(failures)
 
 
 # NOTE: Standalone capability tests (find_person, propose_*, query_*) were
