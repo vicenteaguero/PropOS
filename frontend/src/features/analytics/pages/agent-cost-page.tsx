@@ -201,3 +201,6 @@ function ChartCard({ title, children }: { title: string; children: React.ReactNo
     </div>
   );
 }
+
+// Default export so the router can code-split this page with React.lazy.
+export default AgentCostPage;
