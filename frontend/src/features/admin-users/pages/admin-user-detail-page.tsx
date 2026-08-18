@@ -9,6 +9,7 @@ import { PageLayout } from "@shared/components/page-layout";
 import { ErrorState, PageSkeleton, Pill, SectionLabel } from "@shared/ui";
 import { toast } from "sonner";
 import { useAuth } from "@shared/hooks/use-auth";
+import { label } from "@shared/lib/labels";
 import {
   useAdminUserDetail,
   useDeleteUser,
@@ -110,7 +111,7 @@ export function AdminUserDetailPage() {
           <TabsTrigger value="profile">Perfil</TabsTrigger>
           <TabsTrigger value="memberships">Tenants</TabsTrigger>
           <TabsTrigger value="emails">Emails</TabsTrigger>
-          <TabsTrigger value="grants">Grants</TabsTrigger>
+          <TabsTrigger value="grants">Accesos</TabsTrigger>
           {isDev && <TabsTrigger value="security">Seguridad</TabsTrigger>}
         </TabsList>
 
@@ -224,7 +225,7 @@ export function AdminUserDetailPage() {
                 <Mail className="size-4 shrink-0 text-muted-foreground" strokeWidth={1.8} />
                 <span className="truncate font-medium text-foreground">{e.email}</span>
                 {e.label && <span className="text-xs text-muted-foreground">({e.label})</span>}
-                {e.is_primary && <Pill tone="accent">primary</Pill>}
+                {e.is_primary && <Pill tone="accent">principal</Pill>}
               </div>
               <span className="shrink-0 text-xs text-muted-foreground">{e.purpose}</span>
             </div>
@@ -237,7 +238,7 @@ export function AdminUserDetailPage() {
         >
           {data.grants.length === 0 && (
             <div className="rounded-2xl border border-border bg-card py-6 text-center text-sm text-muted-foreground lg:col-span-2">
-              Sin grants.
+              Sin accesos.
             </div>
           )}
           {data.grants.map((g) => (
@@ -251,7 +252,7 @@ export function AdminUserDetailPage() {
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {g.capabilities.map((c) => (
                   <Pill key={c} tone="neutral">
-                    {c}
+                    {label("capability", c)}
                   </Pill>
                 ))}
               </div>
@@ -278,7 +279,7 @@ export function AdminUserDetailPage() {
                       .catch((e) => toast.error(`Error: ${e}`))
                   }
                 >
-                  <KeyRound className="mr-1.5 size-3.5" strokeWidth={1.8} /> Reset password
+                  <KeyRound className="mr-1.5 size-3.5" strokeWidth={1.8} /> Restablecer contraseña
                 </Button>
                 <Button
                   size="sm"
@@ -291,7 +292,7 @@ export function AdminUserDetailPage() {
                       .catch((e) => toast.error(`Error: ${e}`))
                   }
                 >
-                  <Mail className="mr-1.5 size-3.5" strokeWidth={1.8} /> Reenviar invite
+                  <Mail className="mr-1.5 size-3.5" strokeWidth={1.8} /> Reenviar invitación
                 </Button>
                 <Button
                   size="sm"
