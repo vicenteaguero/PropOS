@@ -1,10 +1,23 @@
 name: Keep alive
 
-# Pings the backend /health endpoint and the Supabase REST root every 5 days
-# so neither service auto-pauses on the free tier. Free tier Supabase pauses
-# projects after 7 days of inactivity, which would silently break the Kapso
-# webhook. Cloud Run scales to zero on its own; this just keeps the cold-start
-# latency from biting at random demo moments.
+# Pings the backend and the Supabase REST API every 5 days so neither service
+# auto-pauses on the free tier. Free tier Supabase pauses projects after 7 days
+# of inactivity, which would silently break the Kapso webhook. Cloud Run scales
+# to zero on its own; this just keeps the cold-start latency from biting at
+# random demo moments.
+#
+# It failed 8 scheduled runs in a row (2026-07-16 → 2026-08-16), always at the
+# Supabase step with http=000 in ~20ms — too fast for a network timeout, so the
+# `SUPABASE_URL` secret is malformed rather than the project being asleep. Two
+# changes make that unreachable as a failure mode:
+#
+#   1. The URL no longer comes from a secret. The project ref is not sensitive
+#      (it is in the frontend bundle), so it is a plain default overridable by a
+#      repo variable, the same pattern CLOUD_RUN_URL already used.
+#   2. The probe hits a real table instead of the REST root. `/rest/v1/` rejects
+#      the publishable `sb_publishable_…` key with 401 ("Only secret API keys can
+#      be used for this endpoint"), so the old check never reached PostgREST —
+#      and therefore never touched the database it was supposed to keep warm.
 #
 # Schedule uses cron syntax in UTC. "0 12 */5 * *" = 12:00 UTC every 5 days.
 
@@ -13,58 +26,86 @@ on:
     - cron: "0 12 */5 * *"
   workflow_dispatch: {}
 
-# Override with the repo variable CLOUD_RUN_URL if the service is ever recreated
-# (the hostname is derived from the project, so a new project = a new host):
+# Override either with a repo variable if a service is ever recreated:
 #   gh variable set CLOUD_RUN_URL --body https://<service>.run.app
+#   gh variable set SUPABASE_URL  --body https://<ref>.supabase.co
 env:
   CLOUD_RUN_URL: ${{ vars.CLOUD_RUN_URL || 'https://propos-api-blfjtiyx4q-uc.a.run.app' }}
+  SUPABASE_URL: ${{ vars.SUPABASE_URL || 'https://tlbkwrjzraaikdrajwqh.supabase.co' }}
 
 jobs:
   ping:
     runs-on: ubuntu-latest
-    timeout-minutes: 2
+    timeout-minutes: 5
     steps:
-      - name: Ping Cloud Run /health
+      - name: Ping Cloud Run
         run: |
-          set -e
+          set -euo pipefail
+          url="${CLOUD_RUN_URL%/}"
+          # /health/ready reaches the database; /health is a constant that stays
+          # green with a paused project. Fall back only when the deployed
+          # revision predates the readiness endpoint.
           for i in 1 2 3; do
-            code=$(curl -s -o /tmp/body -w "%{http_code}" "$CLOUD_RUN_URL/health" || true)
-            echo "attempt $i → http=$code"
+            code=$(curl -s --max-time 30 -o /tmp/body -w "%{http_code}" "$url/health/ready" || true)
+            echo "attempt $i → /health/ready http=$code"
             if [ "$code" = "200" ]; then
-              cat /tmp/body
+              cat /tmp/body; echo ""
               exit 0
             fi
-            sleep 5
+            if [ "$code" = "404" ]; then
+              echo "::warning::deployed revision has no /health/ready — falling back to liveness"
+              code=$(curl -s --max-time 30 -o /tmp/body -w "%{http_code}" "$url/health" || true)
+              echo "/health http=$code"
+              [ "$code" = "200" ] && exit 0
+            fi
+            sleep 10
           done
-          echo "health check failed"
+          echo "--- last response ---"
+          cat /tmp/body 2>/dev/null || true
+          echo ""
+          echo "backend is not ready at $url — check the Cloud Run revision and Supabase"
           exit 1
 
       - name: Ping Supabase REST
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          set -e
-          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
-            echo "missing SUPABASE_URL or SUPABASE_ANON_KEY secret — skipping"
-            exit 0
-          fi
-          # A secret stored with surrounding quotes or a trailing slash yields an
-          # unresolvable host and curl exits with http=000, which read as "the
-          # project is paused" for months. Normalise before using it.
+          set -euo pipefail
+          # A value pasted with surrounding quotes, whitespace or a trailing
+          # slash yields an unresolvable host and curl exits 000 instantly.
           url=$(printf '%s' "$SUPABASE_URL" | tr -d '"'"'"' \t\r\n')
           url=${url%/}
           case "$url" in
             https://*) ;;
-            *) echo "SUPABASE_URL secret is not an https URL (got ${#url} chars)"; exit 1 ;;
+            *) echo "SUPABASE_URL is not an https URL (${#url} chars) — fix the CI variable"; exit 1 ;;
           esac
-          code=$(curl -s --max-time 20 -o /dev/null -w "%{http_code}" \
+
+          if [ -z "${SUPABASE_ANON_KEY:-}" ]; then
+            # Unauthenticated: still proves the gateway is answering, which is
+            # what "the project is not paused" means. Weaker than a table read,
+            # so say so out loud rather than reporting a clean pass.
+            code=$(curl -s --max-time 30 -o /dev/null -w "%{http_code}" "$url/rest/v1/" || true)
+            echo "::warning title=Weak keepalive::No SUPABASE_ANON_KEY secret; probed the gateway only (http=$code), not the database."
+            case "$code" in
+              200|401|404|406) exit 0 ;;
+              *) echo "gateway unreachable at $url (http=$code)"; exit 1 ;;
+            esac
+          fi
+
+          # A real PostgREST read: reaches the database, so it counts as activity.
+          # RLS makes the anon result an empty array, which is fine — 200 is the
+          # signal. 401/403 means the key is wrong, not that the project is down.
+          code=$(curl -s --max-time 30 -o /tmp/rest -w "%{http_code}" \
             -H "apikey: $SUPABASE_ANON_KEY" \
-            "$url/rest/v1/?select=tenants" || true)
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            "$url/rest/v1/tenants?select=id&limit=1" || true)
           echo "supabase rest → http=$code"
-          # 200 OK or 401/406 still proves the project is awake.
           case "$code" in
-            200|401|404|406) exit 0 ;;
-            000) echo "curl could not reach $url — check the SUPABASE_URL secret"; exit 1 ;;
-            *) echo "supabase ping failed"; exit 1 ;;
+            200|206) exit 0 ;;
+            401|403)
+              echo "::warning::project is awake but SUPABASE_ANON_KEY was rejected — rotate the secret"
+              exit 0
+              ;;
+            000) echo "curl could not reach $url — check the SUPABASE_URL variable"; exit 1 ;;
+            *) cat /tmp/rest 2>/dev/null; echo ""; echo "supabase ping failed"; exit 1 ;;
           esac
