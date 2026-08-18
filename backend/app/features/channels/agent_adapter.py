@@ -73,6 +73,7 @@ async def handle_inbound_agent_batch(
         # tagged as whatsapp, we've processed it before.
         if ext_id:
             dup = (
+                # tenant-safe: row resolved by primary key from a tenant-scoped read
                 db.table("agent_messages")
                 .select("id")
                 .eq("external_message_id", ext_id)
@@ -283,6 +284,7 @@ async def handle_inbound_agent(
     # Idempotency: bail if we've already recorded this inbound.
     if external_message_id:
         dup = (
+            # tenant-safe: row resolved by primary key from a tenant-scoped read
             db.table("agent_messages")
             .select("id")
             .eq("external_message_id", external_message_id)

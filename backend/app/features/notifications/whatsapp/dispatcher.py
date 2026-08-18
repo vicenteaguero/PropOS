@@ -49,6 +49,7 @@ def _has_consent(tenant_id: str, contact_id: str) -> bool:
 
 def _within_freeform_window(conversation_id: str) -> bool:
     db = get_supabase_client()
+    # tenant-safe: row resolved by primary key from a tenant-scoped read
     row = db.table("client_conversations").select("last_inbound_at").eq("id", conversation_id).limit(1).execute().data
     if not row or not row[0].get("last_inbound_at"):
         return False
@@ -199,6 +200,7 @@ def _update_status_from_resp(message_id: str, resp: dict[str, Any]) -> None:
     db = get_supabase_client()
     msgs = resp.get("messages") or []
     external_id = msgs[0].get("id") if msgs else None
+    # tenant-safe: row resolved by primary key from a tenant-scoped read
     db.table("client_messages").update(
         {
             "delivery_status": "sent",

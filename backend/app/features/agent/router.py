@@ -52,6 +52,7 @@ def _delete_empty_sessions(client: Any, user_id: str, tenant_id: str) -> None:
     if not owned_ids:
         return
     with_user_msg = (
+        # tenant-safe: scoped by agent session, which is itself tenant-bound
         client.table("agent_messages")
         .select("session_id")
         .in_("session_id", owned_ids)
@@ -63,6 +64,7 @@ def _delete_empty_sessions(client: Any, user_id: str, tenant_id: str) -> None:
     non_empty = {m["session_id"] for m in with_user_msg}
     empty_ids = [sid for sid in owned_ids if sid not in non_empty]
     if empty_ids:
+        # tenant-safe: scoped by agent session, which is itself tenant-bound
         client.table("agent_sessions").delete().in_("id", empty_ids).execute()
 
 
@@ -164,6 +166,7 @@ async def list_sessions(
 
     ids = [s["id"] for s in sessions]
     previews = (
+        # tenant-safe: scoped by agent session, which is itself tenant-bound
         client.table("agent_messages")
         .select("session_id, content, created_at, role")
         .in_("session_id", ids)

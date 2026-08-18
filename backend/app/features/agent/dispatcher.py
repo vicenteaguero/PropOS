@@ -289,6 +289,7 @@ def _consume_media_buffer(session_id: UUID, *, max_age_min: int = 60) -> list[di
     cutoff = (datetime.now(UTC) - timedelta(minutes=max_age_min)).isoformat()
 
     last_assistant = (
+        # tenant-safe: scoped by agent session, which is itself tenant-bound
         db.table("agent_messages")
         .select("created_at")
         .eq("session_id", str(session_id))
@@ -302,6 +303,7 @@ def _consume_media_buffer(session_id: UUID, *, max_age_min: int = 60) -> list[di
     floor = max(pack_floor, cutoff)
 
     rows = (
+        # tenant-safe: scoped by agent session, which is itself tenant-bound
         db.table("agent_messages")
         .select("id, media_url, media_mime, media_kapso_id")
         .eq("session_id", str(session_id))

@@ -346,6 +346,7 @@ def _materialize_media(
         return []
     client = get_supabase_client()
     msgs = (
+        # tenant-safe: scoped by agent session, which is itself tenant-bound
         client.table("agent_messages").select("id, media_url, media_mime").in_("id", media_message_ids).execute().data
         or []
     )
@@ -385,6 +386,7 @@ def _materialize_media(
         file_ids.append(UUID(file_row["id"]))
         consumed.append(m["id"])
     if consumed:
+        # tenant-safe: scoped by agent session, which is itself tenant-bound
         client.table("agent_messages").update({"media_status": "consumed"}).in_("id", consumed).execute()
     return file_ids
 

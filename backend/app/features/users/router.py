@@ -46,8 +46,8 @@ async def list_users(
 
 
 @router.get("/{user_id}", response_model=UserDetailResponse, dependencies=[Depends(require_role("ADMIN"))])
-async def get_user(user_id: UUID) -> dict:
-    return await UserService.get_user_detail(user_id)
+async def get_user(user_id: UUID, tenant_id: UUID = Depends(get_tenant_id)) -> dict:
+    return await UserService.get_user_detail(user_id, tenant_id)
 
 
 @router.post("", response_model=UserResponse, status_code=201, dependencies=[Depends(require_role("ADMIN"))])

@@ -33,6 +33,7 @@ def _recover_stuck(client, now: datetime) -> int:
     """Return reminders abandoned mid-send to PENDING."""
     cutoff = (now - timedelta(minutes=STUCK_AFTER_MINUTES)).isoformat()
     rows = (
+        # tenant-safe: runs for every tenant on a schedule, with no caller
         client.table("reminders")
         .update({"status": "PENDING"})
         .eq("status", "SENDING")
@@ -55,6 +56,7 @@ def _claim_due(client, now: str) -> list[dict[str, Any]]:
     longer matches.
     """
     due = (
+        # tenant-safe: runs for every tenant on a schedule, with no caller
         client.table("reminders")
         .select("id")
         .eq("status", "PENDING")
@@ -69,6 +71,7 @@ def _claim_due(client, now: str) -> list[dict[str, Any]]:
     if not due:
         return []
     return (
+        # tenant-safe: runs for every tenant on a schedule, with no caller
         client.table("reminders")
         .update({"status": "SENDING"})
         .in_("id", [row["id"] for row in due])
@@ -119,11 +122,13 @@ async def run_due_reminders() -> dict[str, int]:
     for r in claimed:
         error = await _send_with_retries(r)
         if error is None:
+            # tenant-safe: runs for every tenant on a schedule, with no caller
             client.table("reminders").update({"status": "SENT", "sent_at": datetime.now(UTC).isoformat()}).eq(
                 "id", r["id"]
             ).execute()
             sent += 1
         else:
+            # tenant-safe: runs for every tenant on a schedule, with no caller
             client.table("reminders").update(
                 {"status": "FAILED", "error": f"{SEND_ATTEMPTS} intentos: {str(error)[:270]}"}
             ).eq("id", r["id"]).execute()
