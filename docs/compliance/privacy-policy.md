@@ -1,6 +1,6 @@
 # Política de Privacidad
 
-> Versión 1.0 — vigente desde 2026-05-10. Aplica a las marcas operativas **CETER Propiedades** y **ANAIDA**, ambas operadas con la plataforma PropOS.
+> Versión 1.1 — vigente desde 2026-08-16 (la v1.0 listaba a Anthropic y Cerebras como proveedores del asistente IA; el proveedor real es Groq, y ni Anthropic ni Cerebras procesan datos). Aplica a las marcas operativas **CETER Propiedades** y **ANAIDA**, ambas operadas con la plataforma PropOS.
 
 ## 1. Quiénes somos
 
@@ -49,8 +49,7 @@ PropOS contrata sub-encargados para procesar datos. Los principales son:
 - **Supabase Inc.** (US) — base de datos y almacenamiento.
 - **Vercel Inc.** (US) — hosting del sitio web y aplicación.
 - **Google Cloud (GCP)** (US) — hosting backend.
-- **Anthropic PBC** (US) — modelo de lenguaje del asistente IA.
-- **Cerebras Systems** (US) — modelo de lenguaje en desarrollo.
+- **Groq Inc.** (US) — modelo de lenguaje y transcripción de notas de voz del asistente IA.
 - **Kapso** (proveedor BSP) — integración con WhatsApp Business.
 - **Resend** (US) — envío de emails transaccionales.
 
