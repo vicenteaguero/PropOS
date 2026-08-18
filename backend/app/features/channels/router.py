@@ -109,7 +109,8 @@ async def _handle_message_batch(items: list[dict[str, Any]]) -> None:
     phone_e164 = raw_phone if raw_phone.startswith("+") else f"+{raw_phone}"
 
     external_thread_id = conv.get("id")
-    user_match = _match_internal_user(phone_e164)
+    phone_row = _lookup_internal_phone(phone_e164)
+    user_match = _eligible_internal_user(phone_row)
 
     if user_match:
         from app.features.channels.agent_adapter import handle_inbound_agent_batch
@@ -120,6 +121,13 @@ async def _handle_message_batch(items: list[dict[str, Any]]) -> None:
             phone_e164=phone_e164,
             external_thread_id=external_thread_id,
         )
+        return
+
+    if phone_row is not None:
+        # A broker's number that failed the agent gate. Stop here instead of
+        # falling through: the B2C bot would answer a colleague as if they
+        # were a prospect and file them as a contact.
+        logger.warning("kapso_internal_phone_not_eligible", event_type="kapso", phone=phone_e164)
         return
 
     # External contact → Client Agent. The sender's phone says nothing about
@@ -196,28 +204,37 @@ def is_forwarded(msg: dict[str, Any]) -> bool:
     return bool(ctx.get("forwarded") or ctx.get("frequently_forwarded"))
 
 
-def _match_internal_user(phone_e164: str) -> dict[str, Any] | None:
-    """Resolve an inbound number to an internal user allowed to drive Propo.
-
-    A match here bypasses the agent router's ``require_role("ADMIN")`` +
-    ``require_scope("agent")`` gate, so the same conditions are re-checked
-    against the phone's own tenant: the number must be verified and the user
-    must be an active ADMIN holding the ``agent`` scope.
-    """
+def _lookup_internal_phone(phone_e164: str) -> dict[str, Any] | None:
+    """The ``user_phones`` row for this number, verified or not."""
     db = get_supabase_client()
     rows = (
         db.table("user_phones")
         .select("user_id, tenant_id, phone_e164, verified_at")
         .eq("phone_e164", phone_e164)
-        .not_.is_("verified_at", "null")
         .limit(1)
         .execute()
         .data
     )
-    if not rows:
+    return rows[0] if rows else None
+
+
+def _eligible_internal_user(row: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Keep only rows allowed to drive Propo.
+
+    A match bypasses the agent router's ``require_role("ADMIN")`` +
+    ``require_scope("agent")`` gate, so the same conditions are re-checked
+    against the phone's own tenant: the number must be verified and the user
+    must be an active ADMIN holding the ``agent`` scope.
+    """
+    if not row:
         return None
-    row = rows[0]
     if not row.get("verified_at"):
+        logger.warning(
+            "kapso_internal_phone_unverified",
+            event_type="kapso",
+            user_id=row.get("user_id"),
+            tenant_id=row.get("tenant_id"),
+        )
         return None
     if not _has_agent_access(row["user_id"], row["tenant_id"]):
         logger.warning(
@@ -228,6 +245,10 @@ def _match_internal_user(phone_e164: str) -> dict[str, Any] | None:
         )
         return None
     return row
+
+
+def _match_internal_user(phone_e164: str) -> dict[str, Any] | None:
+    return _eligible_internal_user(_lookup_internal_phone(phone_e164))
 
 
 def _has_agent_access(user_id: str, tenant_id: str) -> bool:

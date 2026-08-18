@@ -860,3 +860,91 @@ def test_unroutable_status_event_is_dropped(monkeypatch):
 
     assert [row["delivery_status"] for row in db.rows["client_messages"]] == ["sent", "sent"]
     assert db.updates == []
+
+
+def _inbound_item(body: str = "hola", *, phone: str = "56999") -> dict:
+    return {
+        "phone_number_id": "111",
+        "conversation": {"id": "thread-1", "phone_number": phone},
+        "message": {"id": "wamid.1", "from": phone, "type": "text", "text": {"body": body}},
+    }
+
+
+def test_denied_broker_number_is_not_handed_to_the_b2c_bot(monkeypatch):
+    """An unverified broker must not be answered as if they were a prospect."""
+    import asyncio
+
+    from app.features.channels import client_agent
+    from app.features.channels import router as ch_router
+
+    db = _FakeDB(
+        {
+            "user_phones": [_verified_phone(verified_at=None)],
+            "tenant_memberships": [_admin_membership()],
+            "tenants": [{"id": TENANT_A, "settings": {"kapso_phone_number_id": "111"}}],
+        }
+    )
+    _patch_db(monkeypatch, db, "app.features.channels.router", "app.features.channels.tenant_routing")
+
+    handled: list[dict] = []
+
+    async def _spy(**kwargs):
+        handled.append(kwargs)
+
+    monkeypatch.setattr(client_agent, "handle_inbound_client", _spy)
+    asyncio.run(ch_router._handle_message_batch([_inbound_item()]))
+
+    assert handled == []
+
+
+def test_unknown_number_reaches_the_client_agent(monkeypatch):
+    import asyncio
+
+    from app.features.channels import client_agent
+    from app.features.channels import router as ch_router
+
+    db = _FakeDB(
+        {
+            "user_phones": [],
+            "tenants": [{"id": TENANT_A, "settings": {"kapso_phone_number_id": "111"}}],
+        }
+    )
+    _patch_db(monkeypatch, db, "app.features.channels.router", "app.features.channels.tenant_routing")
+
+    handled: list[dict] = []
+
+    async def _spy(**kwargs):
+        handled.append(kwargs)
+
+    monkeypatch.setattr(client_agent, "handle_inbound_client", _spy)
+    asyncio.run(ch_router._handle_message_batch([_inbound_item("me interesa el depto")]))
+
+    assert len(handled) == 1
+    assert handled[0]["tenant_id"] == TENANT_A
+    assert handled[0]["phone_e164"] == "+56999"
+    assert handled[0]["user_text"] == "me interesa el depto"
+
+
+def test_unroutable_inbound_never_reaches_the_client_agent(monkeypatch):
+    import asyncio
+
+    from app.features.channels import client_agent
+    from app.features.channels import router as ch_router
+
+    db = _FakeDB(
+        {
+            "user_phones": [],
+            "tenants": [{"id": TENANT_A, "settings": {}}, {"id": TENANT_B, "settings": {}}],
+        }
+    )
+    _patch_db(monkeypatch, db, "app.features.channels.router", "app.features.channels.tenant_routing")
+
+    handled: list[dict] = []
+
+    async def _spy(**kwargs):
+        handled.append(kwargs)
+
+    monkeypatch.setattr(client_agent, "handle_inbound_client", _spy)
+    asyncio.run(ch_router._handle_message_batch([_inbound_item()]))
+
+    assert handled == []
