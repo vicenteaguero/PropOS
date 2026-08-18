@@ -305,19 +305,31 @@ def _materialize_media(
         or []
     )
     file_ids: list[UUID] = []
+    consumed: list[str] = []
     for m in msgs:
         if not m.get("media_url"):
             continue
         mime = m.get("media_mime") or "application/octet-stream"
-        file_kind = "IMAGE" if mime.startswith("image/") else "AUDIO" if mime.startswith("audio/") else "OTHER"
+        # `media_files.type` and `.source` are CHECK-constrained to
+        # ('photo','audio') and ('camera','gallery','recorder'). Writing the raw
+        # mime type and 'whatsapp' made every insert here fail. The finer
+        # classification lives in `kind`; the WhatsApp provenance stays on the
+        # originating `agent_messages` row (`media_kapso_id`).
+        if mime.startswith("image/"):
+            file_type, file_source, file_kind = "photo", "gallery", "PHOTO"
+        elif mime.startswith("audio/"):
+            file_type, file_source, file_kind = "audio", "recorder", "AUDIO"
+        else:
+            logger.warning("media_type_unsupported", event_type="write", message_id=m["id"], mime=mime)
+            continue
         file_row = (
             client.table("media_files")
             .insert(
                 {
                     "tenant_id": str(tenant_id),
                     "url": m["media_url"],
-                    "type": mime,
-                    "source": "whatsapp",
+                    "type": file_type,
+                    "source": file_source,
                     "uploaded_by": str(user_id),
                     "kind": file_kind,
                 }
@@ -326,8 +338,9 @@ def _materialize_media(
             .data[0]
         )
         file_ids.append(UUID(file_row["id"]))
-    if msgs:
-        client.table("agent_messages").update({"media_status": "consumed"}).in_("id", [m["id"] for m in msgs]).execute()
+        consumed.append(m["id"])
+    if consumed:
+        client.table("agent_messages").update({"media_status": "consumed"}).in_("id", consumed).execute()
     return file_ids
 
 
