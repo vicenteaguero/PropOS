@@ -4,7 +4,7 @@ The guard is the only thing between an LLM-authored string and the database,
 so it gets a table of adversarial payloads rather than a couple of happy-path
 checks. Pure unit tests: no DB, no network.
 
-Two known guard defects are pinned with `xfail(strict=True)` so the suite stays
+Both guard defects the matrix originally pinned are now fixed; the suite stays
 green today and turns red the moment somebody fixes them without updating the
 expectations. Both are documented on the tests themselves.
 """
@@ -122,10 +122,12 @@ def test_trailing_semicolon_is_tolerated() -> None:
     assert validate_and_normalize("SELECT id FROM properties;").endswith(f"LIMIT {DEFAULT_ROW_CAP}")
 
 
-# ── Known guard defects (pinned) ─────────────────────────────────────
+# ── Regressions for two defects found while writing this matrix ──────
 #
-# `xfail(strict=True)`: an unexpected PASS fails the suite, so these flip to a
-# green regression test as soon as sql_guard is fixed.
+# Both were live when these cases were written: information_schema was fully
+# reachable (the prefix was matched against the bare relation, but a qualified
+# name keeps its schema in .db), and five allowlisted functions were rejected
+# because the allowlist was compared against sqlglot's canonical spelling.
 
 INFORMATION_SCHEMA_PAYLOADS: list[tuple[str, str]] = [
     ("is-columns", "SELECT table_name, column_name FROM information_schema.columns"),
@@ -136,16 +138,6 @@ INFORMATION_SCHEMA_PAYLOADS: list[tuple[str, str]] = [
 ]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "sql_guard bug: FORBIDDEN_TABLE_PREFIXES is matched against exp.Table.name (the bare "
-        "relation), but for a schema-qualified name the schema lives in .db — so the "
-        "'information_schema' prefix can never match and the whole schema stays reachable. "
-        "pg_* is blocked only incidentally, because those relation names start with pg_. "
-        "Fix: check table.db and table.catalog too."
-    ),
-)
 @pytest.mark.parametrize(
     "sql",
     [c[1] for c in INFORMATION_SCHEMA_PAYLOADS],
@@ -166,16 +158,6 @@ ALLOWLISTED_BUT_REJECTED: list[tuple[str, str]] = [
 ]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "sql_guard bug: the allowlist is compared against sqlglot's canonical sql_name() "
-        "(date_trunc -> timestamp_trunc, to_char -> time_to_str, to_date -> str_to_date, "
-        "to_timestamp -> unix_to_time, age -> anonymous), not the Postgres spelling, so five "
-        "functions listed in ALLOWED_FUNCTIONS are rejected. date_trunc breaks every "
-        "'agrupado por mes' question the agent is meant to answer."
-    ),
-)
 @pytest.mark.parametrize(
     "sql",
     [c[1] for c in ALLOWLISTED_BUT_REJECTED],
