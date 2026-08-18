@@ -10,12 +10,113 @@ GROQ_API_KEY).
 
 from __future__ import annotations
 
+import json
 import os
+import time
 from collections.abc import Generator
+from pathlib import Path
 
 import pytest
 
 from .seed_agent import SeedHandles, cleanup, seed
+
+# ── results.jsonl completeness ───────────────────────────────────────
+#
+# The capability matrix writes its row *after* the turn returns, so a test that
+# died on an exception (429, timeout, retired model) simply vanished from the
+# report — a run of 18 passes and 4 crashes produced a file that read 18/18,
+# 100%. The hooks below guarantee one row per test whatever happens, and close
+# the file with a summary so nobody has to count lines to know the pass rate.
+
+RESULTS_PATH = Path(__file__).parent / "results.jsonl"
+_ROWS_BEFORE: dict[str, int] = {}
+_ROWS_AT_SESSION_START = 0
+
+
+def _row_count() -> int:
+    if not RESULTS_PATH.exists():
+        return 0
+    with RESULTS_PATH.open() as f:
+        return sum(1 for line in f if line.strip())
+
+
+def _append(record: dict[str, object]) -> None:
+    RESULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with RESULTS_PATH.open("a") as f:
+        f.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+
+def pytest_sessionstart(session: pytest.Session) -> None:
+    # Remember the baseline so a plain unit run, which collects this directory
+    # but executes none of it, does not append a summary to a stale file.
+    global _ROWS_AT_SESSION_START
+    _ROWS_AT_SESSION_START = _row_count()
+
+
+def pytest_runtest_setup(item: pytest.Item) -> None:
+    _ROWS_BEFORE[item.nodeid] = _row_count()
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo):  # type: ignore[no-untyped-def]
+    outcome = yield
+    report = outcome.get_result()
+
+    # A setup failure never reaches the test body; a call failure may or may not
+    # have got as far as the test's own _record.
+    if report.when == "call":
+        before = _ROWS_BEFORE.pop(item.nodeid, None)
+        if before is not None and _row_count() > before:
+            return  # the test logged its own, richer row
+    elif not (report.when == "setup" and report.failed):
+        return
+
+    params = getattr(item, "callspec", None)
+    _append(
+        {
+            "test": item.nodeid,
+            "provider": (params.params.get("provider") if params else None) or "?",
+            "pass": report.passed,
+            "ts": time.time(),
+            "phase": report.when,
+            "error": (str(call.excinfo.value)[:300] if call.excinfo else None),
+            "error_type": (call.excinfo.type.__name__ if call.excinfo else None),
+            "source": "harness",  # synthesised, so the row is never missing
+        }
+    )
+
+
+def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
+    if _row_count() <= _ROWS_AT_SESSION_START:
+        return  # nothing ran in this directory
+
+    rows = []
+    if RESULTS_PATH.exists():
+        for line in RESULTS_PATH.read_text().splitlines():
+            if not line.strip():
+                continue
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if not row.get("summary"):
+                rows.append(row)
+    if not rows:
+        return
+
+    passed = sum(1 for r in rows if r.get("pass"))
+    _append(
+        {
+            "summary": True,
+            "ts": time.time(),
+            "n": len(rows),
+            "passed": passed,
+            "pass_rate": round(passed / len(rows), 3),
+            "model": os.environ.get("AGENT_MODEL", "?"),
+            "schema": TEST_SCHEMA,
+            "exit_status": int(exitstatus),
+        }
+    )
 
 
 def pytest_configure(config: pytest.Config) -> None:  # noqa: D401
