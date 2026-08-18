@@ -97,3 +97,38 @@ prevent.
 > Hardening note (post-v0.1.0): swap the shared-secret header for OIDC tokens
 > (`--oidc-service-account-email`) so the endpoint validates a Google-signed
 > identity instead of a static secret.
+
+## WhatsApp inbound — the one manual switch
+
+Kapso holds the destination URL in its dashboard and exposes no API for it
+(`/api/v1/whatsapp_configs` returns the number's state but no webhook field, and
+`.../webhook` is a 404). Verified against the live account on 2026-08-18:
+
+| | |
+|---|---|
+| Number | `+56 9 5127 8204` |
+| `phone_number_id` | `821920077680647` |
+| Config id | `8a2ed241-58b7-4b08-a7dc-ce8b9950b13a` |
+| Status | `CONNECTED`, `inbound_processing_enabled = true` |
+| Webhook | verified 2025-11-24 |
+
+So the webhook is **already registered and verified** — the task is to *repoint*
+it, not to set it up. The last event this backend received was 2026-05-05, during
+the development session that used a cloudflared tunnel, which means the
+destination still points at that dead tunnel.
+
+Set it to:
+
+```
+https://propos-api-blfjtiyx4q-uc.a.run.app/api/v1/integrations/kapso/webhook
+```
+
+Confirm it took by sending one message to the number and checking that the row
+count moves:
+
+```bash
+make query SQL="select count(*), max(received_at) from kapso_webhook_events"
+```
+
+If the count moves but `signature_valid` is false, the dashboard's signing secret
+and `KAPSO_WEBHOOK_SECRET` have diverged.
