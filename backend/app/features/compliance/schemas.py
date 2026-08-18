@@ -45,3 +45,10 @@ class SubjectExport(BaseModel):
     tasks: list[dict[str, Any]] = []
     media_files: list[dict[str, Any]] = []
     aliases: list[dict[str, Any]] = []
+    # The subject's own communications. An access/portability response without
+    # these is incomplete — it omits precisely the content subjects ask for.
+    client_conversations: list[dict[str, Any]] = []
+    client_messages: list[dict[str, Any]] = []
+    channel_consents: list[dict[str, Any]] = []
+    email_messages: list[dict[str, Any]] = []
+    transcripts: list[dict[str, Any]] = []
