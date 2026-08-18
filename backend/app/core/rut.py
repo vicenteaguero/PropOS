@@ -45,3 +45,21 @@ def validate_rut(rut: str) -> bool:
         return False
     body, dv = match.group(1), match.group(2).upper()
     return compute_dv(body) == dv
+
+
+def parse_rut(raw: str | None) -> str | None:
+    """Normalize to canonical ``NNNNNNNN-D`` or raise ``ValueError``.
+
+    Blank/``None`` passes through as ``None`` — the RUT is optional wherever it
+    appears. What is not acceptable is persisting a value that cannot be a real
+    RUT: DSAR lookups and the Art. 11 accuracy duty both key off it.
+    """
+    if raw is None:
+        return None
+    text = str(raw).strip()
+    if not text:
+        return None
+    normalized = normalize_rut(text)
+    if not validate_rut(normalized):
+        raise ValueError(f"RUT inválido: {raw}")
+    return normalized
