@@ -39,9 +39,15 @@ async def get_thread(thread_id: UUID, tenant_id: UUID = Depends(get_tenant_id)) 
 
 @router.post("/threads/{thread_id}/reply", response_model=dict)
 async def reply(thread_id: UUID, payload: ReplyRequest, tenant_id: UUID = Depends(get_tenant_id)) -> dict:
-    return await EmailSyncService.reply(
-        thread_id, tenant_id, payload.body, payload.subject, account_email=settings.email_imap_user
-    )
+    try:
+        return await EmailSyncService.reply(
+            thread_id, tenant_id, payload.body, payload.subject, account_email=settings.email_imap_user
+        )
+    except ConsentDeniedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Contact has not consented to email contact",
+        ) from exc
 
 
 @router.post("/threads/{thread_id}/archive", response_model=EmailThreadResponse)
