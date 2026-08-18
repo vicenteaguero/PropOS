@@ -270,11 +270,7 @@ function MobileTaskRow({
   const highPriority = t.priority >= 2;
 
   return (
-    <div
-      className={`group flex items-start gap-3 px-5 py-3 ${
-        divider ? "border-b border-border" : ""
-      }`}
-    >
+    <div className={`flex items-start gap-3 px-5 py-3 ${divider ? "border-b border-border" : ""}`}>
       <TaskCheck done={done} color={ringColor} onToggle={() => onComplete(t.id)} />
 
       <div className="min-w-0 flex-1">
@@ -311,13 +307,16 @@ function MobileTaskRow({
         )}
       </div>
 
+      {/* Always visible: this row is the touch surface, and a hover-only
+          control is unreachable there. 44px box, pulled into the row padding
+          so the icon still reads as a small affordance. */}
       <button
         type="button"
         onClick={() => onDelete(t.id)}
         aria-label="Eliminar"
-        className="mt-0.5 hidden size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-secondary hover:text-destructive active:scale-90 group-hover:flex"
+        className="-mt-1.5 -mr-2.5 flex size-11 shrink-0 items-center justify-center rounded-full text-faint transition hover:bg-secondary hover:text-destructive active:scale-90"
       >
-        <Trash2 className="size-3.5" strokeWidth={1.8} />
+        <Trash2 className="size-4" strokeWidth={1.8} />
       </button>
     </div>
   );

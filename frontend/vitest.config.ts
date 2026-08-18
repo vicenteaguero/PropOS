@@ -3,8 +3,14 @@ import path from "path";
 
 export default defineConfig({
   test: {
-    environment: "node",
-    include: ["src/**/*.test.ts"],
+    // jsdom, not node: component tests need a DOM. Pure util tests run fine
+    // under it too, so one environment covers both.
+    environment: "jsdom",
+    setupFiles: ["./src/test/setup.ts"],
+    // `.tsx` matters. The glob used to be `*.test.ts` only, so a component test
+    // written with React's natural extension was never collected — and CI
+    // passed `--passWithNoTests`, which turned "collected nothing" into green.
+    include: ["src/**/*.test.{ts,tsx}"],
   },
   resolve: {
     alias: {
