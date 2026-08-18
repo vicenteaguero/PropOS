@@ -254,10 +254,20 @@ def _accept_log_transaction(payload, tenant_id, user_id, agent_session_id):
 
 def _accept_create_campaign(payload, tenant_id, user_id, agent_session_id):
     client = get_supabase_client()
+    # Same shape as `_accept_log_transaction`: the registry emits `budget` in
+    # whole pesos, the column is `budget_cents` (BIGINT). Dropping the key
+    # without converting registered every agent-created campaign with no
+    # budget at all, silently.
+    budget = payload.get("budget")
     payload = {k: v for k, v in payload.items() if k not in ("summary_es", "budget")}
     payload["tenant_id"] = str(tenant_id)
     payload["created_by"] = str(user_id)
     payload["source"] = "agent"
+    if "budget_cents" not in payload and budget is not None:
+        try:
+            payload["budget_cents"] = int(round(float(budget) * 100))
+        except (TypeError, ValueError):
+            logger.warning("campaign_budget_unparsed", event_type="write", budget=str(budget)[:40])
     row = client.table("campaigns").insert(payload).execute().data[0]
     return ("campaigns", UUID(row["id"]))
 
