@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, KeyRound, Loader2, Mail, ShieldAlert, Trash2, UserX } from "lucide-react";
+import { ArrowLeft, KeyRound, Mail, ShieldAlert, Trash2, UserX } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageLayout } from "@shared/components/page-layout";
-import { Pill, SectionLabel } from "@shared/ui";
+import { ErrorState, PageSkeleton, Pill, SectionLabel } from "@shared/ui";
 import { toast } from "sonner";
 import { useAuth } from "@shared/hooks/use-auth";
 import {
@@ -36,7 +36,7 @@ function initials(name: string): string {
 export function AdminUserDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { user: currentUser } = useAuth();
-  const { data, isLoading } = useAdminUserDetail(id);
+  const { data, isLoading, error, refetch } = useAdminUserDetail(id);
   const isDev = !!currentUser?.isDevAdmin;
 
   const resetPwd = useResetPassword();
@@ -51,24 +51,43 @@ export function AdminUserDetailPage() {
   const [newPwd, setNewPwd] = useState("");
   const [confirmDelete, setConfirmDelete] = useState("");
 
-  if (isLoading || !data) {
+  // Mobile: capped reading column. Desktop: a wider, comfortable admin canvas
+  // (not full-bleed — this is a detail/edit surface, not a list).
+  const backLink = (
+    <Link
+      to="/admin/users"
+      className="mb-4 inline-flex items-center gap-1 text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+    >
+      <ArrowLeft className="size-4" strokeWidth={1.8} /> Volver
+    </Link>
+  );
+
+  if (isLoading) {
     return (
-      <div className="flex flex-1 items-center justify-center py-16">
-        <Loader2 className="size-5 animate-spin text-muted-foreground" />
-      </div>
+      <PageLayout width="md" className="pb-10 lg:max-w-5xl lg:px-8 lg:py-9">
+        {backLink}
+        <PageSkeleton variant="detail" />
+      </PageLayout>
+    );
+  }
+
+  // A 403/404/500 (or a user from another tenant) lands here with no data.
+  if (!data) {
+    return (
+      <PageLayout width="md" className="pb-10 lg:max-w-5xl lg:px-8 lg:py-9">
+        {backLink}
+        <ErrorState
+          message="No se pudo cargar el usuario."
+          error={error}
+          onRetry={() => refetch()}
+        />
+      </PageLayout>
     );
   }
 
   return (
-    // Mobile: capped reading column. Desktop: a wider, comfortable admin canvas
-    // (not full-bleed — this is a detail/edit surface, not a list).
     <PageLayout width="md" className="pb-10 lg:max-w-5xl lg:px-8 lg:py-9">
-      <Link
-        to="/admin/users"
-        className="mb-4 inline-flex items-center gap-1 text-[13px] text-muted-foreground transition-colors hover:text-foreground"
-      >
-        <ArrowLeft className="size-4" strokeWidth={1.8} /> Volver
-      </Link>
+      {backLink}
 
       <header className="mb-6 flex items-center gap-4 lg:mb-8">
         <span className="flex size-14 shrink-0 items-center justify-center rounded-full bg-secondary text-lg font-semibold text-foreground lg:size-16 lg:text-xl">
