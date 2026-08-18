@@ -1,7 +1,6 @@
 import { useMemo } from "react";
-import { Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
+import { ErrorState, PageSkeleton } from "@shared/ui";
 import { useOpportunities } from "@features/opportunities/hooks/use-opportunities";
 import { useContacts } from "@features/contacts/hooks/use-contacts";
 import { PIPELINE_STAGES, STAGE_LABELS, type Opportunity } from "@features/opportunities/types";
@@ -55,22 +54,11 @@ export function CrmPipeline() {
   }, [data]);
 
   if (isLoading) {
-    return (
-      <div className="flex justify-center py-12">
-        <Loader2 className="size-5 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <PageSkeleton variant="list" count={5} className="pt-1" />;
   }
 
   if (error) {
-    return (
-      <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
-        No se pudo cargar el pipeline.
-        <Button variant="ghost" size="sm" className="ml-2" onClick={() => refetch()}>
-          Reintentar
-        </Button>
-      </div>
-    );
+    return <ErrorState message="No se pudo cargar el pipeline." onRetry={() => refetch()} />;
   }
 
   if ((data?.length ?? 0) === 0) {
