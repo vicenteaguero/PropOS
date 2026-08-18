@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import json
+from functools import partial
 from typing import Any
 from uuid import UUID, uuid4
 
+import anyio
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 
@@ -301,11 +303,17 @@ async def create_transcript(
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> dict:
     """Upload audio → server STT (Whisper) → persist transcript."""
+    # `transcribe_audio` is fully synchronous (HTTP call to Whisper + a handful
+    # of Supabase reads for the vocab). Calling it inline would block the event
+    # loop for every other request on this worker until Groq answers.
     try:
-        result = transcribe_audio(
-            audio.file,
-            audio.filename or "audio.webm",
-            tenant_id=tenant_id,
+        result = await anyio.to_thread.run_sync(
+            partial(
+                transcribe_audio,
+                audio.file,
+                audio.filename or "audio.webm",
+                tenant_id=tenant_id,
+            )
         )
     except TranscriptionError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc

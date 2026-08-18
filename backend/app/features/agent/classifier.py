@@ -203,6 +203,9 @@ async def classify(user_text: str) -> ClassifierResult:
     client = AsyncOpenAI(
         api_key=settings.groq_api_key,
         base_url="https://api.groq.com/openai/v1",
+        # Without this the SDK default is 600s: a hung Groq connection pins the
+        # turn (and its worker) for ten minutes.
+        timeout=float(settings.agent_turn_timeout_seconds),
     )
 
     # Anchor relative dates ("mañana", "el viernes", "en 1 hora") so the model
@@ -300,6 +303,7 @@ async def extract_details(
     client = AsyncOpenAI(
         api_key=settings.groq_api_key,
         base_url="https://api.groq.com/openai/v1",
+        timeout=float(settings.agent_turn_timeout_seconds),
     )
     raw_response = await client.chat.completions.with_raw_response.create(
         model=settings.agent_model,
