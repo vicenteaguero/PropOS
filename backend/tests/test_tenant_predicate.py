@@ -34,17 +34,53 @@ APP = Path(__file__).resolve().parents[1] / "app"
 # Kept explicit rather than derived from the database so the test stays
 # hermetic and reviewable in the diff that adds a table.
 TENANT_SCOPED = {
-    "ads", "agent_messages", "agent_sessions", "agent_transcripts",
-    "anonymous_upload_portals", "anonymous_uploads", "audit_log", "campaigns",
-    "client_consents", "client_conversations", "client_messages", "contacts",
-    "document_assignments", "document_versions", "documents", "email_accounts",
-    "email_messages", "email_threads", "events", "import_jobs",
-    "interaction_participants", "interaction_targets", "interactions",
-    "internal_areas", "media_assets", "media_files", "notes", "opportunities",
-    "opportunity_stage_history", "organizations", "pending_proposals", "people",
-    "person_aliases", "places", "project_properties", "projects", "properties",
-    "property_grants", "publications", "reminders", "share_link_history",
-    "share_links", "taggings", "tags", "tasks", "transactions", "workflows",
+    "ads",
+    "agent_messages",
+    "agent_sessions",
+    "agent_transcripts",
+    "anonymous_upload_portals",
+    "anonymous_uploads",
+    "audit_log",
+    "campaigns",
+    "client_consents",
+    "client_conversations",
+    "client_messages",
+    "contacts",
+    "document_assignments",
+    "document_versions",
+    "documents",
+    "email_accounts",
+    "email_messages",
+    "email_threads",
+    "events",
+    "import_jobs",
+    "interaction_participants",
+    "interaction_targets",
+    "interactions",
+    "internal_areas",
+    "media_assets",
+    "media_files",
+    "notes",
+    "opportunities",
+    "opportunity_stage_history",
+    "organizations",
+    "pending_proposals",
+    "people",
+    "person_aliases",
+    "places",
+    "project_properties",
+    "projects",
+    "properties",
+    "property_grants",
+    "publications",
+    "reminders",
+    "share_link_history",
+    "share_links",
+    "taggings",
+    "tags",
+    "tasks",
+    "transactions",
+    "workflows",
 }
 
 ESCAPE_HATCH = re.compile(r"#\s*tenant-safe:\s*\S")
@@ -117,8 +153,7 @@ def test_no_unscoped_queries_on_tenant_tables() -> None:
         "queries on tenant-scoped tables with no tenant predicate.\n"
         "The service-role client bypasses RLS, so a missing predicate is a\n"
         "cross-tenant read. Add .eq('tenant_id', ...) or, if the access is\n"
-        "legitimately cross-tenant, a '# tenant-safe: <why>' comment.\n\n"
-        + "\n".join(violations)
+        "legitimately cross-tenant, a '# tenant-safe: <why>' comment.\n\n" + "\n".join(violations)
     )
 
 
