@@ -35,6 +35,7 @@ MEMBERSHIPS = "tenant_memberships"
 DOCUMENTS = "documents"
 DOC_VERSIONS = "document_versions"
 INTERACTIONS = "interactions"
+PROFILES = "profiles"
 I_TARGETS = "interaction_targets"
 I_PARTICIPANTS = "interaction_participants"
 
@@ -43,6 +44,18 @@ logger = get_logger("VISITOR_INV")
 
 def _now_iso() -> str:
     return datetime.now(UTC).isoformat()
+
+
+def _auth_account_exists(client: Any, email_lower: str) -> bool:
+    """Single indexed lookup instead of enumerating every account.
+
+    `auth.admin.list_users()` pages through the whole project — on a public
+    route that hands an anonymous caller the full user directory just to answer
+    one boolean. `profiles.email` carries a unique index on `LOWER(email)` and
+    is the same signal `UserService.create_user` trusts to reject duplicates.
+    """
+    rows = client.table(PROFILES).select("id").ilike("email", email_lower).limit(1).execute().data or []
+    return bool(rows)
 
 
 def _invite_url(slug: str) -> str:
@@ -118,18 +131,7 @@ class VisitorInvitationService:
                 tenants_rows = client.table(TENANTS).select("slug").in_("id", other_tenant_ids).execute().data or []
                 other_slugs = [t["slug"] for t in tenants_rows]
 
-        # auth.users via admin API
-        auth_exists = False
-        try:
-            users_resp = client.auth.admin.list_users()
-            users = getattr(users_resp, "users", None) or users_resp or []
-            for u in users:
-                u_email = getattr(u, "email", None) or (u.get("email") if isinstance(u, dict) else None)
-                if u_email and u_email.lower() == email_lower:
-                    auth_exists = True
-                    break
-        except Exception:  # noqa: BLE001
-            pass
+        auth_exists = _auth_account_exists(client, email_lower)
 
         warnings: list[str] = []
         if contact_in_this:
@@ -297,42 +299,18 @@ class VisitorInvitationService:
             .execute()
             .data
         )
-        in_other = []
-        if not in_this:
-            in_other = (
-                client.table(CONTACTS)
-                .select("full_name, email, phone, rut, address")
-                .ilike("email", email_lower)
-                .neq("tenant_id", row["tenant_id"])
-                .limit(1)
-                .execute()
-                .data
-            )
-
+        # Prefill only ever comes from the invitation's own tenant. Matching the
+        # email against other tenants used to hand an anonymous caller the
+        # name, RUT, phone and address of a stranger's contact record.
         prefilled: PrefilledData | None = None
         if in_this:
             c = in_this[0]
             prefilled = PrefilledData(
                 full_name=c.get("full_name"), rut=c.get("rut"), phone=c.get("phone"), address=c.get("address")
             )
-        elif in_other:
-            c = in_other[0]
-            prefilled = PrefilledData(
-                full_name=c.get("full_name"), rut=c.get("rut"), phone=c.get("phone"), address=c.get("address")
-            )
 
-        # auth user existence
-        existing_account = False
-        try:
-            users_resp = client.auth.admin.list_users()
-            users = getattr(users_resp, "users", None) or users_resp or []
-            for u in users:
-                u_email = getattr(u, "email", None) or (u.get("email") if isinstance(u, dict) else None)
-                if u_email and u_email.lower() == email_lower:
-                    existing_account = True
-                    break
-        except Exception:  # noqa: BLE001
-            pass
+        # Drives the "log in instead" path in the registration page.
+        existing_account = _auth_account_exists(client, email_lower)
 
         # mark opened (idempotent first time)
         if row["status"] == "pending":
