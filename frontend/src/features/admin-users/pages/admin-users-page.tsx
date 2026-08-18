@@ -231,3 +231,6 @@ function UsersTable({
     </div>
   );
 }
+
+// Default export so the router can code-split this page with React.lazy.
+export default AdminUsersPage;
