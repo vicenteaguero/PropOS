@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { Chip, Chips } from "@shared/ui";
+import { useAuth } from "@shared/hooks/use-auth";
 import { EntityCombobox } from "@features/documents/components/entity-combobox";
 import { useContacts, useProperties } from "@features/documents/hooks/use-entities";
 import type { ContactLite, PropertyLite } from "@features/documents/types";
@@ -22,6 +23,17 @@ const MODES: { id: Mode; label: string }[] = [
   { id: "CONTACT", label: "Contacto" },
 ];
 
+/**
+ * Mirrors `require_scope` on the backend — an empty admin scope means full
+ * access. `/v1/contacts` sits behind the "crm" scope while `/v1/tasks` needs
+ * "productividad", so a narrowly scoped admin can reach this form but not the
+ * contact search; hiding the chip beats offering a control that 403s.
+ */
+function hasScope(scope: string[] | undefined, needed: string): boolean {
+  const current = scope ?? [];
+  return current.length === 0 || current.includes(needed);
+}
+
 /** Maps the picked link onto the `tasks.related` JSONB shape the backend stores. */
 export function linkToRelated(link: TaskLink | null): TaskRelated | undefined {
   if (!link) return undefined;
@@ -40,6 +52,10 @@ interface Props {
  * task shows up in that property's / contact's context instead of floating free.
  */
 export function TaskEntityPicker({ value, onChange, disabled }: Props) {
+  const { user } = useAuth();
+  const canSearchContacts = hasScope(user?.adminScope, "crm");
+  const modes = canSearchContacts ? MODES : MODES.filter((m) => m.id !== "CONTACT");
+
   const [mode, setMode] = useState<Mode>(value?.kind ?? "NONE");
   const [query, setQuery] = useState(value?.label ?? "");
   // What the last pick resolved to. The combobox fires onSelect and then the
@@ -71,7 +87,7 @@ export function TaskEntityPicker({ value, onChange, disabled }: Props) {
   return (
     <div className="space-y-2">
       <Chips className="pb-0">
-        {MODES.map((m) => (
+        {modes.map((m) => (
           <Chip key={m.id} active={mode === m.id} onClick={() => pickMode(m.id)}>
             {m.label}
           </Chip>
@@ -94,7 +110,7 @@ export function TaskEntityPicker({ value, onChange, disabled }: Props) {
         />
       )}
 
-      {mode === "CONTACT" && (
+      {mode === "CONTACT" && canSearchContacts && (
         <EntityCombobox<ContactLite>
           value={query}
           onChange={handleQuery}
