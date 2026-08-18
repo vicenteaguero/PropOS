@@ -40,6 +40,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@shared/components/confirm-dialog/confirm-dialog";
 import { cn } from "@/lib/utils";
 import { compressBlob } from "../services/image-compression";
 import { imagesToPdf, PAPER_SIZE_LABELS, type PaperSizeId } from "../services/pdf-from-images";
@@ -163,6 +164,8 @@ export function CameraCaptureDocument({
     initialShotState.length > 0 ? initialShotState[0]!.id : null,
   );
   const [busy, setBusy] = useState(false);
+  // Guards closing the capture surface while unsaved shots are pending.
+  const [discardOpen, setDiscardOpen] = useState(false);
   const [mode, setMode] = useState<Mode>(initialShotState.length > 0 ? "edit" : "capture");
   const [curveMode, setCurveMode] = useState(false);
   const [scanMode, setScanMode] = useState<ScanMode>("document");
@@ -887,7 +890,8 @@ export function CameraCaptureDocument({
 
   // ---------- close guard ----------
   const closeWithGuard = () => {
-    if (shots.length > 0 && !confirm(`Descartar ${shots.length} captura(s) sin guardar?`)) {
+    if (shots.length > 0) {
+      setDiscardOpen(true);
       return;
     }
     onOpenChange(false);
@@ -1442,6 +1446,19 @@ export function CameraCaptureDocument({
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={discardOpen}
+        onOpenChange={setDiscardOpen}
+        title="Descartar capturas"
+        description={`Tenés ${shots.length === 1 ? "1 captura" : `${shots.length} capturas`} sin guardar. Si salís ahora se pierden.`}
+        confirmLabel="Descartar"
+        variant="destructive"
+        onConfirm={() => {
+          setDiscardOpen(false);
+          onOpenChange(false);
+        }}
+      />
     </div>
   );
 }
