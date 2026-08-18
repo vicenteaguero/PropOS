@@ -6,6 +6,7 @@ from uuid import UUID
 
 from app.core.logging.logger import get_logger
 from app.core.supabase.client import get_supabase_client
+from app.features.agent.attribution import agent_attribution
 
 PENDING_TABLE = "pending_proposals"
 
@@ -117,22 +118,16 @@ class PendingService:
             for key, chosen_id in disambiguation.items():
                 payload[key] = str(chosen_id)
 
-        # Stamp PostgREST headers so the universal audit_log trigger
-        # records source='agent' + agent_session_id (see migration 0033).
+        # Attribution for the universal audit_log trigger (migration 0033).
+        # Shared with the dispatcher's auto-commit path.
         agent_session_id = UUID(proposal["agent_session_id"])
-        postgrest_headers = client.postgrest.session.headers
-        postgrest_headers["X-Agent-Session-Id"] = str(agent_session_id)
-        postgrest_headers["X-Action-Source"] = "agent"
-        try:
+        with agent_attribution(agent_session_id):
             target_table, created_row_id = dispatcher(
                 payload=payload,
                 tenant_id=tenant_id,
                 user_id=reviewer_user,
                 agent_session_id=agent_session_id,
             )
-        finally:
-            postgrest_headers.pop("X-Agent-Session-Id", None)
-            postgrest_headers.pop("X-Action-Source", None)
 
         from datetime import UTC, datetime
 

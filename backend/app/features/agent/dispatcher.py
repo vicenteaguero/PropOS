@@ -15,6 +15,7 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
+from app.features.agent.attribution import agent_attribution
 from app.features.agent.intent_registry import _is_falsy
 from app.features.agent.intent_registry import get as get_intent_spec
 from app.features.agent.intent_registry import missing_required
@@ -229,7 +230,10 @@ def dispatch(
         accept_fn = ACCEPTOR_BY_KIND.get(proposal_kind)
         if accept_fn is not None:
             try:
-                committed_table, row_id = accept_fn(dict(payload), tenant_id, user_id, session_id)
+                # Same audit attribution the manual accept path stamps, so the
+                # trigger records source='agent' + the session id.
+                with agent_attribution(session_id):
+                    committed_table, row_id = accept_fn(dict(payload), tenant_id, user_id, session_id)
             except Exception as exc:  # noqa: BLE001
                 # Auto-commit failed (e.g. DB constraint). Fall back to pending
                 # so the user can fix it manually rather than losing the action.
