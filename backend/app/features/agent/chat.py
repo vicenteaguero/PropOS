@@ -23,6 +23,7 @@ from uuid import UUID
 from app.core.config.settings import settings
 from app.core.logging.logger import get_logger
 from app.core.supabase.client import get_supabase_client
+from app.features.agent.budget import BudgetExceededError, check_daily_budget, record_spend_cents
 from app.features.agent.classifier import classify, extract_details
 from app.features.agent.context import invalidate_snapshot, load_snapshot
 from app.features.agent.dispatcher import dispatch
@@ -104,6 +105,21 @@ async def _stream_turn(
             }
             yield {"type": "done"}
             return
+
+    # Spend ceiling. Sibling of the per-user turn cap above: same shape of
+    # degradation, but keyed to money instead of turns.
+    try:
+        check_daily_budget(tenant_id)
+    except BudgetExceededError as exc:
+        yield {
+            "type": "text",
+            "text": (
+                f"Se agotó el presupuesto diario de IA (US${exc.budget_usd:.2f}). "
+                "Se reinicia mañana; si lo necesitás antes, avisá al equipo. 🙏"
+            ),
+        }
+        yield {"type": "done", "proposals_created": [], "executed_rows": [], "error": "budget_exceeded"}
+        return
 
     _save_message(client, tenant_id, session_id, "user", user_text)
 
@@ -232,6 +248,15 @@ async def _stream_turn(
         tokens_in=classification.tokens_in + pass2_in,
         tokens_out=classification.tokens_out + pass2_out,
     )
+
+    turn_cents = cost_cents_exact(
+        settings.agent_provider,
+        settings.agent_model,
+        classification.tokens_in + pass2_in,
+        classification.tokens_out + pass2_out,
+    )
+    if turn_cents:
+        record_spend_cents(tenant_id, turn_cents)
 
     from datetime import UTC, datetime
 
