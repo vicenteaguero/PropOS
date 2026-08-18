@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageLayout } from "@shared/components/page-layout";
+import { ConfirmDialog } from "@shared/components/confirm-dialog/confirm-dialog";
 import { Pill, Row, SectionLabel } from "@shared/ui";
 import { useIsDesktop } from "@/hooks/use-mobile";
 import { userPhonesApi, type AppUser, type UserPhone } from "../api/user-phones-api";
@@ -35,6 +36,7 @@ export function AdminPhonesPage() {
   // assign phone form
   const [userId, setUserId] = useState("");
   const [phone, setPhone] = useState("");
+  const [toUnassign, setToUnassign] = useState<UserPhone | null>(null);
 
   async function refresh() {
     try {
@@ -105,12 +107,13 @@ export function AdminPhonesPage() {
   }
 
   async function onUnassign(id: string) {
-    if (!confirm("¿Quitar este teléfono?")) return;
     try {
       await userPhonesApi.unassign(id);
       await refresh();
     } catch (e: any) {
       setError(e?.message ?? "Error eliminando");
+    } finally {
+      setToUnassign(null);
     }
   }
 
@@ -284,7 +287,7 @@ export function AdminPhonesPage() {
                   size="icon"
                   className="size-9 text-destructive hover:bg-destructive/10"
                   aria-label="Quitar teléfono"
-                  onClick={() => onUnassign(p.id)}
+                  onClick={() => setToUnassign(p)}
                 >
                   <Trash2 className="size-4" strokeWidth={1.8} />
                 </Button>
@@ -294,6 +297,20 @@ export function AdminPhonesPage() {
         </div>
       )}
     </section>
+  );
+
+  const unassignDialog = (
+    <ConfirmDialog
+      open={!!toUnassign}
+      onOpenChange={(o) => !o && setToUnassign(null)}
+      title="Quitar teléfono"
+      description={`Se quitará ${toUnassign?.phone_e164 ?? ""}. Los mensajes desde ese número dejarán de rutearse a ${agentName}.`}
+      confirmLabel="Quitar"
+      variant="destructive"
+      onConfirm={() => {
+        if (toUnassign) void onUnassign(toUnassign.id);
+      }}
+    />
   );
 
   // ---- Desktop (lg+): full-width two-column — forms rail · assigned phones. ----
@@ -311,6 +328,7 @@ export function AdminPhonesPage() {
           </div>
           {assignedPhonesSection}
         </div>
+        {unassignDialog}
       </PageLayout>
     );
   }
@@ -324,6 +342,7 @@ export function AdminPhonesPage() {
         {assignPhoneSection}
         {assignedPhonesSection}
       </div>
+      {unassignDialog}
     </PageLayout>
   );
 }
