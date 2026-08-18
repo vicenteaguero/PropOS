@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -77,3 +77,50 @@ async def test_readiness_hides_detail_in_production_without_internal_key(client)
 
     assert "detail" not in anonymous.json()
     assert "integrations" in authorised.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_probe_database_reports_the_failure_type():
+    """Any exception means "not ready" — the class name is enough to triage."""
+    from app.main import _probe_database
+
+    with patch("app.core.supabase.client.get_supabase_client", side_effect=ConnectionError("dns")):
+        ok, error = await _probe_database()
+
+    assert ok is False
+    assert error == "ConnectionError"
+
+
+@pytest.mark.asyncio
+async def test_probe_database_ok_on_a_successful_read():
+    from app.main import _probe_database
+
+    client = MagicMock()
+    with patch("app.core.supabase.client.get_supabase_client", return_value=client):
+        ok, error = await _probe_database()
+
+    assert (ok, error) == (True, None)
+    client.table.assert_called_once_with("tenants")
+
+
+@pytest.mark.asyncio
+async def test_probe_jobs_flags_a_reminder_backlog():
+    """Overdue PENDING reminders mean nothing is draining the queue."""
+    from app.main import _probe_jobs
+
+    client = MagicMock()
+    client.table.return_value.select.return_value.eq.return_value.lt.return_value.is_.return_value.limit.return_value.execute.return_value.count = 4
+
+    with patch("app.core.supabase.client.get_supabase_client", return_value=client):
+        result = await _probe_jobs()
+
+    assert result == {"reminders_overdue": 4, "status": "stale"}
+
+
+@pytest.mark.asyncio
+async def test_probe_jobs_never_raises():
+    """Advisory signal: a broken query degrades to 'unknown', never to a 503."""
+    from app.main import _probe_jobs
+
+    with patch("app.core.supabase.client.get_supabase_client", side_effect=RuntimeError("boom")):
+        assert await _probe_jobs() == {"status": "unknown"}
