@@ -105,7 +105,9 @@ lint:
 	cd backend && poetry run ruff check .
 	cd backend && poetry run ruff format --check .
 	cd frontend && npm run lint
-	cd frontend && npx prettier --check "src/**/*.{ts,tsx}"
+	cd frontend && npx prettier --check "src/**/*.{ts,tsx,css,json,md}"
+	@bash scripts/log.sh MAKE "🗃" "Check migrations (naming + ordering)"
+	python3 scripts/check_migrations.py
 
 test:
 	@bash scripts/log.sh MAKE "🧪" "Running test suites"

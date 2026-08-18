@@ -20,7 +20,9 @@ on:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # Superseded runs on a feature branch are noise; on main they are the record
+  # of what shipped, so let those finish.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   backend:
@@ -91,7 +93,7 @@ jobs:
         run: npm run lint
 
       - name: Prettier check
-        run: npx prettier --check "src/**/*.{ts,tsx}"
+        run: npx prettier --check "src/**/*.{ts,tsx,css,json,md}"
 
       - name: Typecheck
         run: npm run typecheck
@@ -103,6 +105,61 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  migrations:
+    name: Migrations (naming + ordering)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Static checks only: no database is involved, so this runs on every PR.
+      # Catches duplicate sequence numbers and unterminated $$ bodies, which
+      # used to surface only when `make migrate` hit the live database.
+      - name: Check migrations
+        run: python scripts/check_migrations.py
+
+  audit:
+    name: Dependency audit (advisory)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Reports, does not gate. A transitive advisory published overnight should
+    # show up in the run summary, not block an unrelated PR. Triage it, then
+    # tighten this to a real gate once the backlog is at zero.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: npm audit
+        working-directory: frontend
+        run: npm audit --audit-level=high
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Poetry
+        run: pipx install poetry==2.4.1
+
+      # No venv cache here on purpose: pip-audit gets installed into this
+      # environment and must not leak into the cache the backend job restores.
+      - name: pip-audit
+        working-directory: backend
+        run: |
+          poetry config virtualenvs.in-project true
+          poetry install --no-interaction
+          poetry run python -m pip install --quiet pip-audit
+          poetry run pip-audit --desc off
 
   integration:
     name: Integration (live Supabase + LLM)
