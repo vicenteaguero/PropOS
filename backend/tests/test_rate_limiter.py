@@ -96,3 +96,34 @@ def test_record_response_with_headers_overrides_local_count(limiter):
     assert state.req_min.total(0.0) == 0
     assert state.tok_min.total(0.0) == 3000
     assert state.tok_day.total(0.0) == 0
+
+
+def test_daily_window_raises_instead_of_sleeping_24h(fake_clock, monkeypatch):
+    """Exhausting the daily window must fail fast, not `sleep(86_400)`."""
+    tiny_day = ModelLimits(rpm=1_000, rpd=2, tpm=1_000_000, tpd=1_000_000)
+    monkeypatch.setattr(rl, "get_limits", lambda p, m: tiny_day if (p, m) == ("test", "daily") else None)
+    limiter = rl.RateLimiter()
+
+    limiter.acquire_sync("test", "daily", est_tokens=1)
+    limiter.acquire_sync("test", "daily", est_tokens=1)
+    with pytest.raises(rl.QuotaExhaustedError) as excinfo:
+        limiter.acquire_sync("test", "daily", est_tokens=1)
+
+    assert excinfo.value.window == "req_day"
+    assert fake_clock[0] == pytest.approx(0.0, abs=0.01)
+
+
+def test_request_larger_than_the_cap_terminates(fake_clock, limiter):
+    """A single call above tpm can never fit — bounded, not an infinite loop."""
+    with pytest.raises(rl.QuotaExhaustedError):
+        limiter.acquire_sync("test", "model", est_tokens=50_000)
+    assert fake_clock[0] < rl.MAX_WAIT_SECONDS + 1
+
+
+def test_explicit_max_wait_is_honoured(fake_clock, limiter):
+    """A caller on an interactive path can ask for a tighter budget."""
+    for _ in range(30):
+        limiter.acquire_sync("test", "model", est_tokens=10)
+    with pytest.raises(rl.QuotaExhaustedError):
+        limiter.acquire_sync("test", "model", est_tokens=10, max_wait=5.0)
+    assert fake_clock[0] == pytest.approx(0.0, abs=0.01)

@@ -29,6 +29,7 @@ from app.features.agent.dispatcher import dispatch
 from app.features.agent.intent_registry import get as get_intent_spec
 from app.features.agent.intent_registry import needs_pass_two, normalize_fields, real_captures
 from app.features.agent.llm_retry import LLMUnavailableError
+from app.features.agent.rate_limiter import QuotaExhaustedError
 from app.features.agent.postprocess import dedupe_actions, expand_money_units, normalize_rut
 from app.features.agent.resolver import resolve
 
@@ -50,6 +51,19 @@ async def run_chat_turn(
     try:
         async for event in _stream_turn(session_id, tenant_id, user_id, user_text):
             yield event
+    except QuotaExhaustedError as exc:
+        logger.warning(
+            "turn_quota_exhausted",
+            event_type="rate_limit",
+            session_id=str(session_id),
+            window=exc.window,
+            wait_seconds=int(exc.wait_seconds),
+        )
+        yield {
+            "type": "text",
+            "text": ("Se acabó la cuota de IA por ahora. Probá de nuevo más tarde o avisá al equipo. 🙏"),
+        }
+        yield {"type": "done", "proposals_created": [], "executed_rows": [], "error": "quota_exhausted"}
     except LLMUnavailableError as exc:
         logger.warning("turn_llm_unavailable", event_type="llm", session_id=str(session_id), error=str(exc)[:200])
         yield {
