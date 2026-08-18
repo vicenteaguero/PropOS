@@ -2,7 +2,16 @@
 <html lang="es" class="dark">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- viewport-fit=cover is REQUIRED for env(safe-area-inset-*) to report non-zero.
+         Without it `apple-mobile-web-app-status-bar-style=black-translucent` below still
+         draws the standalone PWA under the status bar while every inset reads 0, so the
+         bottom nav lands under the home indicator and headers land under the notch.
+         interactive-widget=resizes-content makes the visual viewport shrink when the
+         soft keyboard opens, so `fixed bottom-0` chrome rides above it. -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content"
+    />
     <meta name="theme-color" content="#000000" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
