@@ -48,6 +48,10 @@ read_env "$ENV_FILE"
 KV_APP_ENV="production"
 KV_LOG_LEVEL="info"
 KV_ALLOWED_ORIGINS='["'"$PROD_FRONTEND_URL"'","'"$EDGE_FRONTEND_URL"'"]'
+# The Titan mailbox is out of scope for v0.1.0, so the IMAP poller stays off in
+# production regardless of what .env says. Delete this line (and provision
+# email-imap-user / email-imap-password) when the mailbox comes into scope.
+KV_EMAIL_SYNC_ENABLED="false"
 
 # Sensitive keys -> Secret Manager.
 # Keys with no value in .env are skipped, and cloudbuild.yaml only mounts the
@@ -74,11 +78,18 @@ SECRETS=(
 )
 
 # Non-secret keys -> cloudrun-env.yaml (committed to git)
+#
+# A key the backend reads but that is missing from this array does not fail
+# anything: Settings falls back to its code default, silently. That is the same
+# trap as the ANITA_* rename, entered from the other side -- the boot guard in
+# settings.py catches renamed vars, not omitted ones. `check_settings_drift`
+# below closes it by diffing this array against the Settings fields.
 NON_SECRETS=(
   APP_ENV
   LOG_LEVEL
   ALLOWED_ORIGINS
   VAPID_CONTACT_EMAIL
+  APP_BASE_URL
   AGENT_PROVIDER
   AGENT_MODEL
   AGENT_FALLBACK_PROVIDER
@@ -87,6 +98,23 @@ NON_SECRETS=(
   AGENT_MAX_TOOL_CALLS_PER_TURN
   AGENT_TURN_TIMEOUT_SECONDS
   AGENT_STRICT_JSON_RETRY
+  KAPSO_BASE_URL
+  KAPSO_DEFAULT_TEMPLATE_LANG
+  CLIENT_AGENT_PROVIDER
+  CLIENT_AGENT_MODEL
+  CLIENT_AGENT_MAX_HISTORY
+  CLIENT_AGENT_BUSINESS_NAME
+  RESEND_FROM_EMAIL
+  EMAIL_SYNC_ENABLED
+  EMAIL_SYNC_TENANT_ID
+)
+
+# Keys that live in .env for local tooling and deliberately never reach Cloud
+# Run. Listed so the drift check below can tell "intentionally local" apart from
+# "forgotten".
+LOCAL_ONLY=(
+  EMAIL_IMAP_HOST
+  EMAIL_IMAP_PORT
 )
 
 if [ "${SKIP_SECRETS:-}" = "1" ]; then
@@ -131,5 +159,38 @@ echo "=== regenerating $OUT_YAML (with prod overrides) ==="
 } > "$OUT_YAML"
 
 echo "wrote $OUT_YAML"
+
+# === DRIFT CHECK ===
+# Every field on Settings is something the backend reads. If .env sets one and
+# neither array carries it, Cloud Run runs on the code default while .env says
+# otherwise -- invisible until the two disagree. Parse the field names straight
+# out of settings.py (no venv needed) and report the gap.
+check_settings_drift() {
+  local settings_py="$ROOT/backend/app/core/config/settings.py"
+  [ -f "$settings_py" ] || return 0
+
+  local transported=" ${SECRETS[*]} ${NON_SECRETS[*]} ${LOCAL_ONLY[*]} "
+  local missing=()
+  local field upper value
+
+  # Class-body annotations only: four leading spaces, `name: type`.
+  while IFS= read -r field; do
+    upper=$(echo "$field" | tr '[:lower:]' '[:upper:]')
+    case "$transported" in *" $upper "*) continue ;; esac
+    value="$(kv "$upper")"
+    [ -z "$value" ] && continue
+    missing+=("$upper")
+  done < <(sed -n 's/^    \([a-z_][a-z0-9_]*\): .*/\1/p' "$settings_py")
+
+  if [ ${#missing[@]} -gt 0 ]; then
+    echo ""
+    echo "WARNING: set in .env, read by Settings, NOT sent to Cloud Run:"
+    printf '  %s\n' "${missing[@]}"
+    echo "  -> add each to SECRETS or NON_SECRETS in $(basename "$0"), or to LOCAL_ONLY if deliberate."
+  fi
+}
+
+check_settings_drift
+
 echo ""
 echo "Next: git add + commit + push (auto-deploys via Cloud Build trigger)."
