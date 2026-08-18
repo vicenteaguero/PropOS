@@ -49,6 +49,17 @@ ALLOWED_FUNCTIONS = {
 
 FORBIDDEN_TABLE_PREFIXES = ("pg_", "information_schema")
 
+# sqlglot rewrites several Postgres functions into its own canonical
+# expressions, so the Postgres spelling in ALLOWED_FUNCTIONS never matches what
+# the parser produces. Anonymous functions keep their identifier (which is how
+# `age` passes and `pg_read_file` is caught), but these five do not.
+_CANONICAL_TO_PG = {
+    "timestamp_trunc": "date_trunc",
+    "time_to_str": "to_char",
+    "str_to_date": "to_date",
+    "unix_to_time": "to_timestamp",
+}
+
 DEFAULT_ROW_CAP = 200
 
 
@@ -94,18 +105,38 @@ def validate_and_normalize(sql: str, *, row_cap: int = DEFAULT_ROW_CAP) -> str:
         if tree.find(forbidden) is not None:
             raise GuardError(f"forbidden node {forbidden.__name__} present")
 
-    # No system tables.
+    # No system tables. Check the schema and catalog parts too, not just the
+    # bare relation: in `information_schema.columns` sqlglot puts the schema in
+    # `.db`, so matching only `.name` let the entire information_schema through.
+    # `pg_*` was blocked by accident, because those relations happen to be named
+    # `pg_...` themselves.
     for table in tree.find_all(exp.Table):
-        name = (table.name or "").lower()
-        for prefix in FORBIDDEN_TABLE_PREFIXES:
-            if name.startswith(prefix):
-                raise GuardError(f"forbidden table {name!r}")
+        parts = [(table.name or "").lower(), (table.db or "").lower(), (table.catalog or "").lower()]
+        for part in parts:
+            if not part:
+                continue
+            for prefix in FORBIDDEN_TABLE_PREFIXES:
+                if part.startswith(prefix):
+                    raise GuardError(f"forbidden table {part!r}")
 
-    # Function allowlist.
+    # Function allowlist. sqlglot canonicalises names, so the Postgres spelling
+    # the allowlist is written in never matches: date_trunc -> timestamp_trunc,
+    # to_char -> time_to_str, to_date -> str_to_date, to_timestamp ->
+    # unix_to_time, age -> anonymous. Accept either spelling, and for anonymous
+    # functions fall back to the identifier as written in the query --
+    # `date_trunc` broke every "agrupado por mes" question the agent exists to
+    # answer.
     for func in tree.find_all(exp.Func):
-        fname = (func.sql_name() or func.key or "").lower()
-        if fname and fname not in ALLOWED_FUNCTIONS:
-            raise GuardError(f"forbidden function {fname!r}")
+        canonical = (func.sql_name() or "").lower()
+        candidates = {
+            canonical,
+            (func.key or "").lower(),
+            (func.name or "").lower(),
+            _CANONICAL_TO_PG.get(canonical, ""),
+        }
+        candidates.discard("")
+        if candidates and not (candidates & ALLOWED_FUNCTIONS):
+            raise GuardError(f"forbidden function {sorted(candidates)[0]!r}")
 
     # Inject LIMIT if missing or too large.
     existing_limit = tree.args.get("limit")
