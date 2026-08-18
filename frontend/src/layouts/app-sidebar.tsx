@@ -188,6 +188,9 @@ function buildGroups(view: UserView, agentName: string, isDevAdmin: boolean): Na
             { label: "Personas", path: "/agent/personas", icon: Users },
             { label: "Interacciones", path: "/agent/interacciones", icon: MessageSquare },
             { label: "Oportunidades", path: "/agent/oportunidades", icon: Target },
+            // Backend authorizes AGENT on /properties (properties/router.py),
+            // so the role gets the same CRM entry ADMIN has.
+            { label: "Propiedades", path: "/agent/properties", icon: Building2 },
             { label: "Inbox WA", path: "/agent/client-inbox", icon: MessageCircle },
             { label: "Correos", path: "/agent/correos", icon: Mail },
           ],
