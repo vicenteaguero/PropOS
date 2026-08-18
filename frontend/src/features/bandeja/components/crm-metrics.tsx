@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -14,12 +13,12 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Button } from "@/components/ui/button";
 import { apiRequest } from "@features/documents/api/http";
 import { useConversations } from "@features/client-chat/hooks/use-client-chat";
 import { useEmailThreads } from "@features/email/hooks/use-email";
 import { useOpportunities } from "@features/opportunities/hooks/use-opportunities";
 import { STAGE_LABELS } from "@features/opportunities/types";
+import { ErrorState, PageSkeleton } from "@shared/ui";
 import { CHART_COLORS, CHART_HEIGHT } from "@shared/lib/chart-config";
 
 interface PipelineRow {
@@ -153,32 +152,21 @@ export function CrmMetrics() {
     pipeline.error || convos.error || emails.error || opportunities.error || properties.error;
 
   if (isLoading) {
-    return (
-      <div className="flex justify-center py-12">
-        <Loader2 className="size-5 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <PageSkeleton variant="detail" className="pt-4" />;
   }
 
   if (error) {
     return (
-      <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
-        No se pudieron cargar las métricas.
-        <Button
-          variant="ghost"
-          size="sm"
-          className="ml-2"
-          onClick={() => {
-            void pipeline.refetch();
-            void convos.refetch();
-            void emails.refetch();
-            void opportunities.refetch();
-            void properties.refetch();
-          }}
-        >
-          Reintentar
-        </Button>
-      </div>
+      <ErrorState
+        message="No se pudieron cargar las métricas."
+        onRetry={() => {
+          void pipeline.refetch();
+          void convos.refetch();
+          void emails.refetch();
+          void opportunities.refetch();
+          void properties.refetch();
+        }}
+      />
     );
   }
 
