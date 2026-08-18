@@ -37,6 +37,16 @@ export function useCreateTransaction() {
   });
 }
 
+export function useUpdateTransaction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: Partial<TransactionInput> }) =>
+      financeApi.update(id, body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: financeKeys.all }),
+    onError: (err) => toast.error(err instanceof Error ? err.message : "No se pudo actualizar"),
+  });
+}
+
 export function useCompleteTransaction() {
   const qc = useQueryClient();
   return useMutation({
