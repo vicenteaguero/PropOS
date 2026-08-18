@@ -14,6 +14,7 @@ from uuid import UUID
 
 from app.core.config.settings import settings
 from app.core.logging.logger import get_logger
+from app.features.agent.llm_retry import with_retry
 from app.features.agent.tools.query_sql import run_query_sql
 
 logger = get_logger("AGENT_TEXT_SQL")
@@ -128,14 +129,17 @@ async def generate_and_run_sql(
         timeout=20.0,
     )
     try:
-        completion = await client.chat.completions.create(
-            model=settings.agent_model,
-            messages=[
-                {"role": "system", "content": system},
-                {"role": "user", "content": user_msg},
-            ],
-            temperature=0,
-            max_tokens=400,
+        completion = await with_retry(
+            lambda: client.chat.completions.create(
+                model=settings.agent_model,
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user_msg},
+                ],
+                temperature=0,
+                max_tokens=400,
+            ),
+            what="text_to_sql",
         )
     except Exception as exc:
         logger.warning("text_to_sql_llm_failed", error=str(exc))

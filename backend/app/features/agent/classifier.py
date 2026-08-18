@@ -17,6 +17,7 @@ from typing import Any
 
 from app.core.config.settings import settings
 from app.core.logging.logger import get_logger
+from app.features.agent.llm_retry import with_retry
 
 logger = get_logger("AGENT_CLASSIFY")
 
@@ -219,16 +220,19 @@ async def classify(user_text: str) -> ClassifierResult:
         f"({now_scl.strftime('%A')}). Convierte fechas relativas a ISO 8601."
     )
 
-    raw_response = await client.chat.completions.with_raw_response.create(
-        model=settings.agent_model,
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "system", "content": date_ctx},
-            {"role": "user", "content": user_text.strip()},
-        ],
-        temperature=0,
-        # Up to ~6 actions per turn before truncating. Single-action turns use ~30.
-        max_tokens=300,
+    raw_response = await with_retry(
+        lambda: client.chat.completions.with_raw_response.create(
+            model=settings.agent_model,
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "system", "content": date_ctx},
+                {"role": "user", "content": user_text.strip()},
+            ],
+            temperature=0,
+            # Up to ~6 actions per turn before truncating. Single-action turns use ~30.
+            max_tokens=300,
+        ),
+        what="classify",
     )
     completion = raw_response.parse()
     headers = dict(raw_response.headers)
@@ -305,14 +309,17 @@ async def extract_details(
         base_url="https://api.groq.com/openai/v1",
         timeout=float(settings.agent_turn_timeout_seconds),
     )
-    raw_response = await client.chat.completions.with_raw_response.create(
-        model=settings.agent_model,
-        messages=[
-            {"role": "system", "content": system},
-            {"role": "user", "content": user_text.strip()},
-        ],
-        temperature=0,
-        max_tokens=200,
+    raw_response = await with_retry(
+        lambda: client.chat.completions.with_raw_response.create(
+            model=settings.agent_model,
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": user_text.strip()},
+            ],
+            temperature=0,
+            max_tokens=200,
+        ),
+        what="extract_details",
     )
     completion = raw_response.parse()
     headers = dict(raw_response.headers)
