@@ -27,6 +27,6 @@ async def commission_preview(
 @router.get("/summary")
 async def summary(
     tenant_id: UUID = Depends(get_tenant_id),
-    month: str | None = Query(default=None),
+    month: str | None = Query(default=None, pattern=r"^\d{4}-(0[1-9]|1[0-2])$"),
 ) -> dict:
     return await FinanceService.summary(tenant_id, month)
