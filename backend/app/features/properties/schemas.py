@@ -85,3 +85,15 @@ class GeneratedDescription(BaseModel):
     title_suggestion: str
     description: str
     highlights: list[str] = []
+
+
+class PropertyPhoto(BaseModel):
+    """A `media_assets` link rendered for display. `url` is signed and short-lived."""
+
+    id: UUID
+    media_file_id: UUID
+    url: str
+    role: str = "PHOTO"
+    position: int = 0
+    title: str | None = None
+    created_at: datetime | None = None
