@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { emailApi } from "../api/email-api";
+import { emailApi, type SendEmailInput } from "../api/email-api";
 
 export const emailKeys = {
   all: ["email"] as const,
@@ -36,5 +36,16 @@ export function useReplyEmail(id: string) {
     },
     onError: (err) =>
       toast.error(err instanceof Error ? err.message : "No se pudo enviar la respuesta"),
+  });
+}
+
+/** Starts a brand-new thread (first contact). Delivery goes through Resend. */
+export function useSendEmail() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: SendEmailInput) => emailApi.send(input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: emailKeys.all }),
+    onError: (err) =>
+      toast.error(err instanceof Error ? err.message : "No se pudo enviar el correo"),
   });
 }
