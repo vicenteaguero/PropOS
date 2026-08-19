@@ -40,6 +40,8 @@ export function CameraCapture({ onSaved }: CameraCaptureProps) {
       stopCamera();
       clearPhoto();
     }
+    // Deliberate narrow deps: Open/close lifecycle. The callbacks are unstable and would restart the camera.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   function handleFlip() {

@@ -58,6 +58,8 @@ export function SharePublicPage() {
     return () => {
       cancelled = true;
     };
+    // Deliberate narrow deps: The download URL is the identity; the surrounding view object churns.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view?.download_url, needsPassword]);
 
   const submitPassword = async () => {

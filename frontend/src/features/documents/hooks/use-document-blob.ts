@@ -73,6 +73,8 @@ export function useDocumentBlob(
     return () => {
       cancelled = true;
     };
+    // Deliberate narrow deps: id + sha256 fully identify the content; the version object itself is incidental.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [documentId, version?.id, version?.sha256]);
 
   return state;

@@ -120,6 +120,8 @@ export function AgentChatPage() {
     return () => {
       cancelled = true;
     };
+    // Deliberate narrow deps: Mount-only boot. `queryClient` is stable and `agentName` only labels an error.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Auto-title: when the first user message lands and session has no title

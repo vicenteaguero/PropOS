@@ -297,6 +297,8 @@ export function CameraCaptureDocument({
       cancelled = true;
       stopStream();
     };
+    // Deliberate narrow deps: Keyed to the shot/open state; the missing deps are mount-stable or would restart capture.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, mode, stopStream, hdEnabled]);
 
   // ---------- decode active shot ----------
@@ -329,6 +331,8 @@ export function CameraCaptureDocument({
     return () => {
       cancelled = true;
     };
+    // Deliberate narrow deps: Keyed to the shot/open state; the missing deps are mount-stable or would restart capture.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, activeShot]);
 
   // ---------- filtered preview cache ----------

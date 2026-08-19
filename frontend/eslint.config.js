@@ -39,28 +39,16 @@ export default [
   // Rules of Hooks. Like jsx-a11y below, this plugin sat in devDependencies
   // without ever being registered, so nothing checked hook usage at all.
   //
-  // `rules-of-hooks` is on and clean — it catches conditional or nested hook
-  // calls, which corrupt React's hook order and crash at runtime.
-  //
-  // `exhaustive-deps` is deliberately OFF for now. Turning it on surfaces 10
-  // effects with incomplete dependency arrays:
-  //
-  //   agent/components/agent-voice.tsx:157            documents/hooks/use-document-blob.ts:76
-  //   agent/pages/agent-chat-page.tsx:122             documents/pages/documents-page.tsx:93
-  //   documents/components/camera-capture-document.tsx:299, :331
-  //   documents/components/share-link-dialog.tsx:42   documents/pages/share-public-page.tsx:61
-  //   shared/components/camera-capture/camera-capture.tsx:43
-  //   shared/components/id-scan-capture/id-scan-capture.tsx:49
-  //
-  // Some are intentional run-once-on-open effects; others may be real stale
-  // closures. Each needs reading before it is silenced or fixed, so enabling
-  // the rule wholesale would either break the build or invite a blanket
-  // disable comment. Turn it on once those ten are triaged.
+  // Both rules are on. `exhaustive-deps` found ten effects with narrow
+  // dependency arrays; each was read, nine were confirmed deliberate and now
+  // carry a disable line stating why, and one was a real defect — the document
+  // search debounced twice, 250ms in SearchInput plus 300ms in the page.
   {
     files: ["**/*.{ts,tsx}"],
     plugins: { "react-hooks": reactHooks },
     rules: {
       "react-hooks/rules-of-hooks": "error",
+      "react-hooks/exhaustive-deps": "error",
     },
   },
   // Accessibility. The plugin shipped in devDependencies for months without

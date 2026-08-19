@@ -46,6 +46,8 @@ export function IdScanCapture({ onComplete, disabled }: Props) {
       camera.stopCamera();
       camera.clearPhoto();
     }
+    // Deliberate narrow deps: Open/close lifecycle. `camera` is a fresh object each render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   function handleFlip() {
