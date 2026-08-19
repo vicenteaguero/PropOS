@@ -18,7 +18,14 @@
 /docs/
 /assets/
 /bin/
-/scripts/
+# Exclude the directory's CONTENTS rather than the directory, so the one file
+# the build itself needs can be negated back in. Excluding `/scripts/` outright
+# makes the negation impossible (gitignore cannot re-include a path under an
+# excluded directory) — which is how `make deploy-backend` came to fail with
+# "can't open file '/workspace/scripts/check_ci_status.py'". Trigger builds
+# fetch from git and ignore this file, so only the manual path was broken.
+/scripts/*
+!/scripts/check_ci_status.py
 /supabase/
 /etc/
 
