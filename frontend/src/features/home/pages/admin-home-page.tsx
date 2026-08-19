@@ -15,6 +15,7 @@ import {
   Receipt,
   Sparkles,
   StickyNote,
+  Upload,
   Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -166,6 +167,12 @@ export function AdminHomePage() {
   const todayItems = (todayFeed.data ?? [])
     .filter((it) => it.start_at)
     .sort((a, b) => (a.start_at ?? "").localeCompare(b.start_at ?? ""));
+  // A section that would render only zeros is not information, it is noise
+  // wearing the costume of information. Each of these gates a whole block.
+  const hasPipeline = leadsActivos + enVisita + negociacion > 0;
+  const hasRecent = recent.length > 0;
+  const hasToday = todayItems.length > 0;
+
   const todayVisits = todayItems.filter((it) => it.item_type === "EVENT").length;
   const todayTasks = todayItems.filter((it) => it.item_type === "TASK").length;
   // Next event drives the mobile "Tu día" card; `[0]` is typed as possibly
@@ -180,8 +187,10 @@ export function AdminHomePage() {
   const pendingCount = pendingQuery.data?.pending_count ?? 0;
 
   const tiles: Tile[] = [
-    { to: `${base}/bandeja`, label: "CRM", icon: Users, scope: "crm" },
-    { to: `${base}/calendario`, label: "Agenda", icon: CalendarDays, scope: "productividad" },
+    // CRM and Agenda are deliberately absent: both are permanent bottom-nav
+    // tabs, so repeating them here spent a third of the grid on destinations
+    // the user already has one tap away — and 8 tiles across 3 columns left a
+    // hole in the last row. Six fills two rows exactly.
     { to: `${base}/tareas`, label: "Tareas", icon: CheckSquare, scope: "productividad" },
     { to: `${base}/notas`, label: "Notas", icon: StickyNote, scope: "productividad" },
     { to: `${base}/client-inbox`, label: "WhatsApp", icon: MessageCircle, scope: "inbox" },
@@ -219,6 +228,80 @@ export function AdminHomePage() {
       >
         <Mic className="size-[21px]" strokeWidth={1.9} />
       </button>
+    </div>
+  );
+
+  // The one high-contrast surface on the page, and the only place boldness is
+  // spent. It ALWAYS renders: with something scheduled it is the next
+  // commitment, and on a fresh workspace it is the invitation to start. The
+  // previous version rendered only when `nextEvent` existed, which is why a new
+  // account met a wall of tiles and three zeros instead of a way in.
+  const anchorCard = hasToday ? (
+    <div className="overflow-hidden rounded-3xl bg-foreground text-background">
+      <div className="flex items-center justify-between gap-3 px-4 pt-3.5 pb-3">
+        <span className="text-[12.5px] font-bold uppercase tracking-wide opacity-60">Tu día</span>
+        <span className="text-[12.5px] font-semibold opacity-80">
+          {todayVisits} {todayVisits === 1 ? "visita" : "visitas"} · {todayTasks}{" "}
+          {todayTasks === 1 ? "tarea" : "tareas"}
+        </span>
+      </div>
+      {nextEvent && (
+        <button
+          type="button"
+          onClick={() => navigate(`${base}/calendario`)}
+          className="flex w-full items-center gap-3 border-t border-white/10 p-4 text-left transition active:scale-[0.99]"
+        >
+          <span className="min-w-[54px] rounded-xl bg-background px-2.5 py-1.5 text-center text-foreground">
+            <span className="block text-[15px] font-bold leading-none">
+              {nextEvent.all_day || !nextEvent.start_at
+                ? "Todo"
+                : format(new Date(nextEvent.start_at as string), "HH:mm")}
+            </span>
+            <span className="mt-1 block text-[11px] font-semibold text-muted-foreground">hoy</span>
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-[15px] font-semibold">
+              {nextEvent.title ?? "Sin título"}
+            </span>
+            <span className="mt-0.5 block text-[13px] opacity-60">
+              Próximo · {TYPE_META[nextEvent.item_type].label}
+            </span>
+          </span>
+          <ChevronRight className="size-[18px] shrink-0 opacity-50" />
+        </button>
+      )}
+    </div>
+  ) : (
+    <div className="overflow-hidden rounded-3xl bg-foreground text-background">
+      <div className="px-4 pt-4 pb-3">
+        <span className="text-[12.5px] font-bold uppercase tracking-wide opacity-60">
+          Empezá por acá
+        </span>
+        <p className="mt-1.5 text-[15px] font-semibold leading-snug">
+          Tu agenda de hoy está libre. Cargá tu cartera y Propo empieza a trabajar sobre ella.
+        </p>
+      </div>
+      <div className="border-t border-white/10">
+        {[
+          { label: "Importar contactos", to: `/admin/datos/importar`, icon: Upload },
+          { label: "Crear una propiedad", to: "/admin/properties", icon: Building2 },
+          { label: "Agendar una visita", to: `${base}/calendario`, icon: CalendarDays },
+        ].map((a, i) => (
+          <button
+            key={a.to}
+            type="button"
+            onClick={() => navigate(a.to)}
+            className={cn(
+              "flex w-full items-center gap-3 px-4 py-3 text-left transition active:scale-[0.99]",
+              i > 0 && "border-t border-white/10",
+            )}
+          >
+            <a.icon className="size-[18px] shrink-0 opacity-70" strokeWidth={1.9} />
+            <span className="min-w-0 flex-1 truncate text-[15px] font-semibold">{a.label}</span>
+            <ChevronRight className="size-[18px] shrink-0 opacity-50" />
+          </button>
+        ))}
+      </div>
     </div>
   );
 
@@ -355,7 +438,7 @@ export function AdminHomePage() {
 
           {allow("crm") && (
             <div>
-              <SectionLabel action="Ver CRM" onAction={() => navigate(`${base}/personas`)}>
+              <SectionLabel action="Ver todas" onAction={() => navigate(`${base}/personas`)}>
                 Personas recientes
               </SectionLabel>
               <div className="mt-2 rounded-2xl border border-border">{recentList}</div>
@@ -391,12 +474,25 @@ export function AdminHomePage() {
         </div>
       </div>
 
-      <h1 className="px-5 text-[26px] font-bold leading-tight tracking-tight text-foreground">
-        {greeting()}
-        {firstName ? `, ${firstName}` : ""}
-      </h1>
+      {/* The greeting was the largest thing on the page while saying nothing.
+          It keeps its warmth but hands the weight to the line below it, which
+          carries the only facts the top of the page owes you: what day it is
+          and how much of it is spoken for. */}
+      <div className="px-5">
+        <h1 className="text-[22px] font-bold leading-tight tracking-tight text-foreground">
+          {greeting()}
+          {firstName ? `, ${firstName}` : ""}
+        </h1>
+        <p className="mt-0.5 text-[13px] text-muted-foreground first-letter:uppercase">
+          {format(today, "EEEE d 'de' MMMM", { locale: es })}
+          {hasToday && ` · ${todayItems.length} en agenda`}
+        </p>
+      </div>
 
-      {canPropo && <div className="px-5 pt-4 pb-5">{propoBar}</div>}
+      {/* Anchor first: the next commitment outranks any menu. */}
+      <div className="px-5 pt-4">{anchorCard}</div>
+
+      {canPropo && <div className="px-5 pt-3 pb-5">{propoBar}</div>}
 
       {/* Three up, not four. At four columns a 360px Android leaves 48px for the
           label while "Propiedades" needs 79px at this weight, so it spilled out
@@ -421,72 +517,38 @@ export function AdminHomePage() {
         ))}
       </div>
 
-      {/* Tu día — next event */}
-      {nextEvent && (
-        <div className="px-5 pb-6">
-          <div className="overflow-hidden rounded-3xl bg-foreground text-background">
-            <div className="flex items-center justify-between gap-3 px-4 pt-3.5 pb-3">
-              <span className="text-[12.5px] font-bold uppercase tracking-wide opacity-60">
-                Tu día
-              </span>
-              <span className="text-[12.5px] font-semibold opacity-80">
-                {todayVisits} {todayVisits === 1 ? "visita" : "visitas"} · {todayTasks}{" "}
-                {todayTasks === 1 ? "tarea" : "tareas"}
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={() => navigate(`${base}/calendario`)}
-              className="flex w-full items-center gap-3 border-t border-white/10 p-4 text-left transition active:scale-[0.99]"
-            >
-              <span className="min-w-[54px] rounded-xl bg-background px-2.5 py-1.5 text-center text-foreground">
-                <span className="block text-[15px] font-bold leading-none">
-                  {nextEvent.all_day || !nextEvent.start_at
-                    ? "Todo"
-                    : format(new Date(nextEvent.start_at as string), "HH:mm")}
-                </span>
-                <span className="mt-1 block text-[11px] font-semibold text-muted-foreground">
-                  hoy
-                </span>
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[15px] font-semibold">
-                  {nextEvent.title ?? "Sin título"}
-                </span>
-                <span className="mt-0.5 block text-[13px] opacity-60">
-                  Próximo · {TYPE_META[nextEvent.item_type].label}
-                </span>
-              </span>
-              <ChevronRight className="size-[18px] shrink-0 opacity-50" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Pipeline */}
-      <SectionLabel action="Ver CRM" onAction={() => navigate(`${base}/bandeja`)}>
-        Pipeline
-      </SectionLabel>
-      {oppsQ.isError ? (
-        <div className="px-5 pt-2 pb-6">
-          <ErrorState
-            compact
-            message="No se pudo cargar el pipeline."
-            error={oppsQ.error}
-            onRetry={() => oppsQ.refetch()}
-          />
-        </div>
-      ) : (
-        <div className="flex gap-2 px-5 pt-2 pb-6">
-          <PipelineStat value={leadsActivos} label="Leads activos" pending={oppsQ.isPending} />
-          <PipelineStat value={enVisita} label="En visita" pending={oppsQ.isPending} />
-          <PipelineStat value={negociacion} label="Negociación" pending={oppsQ.isPending} />
-        </div>
-      )}
-
-      {allow("crm") && (
+      {/* Pipeline, only when it is not three zeros. An empty pipeline told the
+          broker nothing and took a full row of the largest cards on the page. */}
+      {(hasPipeline || oppsQ.isError) && (
         <>
-          <SectionLabel action="Ver CRM" onAction={() => navigate(`${base}/personas`)}>
+          <SectionLabel action="Ver pipeline" onAction={() => navigate(`${base}/bandeja`)}>
+            Pipeline
+          </SectionLabel>
+          {oppsQ.isError ? (
+            <div className="px-5 pt-2 pb-6">
+              <ErrorState
+                compact
+                message="No se pudo cargar el pipeline."
+                error={oppsQ.error}
+                onRetry={() => oppsQ.refetch()}
+              />
+            </div>
+          ) : (
+            <div className="flex gap-2 px-5 pt-2 pb-6">
+              <PipelineStat value={leadsActivos} label="Leads activos" pending={oppsQ.isPending} />
+              <PipelineStat value={enVisita} label="En visita" pending={oppsQ.isPending} />
+              <PipelineStat value={negociacion} label="Negociación" pending={oppsQ.isPending} />
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Same rule: a heading followed by "no contacts yet" is a section that
+          exists to announce its own emptiness. The anchor card already offers
+          the way to fix that. */}
+      {allow("crm") && (hasRecent || contactsQ.isPending || contactsQ.isError) && (
+        <>
+          <SectionLabel action="Ver todas" onAction={() => navigate(`${base}/personas`)}>
             Personas recientes
           </SectionLabel>
           <div className="mt-2">{recentList}</div>
