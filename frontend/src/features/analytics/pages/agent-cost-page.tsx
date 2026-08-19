@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@shared/api/http";
 import { PageLayout } from "@shared/components/page-layout";
-import { ErrorState, PageSkeleton, Pill } from "@shared/ui";
+import { ChartCard, ErrorState, PageSkeleton, Pill, StatCard } from "@shared/ui";
 import { CHART_COLORS, CHART_HEIGHT } from "@shared/lib/chart-config";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useAgentName } from "@core/branding/agent-branding";
@@ -169,36 +169,6 @@ export function AgentCostPage() {
         </ChartCard>
       </div>
     </PageLayout>
-  );
-}
-
-function StatCard({ label, value, tone }: { label: string; value: string; tone?: "ink" }) {
-  const isInk = tone === "ink";
-  return (
-    <div
-      className={
-        "rounded-2xl p-4 " +
-        (isInk ? "bg-foreground text-background" : "bg-secondary text-foreground")
-      }
-    >
-      <p
-        className={
-          "text-[13px] font-medium " + (isInk ? "text-background/70" : "text-muted-foreground")
-        }
-      >
-        {label}
-      </p>
-      <p className="mt-1 text-2xl font-bold tracking-tight">{value}</p>
-    </div>
-  );
-}
-
-function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-2xl border border-border bg-card p-4">
-      <h2 className="mb-3 text-[15px] font-bold tracking-tight text-foreground">{title}</h2>
-      {children}
-    </div>
   );
 }
 

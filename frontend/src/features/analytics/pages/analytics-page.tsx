@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
-import { ErrorState, PageSkeleton, RoundButton } from "@shared/ui";
+import { ChartCard, ErrorState, PageSkeleton, RoundButton, StatCard } from "@shared/ui";
 import { apiRequest } from "@shared/api/http";
 import { formatCLP } from "@/lib/locale-cl";
 import { label } from "@shared/lib/labels";
@@ -326,51 +326,6 @@ export function AnalyticsPage() {
         </div>
       </div>
     </PageLayout>
-  );
-}
-
-function StatCard({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: string;
-  tone?: "ink" | "destructive";
-}) {
-  const isInk = tone === "ink";
-  return (
-    <div
-      className={
-        "rounded-2xl p-4 " +
-        (isInk ? "bg-foreground text-background" : "bg-secondary text-foreground")
-      }
-    >
-      <p
-        className={
-          "text-[13px] font-medium " + (isInk ? "text-background/70" : "text-muted-foreground")
-        }
-      >
-        {label}
-      </p>
-      <p
-        className={
-          "mt-1 text-2xl font-bold tracking-tight " +
-          (tone === "destructive" ? "text-destructive" : "")
-        }
-      >
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-2xl border border-border bg-card p-4">
-      <h2 className="mb-3 text-[15px] font-bold tracking-tight text-foreground">{title}</h2>
-      {children}
-    </div>
   );
 }
 
