@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Outlet, useLocation } from "react-router-dom";
+import { Outlet } from "react-router-dom";
 import { Check, LogOut, Moon, Sun } from "lucide-react";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -14,6 +14,10 @@ import {
 import { AppSidebar } from "@layouts/app-sidebar";
 import { MobileBottomNav } from "@layouts/mobile-bottom-nav";
 import { CommandBar } from "@shared/components/command-bar/command-bar";
+import {
+  CommandPalette,
+  useCommandPaletteHotkey,
+} from "@shared/components/command-palette/command-palette";
 import { useAuth } from "@shared/hooks/use-auth";
 import { useShellMode } from "@shared/hooks/use-shell-mode";
 import { useThemeMode } from "@core/theme/theme-provider";
@@ -108,12 +112,15 @@ function SkipToContent() {
   );
 }
 
+/** Palette host for the headerless mobile shell (external keyboards, ⌘K). */
+function MobileCommandPalette() {
+  const [open, setOpen] = useCommandPaletteHotkey();
+  return <CommandPalette open={open} onOpenChange={setOpen} />;
+}
+
 export function AppLayout() {
   const { user, signOut } = useAuth();
   const shellMode = useShellMode();
-  const location = useLocation();
-  // Inside Propo's own page the header's Propo launcher is redundant.
-  const isAgentRoute = location.pathname.endsWith("/agent");
   useUfDailyRefresh();
 
   // Sidebar auto-collapses to the icon rail on narrow desktops and expands on
@@ -159,6 +166,7 @@ export function AppLayout() {
           <Outlet />
         </main>
         <MobileBottomNav />
+        <MobileCommandPalette />
         <InstallNudge />
       </div>
     );
@@ -176,7 +184,7 @@ export function AppLayout() {
           <SidebarTrigger className="-ml-1" />
           <HeaderWorkspaceSwitcher />
           <div className="flex flex-1 items-center justify-center px-2">
-            {!isAgentRoute && <CommandBar />}
+            <CommandBar />
           </div>
           <UfButton />
           <HeaderThemeToggle />
