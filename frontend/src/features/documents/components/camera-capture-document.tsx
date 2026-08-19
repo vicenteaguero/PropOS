@@ -57,6 +57,7 @@ import {
 import { warpQuad } from "../services/scanner/perspective-warp";
 import type { Corner, FilterMode, Point, Quad, Side } from "../services/scanner/types";
 import { Field, FieldGroup, TOUCH_TARGET_HIT_AREA } from "@shared/ui";
+import { formatDate } from "@shared/utils/format";
 
 export type BezierControls = { T?: Point; R?: Point; B?: Point; L?: Point };
 
@@ -194,7 +195,7 @@ export function CameraCaptureDocument({
   const [finalizeOpen, setFinalizeOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [progress, setProgress] = useState<FinalizeProgress>(null);
-  const defaultDocName = useMemo(() => `Escaneo ${new Date().toLocaleDateString("es-CL")}`, []);
+  const defaultDocName = useMemo(() => `Escaneo ${formatDate(new Date())}`, []);
   const [docName, setDocName] = useState(defaultDocName);
   const [docPropertyTitle, setDocPropertyTitle] = useState("");
   const [docSelectedProperty, setDocSelectedProperty] = useState<PropertyLite | null>(null);

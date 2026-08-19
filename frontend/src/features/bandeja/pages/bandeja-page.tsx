@@ -23,6 +23,7 @@ import {
 import { useIsDesktop } from "@/hooks/use-mobile";
 import { CrmPipeline } from "../components/crm-pipeline";
 import { CrmMetrics } from "../components/crm-metrics";
+import { formatDayMonth } from "@shared/utils/format";
 
 type Channel = "whatsapp" | "email";
 type Tab = "bandeja" | "pipeline" | "metricas";
@@ -52,7 +53,7 @@ const DUENO_TYPES: ContactType[] = ["SELLER", "LANDOWNER"];
 
 function fmt(ms: number): string {
   if (!ms) return "";
-  return new Date(ms).toLocaleDateString("es-CL", { day: "numeric", month: "short" });
+  return formatDayMonth(ms);
 }
 
 const TABS = [

@@ -13,6 +13,7 @@ import { agentApi } from "../api/agent-api";
 import { AgentComposer } from "../components/agent-composer";
 import { AgentMessageList } from "../components/agent-message-list";
 import { useAgentName } from "@core/branding/agent-branding";
+import { formatDayMonth } from "@shared/utils/format";
 
 function relativeTime(iso: string): string {
   const t = new Date(iso).getTime();
@@ -21,7 +22,7 @@ function relativeTime(iso: string): string {
   if (diffMin < 60) return `hace ${diffMin}m`;
   const h = Math.round(diffMin / 60);
   if (h < 24) return `hace ${h}h`;
-  return new Date(iso).toLocaleDateString("es-CL", { day: "numeric", month: "short" });
+  return formatDayMonth(iso);
 }
 
 function deriveTitle(text: string): string {

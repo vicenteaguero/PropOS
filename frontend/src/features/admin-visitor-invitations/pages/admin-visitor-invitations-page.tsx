@@ -14,6 +14,7 @@ import {
   type InvitationResponse,
 } from "../api/visitor-invitations";
 import { NewInvitationDialog } from "../components/new-invitation-dialog";
+import { formatDate } from "@shared/utils/format";
 
 const STATUS_LABEL: Record<InvitationResponse["status"], string> = {
   pending: "Pendiente",
@@ -34,7 +35,7 @@ function modeLabel(mode: InvitationResponse["mode"]): string {
 }
 
 function expiresLabel(iso: string): string {
-  return new Date(iso).toLocaleDateString("es-CL");
+  return formatDate(iso);
 }
 
 export function AdminVisitorInvitationsPage() {

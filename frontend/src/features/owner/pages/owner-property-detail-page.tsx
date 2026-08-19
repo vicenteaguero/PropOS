@@ -12,6 +12,7 @@ import { apiRequest } from "@shared/api/http";
 import { documentsApi } from "@features/documents/api/documents-api";
 import { useGrantForProperty } from "@features/owner/hooks/use-my-grants";
 import { usePageTitle } from "@app/page-meta";
+import { formatDate, formatDateTime } from "@shared/utils/format";
 
 interface ApiDocument {
   id: string;
@@ -202,7 +203,7 @@ export function OwnerPropertyDetailPage() {
                           </span>
                         }
                         title={doc.display_name}
-                        sub={`${doc.kind} · ${new Date(doc.created_at).toLocaleDateString("es-CL")}`}
+                        sub={`${doc.kind} · ${formatDate(doc.created_at)}`}
                         right={
                           <div className="flex shrink-0 items-center gap-1.5">
                             <Button
@@ -279,7 +280,7 @@ export function OwnerPropertyDetailPage() {
                     <div key={v.id} className="rounded-2xl border border-border bg-card p-4">
                       <div className="flex items-center gap-2 text-[15px] font-semibold text-foreground">
                         <Calendar className="size-4 text-muted-foreground" strokeWidth={1.8} />
-                        {new Date(v.occurred_at).toLocaleString("es-CL")}
+                        {formatDateTime(v.occurred_at)}
                         {v.duration_minutes != null && (
                           <Pill tone="neutral">{v.duration_minutes} min</Pill>
                         )}

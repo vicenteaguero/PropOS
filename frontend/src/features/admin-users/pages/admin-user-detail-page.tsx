@@ -30,7 +30,7 @@ import {
   useUpdateMembership,
 } from "@features/admin-users/hooks/use-admin-users";
 import { usePageTitle } from "@app/page-meta";
-import { initials } from "@shared/utils/format";
+import { formatDateTime, initials } from "@shared/utils/format";
 
 const SELECT_CLASS = `h-9 w-full rounded-xl border border-border bg-background px-3 text-sm ${FOCUS_RING}`;
 
@@ -123,7 +123,7 @@ export function AdminUserDetailPage() {
               { label: "RUT", value: data.rut ?? "—" },
               { label: "Rol activo", value: data.role },
               { label: "Vista activa", value: data.view },
-              { label: "Creado", value: new Date(data.created_at).toLocaleString("es-CL") },
+              { label: "Creado", value: formatDateTime(data.created_at) },
             ].map((r, i, arr) => (
               <div
                 key={r.label}
