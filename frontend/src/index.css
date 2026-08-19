@@ -550,10 +550,26 @@
   animation: propos-blink 1s step-end infinite;
 }
 
+/* Reduced motion, applied globally.
+ *
+ * This block used to name two classes — .micpulse and .caret — while every
+ * Tailwind `transition`, every `active:scale-*`, `animate-spin`, all of
+ * tw-animate-css and every Radix enter/exit ignored the preference outright.
+ * For a user who set it because motion makes them ill, honouring two of a few
+ * hundred animations is the same as honouring none.
+ *
+ * Near-zero rather than `none`: transitionend / animationend still fire, so
+ * component logic that waits on them (Radix unmounts an overlay on
+ * animationend) keeps working instead of hanging on a state that never
+ * resolves. `scroll-behavior: auto` overrides smooth scrolling for the same
+ * reason vestibular users ask for reduced motion in the first place. */
 @media (prefers-reduced-motion: reduce) {
-  .micpulse,
-  .caret {
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
