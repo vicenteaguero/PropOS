@@ -44,7 +44,7 @@ export function NotificationsCard() {
           </span>
         }
         title="Notificaciones push"
-        sub="No disponibles aquí. Instalá PropOS como app para habilitarlas."
+        sub="No disponibles aquí. Instala PropOS como app para habilitarlas."
         divider={false}
       />
     );
@@ -61,7 +61,7 @@ export function NotificationsCard() {
         title="Notificaciones push"
         sub={
           push.permission === "denied"
-            ? "Permiso bloqueado en el navegador. Habilitalo en los ajustes del sitio."
+            ? "Permiso bloqueado en el navegador. Habilítalo en los ajustes del sitio."
             : "Recordatorios de tareas, visitas y vencimientos en este dispositivo."
         }
         right={
@@ -82,7 +82,7 @@ export function NotificationsCard() {
             </span>
           }
           title="Enviar prueba"
-          sub="Comprobá que las notificaciones llegan a este dispositivo."
+          sub="Comprueba que las notificaciones llegan a este dispositivo."
           onClick={() => void test()}
           right={
             testing ? (

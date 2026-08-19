@@ -1452,7 +1452,7 @@ export function CameraCaptureDocument({
         open={discardOpen}
         onOpenChange={setDiscardOpen}
         title="Descartar capturas"
-        description={`Tenés ${shots.length === 1 ? "1 captura" : `${shots.length} capturas`} sin guardar. Si salís ahora se pierden.`}
+        description={`Tienes ${shots.length === 1 ? "1 captura" : `${shots.length} capturas`} sin guardar. Si sales ahora se pierden.`}
         confirmLabel="Descartar"
         variant="destructive"
         onConfirm={() => {

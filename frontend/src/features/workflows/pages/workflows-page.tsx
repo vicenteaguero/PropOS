@@ -66,7 +66,7 @@ export function WorkflowsPage() {
       {!list.isLoading && !list.isError && (list.data?.length ?? 0) === 0 && (
         <EmptyState
           title="Sin workflows"
-          description="Creá un proceso reutilizable para tu equipo."
+          description="Crea un proceso reutilizable para tu equipo."
           actionLabel="Nuevo workflow"
           onAction={() => setOpen(true)}
         />

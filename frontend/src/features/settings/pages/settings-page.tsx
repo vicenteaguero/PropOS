@@ -160,7 +160,7 @@ export function SettingsPage() {
       <PageLayout width="md" noPadding>
         <div className="px-5 pt-6">
           <ErrorState
-            message="No se pudo cargar la configuración del workspace. Reintentá antes de editar."
+            message="No se pudo cargar la configuración del workspace. Reintenta antes de editar."
             error={tenantQ.error}
             onRetry={() => tenantQ.refetch()}
           />

@@ -110,7 +110,7 @@ export function ReceiptPicker({ value, onChange, disabled }: Props) {
           ariaLabel="Elegir boleta existente"
         />
         <p className="text-xs leading-tight text-muted-foreground">
-          Subí la boleta o elegí un documento ya cargado.
+          Sube la boleta o elige un documento ya cargado.
         </p>
       </div>
     </div>

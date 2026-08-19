@@ -114,7 +114,7 @@ export function ContactsPage() {
         <div className="px-5">
           <EmptyState
             title="Sin contactos"
-            description="Creá tu primer contacto o pedíselo a la IA por chat."
+            description="Crea tu primer contacto o pídeselo a la IA por chat."
             actionLabel="Nuevo contacto"
             onAction={() => setDialogOpen(true)}
           />
@@ -170,7 +170,7 @@ export function ContactsPage() {
               <ContactDetail contactId={selectedId} onDeleted={() => setSelectedId(null)} />
             ) : (
               <div className="flex h-full items-center justify-center p-6 text-sm text-muted-foreground">
-                Seleccioná un contacto.
+                Selecciona un contacto.
               </div>
             )
           }

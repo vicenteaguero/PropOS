@@ -60,7 +60,7 @@ export function EmailInboxPage() {
           <div className="px-5 py-6">
             <EmptyState
               title="Sin correos"
-              description="Cuando se sincronice el buzón, los leads de portales aparecerán acá. También podés escribir vos primero."
+              description="Cuando se sincronice el buzón, los leads de portales aparecerán aquí. También puedes escribir tú primero."
               actionLabel="Nuevo correo"
               onAction={() => setComposeOpen(true)}
             />
@@ -113,7 +113,7 @@ export function EmailInboxPage() {
             <EmailThreadView threadId={selected} onBack={() => setSelected(null)} />
           ) : (
             <div className="flex h-full items-center justify-center p-6 text-sm text-muted-foreground">
-              Seleccioná una conversación.
+              Selecciona una conversación.
             </div>
           )
         }

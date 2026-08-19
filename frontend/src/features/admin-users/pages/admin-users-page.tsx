@@ -43,7 +43,7 @@ export function AdminUsersPage() {
     <div className="px-5 lg:px-8">
       <EmptyState
         title="Sin usuarios"
-        description="Invitá al primer usuario de la plataforma."
+        description="Invita al primer usuario de la plataforma."
         actionLabel="Invitar usuario"
         onAction={() => setInviteOpen(true)}
       />

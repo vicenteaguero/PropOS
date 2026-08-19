@@ -66,7 +66,7 @@ export function ImportPage() {
 
   const doPreview = async () => {
     if (!file) {
-      toast.error("Seleccioná un archivo CSV");
+      toast.error("Selecciona un archivo CSV");
       return;
     }
     try {
@@ -98,7 +98,7 @@ export function ImportPage() {
           Importar datos
         </h1>
         <p className="mt-0.5 text-[13px] text-muted-foreground">
-          Cargá datos históricos desde un CSV y revisá antes de confirmar.
+          Carga datos históricos desde un CSV y revisa antes de confirmar.
         </p>
       </div>
 
@@ -127,7 +127,7 @@ export function ImportPage() {
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[15px] font-semibold text-foreground">
-                    {file ? file.name : "Elegí un archivo CSV"}
+                    {file ? file.name : "Elige un archivo CSV"}
                   </span>
                   <span className="block text-[13px] text-muted-foreground">
                     {file ? `${(file.size / 1024).toFixed(0)} KB` : "Toca para seleccionar"}
@@ -222,7 +222,7 @@ export function ImportPage() {
         ) : (
           // Desktop placeholder keeps the two-column grid balanced before preview.
           <div className="hidden lg:flex lg:min-h-[12rem] lg:items-center lg:justify-center lg:rounded-2xl lg:border lg:border-dashed lg:border-border lg:p-6 lg:text-center lg:text-sm lg:text-muted-foreground">
-            Previsualizá un CSV para ver el resultado acá.
+            Previsualiza un CSV para ver el resultado aquí.
           </div>
         )}
       </div>

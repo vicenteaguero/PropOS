@@ -55,7 +55,7 @@ export function AuthSetupPage() {
   }
 
   return (
-    <AuthShell subtitle="Activá tu cuenta creando una contraseña">
+    <AuthShell subtitle="Activa tu cuenta creando una contraseña">
       {!isReady && !error && (
         <div className="flex justify-center py-8">
           <LoadingSpinner size="md" />

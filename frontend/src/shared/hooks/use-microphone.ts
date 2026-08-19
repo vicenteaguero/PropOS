@@ -30,7 +30,7 @@ export function useMicrophone(): UseMicrophoneReturn {
 
       if (!navigator.mediaDevices?.getUserMedia) {
         throw new Error(
-          "Tu navegador no soporta micrófono. En iOS, abrí PropOS desde la pantalla de inicio (PWA instalada).",
+          "Tu navegador no soporta micrófono. En iOS, abre PropOS desde la pantalla de inicio (PWA instalada).",
         );
       }
 
@@ -69,8 +69,8 @@ export function useMicrophone(): UseMicrophoneReturn {
       let message = "No se pudo acceder al micrófono.";
       if (name === "NotAllowedError" || name === "SecurityError") {
         message = isIos
-          ? "Permiso de micrófono denegado. Abrí Ajustes → Safari (o PropOS si está instalada) → Micrófono → Permitir."
-          : "Permiso de micrófono denegado. Habilitalo en la configuración del navegador y volvé a intentar.";
+          ? "Permiso de micrófono denegado. Abre Ajustes → Safari (o PropOS si está instalada) → Micrófono → Permitir."
+          : "Permiso de micrófono denegado. Habilítalo en la configuración del navegador y vuelve a intentar.";
       } else if (name === "NotFoundError" || name === "OverconstrainedError") {
         message = "No se encontró ningún micrófono en este dispositivo.";
       } else if (err instanceof Error && err.message) {

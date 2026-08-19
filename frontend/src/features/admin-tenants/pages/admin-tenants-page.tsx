@@ -175,7 +175,7 @@ export function AdminTenantsPage() {
         <div className="px-5 lg:px-8">
           <EmptyState
             title="Sin tenants"
-            description="Creá el primer espacio de trabajo."
+            description="Crea el primer espacio de trabajo."
             actionLabel="Crear tenant"
             onAction={() => setCreateOpen(true)}
           />

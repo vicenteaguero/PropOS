@@ -94,7 +94,7 @@ export function PropertyGallery({ propertyId, overlay, className }: PropertyGall
           )}
           <Images className="size-7 text-muted-foreground" strokeWidth={1.6} />
           <p className="text-[13px] text-muted-foreground">
-            Sin fotos todavía. Subilas acá o mandáselas a Propo por WhatsApp.
+            Sin fotos todavía. Súbelas aquí o mándaselas a Propo por WhatsApp.
           </p>
           {uploadButton}
         </div>

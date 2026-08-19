@@ -421,7 +421,7 @@ export function TasksPage() {
 
   const submit = async () => {
     if (!title.trim()) {
-      toast.error("Agregá un título");
+      toast.error("Agrega un título");
       return;
     }
     let task;
@@ -509,7 +509,7 @@ export function TasksPage() {
       {!isLoading && !error && (data?.length ?? 0) === 0 && (
         <EmptyState
           title="Sin tareas abiertas"
-          description="Creá una tarea o pedísela a la IA por chat."
+          description="Crea una tarea o pídesela a la IA por chat."
           actionLabel="Nueva tarea"
           onAction={() => setOpen(true)}
         />

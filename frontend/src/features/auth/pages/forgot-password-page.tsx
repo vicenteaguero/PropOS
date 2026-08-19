@@ -36,15 +36,15 @@ export function ForgotPasswordPage() {
   }
 
   return (
-    <AuthShell subtitle="Restablecé tu contraseña">
+    <AuthShell subtitle="Restablece tu contraseña">
       {sent ? (
         <div className="flex flex-col items-center gap-5 text-center">
           <span className="flex size-12 items-center justify-center rounded-2xl bg-secondary">
             <MailCheck className="size-6 text-foreground" strokeWidth={1.8} />
           </span>
           <p className="text-sm text-muted-foreground">
-            Si el correo está registrado, te enviamos un link para restablecer tu contraseña. Revisá
-            tu bandeja en los próximos minutos.
+            Si el correo está registrado, te enviamos un enlace para restablecer tu contraseña.
+            Revisa tu bandeja en los próximos minutos.
           </p>
           <Button asChild variant="outline" size="block">
             <Link to="/login">Volver al inicio de sesión</Link>

@@ -242,7 +242,7 @@ export function AdminPropertyDetailPage() {
                 className="rounded-2xl"
                 value={draft ?? p.description ?? ""}
                 onChange={(e) => setDraft(e.target.value)}
-                placeholder="Generá una descripción con IA o escribila acá…"
+                placeholder="Genera una descripción con IA o escríbela aquí…"
               />
               <div className="flex justify-end">
                 <Button
@@ -261,7 +261,7 @@ export function AdminPropertyDetailPage() {
             <TabsContent value="grants" className="mt-4">
               {grants.length === 0 && !grantsQ.isLoading && (
                 <div className="rounded-2xl border border-border bg-card px-5 py-8 text-center text-sm text-muted-foreground">
-                  Sin accesos otorgados. Usá la sección Usuarios para otorgar.
+                  Sin accesos otorgados. Usa la sección Usuarios para otorgar.
                 </div>
               )}
               {grants.length > 0 && (

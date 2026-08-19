@@ -50,9 +50,9 @@ export function InstallNudge() {
             className="size-10 shrink-0 rounded-lg ring-2 ring-primary/20"
           />
           <div className="min-w-0 flex-1 text-sm">
-            <p className="font-medium text-foreground">Instalá PropOS en tu iPhone</p>
+            <p className="font-medium text-foreground">Instala PropOS en tu iPhone</p>
             <p className="mt-1 text-muted-foreground">
-              Tocá <Share className="-mt-0.5 inline size-3.5" /> en Safari y elegí{" "}
+              Toca <Share className="-mt-0.5 inline size-3.5" /> en Safari y elige{" "}
               <strong>Añadir a inicio</strong>. Vas a tener PropOS como cualquier app.
             </p>
           </div>

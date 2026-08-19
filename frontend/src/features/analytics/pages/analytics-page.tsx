@@ -118,7 +118,7 @@ export function AnalyticsPage() {
             Analítica
           </h1>
           <p className="mt-0.5 text-[13px] text-muted-foreground">
-            Métricas internas. Refrescá las vistas si cambian datos recientes.
+            Métricas internas. Refresca las vistas si cambian datos recientes.
           </p>
         </div>
         <RoundButton

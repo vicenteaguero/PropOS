@@ -85,7 +85,7 @@ export function OwnerHomePage() {
           <p className="mt-0.5 text-[13px] text-muted-foreground">
             {grants.length > 0
               ? "Las propiedades a las que tu administrador te dio acceso."
-              : "Acá verás las propiedades que tu administrador comparta contigo."}
+              : "Aquí verás las propiedades que tu administrador comparta contigo."}
           </p>
         </div>
 

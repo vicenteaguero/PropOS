@@ -61,7 +61,7 @@ export function PortalFormDialog({ open, onOpenChange }: Props) {
             onChange={(e) => setAccessMode(e.target.value as PortalAccess)}
             className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm"
           >
-            <option value="PUBLIC">Público (cualquiera con el link)</option>
+            <option value="PUBLIC">Público (cualquiera con el enlace)</option>
             <option value="PASSWORD">Con password</option>
             <option value="QR_ONLY">Solo QR</option>
           </select>

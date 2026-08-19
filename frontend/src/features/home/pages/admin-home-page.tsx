@@ -275,10 +275,10 @@ export function AdminHomePage() {
     <div className="overflow-hidden rounded-3xl bg-foreground text-background">
       <div className="px-4 pt-4 pb-3">
         <span className="text-[12.5px] font-bold uppercase tracking-wide opacity-60">
-          Empezá por acá
+          Empieza por aquí
         </span>
         <p className="mt-1.5 text-[15px] font-semibold leading-snug">
-          Tu agenda de hoy está libre. Cargá tu cartera y Propo empieza a trabajar sobre ella.
+          Tu agenda de hoy está libre. Carga tu cartera y Propo empieza a trabajar sobre ella.
         </p>
       </div>
       <div className="border-t border-white/10">

@@ -142,7 +142,7 @@ export function DocumentsPage() {
       {!isLoading && !error && data && data.length === 0 && (
         <EmptyState
           title="Sin documentos"
-          description="Tocá «Escanear» para capturar con la cámara o «Subir» para agregar un archivo."
+          description="Toca «Escanear» para capturar con la cámara o «Subir» para agregar un archivo."
         />
       )}
 
@@ -276,7 +276,7 @@ function DocumentPreviewPane({
       <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center">
         <FileText className="size-10 text-muted-foreground/40" strokeWidth={1.25} />
         <p className="text-sm text-muted-foreground">
-          Seleccioná un documento para ver su vista previa.
+          Selecciona un documento para ver su vista previa.
         </p>
       </div>
     );

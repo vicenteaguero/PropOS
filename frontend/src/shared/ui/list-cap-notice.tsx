@@ -42,7 +42,7 @@ export function ListCapNotice({
   resource,
   count,
   className,
-  hint = "Refiná la búsqueda o aplicá un filtro para ver el resto.",
+  hint = "Refina la búsqueda o aplica un filtro para ver el resto.",
 }: {
   resource: CappedResource;
   count: number | undefined;

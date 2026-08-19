@@ -32,7 +32,7 @@ function ReplyBox({ threadId }: { threadId: string }) {
           value={body}
           onChange={(e) => setBody(e.target.value)}
           rows={2}
-          placeholder="Escribí tu respuesta…"
+          placeholder="Escribe tu respuesta…"
           className={`max-h-40 min-h-[2.75rem] flex-1 resize-none rounded-2xl border border-border bg-secondary px-4 py-2.5 text-sm text-foreground transition placeholder:text-muted-foreground ${FOCUS_RING}`}
         />
         <RoundButton

@@ -164,7 +164,7 @@ def dispatch(
     {kind, ...} where kind ∈ {"proposal", "query", "clarify", "out_of_scope"}.
     """
     if intent == "out_of_scope":
-        return {"kind": "out_of_scope", "message": "No identifiqué una acción clara. ¿Podés repetirlo?"}
+        return {"kind": "out_of_scope", "message": "No identifiqué una acción clara. ¿Puedes repetirlo?"}
 
     if intent == "ambiguous":
         return {
@@ -198,7 +198,7 @@ def dispatch(
         if not media_msgs:
             return {
                 "kind": "clarify",
-                "reason": "No tengo fotos recientes en esta conversación. Mándamelas y volvé a pedírmelo.",
+                "reason": "No tengo fotos recientes en esta conversación. Mándamelas y vuelve a pedírmelo.",
                 "candidates": [],
             }
         payload["media_message_ids"] = [m["id"] for m in media_msgs]
@@ -207,7 +207,7 @@ def dispatch(
     if intent == "update_person" and not payload.get("id"):
         return {
             "kind": "clarify",
-            "reason": "No encontré a esa persona. ¿Podés confirmar el nombre exacto?",
+            "reason": "No encontré a esa persona. ¿Puedes confirmar el nombre exacto?",
             "candidates": [],
         }
 
