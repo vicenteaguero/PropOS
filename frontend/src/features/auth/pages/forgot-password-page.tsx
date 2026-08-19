@@ -8,8 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@shared/components/loading-spinner/loading-spinner";
+import { usePageTitle } from "@app/page-meta";
 
 export function ForgotPasswordPage() {
+  usePageTitle("Recuperar contraseña");
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sent, setSent] = useState(false);

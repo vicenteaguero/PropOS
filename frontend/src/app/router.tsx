@@ -7,6 +7,7 @@ import { AuthSetupPage } from "@features/auth/pages/auth-setup-page";
 import { ForgotPasswordPage } from "@features/auth/pages/forgot-password-page";
 import { AppLayout } from "@layouts/app-layout";
 import { EmptyDashboard } from "@shared/components/empty-dashboard/empty-dashboard";
+import { PageMetaProvider } from "@app/page-meta";
 import { AppSkeleton } from "@shared/components/app-skeleton/app-skeleton";
 import type { UserRole, UserView } from "@shared/types/auth";
 
@@ -196,267 +197,269 @@ export function AppRouter() {
     // A lazy page resolves in a tick from cache, so the fallback is only ever
     // seen on a cold chunk fetch. AppSkeleton is the same shell ProtectedRoute
     // shows while auth resolves, which keeps the transition from flashing.
-    <Suspense fallback={<AppSkeleton />}>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-        <Route path="/auth/setup" element={<AuthSetupPage />} />
-        <Route path="/auth/recovery" element={<AuthSetupPage />} />
-        <Route path="/" element={<ViewRedirect />} />
+    <PageMetaProvider>
+      <Suspense fallback={<AppSkeleton />}>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/auth/setup" element={<AuthSetupPage />} />
+          <Route path="/auth/recovery" element={<AuthSetupPage />} />
+          <Route path="/" element={<ViewRedirect />} />
 
-        <Route path="/r/:slug" element={<SharePublicPage />} />
-        <Route path="/p/:slug" element={<PortalPublicPage />} />
-        <Route path="/privacidad" element={<PrivacyPage />} />
-        <Route path="/derechos" element={<DataRightsPage />} />
-        <Route path="/invitacion/:slug" element={<VisitorRegistrationPage />} />
+          <Route path="/r/:slug" element={<SharePublicPage />} />
+          <Route path="/p/:slug" element={<PortalPublicPage />} />
+          <Route path="/privacidad" element={<PrivacyPage />} />
+          <Route path="/derechos" element={<DataRightsPage />} />
+          <Route path="/invitacion/:slug" element={<VisitorRegistrationPage />} />
 
-        {ROLE_ROUTES.map((role) => (
+          {ROLE_ROUTES.map((role) => (
+            <Route
+              key={role}
+              path={`/${role.toLowerCase()}`}
+              element={
+                <ProtectedRoute requiredRole={role}>
+                  <AppLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route
+                index
+                element={
+                  role === "ADMIN" || role === "AGENT" ? <AdminHomePage /> : <EmptyDashboard />
+                }
+              />
+
+              {role === "ADMIN" && (
+                <Route
+                  path="agent"
+                  element={
+                    <ProtectedRoute requiredScope="agent">
+                      <AgentChatPage />
+                    </ProtectedRoute>
+                  }
+                />
+              )}
+
+              {(role === "ADMIN" || role === "AGENT" || role === "CONTENT") && (
+                <Route
+                  path="pendientes"
+                  element={
+                    <ProtectedRoute requiredScope="pendientes">
+                      <PendingPage />
+                    </ProtectedRoute>
+                  }
+                />
+              )}
+              <Route
+                path="client-inbox"
+                element={
+                  <ProtectedRoute requiredScope="inbox">
+                    <ClientInboxPage />
+                  </ProtectedRoute>
+                }
+              />
+              {role === "ADMIN" && (
+                <Route
+                  path="phones"
+                  element={
+                    <ProtectedRoute requiredScope="phones">
+                      <AdminPhonesPage />
+                    </ProtectedRoute>
+                  }
+                />
+              )}
+
+              <Route
+                path="documents"
+                element={
+                  <ProtectedRoute requiredScope="documents">
+                    <DocumentsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="documents/portals"
+                element={
+                  <ProtectedRoute requiredScope="documents">
+                    <PortalAdminPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="documents/:id"
+                element={
+                  <ProtectedRoute requiredScope="documents">
+                    <DocumentDetailPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="documents/:id/edit"
+                element={
+                  <ProtectedRoute requiredScope="documents">
+                    <DocumentEditorPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              {(role === "ADMIN" || role === "AGENT") && (
+                <>
+                  {/* The backend already authorises AGENT on GET/POST/PATCH of
+                    properties (properties/router.py); only the frontend was
+                    keeping brokers out of their own portfolio. */}
+                  <Route path="properties" element={<AdminPropertiesPage />} />
+                  <Route path="properties/:id" element={<AdminPropertyDetailPage />} />
+                  <Route
+                    path="bandeja"
+                    element={
+                      <ProtectedRoute requiredScope="crm">
+                        <BandejaPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="personas"
+                    element={
+                      <ProtectedRoute requiredScope="crm">
+                        <ContactsPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="personas/:id"
+                    element={
+                      <ProtectedRoute requiredScope="crm">
+                        <ContactDetailPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="interacciones"
+                    element={
+                      <ProtectedRoute requiredScope="crm">
+                        <InteractionsPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="oportunidades"
+                    element={
+                      <ProtectedRoute requiredScope="crm">
+                        <OpportunitiesPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="tareas"
+                    element={
+                      <ProtectedRoute requiredScope="productividad">
+                        <TasksPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="calendario"
+                    element={
+                      <ProtectedRoute requiredScope="productividad">
+                        <CalendarPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="notas"
+                    element={
+                      <ProtectedRoute requiredScope="productividad">
+                        <NotesPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="correos"
+                    element={
+                      <ProtectedRoute requiredScope="email">
+                        <EmailInboxPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                </>
+              )}
+
+              <Route
+                path="workflows"
+                element={
+                  <ProtectedRoute requiredScope="workflows">
+                    <WorkflowsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="timeline/:table/:id" element={<EntityTimelinePage />} />
+              {role === "ADMIN" && <Route path="settings" element={<SettingsPage />} />}
+
+              {role === "ADMIN" && (
+                <>
+                  <Route
+                    path="analytics"
+                    element={
+                      <ProtectedRoute requiredScope="analytics">
+                        <AnalyticsPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="analytics/agent-cost"
+                    element={
+                      <ProtectedRoute requiredScope="analytics">
+                        <AgentCostPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="finanzas"
+                    element={
+                      <ProtectedRoute requiredScope="finanzas">
+                        <FinancePage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="datos/importar"
+                    element={
+                      <ProtectedRoute requiredScope="datos">
+                        <ImportPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route path="users" element={<AdminUsersPage />} />
+                  <Route path="users/:id" element={<AdminUserDetailPage />} />
+                  <Route
+                    path="tenants"
+                    element={
+                      <ProtectedRoute requiredDevAdmin>
+                        <AdminTenantsPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route path="visitantes" element={<AdminVisitorInvitationsPage />} />
+                </>
+              )}
+            </Route>
+          ))}
+
           <Route
-            key={role}
-            path={`/${role.toLowerCase()}`}
+            path="/owner"
             element={
-              <ProtectedRoute requiredRole={role}>
+              <ProtectedRoute requiredView={["owner", "admin-dev"]}>
                 <AppLayout />
               </ProtectedRoute>
             }
           >
-            <Route
-              index
-              element={
-                role === "ADMIN" || role === "AGENT" ? <AdminHomePage /> : <EmptyDashboard />
-              }
-            />
-
-            {role === "ADMIN" && (
-              <Route
-                path="agent"
-                element={
-                  <ProtectedRoute requiredScope="agent">
-                    <AgentChatPage />
-                  </ProtectedRoute>
-                }
-              />
-            )}
-
-            {(role === "ADMIN" || role === "AGENT" || role === "CONTENT") && (
-              <Route
-                path="pendientes"
-                element={
-                  <ProtectedRoute requiredScope="pendientes">
-                    <PendingPage />
-                  </ProtectedRoute>
-                }
-              />
-            )}
-            <Route
-              path="client-inbox"
-              element={
-                <ProtectedRoute requiredScope="inbox">
-                  <ClientInboxPage />
-                </ProtectedRoute>
-              }
-            />
-            {role === "ADMIN" && (
-              <Route
-                path="phones"
-                element={
-                  <ProtectedRoute requiredScope="phones">
-                    <AdminPhonesPage />
-                  </ProtectedRoute>
-                }
-              />
-            )}
-
-            <Route
-              path="documents"
-              element={
-                <ProtectedRoute requiredScope="documents">
-                  <DocumentsPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="documents/portals"
-              element={
-                <ProtectedRoute requiredScope="documents">
-                  <PortalAdminPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="documents/:id"
-              element={
-                <ProtectedRoute requiredScope="documents">
-                  <DocumentDetailPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="documents/:id/edit"
-              element={
-                <ProtectedRoute requiredScope="documents">
-                  <DocumentEditorPage />
-                </ProtectedRoute>
-              }
-            />
-
-            {(role === "ADMIN" || role === "AGENT") && (
-              <>
-                {/* The backend already authorises AGENT on GET/POST/PATCH of
-                  properties (properties/router.py); only the frontend was
-                  keeping brokers out of their own portfolio. */}
-                <Route path="properties" element={<AdminPropertiesPage />} />
-                <Route path="properties/:id" element={<AdminPropertyDetailPage />} />
-                <Route
-                  path="bandeja"
-                  element={
-                    <ProtectedRoute requiredScope="crm">
-                      <BandejaPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="personas"
-                  element={
-                    <ProtectedRoute requiredScope="crm">
-                      <ContactsPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="personas/:id"
-                  element={
-                    <ProtectedRoute requiredScope="crm">
-                      <ContactDetailPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="interacciones"
-                  element={
-                    <ProtectedRoute requiredScope="crm">
-                      <InteractionsPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="oportunidades"
-                  element={
-                    <ProtectedRoute requiredScope="crm">
-                      <OpportunitiesPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="tareas"
-                  element={
-                    <ProtectedRoute requiredScope="productividad">
-                      <TasksPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="calendario"
-                  element={
-                    <ProtectedRoute requiredScope="productividad">
-                      <CalendarPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="notas"
-                  element={
-                    <ProtectedRoute requiredScope="productividad">
-                      <NotesPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="correos"
-                  element={
-                    <ProtectedRoute requiredScope="email">
-                      <EmailInboxPage />
-                    </ProtectedRoute>
-                  }
-                />
-              </>
-            )}
-
-            <Route
-              path="workflows"
-              element={
-                <ProtectedRoute requiredScope="workflows">
-                  <WorkflowsPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="timeline/:table/:id" element={<EntityTimelinePage />} />
-            {role === "ADMIN" && <Route path="settings" element={<SettingsPage />} />}
-
-            {role === "ADMIN" && (
-              <>
-                <Route
-                  path="analytics"
-                  element={
-                    <ProtectedRoute requiredScope="analytics">
-                      <AnalyticsPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="analytics/agent-cost"
-                  element={
-                    <ProtectedRoute requiredScope="analytics">
-                      <AgentCostPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="finanzas"
-                  element={
-                    <ProtectedRoute requiredScope="finanzas">
-                      <FinancePage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="datos/importar"
-                  element={
-                    <ProtectedRoute requiredScope="datos">
-                      <ImportPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route path="users" element={<AdminUsersPage />} />
-                <Route path="users/:id" element={<AdminUserDetailPage />} />
-                <Route
-                  path="tenants"
-                  element={
-                    <ProtectedRoute requiredDevAdmin>
-                      <AdminTenantsPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route path="visitantes" element={<AdminVisitorInvitationsPage />} />
-              </>
-            )}
+            <Route index element={<OwnerHomePage />} />
+            <Route path="properties/:id" element={<OwnerPropertyDetailPage />} />
           </Route>
-        ))}
 
-        <Route
-          path="/owner"
-          element={
-            <ProtectedRoute requiredView={["owner", "admin-dev"]}>
-              <AppLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<OwnerHomePage />} />
-          <Route path="properties/:id" element={<OwnerPropertyDetailPage />} />
-        </Route>
-
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Suspense>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
+    </PageMetaProvider>
   );
 }

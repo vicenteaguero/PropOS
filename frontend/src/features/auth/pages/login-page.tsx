@@ -3,8 +3,10 @@ import { LoginForm } from "@features/auth/components/login-form/login-form";
 import { AuthShell } from "@features/auth/components/auth-shell/auth-shell";
 import { AppSkeleton } from "@shared/components/app-skeleton/app-skeleton";
 import { useAuth } from "@shared/hooks/use-auth";
+import { usePageTitle } from "@app/page-meta";
 
 export function LoginPage() {
+  usePageTitle("Ingresar");
   const { isAuthenticated, isLoading } = useAuth();
 
   if (isAuthenticated) {

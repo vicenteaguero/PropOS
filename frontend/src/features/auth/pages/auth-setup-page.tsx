@@ -8,8 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@shared/components/loading-spinner/loading-spinner";
 import { toast } from "sonner";
+import { usePageTitle } from "@app/page-meta";
 
 export function AuthSetupPage() {
+  usePageTitle("Configurar cuenta");
   const navigate = useNavigate();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");

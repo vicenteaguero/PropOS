@@ -9,8 +9,10 @@ import { shareLinksApi } from "../api/share-links-api";
 import type { ShareLinkPublicView } from "../types";
 import { DocumentPreview } from "../components/document-preview";
 import { Field } from "@shared/ui";
+import { usePageTitle } from "@app/page-meta";
 
 export function SharePublicPage() {
+  usePageTitle("Documento compartido");
   const { slug } = useParams<{ slug: string }>();
   const [view, setView] = useState<ShareLinkPublicView | null>(null);
   const [loading, setLoading] = useState(true);

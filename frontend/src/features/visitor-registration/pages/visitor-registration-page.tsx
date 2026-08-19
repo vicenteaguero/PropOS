@@ -18,8 +18,10 @@ import {
   type InvitationPublicView,
 } from "../api/visitor-registration";
 import { Field, FieldGroup } from "@shared/ui";
+import { usePageTitle } from "@app/page-meta";
 
 export function VisitorRegistrationPage() {
+  usePageTitle("Registro de visita");
   const { slug } = useParams<{ slug: string }>();
   const [invitation, setInvitation] = useState<InvitationPublicView | null>(null);
   const [loading, setLoading] = useState(true);

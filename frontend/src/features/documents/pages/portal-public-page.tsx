@@ -9,8 +9,10 @@ import { PageLayout } from "@shared/components/page-layout";
 import { portalsApi, type PublicPortalView } from "../api/portals-api";
 import { validateFile } from "../services/file-validation";
 import { Field } from "@shared/ui";
+import { usePageTitle } from "@app/page-meta";
 
 export function PortalPublicPage() {
+  usePageTitle("Subir documentos");
   const { slug } = useParams<{ slug: string }>();
   const [view, setView] = useState<PublicPortalView | null>(null);
   const [loading, setLoading] = useState(true);

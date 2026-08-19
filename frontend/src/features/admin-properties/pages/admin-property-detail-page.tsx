@@ -29,6 +29,7 @@ import { toast } from "sonner";
 import { propertiesApi, type PropertyInput } from "../api/properties-api";
 import { PropertyFormDialog } from "../components/property-form-dialog";
 import { PropertyGallery } from "../components/property-gallery";
+import { usePageTitle } from "@app/page-meta";
 
 interface ApiGrant {
   id: string;
@@ -72,6 +73,7 @@ export function AdminPropertyDetailPage() {
     queryFn: () => propertiesApi.get(id as string),
     enabled: !!id,
   });
+  usePageTitle(propQ.data?.title);
   const grantsQ = useQuery({
     queryKey: ["admin", "property", id, "grants"],
     queryFn: () => apiRequest<ApiGrant[]>(`/v1/properties/${id}/grants`),

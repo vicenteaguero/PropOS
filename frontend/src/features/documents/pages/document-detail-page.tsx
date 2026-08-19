@@ -55,6 +55,7 @@ import { ShareViaDialog } from "../components/share-via-dialog";
 import { VersionHistoryDrawer } from "../components/version-history-drawer";
 import { DocumentSharePanel } from "../components/share-panel";
 import { Users } from "lucide-react";
+import { usePageTitle } from "@app/page-meta";
 
 export function DocumentDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -63,6 +64,7 @@ export function DocumentDetailPage() {
   const role = user?.role.toLowerCase() ?? "agent";
 
   const { data: doc, isLoading, error } = useDocument(id);
+  usePageTitle(doc?.display_name);
   const deleteMutation = useDeleteDocument();
   const updateMutation = useUpdateDocument(id ?? "");
 

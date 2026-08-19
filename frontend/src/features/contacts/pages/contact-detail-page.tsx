@@ -2,6 +2,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { PageLayout } from "@shared/components/page-layout";
 import { useAuth } from "@shared/hooks/use-auth";
 import { ContactDetail } from "../components/contact-detail";
+import { usePageTitle } from "@app/page-meta";
 
 /**
  * Standalone contact detail route (`/<role>/personas/:id`). Kept for deep-links
@@ -15,6 +16,7 @@ export function ContactDetailPage() {
   const role = user?.role.toLowerCase() ?? "agent";
 
   const backToList = () => navigate(`/${role}/personas`);
+  usePageTitle("Persona");
 
   return (
     <PageLayout width="md" noPadding>
