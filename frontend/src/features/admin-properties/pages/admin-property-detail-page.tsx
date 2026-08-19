@@ -14,15 +14,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  ErrorState,
-  NavMark,
-  PageSkeleton,
-  Pill,
-  Row,
-  SectionLabel,
-  type PillTone,
-} from "@shared/ui";
+import { ErrorState, NavMark, PageSkeleton, Pill, Row, SectionLabel } from "@shared/ui";
 import { PageLayout } from "@shared/components/page-layout";
 import { apiRequest } from "@shared/api/http";
 import { toast } from "sonner";
@@ -31,26 +23,14 @@ import { PropertyFormDialog } from "../components/property-form-dialog";
 import { PropertyGallery } from "../components/property-gallery";
 import { usePageTitle } from "@app/page-meta";
 import { formatClp } from "@shared/utils/currency";
+import { label } from "@shared/lib/labels";
+import { LISTING_KIND_TONES, tone } from "@shared/lib/tones";
 
 interface ApiGrant {
   id: string;
   user_id: string;
   view: string;
   capabilities: string[];
-}
-
-/** Operation label + tone: Venta → success, Arriendo → warning. */
-function listingMeta(kind: string): { label: string; tone: PillTone } {
-  switch (kind) {
-    case "SALE":
-      return { label: "Venta", tone: "success" };
-    case "RENT":
-      return { label: "Arriendo", tone: "warning" };
-    case "LEASE":
-      return { label: "Leasing", tone: "accent" };
-    default:
-      return { label: kind, tone: "neutral" };
-  }
 }
 
 export function AdminPropertyDetailPage() {
@@ -115,7 +95,10 @@ export function AdminPropertyDetailPage() {
   }
 
   const p = propQ.data;
-  const op = listingMeta(p.listing_kind);
+  const op = {
+    label: label("listingKind", p.listing_kind),
+    tone: tone(LISTING_KIND_TONES, p.listing_kind),
+  };
   const grants = grantsQ.data ?? [];
 
   const specs = [

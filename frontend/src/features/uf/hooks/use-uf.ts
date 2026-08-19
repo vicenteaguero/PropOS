@@ -14,6 +14,20 @@ export function useUfToday() {
   });
 }
 
+/**
+ * UF values already published for dates after today. The Banco Central fixes
+ * the whole 10th -> 9th window in advance, so these are official figures, not
+ * projections — a broker can quote a future closing with them.
+ */
+export function useUfForward() {
+  return useQuery({
+    queryKey: ["uf", "forward"],
+    queryFn: () => ufApi.forward(),
+    staleTime: 60 * 60_000,
+    retry: false,
+  });
+}
+
 interface MindicadorSerie {
   serie: Array<{ fecha: string; valor: number }>;
 }
@@ -55,7 +69,7 @@ export function useUfDailyRefresh(): void {
         await ufApi.refresh();
         if (cancelled) return;
         window.localStorage.setItem(REFRESH_FLAG, today);
-        qc.invalidateQueries({ queryKey: ["uf", "today"] });
+        qc.invalidateQueries({ queryKey: ["uf"] });
       } catch {
         // Silent failure — UF widget falls back to last known value.
       }

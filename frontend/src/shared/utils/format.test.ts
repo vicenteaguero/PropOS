@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { formatDate, formatDateTime, formatDayMonth, formatShortDateTime, initials } from "./format";
+import {
+  formatDate,
+  formatDateTime,
+  formatDayMonth,
+  formatShortDateTime,
+  initials,
+} from "./format";
 
 describe("initials", () => {
   it("takes the first letter of the first two words", () => {

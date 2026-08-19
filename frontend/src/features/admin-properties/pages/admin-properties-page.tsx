@@ -7,26 +7,14 @@ import { Button } from "@/components/ui/button";
 import { PageLayout } from "@shared/components/page-layout";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
 import { LoadingSpinner } from "@shared/components/loading-spinner/loading-spinner";
-import { ErrorState, FOCUS_RING, ListCapNotice, Pill, Segmented, type PillTone } from "@shared/ui";
+import { ErrorState, FOCUS_RING, ListCapNotice, Pill, Segmented } from "@shared/ui";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { propertiesApi, type Property, type PropertyInput } from "../api/properties-api";
 import { PropertyFormDialog } from "../components/property-form-dialog";
 import { formatClp } from "@shared/utils/currency";
-
-/** Operation label + tone: Venta → success, Arriendo → warning. */
-function listingMeta(kind: string): { label: string; tone: PillTone } {
-  switch (kind) {
-    case "SALE":
-      return { label: "Venta", tone: "success" };
-    case "RENT":
-      return { label: "Arriendo", tone: "warning" };
-    case "LEASE":
-      return { label: "Leasing", tone: "accent" };
-    default:
-      return { label: kind, tone: "neutral" };
-  }
-}
+import { label } from "@shared/lib/labels";
+import { LISTING_KIND_TONES, tone } from "@shared/lib/tones";
 
 /** Short stable code from the property id (presentational). */
 function propertyCode(id: string): string {
@@ -34,7 +22,10 @@ function propertyCode(id: string): string {
 }
 
 function PropertyCard({ property, onClick }: { property: Property; onClick: () => void }) {
-  const op = listingMeta(property.listing_kind);
+  const op = {
+    label: label("listingKind", property.listing_kind),
+    tone: tone(LISTING_KIND_TONES, property.listing_kind),
+  };
   const specs: { icon: LucideIcon; value: string }[] = [
     ...(property.bedrooms != null ? [{ icon: BedDouble, value: `${property.bedrooms}` }] : []),
     ...(property.bathrooms != null ? [{ icon: Bath, value: `${property.bathrooms}` }] : []),

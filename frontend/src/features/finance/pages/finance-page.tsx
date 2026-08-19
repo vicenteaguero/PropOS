@@ -24,7 +24,6 @@ import {
   Pill,
   ResponsiveSheet,
   Row,
-  type PillTone,
 } from "@shared/ui";
 import { useIsDesktop } from "@/hooks/use-mobile";
 import { toast } from "sonner";
@@ -44,35 +43,12 @@ import {
 import { CommissionCalculator } from "../components/commission-calculator";
 import { ReceiptPicker } from "../components/receipt-picker";
 import { formatClp } from "@shared/utils/currency";
-
-/** Spanish labels for the transaction category enum (UI Spanish, code English). */
-const TX_CATEGORY: Record<string, string> = {
-  COMMISSION: "Comisión",
-  SALE_PROCEEDS: "Venta",
-  RENT: "Arriendo",
-  AD_SPEND: "Publicidad",
-  MARKETING: "Marketing",
-  NOTARY_FEE: "Notaría",
-  TAX: "Impuestos",
-  UTILITY: "Servicios",
-  SALARY: "Sueldos",
-  SOFTWARE: "Software",
-  REIMBURSEMENT: "Reembolso",
-  DEPOSIT: "Depósito",
-  REFUND: "Devolución",
-  TRANSFER: "Transferencia",
-  OTHER: "Otro",
-};
+import { TX_CATEGORY_LABELS, label } from "@shared/lib/labels";
+import { TX_STATUS_TONES, tone } from "@shared/lib/tones";
 
 function categoryLabel(category: string): string {
-  return TX_CATEGORY[category] ?? category;
+  return TX_CATEGORY_LABELS[category] ?? category;
 }
-
-const STATUS_META: Record<string, { label: string; tone: PillTone }> = {
-  PENDING: { label: "Pendiente", tone: "warning" },
-  COMPLETED: { label: "Completado", tone: "success" },
-  CANCELLED: { label: "Anulado", tone: "neutral" },
-};
 
 /** Leading icon per transaction (by category/direction). */
 function txIcon(t: Transaction): LucideIcon {
@@ -245,7 +221,10 @@ export function FinancePage() {
         <div>
           {filtered.map((t, i) => {
             const Icon = txIcon(t);
-            const status = STATUS_META[t.status] ?? STATUS_META.COMPLETED;
+            const status = {
+              label: label("txStatus", t.status),
+              tone: tone(TX_STATUS_TONES, t.status),
+            };
             const occurred = t.occurred_at ?? t.due_at;
             const dateLabel = occurred
               ? new Date(occurred).toLocaleDateString("es-CL", { day: "2-digit", month: "short" })
@@ -326,7 +305,10 @@ export function FinancePage() {
             <tbody>
               {filtered.map((t, i) => {
                 const Icon = txIcon(t);
-                const status = STATUS_META[t.status] ?? STATUS_META.COMPLETED;
+                const status = {
+                  label: label("txStatus", t.status),
+                  tone: tone(TX_STATUS_TONES, t.status),
+                };
                 const occurred = t.occurred_at ?? t.due_at;
                 const dateLabel = occurred
                   ? new Date(occurred).toLocaleDateString("es-CL", {
