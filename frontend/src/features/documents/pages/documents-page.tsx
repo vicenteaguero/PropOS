@@ -195,7 +195,7 @@ export function DocumentsPage() {
         {/* Header */}
         <div className="mb-5 flex items-start justify-between gap-3">
           <div className="space-y-1">
-            <h1 className="text-[25px] font-bold leading-tight tracking-tight text-foreground">
+            <h1 className="text-[26px] font-bold leading-tight tracking-tight text-foreground">
               Documentos
             </h1>
             <p className="text-[13px] text-muted-foreground">
@@ -242,7 +242,7 @@ export function DocumentsPage() {
         {/* Top bar: title + Enlaces */}
         <div className="flex items-start justify-between gap-3 border-b border-border px-8 py-5">
           <div className="space-y-1">
-            <h1 className="text-[25px] font-bold leading-tight tracking-tight text-foreground">
+            <h1 className="text-[26px] font-bold leading-tight tracking-tight text-foreground">
               Documentos
             </h1>
             <p className="text-[13px] text-muted-foreground">

@@ -75,6 +75,7 @@ SECRETS=(
   AGENT_READONLY_DB_URL
   EMAIL_IMAP_USER
   EMAIL_IMAP_PASSWORD
+  CMF_API_KEY
 )
 
 # Non-secret keys -> cloudrun-env.yaml (committed to git)
@@ -107,6 +108,7 @@ NON_SECRETS=(
   RESEND_FROM_EMAIL
   EMAIL_SYNC_ENABLED
   EMAIL_SYNC_TENANT_ID
+  UF_SOURCES
 )
 
 # Keys that live in .env for local tooling and deliberately never reach Cloud
