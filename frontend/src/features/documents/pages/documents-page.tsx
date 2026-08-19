@@ -101,6 +101,7 @@ export function DocumentsPage() {
           return sp;
         });
       }}
+      className="lg:max-w-xl"
       ariaLabel="Buscar documentos"
       placeholder="Buscar por nombre..."
     />

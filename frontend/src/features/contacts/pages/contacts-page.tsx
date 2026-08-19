@@ -85,6 +85,7 @@ export function ContactsPage() {
         <SearchInput
           value={search}
           onChange={setSearch}
+          className="lg:max-w-xl"
           ariaLabel="Buscar personas"
           placeholder="Buscar por nombre, teléfono o email"
           debounceMs={0}
