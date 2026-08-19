@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from "react";
+import { acquireCameraStream, releaseCameraStream } from "@shared/lib/camera-stream";
 
 interface UseCameraReturn {
   stream: MediaStream | null;
@@ -23,9 +24,7 @@ export function useCamera(): UseCameraReturn {
   const startCamera = useCallback(async (facingMode: "user" | "environment" = "environment") => {
     try {
       setError(null);
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode },
-      });
+      const mediaStream = await acquireCameraStream({ facingMode });
       setStream(mediaStream);
       setIsActive(true);
 
@@ -40,12 +39,10 @@ export function useCamera(): UseCameraReturn {
   }, []);
 
   const stopCamera = useCallback(() => {
-    if (stream) {
-      stream.getTracks().forEach((track) => track.stop());
-    }
+    releaseCameraStream();
     setStream(null);
     setIsActive(false);
-  }, [stream]);
+  }, []);
 
   const takePhoto = useCallback(() => {
     if (!stream) return;
