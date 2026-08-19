@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
@@ -17,7 +17,42 @@ function gitVersion(): string {
   }
 }
 
-const APP_VERSION = process.env.VITE_APP_VERSION ?? gitVersion();
+/**
+ * Identifies the build for the update gate, so it has to be stable and unique per
+ * deploy. `git describe` is the good answer locally but returns "dev" on Vercel,
+ * whose shallow clone carries no tags — and a constant "dev" would make every
+ * client agree with every build and silently disable the gate. The commit SHA
+ * Vercel exports is the fallback.
+ */
+function buildVersion(): string {
+  if (process.env.VITE_APP_VERSION) return process.env.VITE_APP_VERSION;
+  const described = gitVersion();
+  if (described !== "dev") return described;
+  const sha = process.env.VERCEL_GIT_COMMIT_SHA;
+  return sha ? sha.slice(0, 12) : "dev";
+}
+
+const APP_VERSION = buildVersion();
+
+/**
+ * Publishes the built commit at a fixed URL so a running tab can tell whether it
+ * is still current. Deliberately NOT part of the precache (see `globPatterns`,
+ * which lists no `.json`) — a precached manifest would answer with the very
+ * build it is supposed to detect as stale.
+ */
+function versionManifest(): Plugin {
+  return {
+    name: "propos:version-manifest",
+    apply: "build",
+    generateBundle() {
+      this.emitFile({
+        type: "asset",
+        fileName: "version.json",
+        source: JSON.stringify({ version: APP_VERSION }),
+      });
+    },
+  };
+}
 
 export default defineConfig({
   envDir: "../",
@@ -25,6 +60,7 @@ export default defineConfig({
     "import.meta.env.VITE_APP_VERSION": JSON.stringify(APP_VERSION),
   },
   plugins: [
+    versionManifest(),
     react(),
     tailwindcss(),
     VitePWA({
@@ -104,6 +140,9 @@ export default defineConfig({
         runtimeCaching: devPwa
           ? [{ urlPattern: /.*/, handler: "NetworkOnly" }]
           : [
+              // Must be first: this is the staleness probe, so a cached answer
+              // defeats the whole mechanism.
+              { urlPattern: /\/version\.json/, handler: "NetworkOnly" },
               { urlPattern: /\/api\/.*/, handler: "NetworkFirst" },
               {
                 urlPattern: /\/storage\/v1\/object\/sign\/documents\//,

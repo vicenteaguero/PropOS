@@ -4,6 +4,7 @@ import { registerSW } from "virtual:pwa-register";
 import "@fontsource-variable/geist";
 import "@fontsource-variable/geist-mono";
 import { App } from "@app/app";
+import { requestUpdate } from "@core/version/version";
 import { bootstrapPalette } from "@core/theme/palette";
 import { bootstrapTheme } from "@core/theme/theme";
 import "./index.css";
@@ -14,11 +15,11 @@ bootstrapPalette();
 
 const UPDATE_INTERVAL_MS = 60 * 1000;
 
-const updateSW = registerSW({
+registerSW({
   onNeedRefresh() {
-    if (confirm("Nueva versión disponible. ¿Actualizar ahora?")) {
-      updateSW(true);
-    }
+    // The gate owns the overlay and the reload. The old `confirm()` here let the
+    // user answer "no" and keep running a bundle the server had already replaced.
+    requestUpdate();
   },
   onRegisteredSW(_url, registration) {
     if (registration) {
