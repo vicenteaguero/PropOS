@@ -8,6 +8,7 @@ from app.features.uf.schemas import (
     UfPoint,
     UfRefreshResponse,
     UfTodayResponse,
+    UsdTodayResponse,
 )
 from app.features.uf.service import (
     UfFetchError,
@@ -16,6 +17,7 @@ from app.features.uf.service import (
     get_forward,
     get_today_with_deltas,
 )
+from app.features.uf.usd import UsdFetchError, get_usd_today
 
 # UF is an internal-tools widget. Reading it is staff-only; refreshing it hits
 # an external API and schedules a backfill, so that stays ADMIN-only.
@@ -48,6 +50,21 @@ async def get_uf_forward(_=Depends(get_current_user)) -> UfForwardResponse:
     the active provider does not expose the forward block).
     """
     return UfForwardResponse(points=[UfPoint(**p) for p in get_forward()])
+
+
+@router.get("/usd-today", response_model=UsdTodayResponse)
+async def get_usd(_=Depends(get_current_user)) -> UsdTodayResponse:
+    """Observed USD/CLP, shown beside the UF.
+
+    Exists so the browser stops calling mindicador.cl directly: that was the
+    client's only third-party request, and it exposed every broker's IP to a
+    service outside our control with no cache and no fallback.
+    """
+    try:
+        d, value = await get_usd_today()
+    except UsdFetchError as exc:
+        raise HTTPException(status_code=503, detail=f"usd fetch failed: {exc}") from exc
+    return UsdTodayResponse(date=d, value_clp=value)
 
 
 @router.post(

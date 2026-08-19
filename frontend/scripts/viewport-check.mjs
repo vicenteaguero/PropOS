@@ -137,6 +137,8 @@ function apiFixture(path) {
       year_delta_pct: 4.2,
     };
   if (path.includes("/uf/forward")) return { points: [] };
+  if (path.includes("/uf/usd-today"))
+    return { date: "2026-08-18", value_clp: 955.4, source: "mindicador.cl" };
   if (path.includes("/tenants/me"))
     return {
       id: TENANT_ID,
