@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ExternalLink, FileText, Folder } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -54,10 +54,6 @@ export function DocumentsPage() {
   const propertyId = params.get("property_id") ?? undefined;
   const areaId = params.get("area_id") ?? undefined;
 
-  // Local field state mirrors the URL `q` but debounces before pushing, so the
-  // rounded search input feels instant without thrashing the query param.
-  const [search, setSearch] = useState(q);
-
   const { data, isLoading, error, refetch } = useDocuments({
     contactId,
     propertyId,
@@ -80,25 +76,6 @@ export function DocumentsPage() {
     localStorage.setItem(GROUP_BY_KEY, mode);
   };
 
-  // Debounce the field before writing it to the URL (300ms, matching the
-  // previous SearchInput behavior) so typing doesn't thrash the query param.
-  useEffect(() => {
-    if (search === q) return;
-    const t = setTimeout(() => {
-      const sp = new URLSearchParams(params);
-      if (search) sp.set("q", search);
-      else sp.delete("q");
-      setParams(sp);
-    }, 300);
-    return () => clearTimeout(t);
-  }, [search]);
-
-  // Keep the field in sync when the URL changes externally (e.g. clearing the
-  // entity filter rewrites the params).
-  useEffect(() => {
-    setSearch(q);
-  }, [q]);
-
   // Mobile: tapping a card opens the full detail page (unchanged behavior).
   // Desktop: selecting a card fills the preview pane; the pane's CTA navigates.
   const openDocument = (doc: DocumentItem) => {
@@ -113,8 +90,17 @@ export function DocumentsPage() {
 
   const searchField = (
     <SearchInput
-      value={search}
-      onChange={setSearch}
+      value={q}
+      onChange={(next) => {
+        // Functional update: reading `params` from the closure would drop any
+        // other query param changed while the debounce was in flight.
+        setParams((prev) => {
+          const sp = new URLSearchParams(prev);
+          if (next) sp.set("q", next);
+          else sp.delete("q");
+          return sp;
+        });
+      }}
       ariaLabel="Buscar documentos"
       placeholder="Buscar por nombre..."
     />
