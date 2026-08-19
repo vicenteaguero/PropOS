@@ -213,7 +213,9 @@ function Sidebar({
         className={cn(
           "fixed inset-y-0 z-40 hidden h-svh overflow-hidden transition-[width] duration-300 ease-in-out md:flex",
           "w-(--sidebar-width-icon) group-data-[state=expanded]:w-(--sidebar-width)",
-          side === "left" ? "left-0" : "right-0",
+          // Landscape puts the notch beside the rail; both insets are 0 on a
+          // laptop, so this is inert there.
+          side === "left" ? "left-0 pl-[var(--safe-left)]" : "right-0 pr-[var(--safe-right)]",
           variant === "floating" || variant === "inset"
             ? "p-2"
             : "group-data-[side=left]:border-r group-data-[side=right]:border-l",
@@ -224,7 +226,7 @@ function Sidebar({
         <div
           data-sidebar="sidebar"
           data-slot="sidebar-inner"
-          className="flex h-full w-full flex-col select-none overflow-hidden bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:shadow-sm [&_span]:transition-opacity [&_span]:duration-300 group-data-[state=collapsed]:[&_span]:opacity-0"
+          className="flex h-full w-full flex-col select-none overflow-hidden pb-[var(--safe-bottom)] bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:shadow-sm [&_span]:transition-opacity [&_span]:duration-300 group-data-[state=collapsed]:[&_span]:opacity-0"
         >
           {children}
         </div>
