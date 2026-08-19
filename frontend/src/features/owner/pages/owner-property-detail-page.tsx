@@ -127,7 +127,7 @@ export function OwnerPropertyDetailPage() {
 
   return (
     <TooltipProvider>
-      <div className="mx-auto w-full max-w-2xl pb-10">
+      <div className="mx-auto w-full max-w-2xl lg:max-w-4xl pb-10">
         {/* Header bar */}
         <div className="px-5 pt-4 pb-2">
           <Link

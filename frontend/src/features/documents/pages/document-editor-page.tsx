@@ -88,7 +88,7 @@ export function DocumentEditorPage() {
   // A deleted document, a wrong id or a 403 lands here with no data.
   if (!doc) {
     return (
-      <PageLayout width="md">
+      <PageLayout width="md" className="lg:max-w-6xl">
         <ErrorState
           message="No se pudo cargar el documento."
           error={error}
@@ -100,7 +100,7 @@ export function DocumentEditorPage() {
 
   if (!currentVersion) {
     return (
-      <PageLayout width="md">
+      <PageLayout width="md" className="lg:max-w-6xl">
         <p className="text-sm text-muted-foreground">
           Este documento todavía no tiene versiones para editar.
         </p>
@@ -110,7 +110,7 @@ export function DocumentEditorPage() {
 
   if (currentVersion.mime_type !== "application/pdf") {
     return (
-      <PageLayout width="md">
+      <PageLayout width="md" className="lg:max-w-6xl">
         <p className="text-sm text-muted-foreground">
           El editor solo soporta PDFs en V1. Convierte el documento primero.
         </p>

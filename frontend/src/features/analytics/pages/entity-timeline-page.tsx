@@ -56,7 +56,7 @@ export function EntityTimelinePage() {
   });
 
   return (
-    <PageLayout width="md" noPadding className="pb-10">
+    <PageLayout width="md" noPadding className="pb-10 lg:max-w-5xl lg:px-8 lg:pt-4">
       <div className="px-5 pt-5 pb-4">
         <h1 className="text-[26px] font-bold leading-tight tracking-tight text-foreground">
           Cronología
