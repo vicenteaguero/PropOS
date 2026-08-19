@@ -6,7 +6,16 @@ import { PageLayout } from "@shared/components/page-layout";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
 import { useAuth } from "@shared/hooks/use-auth";
 import { useIsDesktop } from "@/hooks/use-mobile";
-import { Chip, Chips, MasterDetail, Pill, Row, type PillTone, FOCUS_RING } from "@shared/ui";
+import {
+  Chip,
+  Chips,
+  FOCUS_RING,
+  ListCapNotice,
+  MasterDetail,
+  Pill,
+  Row,
+  type PillTone,
+} from "@shared/ui";
 import { toast } from "sonner";
 import { useContacts, useCreateContact } from "../hooks/use-contacts";
 import { ContactFormDialog } from "../components/contact-form-dialog";
@@ -146,6 +155,7 @@ export function ContactsPage() {
         </div>
       )}
 
+      <ListCapNotice resource="contacts" count={data?.length} />
       {!isLoading && !error && filtered.length > 0 && (
         <div>
           {filtered.map((c, i) => (
