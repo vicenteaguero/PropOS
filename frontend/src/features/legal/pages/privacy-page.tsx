@@ -1,8 +1,7 @@
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { PRIVACY_POLICY_MD } from "@features/legal/lib/privacy-policy-text";
+import { StaticMarkdown } from "@shared/components/static-markdown/static-markdown";
 import { PublicFooter } from "@shared/components/public-footer/public-footer";
 import { usePageTitle } from "@app/page-meta";
 
@@ -44,7 +43,7 @@ export function PrivacyPage() {
             [&_th]:border-b [&_th]:border-line-strong [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:font-semibold [&_th]:text-foreground
             [&_td]:border-b [&_td]:border-border [&_td]:px-3 [&_td]:py-2 [&_td]:align-top"
         >
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{PRIVACY_POLICY_MD}</ReactMarkdown>
+          <StaticMarkdown source={PRIVACY_POLICY_MD} />
         </article>
       </main>
       <PublicFooter />
