@@ -398,7 +398,12 @@ export function AdminHomePage() {
 
       {canPropo && <div className="px-5 pt-4 pb-5">{propoBar}</div>}
 
-      <div className="grid grid-cols-4 gap-2.5 px-5 pb-6">
+      {/* Three up, not four. At four columns a 360px Android leaves 48px for the
+          label while "Propiedades" needs 79px at this weight, so it spilled out
+          of its tile — and four never fits on any phone, not even at 430px.
+          Three fits from 375px; below that the smaller step carries it, and
+          `truncate` is the net so a longer label can never spill again. */}
+      <div className="grid grid-cols-3 gap-2.5 px-5 pb-6 sm:grid-cols-4">
         {tiles.map((t) => (
           <button
             key={t.to}
@@ -406,10 +411,10 @@ export function AdminHomePage() {
             onClick={() => navigate(t.to)}
             className="flex h-[88px] flex-col items-start justify-between rounded-2xl bg-secondary p-3 text-left transition active:scale-[0.97]"
           >
-            <span className="flex size-9 items-center justify-center rounded-xl bg-background shadow-sm">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-background shadow-sm">
               <t.icon className="size-[19px] text-foreground" strokeWidth={1.9} />
             </span>
-            <span className="text-[12.5px] font-semibold leading-tight text-foreground">
+            <span className="w-full truncate text-[12px] font-semibold leading-tight text-foreground min-[375px]:text-[12.5px]">
               {t.label}
             </span>
           </button>
