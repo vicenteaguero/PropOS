@@ -11,6 +11,7 @@ import {
   ResponsiveSheet,
   Row,
   SectionLabel,
+  TOUCH_TARGET_COARSE,
   TOUCH_TARGET_HIT_AREA,
 } from "@shared/ui";
 import { useIsDesktop } from "@/hooks/use-mobile";
@@ -306,6 +307,7 @@ export function SettingsPage() {
               onClick={() => setPaperOpen(true)}
               className={cn(
                 "flex items-center gap-1 rounded-lg px-2 py-1 text-[15px] font-semibold text-foreground",
+                TOUCH_TARGET_COARSE,
                 FOCUS_RING,
               )}
             >
@@ -315,7 +317,7 @@ export function SettingsPage() {
         />
       ),
     },
-    ...(meQ.data && meQ.data.admin_scope.length > 0
+    ...(meQ.data?.admin_scope?.length
       ? [
           {
             key: "permisos",
@@ -330,7 +332,7 @@ export function SettingsPage() {
                     Scope admin
                   </div>
                   <div className="mt-1.5 flex flex-wrap gap-1.5">
-                    {meQ.data.admin_scope.map((sc) => (
+                    {meQ.data?.admin_scope?.map((sc) => (
                       <Pill key={sc} tone="neutral">
                         {sc}
                       </Pill>
