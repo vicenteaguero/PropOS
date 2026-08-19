@@ -76,6 +76,7 @@ export function ClientInboxPage() {
             strokeWidth={1.8}
           />
           <input
+            aria-label="Buscar conversaciones"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Buscar teléfono..."

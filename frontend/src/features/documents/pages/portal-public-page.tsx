@@ -4,11 +4,11 @@ import { Check, Lock, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { LoadingSpinner } from "@shared/components/loading-spinner/loading-spinner";
 import { PageLayout } from "@shared/components/page-layout";
 import { portalsApi, type PublicPortalView } from "../api/portals-api";
 import { validateFile } from "../services/file-validation";
+import { Field } from "@shared/ui";
 
 export function PortalPublicPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -127,31 +127,33 @@ export function PortalPublicPage() {
         </div>
 
         {view.requires_password && (
-          <div className="space-y-2">
-            <Label className="flex items-center gap-1 text-xs">
-              <Lock className="size-3" /> Password
-            </Label>
+          <Field
+            label={
+              <>
+                <Lock className="size-3" /> Password
+              </>
+            }
+            labelClassName="flex items-center gap-1 text-xs"
+          >
             <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-          </div>
+          </Field>
         )}
 
-        <div className="space-y-2">
-          <Label className="text-xs">Tu nombre (opcional)</Label>
+        <Field label="Tu nombre (opcional)" labelClassName="text-xs">
           <Input
             value={uploaderLabel}
             onChange={(e) => setUploaderLabel(e.target.value)}
             placeholder="Ej: Notaría XYZ"
           />
-        </div>
+        </Field>
 
-        <div className="space-y-2">
-          <Label className="text-xs">Archivo (máx {view.max_file_size_mb} MB)</Label>
+        <Field label="Archivo (máx {view.max_file_size_mb} MB)" labelClassName="text-xs">
           <Input
             type="file"
             accept="application/pdf,image/jpeg,image/png,image/webp,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
           />
-        </div>
+        </Field>
 
         <label className="flex items-start gap-2 text-xs text-muted-foreground">
           <input

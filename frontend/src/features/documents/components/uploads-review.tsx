@@ -3,11 +3,11 @@ import { toast } from "sonner";
 import { Check, FileText, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useContacts, useInternalAreas, useProperties } from "../hooks/use-entities";
 import { usePortalUploads, usePromoteUpload, useRejectUpload } from "../hooks/use-portals";
 import type { AnonymousUpload, AssignmentTarget } from "../types";
+import { Field, FieldGroup } from "@shared/ui";
 
 interface Props {
   portalId: string;
@@ -141,12 +141,10 @@ export function UploadsReview({ portalId, defaults }: Props) {
             <DialogTitle>Aprobar y vincular</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <div className="space-y-1">
-              <Label className="text-xs">Nombre del documento</Label>
+            <Field label="Nombre del documento" labelClassName="text-xs">
               <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
-            </div>
-            <div className="space-y-1 text-xs">
-              <Label>Vínculos automáticos del enlace</Label>
+            </Field>
+            <FieldGroup label="Vínculos automáticos del enlace" className="text-xs">
               <ul className="rounded-md border border-border bg-muted/30 p-2 text-muted-foreground">
                 {labelDefault("property", defaults.propertyId) && (
                   <li>Propiedad: {labelDefault("property", defaults.propertyId)}</li>
@@ -161,7 +159,7 @@ export function UploadsReview({ portalId, defaults }: Props) {
                   <li>Sin defaults configurados</li>
                 )}
               </ul>
-            </div>
+            </FieldGroup>
             <Button onClick={confirmPromote} disabled={promote.isPending} className="w-full">
               Aprobar y crear documento
             </Button>

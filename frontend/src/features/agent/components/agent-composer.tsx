@@ -192,6 +192,7 @@ export function AgentComposer({ onSend, onAudio, isStreaming }: Props) {
       ) : (
         <div className="flex gap-2">
           <Input
+            aria-label="Mensaje para el asistente"
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => {

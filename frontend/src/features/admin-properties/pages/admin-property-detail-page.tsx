@@ -260,6 +260,7 @@ export function AdminPropertyDetailPage() {
                 )}
               </div>
               <Textarea
+                aria-label="Descripción de la propiedad"
                 rows={10}
                 className="rounded-2xl"
                 value={draft ?? p.description ?? ""}

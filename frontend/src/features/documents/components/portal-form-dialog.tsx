@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Field } from "@shared/ui";
 import { useCreatePortal } from "../hooks/use-portals";
 import type { PortalAccess } from "../types";
 
@@ -50,20 +50,17 @@ export function PortalFormDialog({ open, onOpenChange }: Props) {
           <DialogTitle>Nuevo enlace de subida</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <div className="space-y-1">
-            <Label className="text-xs">Título</Label>
+          <Field label="Título" labelClassName="text-xs">
             <Input value={title} onChange={(e) => setTitle(e.target.value)} />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Descripción</Label>
+          </Field>
+          <Field label="Descripción" labelClassName="text-xs">
             <Input
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Sube tus documentos aquí..."
             />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Acceso</Label>
+          </Field>
+          <Field label="Acceso" labelClassName="text-xs">
             <select
               value={accessMode}
               onChange={(e) => setAccessMode(e.target.value as PortalAccess)}
@@ -73,19 +70,17 @@ export function PortalFormDialog({ open, onOpenChange }: Props) {
               <option value="PASSWORD">Con password</option>
               <option value="QR_ONLY">Solo QR</option>
             </select>
-          </div>
+          </Field>
           {accessMode === "PASSWORD" && (
-            <div className="space-y-1">
-              <Label className="text-xs">Password</Label>
+            <Field label="Password" labelClassName="text-xs">
               <Input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
-            </div>
+            </Field>
           )}
-          <div className="space-y-1">
-            <Label className="text-xs">Tamaño máximo por archivo (MB)</Label>
+          <Field label="Tamaño máximo por archivo (MB)" labelClassName="text-xs">
             <Input
               type="number"
               min={1}
@@ -93,7 +88,7 @@ export function PortalFormDialog({ open, onOpenChange }: Props) {
               value={maxMb}
               onChange={(e) => setMaxMb(Number(e.target.value) || 50)}
             />
-          </div>
+          </Field>
           <Button onClick={submit} disabled={create.isPending} className="w-full">
             Crear enlace
           </Button>

@@ -99,6 +99,7 @@ export function ContactsPage() {
             strokeWidth={1.8}
           />
           <input
+            aria-label="Buscar personas"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar por nombre, teléfono o email"

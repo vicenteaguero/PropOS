@@ -5,10 +5,10 @@ import { Copy, Download, Link as LinkIcon } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useCreateShareLink, useShareLinks, useUpdateShareLink } from "../hooks/use-share-links";
 import { shareLinksApi } from "../api/share-links-api";
 import type { DocumentVersion } from "../types";
+import { Field } from "@shared/ui";
 
 interface Props {
   documentId: string;
@@ -100,8 +100,7 @@ export function ShareLinkDialog({
         </DialogHeader>
 
         {url && (
-          <div className="space-y-2">
-            <Label className="text-xs">URL pública</Label>
+          <Field label="URL pública" labelClassName="text-xs">
             <div className="flex gap-2">
               <Input value={url} readOnly className="font-mono text-xs" />
               <Button variant="secondary" size="icon" onClick={copy} aria-label="Copiar">
@@ -114,11 +113,10 @@ export function ShareLinkDialog({
             <Button variant="outline" size="sm" onClick={downloadQr} className="w-full">
               <Download className="size-4" /> Descargar QR
             </Button>
-          </div>
+          </Field>
         )}
 
-        <div className="space-y-2">
-          <Label className="text-xs">Versión a servir</Label>
+        <Field label="Versión a servir" labelClassName="text-xs">
           <select
             value={pinned}
             onChange={(e) => setPinned(e.target.value)}
@@ -137,17 +135,16 @@ export function ShareLinkDialog({
               </option>
             ))}
           </select>
-        </div>
+        </Field>
 
-        <div className="space-y-2">
-          <Label className="text-xs">Password opcional</Label>
+        <Field label="Password opcional" labelClassName="text-xs">
           <Input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder={existing?.has_password ? "Cambiar password..." : "Sin password"}
           />
-        </div>
+        </Field>
 
         <Button onClick={upsert} disabled={createLink.isPending || updateLink.isPending}>
           {existing ? "Actualizar" : "Crear shortlink"}

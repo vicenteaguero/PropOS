@@ -6,7 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageLayout } from "@shared/components/page-layout";
-import { ErrorState, PageSkeleton, Pill, SectionLabel, FOCUS_RING } from "@shared/ui";
+import {
+  ErrorState,
+  FOCUS_RING,
+  Field,
+  FieldGroup,
+  PageSkeleton,
+  Pill,
+  SectionLabel,
+} from "@shared/ui";
 import { toast } from "sonner";
 import { useAuth } from "@shared/hooks/use-auth";
 import { label } from "@shared/lib/labels";
@@ -151,8 +159,7 @@ export function AdminUserDetailPage() {
                   {m.is_dev_admin && <Pill tone="warning">DEV</Pill>}
                 </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">Rol</Label>
+                  <Field label="Rol" labelClassName="text-xs text-muted-foreground">
                     <select
                       value={m.role}
                       onChange={(e) =>
@@ -168,9 +175,8 @@ export function AdminUserDetailPage() {
                         <option key={r}>{r}</option>
                       ))}
                     </select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">Vista</Label>
+                  </Field>
+                  <Field label="Vista" labelClassName="text-xs text-muted-foreground">
                     <select
                       value={m.view}
                       onChange={(e) =>
@@ -186,9 +192,8 @@ export function AdminUserDetailPage() {
                         <option key={v}>{v}</option>
                       ))}
                     </select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">Dev admin</Label>
+                  </Field>
+                  <FieldGroup label="Dev admin" labelClassName="text-xs text-muted-foreground">
                     <label className="flex h-9 items-center gap-2 text-sm">
                       <input
                         type="checkbox"
@@ -204,7 +209,7 @@ export function AdminUserDetailPage() {
                       />
                       <span className="text-muted-foreground">Acceso destructivo</span>
                     </label>
-                  </div>
+                  </FieldGroup>
                 </div>
               </div>
             );

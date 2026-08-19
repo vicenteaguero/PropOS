@@ -38,6 +38,7 @@ export function NotesList({ targetTable, targetRowId }: Props) {
     <div className="space-y-3">
       <div className="flex gap-2">
         <Textarea
+          aria-label="Nueva nota"
           value={body}
           onChange={(e) => setBody(e.target.value)}
           rows={2}

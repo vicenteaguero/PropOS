@@ -19,6 +19,7 @@ import {
   Chip,
   Chips,
   ErrorState,
+  FieldGroup,
   PageSkeleton,
   Pill,
   ResponsiveSheet,
@@ -611,13 +612,12 @@ function TransactionFormFields({
         />
       </div>
 
-      <div className="space-y-1.5">
-        <Label>Boleta</Label>
+      <FieldGroup label="Boleta">
         <ReceiptPicker
           value={value.receiptDocumentId}
           onChange={(documentId) => set("receiptDocumentId", documentId)}
         />
-      </div>
+      </FieldGroup>
 
       <label className="flex items-center gap-2 text-sm">
         <input

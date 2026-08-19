@@ -82,6 +82,7 @@ export function NotesPage() {
       className={cn("rounded-2xl border border-border bg-card p-3", isDesktop ? "max-w-2xl" : "")}
     >
       <Textarea
+        aria-label="Nueva nota"
         value={body}
         onChange={(e) => setBody(e.target.value)}
         rows={2}

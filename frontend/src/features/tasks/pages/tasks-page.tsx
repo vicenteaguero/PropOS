@@ -22,11 +22,12 @@ import {
   Chip,
   Chips,
   ErrorState,
+  FieldGroup,
   PageSkeleton,
   Pill,
   ResponsiveSheet,
-  Row,
   RoundButton,
+  Row,
   SectionLabel,
 } from "@shared/ui";
 import { toast } from "sonner";
@@ -668,8 +669,7 @@ export function TasksPage() {
               Te avisamos con una notificación push a esa hora.
             </p>
           </div>
-          <div className="space-y-1.5">
-            <Label>Prioridad</Label>
+          <FieldGroup label="Prioridad">
             <Chips className="pb-0">
               {PRIORITY_OPTIONS.map((p) => (
                 <Chip
@@ -681,11 +681,10 @@ export function TasksPage() {
                 </Chip>
               ))}
             </Chips>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Vincular a</Label>
+          </FieldGroup>
+          <FieldGroup label="Vincular a">
             <TaskEntityPicker key={formKey} value={link} onChange={setLink} disabled={busy} />
-          </div>
+          </FieldGroup>
           <div className="flex flex-col gap-2 pt-2">
             <Button onClick={submit} disabled={busy} variant="ink" size="block">
               {busy && <Loader2 className="size-4 animate-spin" />}

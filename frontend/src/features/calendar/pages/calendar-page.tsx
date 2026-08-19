@@ -40,11 +40,12 @@ import {
   Chip,
   Chips,
   ErrorState,
+  FieldGroup,
   PageSkeleton,
   Pill,
   ResponsiveSheet,
-  Row,
   RoundButton,
+  Row,
   SectionLabel,
   Segmented,
 } from "@shared/ui";
@@ -731,8 +732,7 @@ function EventFormFields({
         />
       </div>
 
-      <div className="space-y-1.5">
-        <Label>Tipo</Label>
+      <FieldGroup label="Tipo">
         <Chips>
           {KIND_ITEMS.map((k) => (
             <Chip key={k.id} active={value.kind === k.id} onClick={() => set("kind", k.id)}>
@@ -740,7 +740,7 @@ function EventFormFields({
             </Chip>
           ))}
         </Chips>
-      </div>
+      </FieldGroup>
 
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">

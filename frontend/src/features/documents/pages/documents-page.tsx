@@ -116,6 +116,7 @@ export function DocumentsPage() {
         strokeWidth={1.8}
       />
       <Input
+        aria-label="Buscar documentos"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Buscar por nombre..."

@@ -5,7 +5,6 @@ import { Camera, FilePlus2, Plus, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@shared/hooks/use-auth";
 import { documentsApi } from "../api/documents-api";
@@ -19,6 +18,7 @@ import {
   useCreateDraftProperty,
   useProperties,
 } from "../hooks/use-entities";
+import { Field } from "@shared/ui";
 
 // Lazy-load the camera capture flow so the documents page chunk stays small.
 // The scanner modules + dnd-kit only fetch when the user opens the camera.
@@ -351,8 +351,7 @@ function FastAddDialogBody(state: ReturnType<typeof useFastAdd>) {
                   <X className="size-3" />
                 </Button>
               </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Nombre del documento</Label>
+              <Field label="Nombre del documento" labelClassName="text-xs">
                 <Input
                   value={displayName}
                   onChange={(e) => {
@@ -360,9 +359,8 @@ function FastAddDialogBody(state: ReturnType<typeof useFastAdd>) {
                     setNameTouched(true);
                   }}
                 />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Propiedad (existente o nueva como borrador)</Label>
+              </Field>
+              <Field label="Propiedad (existente o nueva como borrador)" labelClassName="text-xs">
                 <EntityCombobox<PropertyLite>
                   value={propertyTitle}
                   onChange={(text) => {
@@ -390,9 +388,8 @@ function FastAddDialogBody(state: ReturnType<typeof useFastAdd>) {
                   }}
                   ariaLabel="Seleccionar propiedad"
                 />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Contacto (existente o nuevo como borrador)</Label>
+              </Field>
+              <Field label="Contacto (existente o nuevo como borrador)" labelClassName="text-xs">
                 <EntityCombobox<ContactLite>
                   value={contactName}
                   onChange={setContactName}
@@ -420,9 +417,8 @@ function FastAddDialogBody(state: ReturnType<typeof useFastAdd>) {
                     Filtrado por {selectedProperty.title}
                   </p>
                 )}
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Etiqueta</Label>
+              </Field>
+              <Field label="Etiqueta" labelClassName="text-xs">
                 <div className="flex flex-wrap gap-2">
                   {QUICK_TAGS.map((t) => (
                     <button
@@ -440,7 +436,7 @@ function FastAddDialogBody(state: ReturnType<typeof useFastAdd>) {
                     </button>
                   ))}
                 </div>
-              </div>
+              </Field>
               <Button onClick={submit} disabled={busy} className="w-full">
                 {busy ? "Subiendo..." : "Crear documento"}
               </Button>
