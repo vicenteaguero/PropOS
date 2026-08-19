@@ -24,6 +24,14 @@ class UfForwardResponse(BaseModel):
     points: list[UfPoint]
 
 
+class UsdTodayResponse(BaseModel):
+    """Observed USD/CLP reference rate, fetched server-side rather than by the browser."""
+
+    date: date_t
+    value_clp: float
+    source: str = "mindicador.cl"
+
+
 class UfRefreshResponse(BaseModel):
     today: UfPoint
     inserted: bool

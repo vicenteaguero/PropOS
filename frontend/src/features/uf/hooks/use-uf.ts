@@ -28,21 +28,19 @@ export function useUfForward() {
   });
 }
 
-interface MindicadorSerie {
-  serie: Array<{ fecha: string; valor: number }>;
-}
-
+/**
+ * USD/CLP for the currency widget.
+ *
+ * Goes through our backend rather than calling mindicador.cl from the browser:
+ * that direct call was the client's only third-party request, and it handed
+ * every broker's IP to a service we don't control, with no cache, no fallback
+ * and no protection from a CORS change upstream. The server caches it and
+ * sanity-checks the value before we render it.
+ */
 export function useUsdToday() {
   return useQuery({
     queryKey: ["fx", "usd-clp", "today"],
-    queryFn: async () => {
-      const res = await fetch("https://mindicador.cl/api/dolar");
-      if (!res.ok) throw new Error(`mindicador ${res.status}`);
-      const json = (await res.json()) as MindicadorSerie;
-      const point = json.serie?.[0];
-      if (!point) throw new Error("no usd point");
-      return { date: point.fecha.slice(0, 10), value_clp: point.valor };
-    },
+    queryFn: () => ufApi.usdToday(),
     staleTime: 60 * 60_000,
     retry: false,
   });
