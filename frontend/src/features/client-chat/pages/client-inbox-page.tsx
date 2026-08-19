@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { Search } from "lucide-react";
 import {
   BrandMark,
   Chip,
@@ -9,13 +8,13 @@ import {
   PageSkeleton,
   Segmented,
   type SegmentedItem,
-  FOCUS_RING,
 } from "@shared/ui";
 import { useConversations } from "../hooks/use-client-chat";
 import { ConversationList } from "../components/conversation-list";
 import { ConversationAside } from "../components/conversation-aside";
 import { MessageThread } from "../components/message-thread";
 import type { ConversationStatus } from "../types";
+import { SearchInput } from "@shared/components/search-input/search-input";
 
 const STATUS_TABS: SegmentedItem[] = [
   { id: "open", label: "Abiertas" },
@@ -70,19 +69,13 @@ export function ClientInboxPage() {
       </div>
 
       <div className="space-y-3 px-5 pb-3">
-        <div className="relative">
-          <Search
-            className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-            strokeWidth={1.8}
-          />
-          <input
-            aria-label="Buscar conversaciones"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar teléfono..."
-            className={`h-11 w-full rounded-full border border-border bg-secondary pl-10 pr-4 text-sm text-foreground transition placeholder:text-muted-foreground ${FOCUS_RING}`}
-          />
-        </div>
+        <SearchInput
+          value={query}
+          onChange={setQuery}
+          ariaLabel="Buscar conversaciones"
+          placeholder="Buscar teléfono..."
+          debounceMs={0}
+        />
         <Chips>
           {VIEW_CHIPS.map((v) => (
             <Chip key={v.value} active={view === v.value} onClick={() => setView(v.value)}>

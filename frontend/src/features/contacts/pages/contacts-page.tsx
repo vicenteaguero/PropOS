@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Search } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageLayout } from "@shared/components/page-layout";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
@@ -10,7 +10,6 @@ import {
   Chip,
   Chips,
   ErrorState,
-  FOCUS_RING,
   ListCapNotice,
   MasterDetail,
   PageSkeleton,
@@ -25,6 +24,7 @@ import { ContactAside } from "../components/contact-aside";
 import { CONTACT_TYPE_LABELS, CONTACT_TYPES, type ContactType } from "../types";
 import { CONTACT_TYPE_TONES } from "@shared/lib/tones";
 import { initials } from "@shared/utils/format";
+import { SearchInput } from "@shared/components/search-input/search-input";
 
 export function ContactsPage() {
   const navigate = useNavigate();
@@ -82,19 +82,13 @@ export function ContactsPage() {
 
       {/* Search */}
       <div className="px-5 pb-3">
-        <div className="relative">
-          <Search
-            className="pointer-events-none absolute left-4 top-1/2 size-[18px] -translate-y-1/2 text-muted-foreground"
-            strokeWidth={1.8}
-          />
-          <input
-            aria-label="Buscar personas"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por nombre, teléfono o email"
-            className={`h-12 w-full rounded-full border border-border bg-secondary pl-11 pr-4 text-[15px] text-foreground placeholder:text-muted-foreground ${FOCUS_RING}`}
-          />
-        </div>
+        <SearchInput
+          value={search}
+          onChange={setSearch}
+          ariaLabel="Buscar personas"
+          placeholder="Buscar por nombre, teléfono o email"
+          debounceMs={0}
+        />
       </div>
 
       {/* Type filter */}

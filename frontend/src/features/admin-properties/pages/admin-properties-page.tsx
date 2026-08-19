@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bath, BedDouble, MapPin, Maximize, Plus, Search } from "lucide-react";
+import { Bath, BedDouble, MapPin, Maximize, Plus } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { PageLayout } from "@shared/components/page-layout";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
-import { ErrorState, FOCUS_RING, ListCapNotice, PageSkeleton, Pill, Segmented } from "@shared/ui";
+import { ErrorState, ListCapNotice, PageSkeleton, Pill, Segmented } from "@shared/ui";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { propertiesApi, type Property, type PropertyInput } from "../api/properties-api";
@@ -14,6 +14,7 @@ import { PropertyFormDialog } from "../components/property-form-dialog";
 import { formatClp } from "@shared/utils/currency";
 import { label } from "@shared/lib/labels";
 import { LISTING_KIND_TONES, tone } from "@shared/lib/tones";
+import { SearchInput } from "@shared/components/search-input/search-input";
 
 /** Short stable code from the property id (presentational). */
 function propertyCode(id: string): string {
@@ -138,20 +139,12 @@ export function AdminPropertiesPage() {
       {/* Search hits the server, so it reaches the whole portfolio rather than
           filtering the 100 rows the list endpoint already returned. */}
       <div className="px-5 pb-3 lg:px-8">
-        <div className="relative">
-          <Search
-            className="pointer-events-none absolute left-4 top-1/2 size-[18px] -translate-y-1/2 text-muted-foreground"
-            strokeWidth={1.8}
-          />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            type="search"
-            aria-label="Buscar propiedades"
-            placeholder="Buscar por título o dirección"
-            className={`h-12 w-full rounded-full border border-border bg-secondary pl-11 pr-4 text-[15px] text-foreground placeholder:text-muted-foreground ${FOCUS_RING}`}
-          />
-        </div>
+        <SearchInput
+          value={search}
+          onChange={setSearch}
+          ariaLabel="Buscar propiedades"
+          placeholder="Buscar por título o dirección"
+        />
       </div>
 
       {!isLoading && !error && properties.length > 0 && (
