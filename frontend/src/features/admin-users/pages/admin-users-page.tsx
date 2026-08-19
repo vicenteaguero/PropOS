@@ -4,7 +4,7 @@ import { Loader2, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageLayout } from "@shared/components/page-layout";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
-import { Pill, Row, FOCUS_RING } from "@shared/ui";
+import { ErrorState, FOCUS_RING, Pill, Row } from "@shared/ui";
 import { useIsDesktop } from "@/hooks/use-mobile";
 import {
   useAdminUsersList,
@@ -43,12 +43,11 @@ export function AdminUsersPage() {
   );
 
   const errorBlock = error && (
-    <div className="mx-5 rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive lg:mx-8">
-      No pudimos cargar los usuarios.
-      <Button variant="ghost" size="sm" className="ml-2" onClick={() => refetch()}>
-        Reintentar
-      </Button>
-    </div>
+    <ErrorState
+      message="No pudimos cargar los usuarios."
+      onRetry={() => refetch()}
+      className="mx-5 lg:mx-8"
+    />
   );
 
   const emptyBlock = !isLoading && !error && users.length === 0 && (

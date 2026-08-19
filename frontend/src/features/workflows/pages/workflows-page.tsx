@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { PageLayout } from "@shared/components/page-layout";
 import { PageHeader } from "@shared/components/page-header";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
-import { Pill, ResponsiveSheet } from "@shared/ui";
+import { ErrorState, Pill, ResponsiveSheet } from "@shared/ui";
 import { cn } from "@/lib/utils";
 import { workflowsApi, type Workflow, type WorkflowStep } from "../api/workflows-api";
 
@@ -64,12 +64,7 @@ export function WorkflowsPage() {
       )}
 
       {list.isError && (
-        <div className="mx-5 rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive lg:mx-8">
-          No se pudieron cargar los workflows.
-          <Button variant="ghost" size="sm" className="ml-2" onClick={() => list.refetch()}>
-            Reintentar
-          </Button>
-        </div>
+        <ErrorState message="No se pudieron cargar los workflows." onRetry={() => list.refetch()} />
       )}
 
       {!list.isLoading && !list.isError && (list.data?.length ?? 0) === 0 && (

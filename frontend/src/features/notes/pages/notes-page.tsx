@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { PageLayout } from "@shared/components/page-layout";
 import { PageHeader } from "@shared/components/page-header";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
-import { Pill, HOVER_REVEAL } from "@shared/ui";
+import { ErrorState, HOVER_REVEAL, Pill } from "@shared/ui";
 import { useAuth } from "@shared/hooks/use-auth";
 import { useAgentName } from "@core/branding/agent-branding";
 import { useThemeMode } from "@core/theme/theme-provider";
@@ -134,12 +134,7 @@ export function NotesPage() {
   );
 
   const errorBox = (
-    <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
-      No se pudieron cargar las notas.
-      <Button variant="ghost" size="sm" className="ml-2" onClick={() => refetch()}>
-        Reintentar
-      </Button>
-    </div>
+    <ErrorState message="No se pudieron cargar las notas." onRetry={() => refetch()} />
   );
 
   const empty = <EmptyState title="Sin notas" description="Escribí tu primera nota arriba." />;

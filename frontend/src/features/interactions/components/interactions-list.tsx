@@ -20,6 +20,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Chip,
   Chips,
+  ErrorState,
   HOVER_REVEAL,
   ResponsiveSheet,
   RoundButton,
@@ -128,14 +129,7 @@ export function InteractionsList({ personId, propertyId }: Props) {
     </div>
   );
 
-  const errorBox = (
-    <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-      Error al cargar.
-      <Button variant="ghost" size="sm" className="ml-2" onClick={() => refetch()}>
-        Reintentar
-      </Button>
-    </div>
-  );
+  const errorBox = <ErrorState message="Error al cargar." onRetry={() => refetch()} compact />;
 
   const empty = (
     <p className="py-10 text-center text-sm text-muted-foreground">

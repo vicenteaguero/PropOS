@@ -1,11 +1,10 @@
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { AgentInlineProposalCard } from "@features/agent/components/agent-inline-proposal-card";
 import { PageLayout } from "@shared/components/page-layout";
 import { PageHeader } from "@shared/components/page-header";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
-import { Segmented, type SegmentedItem } from "@shared/ui";
+import { ErrorState, Segmented, type SegmentedItem } from "@shared/ui";
 import { useIsDesktop } from "@/hooks/use-mobile";
 import { usePendingProposals } from "../hooks/use-pending";
 import { useAgentName } from "@core/branding/agent-branding";
@@ -36,14 +35,7 @@ export function PendingPage() {
     </div>
   );
 
-  const errorBox = (
-    <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
-      No pude cargar la lista.
-      <Button variant="ghost" size="sm" className="ml-2" onClick={() => refetch()}>
-        Reintentar
-      </Button>
-    </div>
-  );
+  const errorBox = <ErrorState message="No pude cargar la lista." onRetry={() => refetch()} />;
 
   const empty = (
     <EmptyState
@@ -102,12 +94,7 @@ export function PendingPage() {
       {isLoading && loading}
 
       {isError && (
-        <div className="mx-5 rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
-          No pude cargar la lista.
-          <Button variant="ghost" size="sm" className="ml-2" onClick={() => refetch()}>
-            Reintentar
-          </Button>
-        </div>
+        <ErrorState message="No pude cargar la lista." onRetry={() => refetch()} className="mx-5" />
       )}
 
       {!isLoading && !isError && count === 0 && empty}
