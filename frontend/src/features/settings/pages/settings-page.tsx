@@ -151,7 +151,7 @@ export function SettingsPage() {
         type="button"
         onClick={() => setBrandColor(null)}
         className={cn(
-          "flex size-9 items-center justify-center rounded-full border-2 text-[10px] font-bold transition",
+          "flex size-9 items-center justify-center rounded-full border-2 text-[11px] font-bold transition",
           brandColor === null
             ? "border-foreground text-foreground"
             : "border-border text-muted-foreground",

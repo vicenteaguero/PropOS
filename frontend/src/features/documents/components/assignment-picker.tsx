@@ -132,7 +132,7 @@ export function AssignmentPicker({ documentId, open, onOpenChange }: Props) {
               <Building2 className="size-4 text-primary/70" />
               <span className="flex-1 truncate">{p.title}</span>
               {p.is_draft && (
-                <span className="text-[10px] uppercase text-muted-foreground">borrador</span>
+                <span className="text-[11px] uppercase text-muted-foreground">borrador</span>
               )}
             </button>
           ))}
@@ -147,7 +147,7 @@ export function AssignmentPicker({ documentId, open, onOpenChange }: Props) {
               <User className="size-4 text-primary/70" />
               <span className="flex-1 truncate">{c.full_name}</span>
               {c.is_draft && (
-                <span className="text-[10px] uppercase text-muted-foreground">borrador</span>
+                <span className="text-[11px] uppercase text-muted-foreground">borrador</span>
               )}
             </button>
           ))}

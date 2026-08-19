@@ -91,7 +91,7 @@ export function UploadsReview({ portalId, defaults }: Props) {
                 {u.size_bytes ? `${(u.size_bytes / 1024).toFixed(0)} KB · ` : ""}
                 {new Date(u.created_at).toLocaleString()}
               </div>
-              <div className="truncate text-[10px] font-mono text-muted-foreground">
+              <div className="truncate text-[11px] font-mono text-muted-foreground">
                 {u.sha256?.slice(0, 16)}
               </div>
             </div>

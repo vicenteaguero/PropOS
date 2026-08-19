@@ -45,7 +45,7 @@ function NavItemRow({
           <Icon />
           <span className="flex-1 truncate">{item.label}</span>
           {item.devOnly && (
-            <span className="rounded bg-warning/20 px-1 py-0 text-[8px] font-bold uppercase tracking-wide text-warning">
+            <span className="rounded bg-warning/20 px-1 py-0 text-[11px] font-bold uppercase tracking-wide text-warning">
               dev
             </span>
           )}
@@ -83,7 +83,7 @@ export function AppSidebar() {
         <div className="flex min-w-0 flex-1 items-center gap-1.5 text-left group-data-[collapsible=icon]:hidden">
           <span className="truncate text-[15px] font-bold tracking-tight">PropOS</span>
           {isDevAdmin && (
-            <span className="rounded bg-warning/20 px-1.5 py-0 text-[9px] font-bold uppercase tracking-wide text-warning">
+            <span className="rounded bg-warning/20 px-1.5 py-0 text-[11px] font-bold uppercase tracking-wide text-warning">
               DEV
             </span>
           )}
@@ -97,7 +97,7 @@ export function AppSidebar() {
             className="px-2 py-1 group-data-[collapsible=icon]:px-1.5 group-data-[collapsible=icon]:py-0.5"
           >
             {group.label && (
-              <SidebarGroupLabel className="h-6 px-2 text-[10px] uppercase tracking-wider group-data-[collapsible=icon]:hidden group-data-[state=collapsed]:hidden">
+              <SidebarGroupLabel className="h-6 px-2 text-[11px] uppercase tracking-wider group-data-[collapsible=icon]:hidden group-data-[state=collapsed]:hidden">
                 {group.label}
               </SidebarGroupLabel>
             )}

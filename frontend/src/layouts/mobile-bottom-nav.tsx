@@ -52,7 +52,7 @@ function NavTab({
           />
           <span
             className={cn(
-              "text-[10.5px]",
+              "text-[11px]",
               isActive ? "font-bold text-foreground" : "font-medium text-muted-foreground",
             )}
           >
@@ -134,7 +134,7 @@ export function MobileBottomNav() {
               >
                 <Sparkles className="size-6" />
               </button>
-              <span className="-mt-1 text-[10.5px] font-bold text-foreground">Propo</span>
+              <span className="-mt-1 text-[11px] font-bold text-foreground">Propo</span>
             </div>
           )}
           {allow("productividad") && (
@@ -156,7 +156,7 @@ export function MobileBottomNav() {
                 className="absolute right-[calc(50%-16px)] top-0 size-2 rounded-full bg-primary"
               />
             )}
-            <span className="text-[10.5px] font-medium">Más</span>
+            <span className="text-[11px] font-medium">Más</span>
           </button>
         </div>
       </nav>

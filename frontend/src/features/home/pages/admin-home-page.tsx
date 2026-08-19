@@ -389,7 +389,7 @@ export function AdminHomePage() {
             >
               <Bell className="size-[18px]" strokeWidth={1.9} />
               {pendingCount > 0 && (
-                <span className="absolute -right-0.5 -top-0.5 min-w-[18px] rounded-full bg-destructive px-1 text-center text-[10px] font-bold leading-[18px] text-destructive-foreground">
+                <span className="absolute -right-0.5 -top-0.5 min-w-[18px] rounded-full bg-destructive px-1 text-center text-[11px] font-bold leading-[18px] text-destructive-foreground">
                   {pendingCount > 99 ? "99+" : pendingCount}
                 </span>
               )}
@@ -447,7 +447,7 @@ export function AdminHomePage() {
                     ? "Todo"
                     : format(new Date(nextEvent.start_at as string), "HH:mm")}
                 </span>
-                <span className="mt-1 block text-[10.5px] font-semibold text-muted-foreground">
+                <span className="mt-1 block text-[11px] font-semibold text-muted-foreground">
                   hoy
                 </span>
               </span>

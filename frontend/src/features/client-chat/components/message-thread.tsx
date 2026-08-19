@@ -107,7 +107,7 @@ export function MessageThread({ conversation, onBack }: Props) {
                 <div className="whitespace-pre-wrap">{m.content}</div>
                 <div
                   className={cn(
-                    "mt-1 flex items-center gap-1.5 text-[10px]",
+                    "mt-1 flex items-center gap-1.5 text-[11px]",
                     isInbound || isAi ? "text-muted-foreground" : "text-primary-foreground/70",
                   )}
                 >

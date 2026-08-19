@@ -1262,7 +1262,7 @@ export function CameraCaptureDocument({
                   <Camera className="size-7" />
                   <Plus className="absolute -bottom-1 -right-1 size-3" />
                 </div>
-                <span className="text-[10px]">Tomar más</span>
+                <span className="text-[11px]">Tomar más</span>
               </button>
             </div>
           </SortableContext>
@@ -1547,7 +1547,7 @@ function SortableThumb({ id, index, url, isActive, size = "md", onTap }: Sortabl
       tabIndex={0}
     >
       <img src={url} alt={`Página ${index + 1}`} className="h-full w-full object-cover" />
-      <span className="absolute bottom-1 right-1 rounded bg-foreground/85 px-1 text-[9px] font-semibold text-background">
+      <span className="absolute bottom-1 right-1 rounded bg-foreground/85 px-1 text-[11px] font-semibold text-background">
         {index + 1}
       </span>
     </div>
