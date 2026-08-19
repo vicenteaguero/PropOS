@@ -6,7 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { PageLayout } from "@shared/components/page-layout";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
-import { ErrorState, ListCapNotice, PageSkeleton, Pill, Segmented } from "@shared/ui";
+import { ErrorState, ListCapNotice, PageSkeleton, PhotoCard, Pill, Segmented } from "@shared/ui";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { propertiesApi, type Property, type PropertyInput } from "../api/properties-api";
@@ -33,29 +33,20 @@ function PropertyCard({ property, onClick }: { property: Property; onClick: () =
   ];
 
   return (
-    <button
-      type="button"
+    <PhotoCard
       onClick={onClick}
-      className="block w-full overflow-hidden rounded-2xl bg-card text-left transition active:scale-[0.99]"
+      overlay={
+        <>
+          <div className="absolute left-3 top-3 flex items-center gap-2">
+            <Pill tone={op.tone}>{op.label}</Pill>
+            {property.is_draft && <Pill tone="neutral">Borrador</Pill>}
+          </div>
+          <span className="absolute right-3 top-3 rounded-full bg-background/80 px-2.5 py-0.5 text-[11px] font-semibold text-muted-foreground backdrop-blur">
+            {propertyCode(property.id)}
+          </span>
+        </>
+      }
     >
-      {/* Photo placeholder */}
-      <div className="relative h-40 w-full bg-gradient-to-br from-secondary to-muted text-foreground">
-        <div
-          className="absolute inset-0 opacity-[0.04]"
-          style={{
-            backgroundImage:
-              "repeating-linear-gradient(45deg, currentColor 0 12px, transparent 12px 24px)",
-          }}
-        />
-        <div className="absolute left-3 top-3 flex items-center gap-2">
-          <Pill tone={op.tone}>{op.label}</Pill>
-          {property.is_draft && <Pill tone="neutral">Borrador</Pill>}
-        </div>
-        <span className="absolute right-3 top-3 rounded-full bg-background/80 px-2.5 py-0.5 text-[11px] font-semibold text-muted-foreground backdrop-blur">
-          {propertyCode(property.id)}
-        </span>
-      </div>
-
       <div className="px-4 py-3">
         <div className="truncate text-base font-semibold leading-tight text-foreground">
           {property.title}
@@ -82,7 +73,7 @@ function PropertyCard({ property, onClick }: { property: Property; onClick: () =
           </div>
         )}
       </div>
-    </button>
+    </PhotoCard>
   );
 }
 

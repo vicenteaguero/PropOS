@@ -2,38 +2,30 @@ import { useNavigate } from "react-router-dom";
 import { Building2, ChevronRight } from "lucide-react";
 import { PageLayout } from "@shared/components/page-layout";
 import { LoadingSpinner } from "@shared/components/loading-spinner/loading-spinner";
-import { Pill } from "@shared/ui";
+import { PhotoCard, Pill } from "@shared/ui";
 import { useMyGrants } from "@features/owner/hooks/use-my-grants";
 import type { PropertyGrant } from "@shared/types/auth";
 
 function PropertyCard({ grant, onClick }: { grant: PropertyGrant; onClick: () => void }) {
   return (
-    <button
-      type="button"
+    <PhotoCard
       onClick={onClick}
-      className="block w-full overflow-hidden rounded-2xl bg-card text-left transition active:scale-[0.99]"
-    >
-      {/* Photo placeholder */}
-      <div className="relative h-40 w-full bg-gradient-to-br from-secondary to-muted text-foreground">
-        <div
-          className="absolute inset-0 opacity-[0.04]"
-          style={{
-            backgroundImage:
-              "repeating-linear-gradient(45deg, currentColor 0 12px, transparent 12px 24px)",
-          }}
-        />
-        <span className="absolute left-3 top-3 grid size-10 place-items-center rounded-full bg-background/80 text-foreground backdrop-blur">
-          <Building2 className="size-5" strokeWidth={1.8} />
-        </span>
-        {grant.capabilities.length > 0 && (
-          <span className="absolute right-3 top-3">
-            <Pill tone="neutral">
-              {grant.capabilities.length} {grant.capabilities.length === 1 ? "permiso" : "permisos"}
-            </Pill>
+      overlay={
+        <>
+          <span className="absolute left-3 top-3 grid size-10 place-items-center rounded-full bg-background/80 text-foreground backdrop-blur">
+            <Building2 className="size-5" strokeWidth={1.8} />
           </span>
-        )}
-      </div>
-
+          {grant.capabilities.length > 0 && (
+            <span className="absolute right-3 top-3">
+              <Pill tone="neutral">
+                {grant.capabilities.length}{" "}
+                {grant.capabilities.length === 1 ? "permiso" : "permisos"}
+              </Pill>
+            </span>
+          )}
+        </>
+      }
+    >
       <div className="flex items-center gap-3 px-4 py-3">
         <div className="min-w-0 flex-1">
           <div className="truncate text-base font-semibold leading-tight text-foreground">
@@ -47,7 +39,7 @@ function PropertyCard({ grant, onClick }: { grant: PropertyGrant; onClick: () =>
         </div>
         <ChevronRight className="size-5 shrink-0 text-muted-foreground" strokeWidth={1.8} />
       </div>
-    </button>
+    </PhotoCard>
   );
 }
 
