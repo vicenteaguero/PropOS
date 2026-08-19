@@ -1,6 +1,6 @@
 import { ENV } from "@core/config/env";
 import { supabase } from "@core/supabase/client";
-import { apiRequest, getActiveTenantId } from "@features/documents/api/http";
+import { apiRequest, getActiveTenantId } from "@shared/api/http";
 
 export interface ImportPreview {
   import_id: string;

@@ -9,7 +9,7 @@ import { EmptyState } from "@shared/components/empty-state/empty-state";
 import { Pill, ResponsiveSheet, Row } from "@shared/ui";
 import { useIsDesktop } from "@/hooks/use-mobile";
 import { toast } from "sonner";
-import { apiRequest } from "@features/documents/api/http";
+import { apiRequest } from "@shared/api/http";
 
 interface AdminTenant {
   id: string;

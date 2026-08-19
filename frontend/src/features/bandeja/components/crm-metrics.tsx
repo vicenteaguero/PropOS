@@ -13,7 +13,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { apiRequest } from "@features/documents/api/http";
+import { apiRequest } from "@shared/api/http";
 import { useConversations } from "@features/client-chat/hooks/use-client-chat";
 import { useEmailThreads } from "@features/email/hooks/use-email";
 import { useOpportunities } from "@features/opportunities/hooks/use-opportunities";

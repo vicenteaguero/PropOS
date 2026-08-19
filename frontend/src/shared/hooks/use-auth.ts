@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import { supabase } from "@core/supabase/client";
 import { createLogger } from "@core/logging/logger";
-import { apiRequest, getActiveTenantId, setActiveTenantId } from "@features/documents/api/http";
+import { apiRequest, getActiveTenantId, setActiveTenantId } from "@shared/api/http";
 import type {
   AuthState,
   PropertyGrant,

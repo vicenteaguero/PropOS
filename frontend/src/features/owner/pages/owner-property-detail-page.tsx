@@ -8,7 +8,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@shared/components/loading-spinner/loading-spinner";
 import { Pill, Row } from "@shared/ui";
-import { apiRequest } from "@features/documents/api/http";
+import { apiRequest } from "@shared/api/http";
 import { documentsApi } from "@features/documents/api/documents-api";
 import { useGrantForProperty } from "@features/owner/hooks/use-my-grants";
 

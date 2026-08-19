@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@shared/components/loading-spinner/loading-spinner";
 import { toast } from "sonner";
-import { apiRequest } from "@features/documents/api/http";
+import { apiRequest } from "@shared/api/http";
 import {
   AudienceCapsEditor,
   type AudienceCaps,

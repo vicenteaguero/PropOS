@@ -1,5 +1,5 @@
 import type { Assignment, AssignmentTarget, DocumentItem } from "../types";
-import { apiRequest } from "./http";
+import { apiRequest } from "@shared/api/http";
 
 export interface ListDocumentsParams {
   contactId?: string;
