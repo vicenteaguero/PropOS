@@ -111,7 +111,7 @@ export function MobileBottomNav() {
       <nav
         ref={navRef}
         aria-label="Navegación principal"
-        className="fixed inset-x-0 bottom-0 z-50 px-3.5 pt-1.5 pb-[max(1rem,env(safe-area-inset-bottom))]"
+        className="fixed inset-x-0 bottom-0 z-50 pt-1.5 pb-[calc(var(--safe-bottom)+0.75rem)] pl-[calc(var(--safe-left)+0.875rem)] pr-[calc(var(--safe-right)+0.875rem)]"
       >
         <div className="mx-auto flex max-w-md items-center justify-around rounded-[2rem] border border-border bg-card px-2 py-2 shadow-[0_6px_26px_rgba(0,0,0,0.18)]">
           <NavTab to={base} end icon={Home} label="Inicio" />
