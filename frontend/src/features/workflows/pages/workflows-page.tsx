@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { PageLayout } from "@shared/components/page-layout";
 import { PageHeader } from "@shared/components/page-header";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
-import { ErrorState, Pill, ResponsiveSheet } from "@shared/ui";
+import { ErrorState, PageSkeleton, Pill, ResponsiveSheet } from "@shared/ui";
 import { cn } from "@/lib/utils";
 import { workflowsApi, type Workflow, type WorkflowStep } from "../api/workflows-api";
 
@@ -57,11 +57,7 @@ export function WorkflowsPage() {
         />
       </div>
 
-      {list.isLoading && (
-        <div className="flex justify-center py-12">
-          <Loader2 className="size-5 animate-spin text-muted-foreground" />
-        </div>
-      )}
+      {list.isLoading && <PageSkeleton variant="list" />}
 
       {list.isError && (
         <ErrorState message="No se pudieron cargar los workflows." onRetry={() => list.refetch()} />

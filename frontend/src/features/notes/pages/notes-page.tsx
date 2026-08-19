@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { PageLayout } from "@shared/components/page-layout";
 import { PageHeader } from "@shared/components/page-header";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
-import { ErrorState, HOVER_REVEAL, Pill } from "@shared/ui";
+import { ErrorState, HOVER_REVEAL, PageSkeleton, Pill } from "@shared/ui";
 import { useAuth } from "@shared/hooks/use-auth";
 import { useAgentName } from "@core/branding/agent-branding";
 import { useThemeMode } from "@core/theme/theme-provider";
@@ -124,11 +124,7 @@ export function NotesPage() {
     </button>
   );
 
-  const loading = (
-    <div className="flex justify-center py-12">
-      <Loader2 className="size-5 animate-spin text-muted-foreground" />
-    </div>
-  );
+  const loading = <PageSkeleton variant="cards" />;
 
   const errorBox = (
     <ErrorState message="No se pudieron cargar las notas." onRetry={() => refetch()} />

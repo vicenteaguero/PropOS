@@ -4,7 +4,7 @@ import { Copy, Loader2, RefreshCw, UserPlus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageLayout } from "@shared/components/page-layout";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
-import { ErrorState, Pill, Row, type PillTone } from "@shared/ui";
+import { ErrorState, PageSkeleton, Pill, Row, type PillTone } from "@shared/ui";
 import { useIsDesktop } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import {
@@ -144,11 +144,7 @@ export function AdminVisitorInvitationsPage() {
         </Button>
       </div>
 
-      {isLoading && (
-        <div className="flex justify-center py-12">
-          <Loader2 className="size-5 animate-spin text-muted-foreground" />
-        </div>
-      )}
+      {isLoading && <PageSkeleton variant="table" />}
 
       {error && (
         <ErrorState message="No pudimos cargar las invitaciones." onRetry={() => refetch()} />

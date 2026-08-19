@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageLayout } from "@shared/components/page-layout";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
-import { ErrorState, Pill, ResponsiveSheet, Row } from "@shared/ui";
+import { ErrorState, PageSkeleton, Pill, ResponsiveSheet, Row } from "@shared/ui";
 import { useIsDesktop } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import { apiRequest } from "@shared/api/http";
@@ -166,11 +166,7 @@ export function AdminTenantsPage() {
         </Button>
       </div>
 
-      {isLoading && (
-        <div className="flex justify-center py-12">
-          <Loader2 className="size-5 animate-spin text-muted-foreground" />
-        </div>
-      )}
+      {isLoading && <PageSkeleton variant="table" />}
       {error && (
         <ErrorState message="No se pudieron cargar los tenants." onRetry={() => refetch()} />
       )}

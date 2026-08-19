@@ -105,9 +105,7 @@ async def ensure_today() -> tuple[date, float, bool]:
     """Make sure today's UF is in DB. Returns (date, value, inserted)."""
     client = get_supabase_client()
     today = today_santiago()
-    existing = (
-        client.table(UF_TABLE).select("value_clp").eq("date", today.isoformat()).limit(1).execute().data
-    )
+    existing = client.table(UF_TABLE).select("value_clp").eq("date", today.isoformat()).limit(1).execute().data
     if existing:
         return today, float(existing[0]["value_clp"]), False
 

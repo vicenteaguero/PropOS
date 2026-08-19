@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
-import { ErrorState, RoundButton } from "@shared/ui";
+import { ErrorState, PageSkeleton, RoundButton } from "@shared/ui";
 import { apiRequest } from "@shared/api/http";
 import { formatCLP } from "@/lib/locale-cl";
 import { label } from "@shared/lib/labels";
@@ -448,11 +448,7 @@ function ChartBody({
 }
 
 function ChartLoading() {
-  return (
-    <div className="flex justify-center py-12">
-      <Loader2 className="size-5 animate-spin text-muted-foreground" />
-    </div>
-  );
+  return <PageSkeleton variant="cards" />;
 }
 
 function ChartEmpty({ children }: { children: React.ReactNode }) {

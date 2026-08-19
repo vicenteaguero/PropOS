@@ -3,7 +3,6 @@ import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
   CalendarPlus,
-  Loader2,
   Mail,
   MapPin,
   MessageCircle,
@@ -23,7 +22,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useAuth } from "@shared/hooks/use-auth";
-import { ErrorState, Pill, RoundButton, Segmented } from "@shared/ui";
+import { ErrorState, PageSkeleton, Pill, RoundButton, Segmented } from "@shared/ui";
 import { toast } from "sonner";
 import { InteractionsList } from "@features/interactions/components/interactions-list";
 import { NotesList } from "@features/notes/components/notes-list";
@@ -91,11 +90,7 @@ export function ContactDetail({ contactId, onBack, onDeleted }: ContactDetailPro
   const [tab, setTab] = useState("interacciones");
 
   if (isLoading) {
-    return (
-      <div className="flex justify-center py-12">
-        <Loader2 className="size-5 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <PageSkeleton variant="detail" />;
   }
 
   if (error || !contact) {

@@ -6,8 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { PageLayout } from "@shared/components/page-layout";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
-import { LoadingSpinner } from "@shared/components/loading-spinner/loading-spinner";
-import { ErrorState, FOCUS_RING, ListCapNotice, Pill, Segmented } from "@shared/ui";
+import { ErrorState, FOCUS_RING, ListCapNotice, PageSkeleton, Pill, Segmented } from "@shared/ui";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { propertiesApi, type Property, type PropertyInput } from "../api/properties-api";
@@ -178,11 +177,7 @@ export function AdminPropertiesPage() {
         }}
       />
 
-      {isLoading && (
-        <div className="flex justify-center py-12">
-          <LoadingSpinner size="md" />
-        </div>
-      )}
+      {isLoading && <PageSkeleton variant="cards" />}
 
       {!isLoading && error && (
         <div className="px-5 lg:px-8">

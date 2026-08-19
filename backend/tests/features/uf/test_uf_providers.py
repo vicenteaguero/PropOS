@@ -58,13 +58,13 @@ def test_sii_rejects_page_without_month_tables():
 
 
 def test_sii_rejects_unknown_month_heading():
-    html = "<table><tr><th><h2>Brumario</h2></th></tr>" "<tr><th><strong>1</strong></th><td>40.000,00</td></tr></table>"
+    html = "<table><tr><th><h2>Brumario</h2></th></tr><tr><th><strong>1</strong></th><td>40.000,00</td></tr></table>"
     with pytest.raises(UfProviderError, match="unknown month"):
         parse_year_page(html, 2026)
 
 
 def test_sii_rejects_day_out_of_range():
-    html = "<table><tr><th><h2>Febrero</h2></th></tr>" "<tr><th><strong>30</strong></th><td>40.000,00</td></tr></table>"
+    html = "<table><tr><th><h2>Febrero</h2></th></tr><tr><th><strong>30</strong></th><td>40.000,00</td></tr></table>"
     with pytest.raises(UfProviderError, match="out of range"):
         parse_year_page(html, 2026)
 
@@ -115,9 +115,7 @@ async def test_sii_provider_fetches_and_validates(sii_html):
 @pytest.mark.asyncio
 @respx.mock
 async def test_sii_provider_treats_404_as_unpublished_year():
-    respx.get("https://www.sii.cl/valores_y_fechas/uf/uf2099.htm").mock(
-        return_value=httpx.Response(404)
-    )
+    respx.get("https://www.sii.cl/valores_y_fechas/uf/uf2099.htm").mock(return_value=httpx.Response(404))
 
     assert await SiiProvider().fetch_year(2099) == []
 

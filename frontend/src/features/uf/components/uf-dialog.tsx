@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Delete, Loader2, Minus, Plus, TrendingDown, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useUfToday, useUsdToday } from "../hooks/use-uf";
+import { useUfForward, useUfToday, useUsdToday } from "../hooks/use-uf";
 import { ResponsiveSheet, TOUCH_TARGET_HIT_AREA } from "@shared/ui";
 
 interface Props {
@@ -27,6 +27,26 @@ const PCT_FMT = new Intl.NumberFormat("es-CL", {
   maximumFractionDigits: 2,
 });
 const INT_FMT = new Intl.NumberFormat("es-CL", { maximumFractionDigits: 0 });
+const DAY_FMT = new Intl.DateTimeFormat("es-CL", { day: "numeric", month: "short" });
+
+// The UF is issued by the Banco Central; every source republishes that same
+// number, so the label credits whichever one answered.
+const SOURCE_LABELS: Record<string, string> = {
+  "sii.cl": "SII",
+  "cmf.cl": "CMF",
+  "mindicador.cl": "mindicador.cl",
+};
+
+function sourceLabel(source: string | null | undefined): string {
+  if (!source) return "Banco Central";
+  return SOURCE_LABELS[source] ?? source;
+}
+
+/** Parse "2026-09-01" as a local date — `new Date(iso)` would shift it a day. */
+function parseIsoDate(iso: string): Date {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y ?? 1970, (m ?? 1) - 1, d ?? 1);
+}
 
 function formatCurrency(value: number | null, c: Currency): string {
   if (value == null || !Number.isFinite(value)) return "—";
@@ -98,6 +118,7 @@ function Key({ label, onClick, variant = "num", className }: KeyProps) {
 export function UfDialog({ open, onOpenChange }: Props) {
   const uf = useUfToday();
   const usd = useUsdToday();
+  const forward = useUfForward();
   const [from, setFrom] = useState<Currency>("UF");
   // Calculator always starts at 0; the first digit press overwrites it.
   const [raw, setRaw] = useState("0");
@@ -128,6 +149,8 @@ export function UfDialog({ open, onOpenChange }: Props) {
   };
 
   const targets = CURRENCIES.filter((c) => c !== from);
+
+  const forwardPoints = forward.data?.points ?? [];
 
   // Commission = pct of the entered amount (shown in the source currency + CLP).
   const commissionFrom = amountNum != null ? (amountNum * pct) / 100 : null;
@@ -222,6 +245,32 @@ export function UfDialog({ open, onOpenChange }: Props) {
               </div>
             </div>
           </div>
+
+          {forwardPoints.length > 0 && (
+            <div className="rounded-2xl border border-border bg-background/40 p-4">
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  UF publicada
+                </span>
+                <span className="text-[11px] text-faint">valores oficiales</span>
+              </div>
+              <div className="-mx-1 mt-2.5 flex gap-1.5 overflow-x-auto px-1 pb-1">
+                {forwardPoints.map((p) => (
+                  <div
+                    key={p.date}
+                    className="shrink-0 rounded-xl bg-muted/40 px-2.5 py-1.5 text-center"
+                  >
+                    <p className="text-[11px] capitalize text-muted-foreground">
+                      {DAY_FMT.format(parseIsoDate(p.date))}
+                    </p>
+                    <p className="text-xs font-semibold tabular-nums">
+                      ${CLP_FMT.format(Math.round(p.value_clp))}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="flex gap-1 rounded-full bg-muted p-1">
             {CURRENCIES.map((c) => (
@@ -331,7 +380,7 @@ export function UfDialog({ open, onOpenChange }: Props) {
           </div>
 
           <p className="text-center text-[11px] text-muted-foreground">
-            Fuente: mindicador.cl · Actualización diaria
+            UF: {sourceLabel(uf.data?.today.source)} · USD: mindicador.cl · Actualización diaria
           </p>
         </div>
       )}
