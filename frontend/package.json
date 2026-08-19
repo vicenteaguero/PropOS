@@ -8,7 +8,7 @@
     "build": "vite build",
     "build:check": "tsc -b && vite build",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
-    "test": "vitest run",
+    "test": "TZ=UTC vitest run",
     "preview": "vite preview",
     "lint": "eslint src --cache --cache-location node_modules/.cache/eslint --report-unused-disable-directives --max-warnings 0",
     "format": "prettier --write \"src/**/*.{ts,tsx,css,json,md}\""

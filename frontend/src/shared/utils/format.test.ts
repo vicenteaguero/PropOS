@@ -38,8 +38,12 @@ describe("date formatters", () => {
   it("formats a timestamp in each style", () => {
     // es-CL renders `medium` as 12-08-2026 and `short` as 12-08-26, so the
     // styles differ by year width, not by month name.
+    //
+    // The suite runs under TZ=UTC (see package.json) so these are stable
+    // wherever they run — asserting a wall-clock time without pinning the zone
+    // passes in Chile and fails on a UTC CI runner.
     expect(formatDateTime(iso)).toMatch(/12-08-2026/);
-    expect(formatDateTime(iso)).toMatch(/10:30/);
+    expect(formatDateTime(iso)).toMatch(/2:30/);
     expect(formatShortDateTime(iso)).toMatch(/12-08-26/);
     expect(formatDayMonth(iso)).toBe("12 ago");
     expect(formatDate(iso)).toBe("12-08-2026");
