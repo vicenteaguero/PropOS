@@ -251,3 +251,6 @@ backend/notebooks/
 
 # Local MCP config: machine-specific paths + local tokens (see .mcp.json.example)
 .mcp.json
+
+# Playwright viewport-check output (screenshots + probe json)
+frontend/viewport-shots/
