@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { PageLayout } from "@shared/components/page-layout";
 import { PageHeader } from "@shared/components/page-header";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
-import { AppShellScroll } from "@shared/ui";
+import { AppShellScroll, ListCapNotice } from "@shared/ui";
 import { toast } from "sonner";
 import { useContacts } from "@features/contacts/hooks/use-contacts";
 import {
@@ -95,6 +95,7 @@ export function OpportunitiesPage() {
               }}
             />
           )}
+          <ListCapNotice resource="opportunities" count={data?.length} className="mx-0" />
           {!isLoading && !error && data && data.length > 0 && (
             <OpportunityKanban
               opportunities={data}

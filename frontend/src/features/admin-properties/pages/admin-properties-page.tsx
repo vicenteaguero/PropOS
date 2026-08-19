@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { PageLayout } from "@shared/components/page-layout";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
 import { LoadingSpinner } from "@shared/components/loading-spinner/loading-spinner";
-import { Pill, Segmented, type PillTone } from "@shared/ui";
+import { ListCapNotice, Pill, Segmented, type PillTone } from "@shared/ui";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { propertiesApi, type Property, type PropertyInput } from "../api/properties-api";
@@ -195,6 +195,7 @@ export function AdminPropertiesPage() {
         </div>
       )}
 
+      <ListCapNotice resource="properties" count={properties.length} className="lg:mx-8" />
       {!isLoading && !error && properties.length > 0 && view === "lista" && (
         <div className="grid grid-cols-1 gap-3 px-5 lg:grid-cols-2 lg:gap-4 lg:px-8 xl:grid-cols-3">
           {properties.map((p) => (
