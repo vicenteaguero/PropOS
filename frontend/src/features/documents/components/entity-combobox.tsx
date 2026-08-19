@@ -128,7 +128,10 @@ export function EntityCombobox<T>({
         <Button
           type="button"
           variant="outline"
-          role="combobox"
+          // Not role="combobox": that role requires aria-controls pointing at
+          // the listbox, and the popover's id is minted by Radix at render.
+          // This is a button that discloses a listbox — haspopup says exactly that.
+          aria-haspopup="listbox"
           aria-expanded={open}
           aria-label={ariaLabel}
           disabled={disabled}

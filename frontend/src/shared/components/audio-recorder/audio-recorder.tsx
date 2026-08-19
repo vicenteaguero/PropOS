@@ -66,6 +66,8 @@ export function AudioRecorder({ onSaved }: AudioRecorderProps) {
         </div>
       ) : (
         <div className="space-y-3">
+          {/* Voice memo recorded in-app; there is no caption track to point at. */}
+          {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
           <audio src={audioUrl} controls className="w-full" />
           <div className="flex justify-center gap-3">
             <Button variant="outline" onClick={clearRecording}>
