@@ -47,6 +47,7 @@ export function PhotoPicker({ onSaved }: PhotoPickerProps) {
   return (
     <div className="space-y-3">
       <input
+        aria-label="Seleccionar foto"
         ref={inputRef}
         type="file"
         accept="image/*"

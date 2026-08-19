@@ -67,6 +67,7 @@ export function PropertyGallery({ propertyId, overlay, className }: PropertyGall
   return (
     <div className={cn("space-y-3", className)}>
       <input
+        aria-label="Seleccionar fotos de la propiedad"
         ref={inputRef}
         type="file"
         accept="image/*"

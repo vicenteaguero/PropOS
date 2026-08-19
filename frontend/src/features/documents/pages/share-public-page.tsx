@@ -3,12 +3,12 @@ import { useParams } from "react-router-dom";
 import { Download, Lock, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { LoadingSpinner } from "@shared/components/loading-spinner/loading-spinner";
 import { PageLayout } from "@shared/components/page-layout";
 import { shareLinksApi } from "../api/share-links-api";
 import type { ShareLinkPublicView } from "../types";
 import { DocumentPreview } from "../components/document-preview";
+import { Field } from "@shared/ui";
 
 export function SharePublicPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -117,15 +117,14 @@ export function SharePublicPage() {
             <Lock className="size-5 text-primary" />
             <h2 className="text-base font-semibold">Documento protegido</h2>
           </div>
-          <div className="space-y-2">
-            <Label className="text-xs">Password</Label>
+          <Field label="Password" labelClassName="text-xs">
             <Input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && submitPassword()}
             />
-          </div>
+          </Field>
           {error && <p className="text-xs text-destructive">{error}</p>}
           <Button onClick={submitPassword} className="w-full">
             Continuar

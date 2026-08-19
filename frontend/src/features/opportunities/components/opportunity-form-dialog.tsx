@@ -9,10 +9,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useContacts } from "@features/contacts/hooks/use-contacts";
 import { PIPELINE_STAGES, STAGE_LABELS, type Opportunity, type OpportunityInput } from "../types";
+import { Field } from "@shared/ui";
 
 interface Props {
   open: boolean;
@@ -72,8 +72,7 @@ export function OpportunityFormDialog({
         </DialogHeader>
         <div className="space-y-3">
           {!lockedPersonId && (
-            <div className="space-y-1.5">
-              <Label>Contacto</Label>
+            <Field label="Contacto">
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -91,10 +90,9 @@ export function OpportunityFormDialog({
                   </option>
                 ))}
               </select>
-            </div>
+            </Field>
           )}
-          <div className="space-y-1.5">
-            <Label htmlFor="o-stage">Etapa</Label>
+          <Field label="Etapa">
             <select
               id="o-stage"
               value={stage}
@@ -107,9 +105,8 @@ export function OpportunityFormDialog({
                 </option>
               ))}
             </select>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="o-value">Valor esperado (CLP)</Label>
+          </Field>
+          <Field label="Valor esperado (CLP)">
             <Input
               id="o-value"
               type="number"
@@ -117,16 +114,15 @@ export function OpportunityFormDialog({
               onChange={(e) => setValue(e.target.value)}
               placeholder="0"
             />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="o-notes">Notas</Label>
+          </Field>
+          <Field label="Notas">
             <Textarea
               id="o-notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
             />
-          </div>
+          </Field>
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>

@@ -39,9 +39,11 @@ export function AudienceCapsEditor({
       <table className="w-full text-sm">
         <thead>
           <tr className="bg-muted/40 text-left">
-            <th className="p-2 font-medium">Audiencia</th>
+            <th scope="col" className="p-2 font-medium">
+              Audiencia
+            </th>
             {caps.map((c) => (
-              <th key={c} className="p-2 font-medium text-center">
+              <th key={c} scope="col" className="p-2 font-medium text-center">
                 {capLabels[c] ?? c}
               </th>
             ))}
@@ -50,12 +52,21 @@ export function AudienceCapsEditor({
         <tbody>
           {audiences.map((a) => (
             <tr key={a} className="border-t border-border">
-              <td className="p-2 font-medium">{audienceLabels[a] ?? a}</td>
+              <th scope="row" className="p-2 text-left font-medium">
+                {audienceLabels[a] ?? a}
+              </th>
               {caps.map((c) => {
                 const checked = matrix[a]?.includes(c) ?? false;
                 return (
                   <td key={c} className="p-2 text-center">
-                    <input type="checkbox" checked={checked} onChange={() => toggle(a, c)} />
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggle(a, c)}
+                      // Row and column headers alone leave the control unnamed
+                      // in most screen readers; name the intersection outright.
+                      aria-label={`${audienceLabels[a] ?? a}: ${capLabels[c] ?? c}`}
+                    />
                   </td>
                 );
               })}

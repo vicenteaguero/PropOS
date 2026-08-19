@@ -199,6 +199,7 @@ export function DocumentEditor({ initialBytes, onCancel, onSave }: Props) {
           <Camera className="size-4" /> Cámara
         </Button>
         <input
+          aria-label="Notas de la versión"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           placeholder="Notas para esta versión (opcional)"

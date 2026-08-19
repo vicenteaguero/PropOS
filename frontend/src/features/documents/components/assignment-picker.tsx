@@ -4,7 +4,6 @@ import { Building2, User, Folder, Plus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAddAssignment } from "../hooks/use-documents";
 import {
@@ -14,6 +13,7 @@ import {
   useInternalAreas,
   useProperties,
 } from "../hooks/use-entities";
+import { Field } from "@shared/ui";
 
 interface Props {
   documentId: string;
@@ -108,8 +108,7 @@ export function AssignmentPicker({ documentId, open, onOpenChange }: Props) {
           </Button>
         </div>
 
-        <div className="space-y-2">
-          <Label className="text-xs">Buscar / crear</Label>
+        <Field label="Buscar / crear" labelClassName="text-xs">
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -121,7 +120,7 @@ export function AssignmentPicker({ documentId, open, onOpenChange }: Props) {
                   : "Filtrar áreas..."
             }
           />
-        </div>
+        </Field>
 
         <ScrollArea className="max-h-64 rounded-md border border-border">
           {tab === "PROPERTY" &&

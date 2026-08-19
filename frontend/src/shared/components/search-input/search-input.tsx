@@ -7,6 +7,8 @@ interface SearchInputProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  /** Overrides the placeholder as the accessible name when they should differ. */
+  ariaLabel?: string;
   className?: string;
 }
 
@@ -14,6 +16,7 @@ export function SearchInput({
   value,
   onChange,
   placeholder = "Buscar...",
+  ariaLabel,
   className,
 }: SearchInputProps) {
   const [localValue, setLocalValue] = useState(value);
@@ -38,6 +41,11 @@ export function SearchInput({
         value={localValue}
         onChange={(e) => setLocalValue(e.target.value)}
         placeholder={placeholder}
+        // A placeholder is not an accessible name — it vanishes on first
+        // keystroke and several screen readers skip it outright. This field
+        // never has a visible label, so it names itself.
+        aria-label={ariaLabel ?? placeholder}
+        type="search"
         className="pl-8 pr-8"
       />
       {localValue && (
@@ -47,6 +55,7 @@ export function SearchInput({
             setLocalValue("");
             onChange("");
           }}
+          aria-label="Limpiar búsqueda"
           className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
         >
           <X className="size-4" />

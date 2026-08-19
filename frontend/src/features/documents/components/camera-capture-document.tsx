@@ -19,7 +19,6 @@ import {
   Zap,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import type { ContactLite, PropertyLite } from "../types";
 import { EntityCombobox } from "./entity-combobox";
 import {
@@ -57,6 +56,7 @@ import {
 } from "../services/scanner/geometry";
 import { warpQuad } from "../services/scanner/perspective-warp";
 import type { Corner, FilterMode, Point, Quad, Side } from "../services/scanner/types";
+import { Field, FieldGroup } from "@shared/ui";
 
 export type BezierControls = { T?: Point; R?: Point; B?: Point; L?: Point };
 
@@ -1315,17 +1315,15 @@ export function CameraCaptureDocument({
                 </Button>
               )}
             </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Nombre</Label>
+            <Field label="Nombre" labelClassName="text-xs">
               <Input
                 value={docName}
                 onChange={(e) => setDocName(e.target.value)}
                 disabled={submitting}
               />
-            </div>
+            </Field>
             {scanMode !== "id" && (
-              <div className="space-y-1">
-                <Label className="text-xs">Tamaño de página</Label>
+              <Field label="Tamaño de página" labelClassName="text-xs">
                 <select
                   value={paperSize}
                   onChange={(e) => setPaperSize(e.target.value as PaperSizeId)}
@@ -1338,10 +1336,9 @@ export function CameraCaptureDocument({
                     </option>
                   ))}
                 </select>
-              </div>
+              </Field>
             )}
-            <div className="space-y-1">
-              <Label className="text-xs">Propiedad</Label>
+            <FieldGroup label="Propiedad" labelClassName="text-xs">
               <EntityCombobox<PropertyLite>
                 value={docPropertyTitle}
                 onChange={(text) => {
@@ -1370,9 +1367,8 @@ export function CameraCaptureDocument({
                 disabled={submitting}
                 ariaLabel="Seleccionar propiedad"
               />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Contacto</Label>
+            </FieldGroup>
+            <FieldGroup label="Contacto" labelClassName="text-xs">
               <EntityCombobox<ContactLite>
                 value={docContactName}
                 onChange={(text) => {
@@ -1395,9 +1391,8 @@ export function CameraCaptureDocument({
                   Filtrado por {docSelectedProperty.title}
                 </p>
               )}
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Etiqueta</Label>
+            </FieldGroup>
+            <FieldGroup label="Etiqueta" labelClassName="text-xs">
               <div className="flex flex-wrap gap-2">
                 {QUICK_TAGS.map((t) => (
                   <button
@@ -1417,7 +1412,7 @@ export function CameraCaptureDocument({
                   </button>
                 ))}
               </div>
-            </div>
+            </FieldGroup>
             <div className="flex items-center justify-end gap-2 pt-1">
               <Button
                 variant="ghost"

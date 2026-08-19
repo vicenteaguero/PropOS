@@ -102,6 +102,7 @@ export function AdminUsersPage() {
             strokeWidth={1.8}
           />
           <input
+            aria-label="Buscar usuarios"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar por email, nombre o RUT"

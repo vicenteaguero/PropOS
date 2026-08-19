@@ -18,7 +18,7 @@ import {
   type PreflightResponse,
 } from "../api/visitor-invitations";
 import { toast } from "sonner";
-import { FOCUS_RING } from "@shared/ui";
+import { FOCUS_RING, FieldGroup } from "@shared/ui";
 
 interface Props {
   open: boolean;
@@ -144,8 +144,7 @@ export function NewInvitationDialog({ open, onOpenChange, defaultPropertyId }: P
             </select>
           </div>
 
-          <div className="space-y-2">
-            <Label>Modo</Label>
+          <FieldGroup label="Modo">
             <div className="flex gap-2">
               <button
                 type="button"
@@ -176,7 +175,7 @@ export function NewInvitationDialog({ open, onOpenChange, defaultPropertyId }: P
                 </span>
               </button>
             </div>
-          </div>
+          </FieldGroup>
         </div>
 
         <DialogFooter>

@@ -64,6 +64,7 @@ export function UploadDropzone({ onFile, disabled, compact }: Props) {
           Arrastra o seleccioná
         </span>
         <input
+          aria-label="Seleccionar archivo"
           ref={inputRef}
           type="file"
           className="hidden"
@@ -106,6 +107,7 @@ export function UploadDropzone({ onFile, disabled, compact }: Props) {
         Seleccionar archivo
       </Button>
       <input
+        aria-label="Seleccionar archivo"
         ref={inputRef}
         type="file"
         className="hidden"

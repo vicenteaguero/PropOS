@@ -141,6 +141,7 @@ export function MessageThread({ conversation, onBack }: Props) {
         )}
         <div className="flex items-center gap-2">
           <input
+            aria-label="Mensaje"
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => {

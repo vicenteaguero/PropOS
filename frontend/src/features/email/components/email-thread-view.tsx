@@ -32,6 +32,7 @@ function ReplyBox({ threadId }: { threadId: string }) {
     <div className="border-t border-border p-3">
       <div className="flex items-end gap-2">
         <textarea
+          aria-label="Respuesta"
           value={body}
           onChange={(e) => setBody(e.target.value)}
           rows={2}

@@ -9,6 +9,7 @@ export {
   TOUCH_TARGET_HIT_AREA,
   TOUCH_TARGET_PX,
 } from "./touch-target";
+export { Field, FieldGroup } from "./field";
 export { FOCUS_RING } from "./focus-ring";
 export { HOVER_REVEAL } from "./hover-reveal";
 export { Chips, Chip } from "./chips";

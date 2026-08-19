@@ -3,7 +3,6 @@ import { Link, useParams } from "react-router-dom";
 import { Loader2, CheckCircle2, AlertTriangle, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   ConsentCheckbox,
   type ConsentEvidence,
@@ -18,6 +17,7 @@ import {
   uploadId,
   type InvitationPublicView,
 } from "../api/visitor-registration";
+import { Field, FieldGroup } from "@shared/ui";
 
 export function VisitorRegistrationPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -197,13 +197,11 @@ export function VisitorRegistrationPage() {
             )}
 
             <div className="space-y-5 rounded-2xl border border-border bg-card p-5">
-              <div className="space-y-1.5">
-                <Label>Email</Label>
+              <Field label="Email">
                 <Input value={invitation.email} readOnly className="bg-muted" />
-              </div>
+              </Field>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="full_name">Nombre completo</Label>
+              <Field label="Nombre completo">
                 <Input
                   id="full_name"
                   value={fullName}
@@ -211,10 +209,9 @@ export function VisitorRegistrationPage() {
                   placeholder="Juan Pérez González"
                   autoComplete="name"
                 />
-              </div>
+              </Field>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="rut">RUT</Label>
+              <Field label="RUT">
                 <Input
                   id="rut"
                   value={rut}
@@ -223,10 +220,9 @@ export function VisitorRegistrationPage() {
                   inputMode="text"
                 />
                 {rut && !rutOk && <p className="text-xs text-destructive">RUT inválido</p>}
-              </div>
+              </Field>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="phone">Teléfono (opcional)</Label>
+              <Field label="Teléfono (opcional)">
                 <Input
                   id="phone"
                   value={phone}
@@ -234,10 +230,9 @@ export function VisitorRegistrationPage() {
                   placeholder="+56 9 1234 5678"
                   autoComplete="tel"
                 />
-              </div>
+              </Field>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="address">Dirección (opcional)</Label>
+              <Field label="Dirección (opcional)">
                 <Input
                   id="address"
                   value={address}
@@ -245,12 +240,11 @@ export function VisitorRegistrationPage() {
                   placeholder="Av. Las Condes 123, Santiago"
                   autoComplete="street-address"
                 />
-              </div>
+              </Field>
 
               {isAuthMode && (
                 <>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="password">Contraseña</Label>
+                  <Field label="Contraseña">
                     <Input
                       id="password"
                       type="password"
@@ -259,9 +253,8 @@ export function VisitorRegistrationPage() {
                       placeholder="Mínimo 8 caracteres"
                       autoComplete="new-password"
                     />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="password_confirm">Confirmar contraseña</Label>
+                  </Field>
+                  <Field label="Confirmar contraseña">
                     <Input
                       id="password_confirm"
                       type="password"
@@ -272,13 +265,15 @@ export function VisitorRegistrationPage() {
                     {passwordConfirm && password !== passwordConfirm && (
                       <p className="text-xs text-destructive">Las contraseñas no coinciden</p>
                     )}
-                  </div>
+                  </Field>
                 </>
               )}
             </div>
 
-            <div className="space-y-3 rounded-2xl border border-border bg-card p-5">
-              <Label>Cédula de identidad (frente y reverso)</Label>
+            <FieldGroup
+              label="Cédula de identidad (frente y reverso)"
+              className="rounded-2xl border border-border bg-card p-5"
+            >
               {idUploaded ? (
                 <div className="flex items-center gap-2 text-[15px] font-medium text-success">
                   <CheckCircle2 className="size-[18px]" strokeWidth={1.8} /> Cédula registrada
@@ -293,7 +288,7 @@ export function VisitorRegistrationPage() {
               ) : (
                 <IdScanCapture onComplete={handleUploadId} />
               )}
-            </div>
+            </FieldGroup>
 
             <div className="rounded-2xl border border-border bg-card p-5">
               <ConsentCheckbox

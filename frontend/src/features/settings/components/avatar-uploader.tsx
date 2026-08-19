@@ -78,6 +78,7 @@ export function AvatarUploader({ user }: Props) {
       </button>
 
       <input
+        aria-label="Seleccionar foto de perfil"
         ref={inputRef}
         type="file"
         accept="image/jpeg,image/png,image/webp"
