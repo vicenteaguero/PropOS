@@ -232,3 +232,70 @@ jobs:
           name: agent-results
           path: backend/tests/integration/agent/results.jsonl
           if-no-files-found: warn
+
+  # ── Backend deploy ────────────────────────────────────────────────────────
+  # Replaces the Cloud Build GitHub-App trigger, whose installation link broke:
+  # `gcloud builds triggers describe propos-api-deploy` returns no
+  # installationId, so pushes to main stopped producing a build and the backend
+  # silently stayed on an old revision. Reconnecting that trigger is a console
+  # OAuth flow; this path lives in the repo instead.
+  #
+  # Two things improve as a side effect:
+  #   - CI gating is native (`needs:`) rather than cloudbuild.yaml polling the
+  #     Checks API and hoping. The build still runs its own gate as a backstop.
+  #   - Auth is Workload Identity Federation, so there is no service-account key
+  #     anywhere. The pool only accepts tokens whose `repository` claim is this
+  #     repo (see the provider's attribute-condition).
+  #
+  # Mirrors the old trigger exactly: branch main, and only when backend/** or
+  # config/docker/** changed.
+  deploy-backend:
+    name: Deploy backend (Cloud Run)
+    needs: [backend, frontend, migrations]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # required to mint the OIDC token WIF exchanges
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2 # need the parent to diff against
+
+      - name: Did anything the image contains change?
+        id: changed
+        run: |
+          if git diff --quiet HEAD^ HEAD -- backend/ config/docker/; then
+            echo "value=false" >> "$GITHUB_OUTPUT"
+            echo "No backend/ or config/docker/ changes — skipping deploy."
+          else
+            echo "value=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: google-github-actions/auth@v2
+        if: steps.changed.outputs.value == 'true'
+        with:
+          project_id: propos-489401
+          workload_identity_provider: projects/694860045239/locations/global/workloadIdentityPools/github/providers/github
+          service_account: propos-cloudbuild@propos-489401.iam.gserviceaccount.com
+
+      - uses: google-github-actions/setup-gcloud@v2
+        if: steps.changed.outputs.value == 'true'
+
+      - name: Build and deploy
+        if: steps.changed.outputs.value == 'true'
+        run: |
+          # COMMIT_SHA/SHORT_SHA are set by the trigger in a webhook build and
+          # absent in a manual submit; cloudbuild.yaml's gate reads COMMIT_SHA to
+          # look up this commit's checks, and build-push tags the image with
+          # SHORT_SHA so a rollback can name a revision.
+          gcloud builds submit \
+            --config config/docker/cloudbuild.yaml \
+            --substitutions "COMMIT_SHA=${{ github.sha }},SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)" \
+            .
+
+      - name: Report the live revision
+        if: steps.changed.outputs.value == 'true'
+        run: |
+          gcloud run services describe propos-api --region us-central1 \
+            --format='value(status.latestReadyRevisionName,status.url)'

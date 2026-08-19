@@ -35,14 +35,45 @@ Pushing to `main`:
 2. **Vercel `prop-os`** — production deploy. Any other branch produces a preview
    deploy in the same project, which is why a push to `dev` shows up in
    `prop-os` as `Preview` and in `prop-os-edge` as `Production`.
-3. **Cloud Build `propos-api-deploy`** — only when the push touches `backend/**`
-   or `config/docker/**`. Builds `config/docker/backend.prod.Dockerfile`, tags
-   the image with the commit SHA *and* `latest`, deploys to Cloud Run, and smoke
-   tests the result.
+3. **GitHub Actions job `deploy-backend`** (in `ci.yml`) — only when the push
+   touches `backend/**` or `config/docker/**`. Runs `gcloud builds submit` with
+   `config/docker/cloudbuild.yaml`, which builds
+   `config/docker/backend.prod.Dockerfile`, tags the image with the commit SHA
+   *and* `latest`, deploys to Cloud Run, and smoke tests the result.
 
-The trigger itself lives only in GCP (the legacy GitHub app cannot be scripted
-without an installation id). `make deploy-trigger-list` shows it;
-`make deploy-trigger-setup` prints the settings to recreate it by hand.
+### Why the deploy moved out of Cloud Build's own trigger
+
+`propos-api-deploy` was a Cloud Build GitHub-App trigger. Its installation link
+broke at some point — `gcloud builds triggers describe propos-api-deploy` returns
+**no `installationId`** — so pushes to `main` stopped producing a build and the
+backend silently stayed on an old revision while `main` moved on. Nothing failed
+loudly; the deploy just never happened.
+
+Reconnecting a legacy GitHub App is a console OAuth flow that cannot be scripted,
+so the deploy now lives in the repo instead:
+
+- The trigger is **disabled**, with the reason in its description. Re-enable it
+  only after reconnecting the App in the console, and disable the Actions job
+  first — otherwise both would deploy the same commit.
+- Auth is **Workload Identity Federation**, so there is no service-account key
+  anywhere. The pool provider only accepts tokens whose `repository` claim is
+  `vicenteaguero/PropOS`:
+
+  ```
+  pool      projects/694860045239/locations/global/workloadIdentityPools/github
+  provider  .../providers/github   (attribute-condition on assertion.repository)
+  identity  propos-cloudbuild@propos-489401.iam.gserviceaccount.com
+  ```
+
+- CI now gates the deploy **natively** through `needs: [backend, frontend,
+  migrations]`, instead of `cloudbuild.yaml` polling the Checks API and hoping.
+  The in-build `ci-gate` still runs as a backstop for manual submits.
+
+`make deploy-backend` remains the manual escape hatch. It needs
+`scripts/check_ci_status.py` in the upload, which is why `.gcloudignore`
+excludes `/scripts/*` and then negates that one file — excluding `/scripts/`
+outright makes the negation impossible and the gate fails with
+`can't open file '/workspace/scripts/check_ci_status.py'`.
 
 ### CI gates the backend deploy
 
