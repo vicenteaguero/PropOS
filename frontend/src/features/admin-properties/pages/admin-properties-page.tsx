@@ -1,13 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bath, BedDouble, MapPin, Maximize, Plus } from "lucide-react";
+import { Bath, BedDouble, MapPin, Maximize, Plus, Search } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { PageLayout } from "@shared/components/page-layout";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
 import { LoadingSpinner } from "@shared/components/loading-spinner/loading-spinner";
-import { ListCapNotice, Pill, Segmented, type PillTone } from "@shared/ui";
+import { FOCUS_RING, ListCapNotice, Pill, Segmented, type PillTone } from "@shared/ui";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { propertiesApi, type Property, type PropertyInput } from "../api/properties-api";
@@ -109,9 +109,18 @@ export function AdminPropertiesPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [view, setView] = useState<"lista" | "mapa">("lista");
   const [selId, setSelId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  // Debounced so typing doesn't fire a request per keystroke; the query key
+  // carries the term, so results are cached per search rather than refetched.
+  const [debounced, setDebounced] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(search), 250);
+    return () => clearTimeout(t);
+  }, [search]);
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["admin", "properties"],
-    queryFn: () => propertiesApi.list(),
+    queryKey: ["admin", "properties", debounced],
+    queryFn: () => propertiesApi.list({ q: debounced }),
+    placeholderData: (prev) => prev,
   });
   const create = useMutation({
     mutationFn: (body: PropertyInput) => propertiesApi.create(body),
@@ -142,6 +151,25 @@ export function AdminPropertiesPage() {
         >
           <Plus className="size-5" strokeWidth={1.8} />
         </Button>
+      </div>
+
+      {/* Search hits the server, so it reaches the whole portfolio rather than
+          filtering the 100 rows the list endpoint already returned. */}
+      <div className="px-5 pb-3 lg:px-8">
+        <div className="relative">
+          <Search
+            className="pointer-events-none absolute left-4 top-1/2 size-[18px] -translate-y-1/2 text-muted-foreground"
+            strokeWidth={1.8}
+          />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            type="search"
+            aria-label="Buscar propiedades"
+            placeholder="Buscar por título o dirección"
+            className={`h-12 w-full rounded-full border border-border bg-secondary pl-11 pr-4 text-[15px] text-foreground placeholder:text-muted-foreground ${FOCUS_RING}`}
+          />
+        </div>
       </div>
 
       {!isLoading && !error && properties.length > 0 && (
@@ -186,12 +214,23 @@ export function AdminPropertiesPage() {
 
       {!isLoading && !error && properties.length === 0 && (
         <div className="px-5 pt-2 lg:px-8">
-          <EmptyState
-            title="No hay propiedades"
-            description="Creá tu primera propiedad para esta empresa."
-            actionLabel="Crear propiedad"
-            onAction={() => setDialogOpen(true)}
-          />
+          {/* "Creá tu primera propiedad" is wrong when the portfolio is full and
+              the search simply matched nothing — say which case this is. */}
+          {debounced.trim() ? (
+            <EmptyState
+              title="Sin resultados"
+              description={`Ninguna propiedad coincide con "${debounced.trim()}".`}
+              actionLabel="Limpiar búsqueda"
+              onAction={() => setSearch("")}
+            />
+          ) : (
+            <EmptyState
+              title="No hay propiedades"
+              description="Creá tu primera propiedad para esta empresa."
+              actionLabel="Crear propiedad"
+              onAction={() => setDialogOpen(true)}
+            />
+          )}
         </div>
       )}
 
