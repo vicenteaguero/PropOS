@@ -30,17 +30,9 @@ import {
   useUpdateMembership,
 } from "@features/admin-users/hooks/use-admin-users";
 import { usePageTitle } from "@app/page-meta";
+import { initials } from "@shared/utils/format";
 
 const SELECT_CLASS = `h-9 w-full rounded-xl border border-border bg-background px-3 text-sm ${FOCUS_RING}`;
-
-function initials(name: string): string {
-  return name
-    .split(" ")
-    .map((p) => p[0] ?? "")
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
 
 export function AdminUserDetailPage() {
   const { id } = useParams<{ id: string }>();

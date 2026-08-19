@@ -30,6 +30,7 @@ import { propertiesApi, type PropertyInput } from "../api/properties-api";
 import { PropertyFormDialog } from "../components/property-form-dialog";
 import { PropertyGallery } from "../components/property-gallery";
 import { usePageTitle } from "@app/page-meta";
+import { formatClp } from "@shared/utils/currency";
 
 interface ApiGrant {
   id: string;
@@ -50,15 +51,6 @@ function listingMeta(kind: string): { label: string; tone: PillTone } {
     default:
       return { label: kind, tone: "neutral" };
   }
-}
-
-function clp(cents: number | null): string {
-  if (cents == null) return "Precio a convenir";
-  return new Intl.NumberFormat("es-CL", {
-    style: "currency",
-    currency: "CLP",
-    maximumFractionDigits: 0,
-  }).format(cents / 100);
 }
 
 export function AdminPropertyDetailPage() {
@@ -178,7 +170,7 @@ export function AdminPropertyDetailPage() {
           </h1>
           {p.address && <p className="mt-1 text-[14px] text-muted-foreground">{p.address}</p>}
           <div className="mt-2 text-[22px] font-bold tracking-tight text-foreground">
-            {clp(p.list_price_cents)}
+            {formatClp(p.list_price_cents, "Precio a convenir")}
           </div>
         </div>
 

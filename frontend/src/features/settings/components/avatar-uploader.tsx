@@ -6,19 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Pill } from "@shared/ui";
 import { toast } from "sonner";
 import { settingsApi, type UserMe } from "../api/settings-api";
+import { initials } from "@shared/utils/format";
 
 interface Props {
   user: UserMe;
-}
-
-function getInitials(name: string | null): string {
-  if (!name) return "?";
-  return name
-    .split(" ")
-    .map((p) => p[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
 }
 
 export function AvatarUploader({ user }: Props) {
@@ -65,7 +56,7 @@ export function AvatarUploader({ user }: Props) {
         <Avatar className="size-24">
           {user.avatar_url && <AvatarImage src={user.avatar_url} alt={user.full_name ?? ""} />}
           <AvatarFallback className="bg-secondary text-2xl font-semibold text-foreground">
-            {getInitials(user.full_name)}
+            {initials(user.full_name)}
           </AvatarFallback>
         </Avatar>
         <span className="absolute -bottom-0.5 -right-0.5 flex size-8 items-center justify-center rounded-full bg-foreground text-background shadow-sm">

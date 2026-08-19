@@ -43,6 +43,7 @@ import {
 } from "@shared/ui";
 import { useIsDesktop } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+import { initials } from "@shared/utils/format";
 
 interface Tile {
   to: string;
@@ -58,15 +59,6 @@ function greeting(): string {
   if (h < 12) return "Buenos días";
   if (h < 20) return "Buenas tardes";
   return "Buenas noches";
-}
-
-function initials(name: string): string {
-  return name
-    .split(" ")
-    .map((p) => p[0] ?? "")
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
 }
 
 const TYPE_META: Record<CalendarItem["item_type"], { tone: PillTone; label: string }> = {

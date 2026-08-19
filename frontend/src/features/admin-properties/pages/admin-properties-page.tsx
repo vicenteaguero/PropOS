@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { propertiesApi, type Property, type PropertyInput } from "../api/properties-api";
 import { PropertyFormDialog } from "../components/property-form-dialog";
+import { formatClp } from "@shared/utils/currency";
 
 /** Operation label + tone: Venta → success, Arriendo → warning. */
 function listingMeta(kind: string): { label: string; tone: PillTone } {
@@ -25,15 +26,6 @@ function listingMeta(kind: string): { label: string; tone: PillTone } {
     default:
       return { label: kind, tone: "neutral" };
   }
-}
-
-function clp(cents: number | null): string {
-  if (cents == null) return "Precio a convenir";
-  return new Intl.NumberFormat("es-CL", {
-    style: "currency",
-    currency: "CLP",
-    maximumFractionDigits: 0,
-  }).format(cents / 100);
 }
 
 /** Short stable code from the property id (presentational). */
@@ -83,7 +75,7 @@ function PropertyCard({ property, onClick }: { property: Property; onClick: () =
           </div>
         )}
         <div className="mt-2 text-[17px] font-bold tracking-tight text-foreground">
-          {clp(property.list_price_cents)}
+          {formatClp(property.list_price_cents, "Precio a convenir")}
         </div>
         {specs.length > 0 && (
           <div className="mt-2 flex items-center gap-4 text-[13px] text-muted-foreground">

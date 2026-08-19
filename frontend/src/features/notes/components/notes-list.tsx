@@ -5,14 +5,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useCreateNote, useDeleteNote, useNotes } from "../hooks/use-notes";
 import { ErrorState } from "@shared/ui";
+import { formatDateTime } from "@shared/utils/format";
 
 interface Props {
   targetTable: string;
   targetRowId: string;
-}
-
-function fmt(ts: string): string {
-  return new Date(ts).toLocaleString("es-CL", { dateStyle: "medium", timeStyle: "short" });
 }
 
 export function NotesList({ targetTable, targetRowId }: Props) {
@@ -69,7 +66,9 @@ export function NotesList({ targetTable, targetRowId }: Props) {
             <li key={n.id} className="flex items-start justify-between gap-2 rounded-md border p-3">
               <div className="min-w-0">
                 <p className="whitespace-pre-wrap text-sm">{n.body}</p>
-                <span className="text-xs text-muted-foreground">{fmt(n.created_at)}</span>
+                <span className="text-xs text-muted-foreground">
+                  {formatDateTime(n.created_at)}
+                </span>
               </div>
               <Button
                 variant="ghost"

@@ -43,6 +43,7 @@ import {
 } from "../api/finance-api";
 import { CommissionCalculator } from "../components/commission-calculator";
 import { ReceiptPicker } from "../components/receipt-picker";
+import { formatClp } from "@shared/utils/currency";
 
 /** Spanish labels for the transaction category enum (UI Spanish, code English). */
 const TX_CATEGORY: Record<string, string> = {
@@ -65,14 +66,6 @@ const TX_CATEGORY: Record<string, string> = {
 
 function categoryLabel(category: string): string {
   return TX_CATEGORY[category] ?? category;
-}
-
-function clp(cents: number): string {
-  return new Intl.NumberFormat("es-CL", {
-    style: "currency",
-    currency: "CLP",
-    maximumFractionDigits: 0,
-  }).format(cents / 100);
 }
 
 const STATUS_META: Record<string, { label: string; tone: PillTone }> = {
@@ -286,7 +279,7 @@ export function FinancePage() {
                       }`}
                     >
                       {t.direction === "IN" ? "+" : "−"}
-                      {clp(t.amount_cents)}
+                      {formatClp(t.amount_cents)}
                     </span>
                     {t.status === "PENDING" && (
                       <Button
@@ -381,7 +374,7 @@ export function FinancePage() {
                       }`}
                     >
                       {t.direction === "IN" ? "+" : "−"}
-                      {clp(t.amount_cents)}
+                      {formatClp(t.amount_cents)}
                     </td>
                     <td className="py-2.5 pl-3 pr-4">
                       <div className="flex items-center justify-end gap-1">
@@ -446,13 +439,15 @@ export function FinancePage() {
         <div className="rounded-2xl bg-foreground p-5 text-background">
           <p className="text-[13px] font-medium text-background/60">Ingresos del mes</p>
           <p className="mt-1 text-[34px] font-bold leading-none tracking-tight">
-            {clp(summary?.income_cents ?? 0)}
+            {formatClp(summary?.income_cents ?? 0)}
           </p>
           <div className="mt-5 grid grid-cols-3 gap-3">
             {secondaryKpis.map((s) => (
               <div key={s.label}>
                 <p className="text-[11px] font-medium text-background/60">{s.label}</p>
-                <p className="mt-0.5 text-[15px] font-semibold tabular-nums">{clp(s.value)}</p>
+                <p className="mt-0.5 text-[15px] font-semibold tabular-nums">
+                  {formatClp(s.value)}
+                </p>
               </div>
             ))}
           </div>
@@ -469,7 +464,7 @@ export function FinancePage() {
         <div className="rounded-2xl bg-foreground p-5 text-background">
           <p className="text-[13px] font-medium text-background/60">Ingresos del mes</p>
           <p className="mt-1.5 text-[28px] font-bold leading-none tracking-tight tabular-nums">
-            {clp(summary?.income_cents ?? 0)}
+            {formatClp(summary?.income_cents ?? 0)}
           </p>
         </div>
         {secondaryKpis.map((s) => (
@@ -484,7 +479,7 @@ export function FinancePage() {
                     : "text-foreground"
               }`}
             >
-              {clp(s.value)}
+              {formatClp(s.value)}
             </p>
           </div>
         ))}

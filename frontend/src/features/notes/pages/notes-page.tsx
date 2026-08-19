@@ -15,10 +15,7 @@ import { useIsDesktop } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { useCreateNote, useDeleteNote, useNotes } from "../hooks/use-notes";
 import type { Note } from "../api/notes-api";
-
-function fmt(ts: string): string {
-  return new Date(ts).toLocaleDateString("es-CL", { day: "numeric", month: "short" });
-}
+import { formatDayMonth } from "@shared/utils/format";
 
 // Soft pastel sticky-note tints, applied ONLY in light mode (inline style would
 // otherwise win over `dark:` classes, muddying dark cards). Dark mode keeps the
@@ -153,7 +150,7 @@ export function NotesPage() {
       <div className="mt-3 flex items-center justify-between gap-2">
         {note.target_table ? <Pill>{targetLabel(note.target_table)}</Pill> : <span />}
         <span className="flex items-center gap-2">
-          <span className="text-[11px] text-faint">{fmt(note.created_at)}</span>
+          <span className="text-[11px] text-faint">{formatDayMonth(note.created_at)}</span>
           <button
             type="button"
             onClick={() => del.mutate(note.id)}

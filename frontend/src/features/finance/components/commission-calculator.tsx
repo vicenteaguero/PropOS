@@ -4,14 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { financeApi } from "../api/finance-api";
 import { Field } from "@shared/ui";
-
-function clp(cents: number): string {
-  return new Intl.NumberFormat("es-CL", {
-    style: "currency",
-    currency: "CLP",
-    maximumFractionDigits: 0,
-  }).format(cents / 100);
-}
+import { formatClp } from "@shared/utils/currency";
 
 export function CommissionCalculator() {
   const [amount, setAmount] = useState("");
@@ -66,13 +59,15 @@ export function CommissionCalculator() {
         {result && (
           <div className="flex flex-wrap items-center gap-x-6 gap-y-1 rounded-xl bg-secondary px-3.5 py-2.5 text-sm">
             <span className="text-muted-foreground">
-              Neto <span className="font-semibold text-foreground">{clp(result.net_cents)}</span>
+              Neto{" "}
+              <span className="font-semibold text-foreground">{formatClp(result.net_cents)}</span>
             </span>
             <span className="text-muted-foreground">
-              IVA <span className="font-semibold text-foreground">{clp(result.iva_cents)}</span>
+              IVA{" "}
+              <span className="font-semibold text-foreground">{formatClp(result.iva_cents)}</span>
             </span>
             <span className="text-muted-foreground">
-              Total <span className="font-bold text-success">{clp(result.gross_cents)}</span>
+              Total <span className="font-bold text-success">{formatClp(result.gross_cents)}</span>
             </span>
           </div>
         )}

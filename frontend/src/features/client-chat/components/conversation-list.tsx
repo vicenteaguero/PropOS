@@ -2,6 +2,7 @@ import { Archive, ArchiveRestore } from "lucide-react";
 import { BrandMark, Pill, type PillTone, RoundButton, Row, HOVER_REVEAL } from "@shared/ui";
 import { useArchiveConversation } from "../hooks/use-client-chat";
 import type { ClientConversation, ConversationStatus } from "../types";
+import { formatShortDateTime } from "@shared/utils/format";
 
 const STATUS_LABEL: Record<ConversationStatus, string> = {
   open: "Abierta",
@@ -14,10 +15,6 @@ const STATUS_TONE: Record<ConversationStatus, PillTone> = {
   assigned: "accent",
   closed: "neutral",
 };
-
-function fmtTime(ts: string): string {
-  return new Date(ts).toLocaleString("es-CL", { dateStyle: "short", timeStyle: "short" });
-}
 
 interface Props {
   conversations: ClientConversation[];
@@ -56,7 +53,7 @@ export function ConversationList({ conversations, selectedId, onSelect }: Props)
                 <span className="flex items-center gap-1.5">
                   <span>{c.ai_enabled ? "IA on" : "IA off"}</span>
                   <span aria-hidden>·</span>
-                  <span>{fmtTime(c.last_message_at)}</span>
+                  <span>{formatShortDateTime(c.last_message_at)}</span>
                 </span>
               }
               right={

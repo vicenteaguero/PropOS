@@ -12,15 +12,7 @@ import {
 } from "@features/admin-users/hooks/use-admin-users";
 import { useAuth } from "@shared/hooks/use-auth";
 import { InviteUserDrawer } from "@features/admin-users/components/invite-user-drawer";
-
-function initials(name: string): string {
-  return name
-    .split(" ")
-    .map((p) => p[0] ?? "")
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
+import { initials } from "@shared/utils/format";
 
 export function AdminUsersPage() {
   const navigate = useNavigate();

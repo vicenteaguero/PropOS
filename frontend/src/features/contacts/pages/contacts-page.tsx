@@ -23,6 +23,7 @@ import { ContactFormDialog } from "../components/contact-form-dialog";
 import { ContactDetail } from "../components/contact-detail";
 import { ContactAside } from "../components/contact-aside";
 import { CONTACT_TYPE_LABELS, CONTACT_TYPES, type ContactType } from "../types";
+import { initials } from "@shared/utils/format";
 
 /** Soft tone per contact type (semantic tokens only). */
 const TYPE_TONE: Record<ContactType, PillTone> = {
@@ -37,15 +38,6 @@ const TYPE_TONE: Record<ContactType, PillTone> = {
   STAKEHOLDER: "neutral",
   OTHER: "neutral",
 };
-
-function initials(name: string): string {
-  return name
-    .split(" ")
-    .map((p) => p[0] ?? "")
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
 
 export function ContactsPage() {
   const navigate = useNavigate();
