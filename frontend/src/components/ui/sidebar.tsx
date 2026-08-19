@@ -295,8 +295,15 @@ function SidebarInset({ className, children, ...props }: React.ComponentProps<"m
       {...props}
     >
       {isMobile && (
-        <div
+        // A real <button>, not a div with onClick: the scrim is the primary way
+        // to dismiss the mobile sidebar, and as a div it was mouse-only —
+        // unreachable by keyboard and silent to screen readers.
+        <button
+          type="button"
           data-slot="sidebar-backdrop"
+          aria-label="Cerrar menú"
+          tabIndex={openMobile ? 0 : -1}
+          aria-hidden={!openMobile}
           className={cn(
             "absolute inset-0 z-50 bg-overlay/30 transition-opacity duration-300",
             openMobile ? "opacity-100" : "pointer-events-none opacity-0",

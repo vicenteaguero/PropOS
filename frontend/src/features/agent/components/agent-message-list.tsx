@@ -131,6 +131,8 @@ function AudioBubble({
   const [showTranscript, setShowTranscript] = useState(false);
   return (
     <div className="ml-6 rounded-lg bg-primary/10 px-3 py-2 text-sm">
+      {/* Voice memo recorded in-app; there is no caption track to point at. */}
+      {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
       <audio controls src={url} className="h-8 w-full" />
       {transcribing && (
         <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">

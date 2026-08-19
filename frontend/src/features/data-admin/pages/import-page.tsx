@@ -2,7 +2,15 @@ import { useState } from "react";
 import { FileUp, Loader2, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageLayout } from "@shared/components/page-layout";
-import { ErrorState, PageSkeleton, Pill, Row, Segmented, type PillTone } from "@shared/ui";
+import {
+  ErrorState,
+  FOCUS_RING,
+  PageSkeleton,
+  Pill,
+  Row,
+  Segmented,
+  type PillTone,
+} from "@shared/ui";
 import { toast } from "sonner";
 import { type ImportJob, type ImportPreview } from "../api/imports-api";
 import { useCommitImport, useImports, usePreviewImport } from "../hooks/use-imports";
@@ -111,43 +119,46 @@ export function ImportPage() {
         {/* Upload card */}
         <div className="px-5 lg:px-0">
           <div className="rounded-2xl border border-border bg-card p-5">
-            <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-line-strong bg-secondary/40 px-4 py-4 transition hover:bg-secondary">
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-secondary text-foreground">
-                <FileUp className="size-[18px]" strokeWidth={1.8} />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[15px] font-semibold text-foreground">
-                  {file ? file.name : "Elegí un archivo CSV"}
+            {/* The clear control is a sibling of the label, not a child: a
+                <label> may not contain interactive content, and nested inside
+                it every click on "quitar" also reopened the file picker. */}
+            <div className="flex items-center gap-3 rounded-xl border border-dashed border-line-strong bg-secondary/40 px-4 py-4 transition focus-within:border-ring hover:bg-secondary">
+              <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-secondary text-foreground">
+                  <FileUp className="size-[18px]" strokeWidth={1.8} />
                 </span>
-                <span className="block text-[13px] text-muted-foreground">
-                  {file ? `${(file.size / 1024).toFixed(0)} KB` : "Toca para seleccionar"}
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[15px] font-semibold text-foreground">
+                    {file ? file.name : "Elegí un archivo CSV"}
+                  </span>
+                  <span className="block text-[13px] text-muted-foreground">
+                    {file ? `${(file.size / 1024).toFixed(0)} KB` : "Toca para seleccionar"}
+                  </span>
                 </span>
-              </span>
+                <input
+                  type="file"
+                  accept=".csv,text/csv"
+                  className="sr-only"
+                  onChange={(e) => {
+                    setFile(e.target.files?.[0] ?? null);
+                    setPreview(null);
+                  }}
+                />
+              </label>
               {file && (
-                <span
-                  role="button"
-                  tabIndex={0}
+                <button
+                  type="button"
                   aria-label="Quitar archivo"
-                  className="flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted"
-                  onClick={(e) => {
-                    e.preventDefault();
+                  className={`flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted ${FOCUS_RING}`}
+                  onClick={() => {
                     setFile(null);
                     setPreview(null);
                   }}
                 >
                   <X className="size-4" strokeWidth={1.8} />
-                </span>
+                </button>
               )}
-              <input
-                type="file"
-                accept=".csv,text/csv"
-                className="sr-only"
-                onChange={(e) => {
-                  setFile(e.target.files?.[0] ?? null);
-                  setPreview(null);
-                }}
-              />
-            </label>
+            </div>
 
             <Button
               onClick={doPreview}
