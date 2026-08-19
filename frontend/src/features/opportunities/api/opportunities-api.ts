@@ -1,5 +1,6 @@
 import { apiRequest } from "@shared/api/http";
 import type { Opportunity, OpportunityInput } from "../types";
+import { qs } from "@shared/lib/query-string";
 
 export interface ListOpportunitiesParams {
   status?: string;
@@ -7,15 +8,6 @@ export interface ListOpportunitiesParams {
   person_id?: string;
   property_id?: string;
   limit?: number;
-}
-
-function qs(params: Record<string, unknown>): string {
-  const sp = new URLSearchParams();
-  for (const [k, v] of Object.entries(params)) {
-    if (v !== undefined && v !== null && v !== "") sp.set(k, String(v));
-  }
-  const s = sp.toString();
-  return s ? `?${s}` : "";
 }
 
 export const opportunitiesApi = {

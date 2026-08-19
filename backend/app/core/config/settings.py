@@ -118,6 +118,16 @@ class Settings(BaseSettings):
     # scheduler. Empty value disables the endpoints (returns 503).
     internal_jobs_secret: str = ""
 
+    # UF (Unidad de Fomento) sources, tried in order until one answers. All of
+    # them republish the same Banco Central series, so the fallback costs no
+    # accuracy; SII leads because its page carries the published forward block
+    # (the UF is fixed on the 9th for the following 10th -> 9th window), which
+    # mindicador's JSON does not expose.
+    uf_sources: str = "sii,mindicador"
+    # Free key from https://api.cmfchile.cl. Empty = the CMF provider declines
+    # and the chain moves on.
+    cmf_api_key: str = ""
+
     # Email sync (single Titan mailbox in v0.1.0; creds via env/secrets only).
     email_sync_enabled: bool = False
     email_imap_host: str = "imap.titan.email"

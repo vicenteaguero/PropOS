@@ -1,4 +1,5 @@
 import { apiRequest } from "@shared/api/http";
+import { qs } from "@shared/lib/query-string";
 
 export interface Note {
   id: string;
@@ -15,15 +16,6 @@ export interface NoteInput {
   body: string;
   target_table?: string | null;
   target_row_id?: string | null;
-}
-
-function qs(params: Record<string, unknown>): string {
-  const sp = new URLSearchParams();
-  for (const [k, v] of Object.entries(params)) {
-    if (v !== undefined && v !== null && v !== "") sp.set(k, String(v));
-  }
-  const s = sp.toString();
-  return s ? `?${s}` : "";
 }
 
 export const notesApi = {

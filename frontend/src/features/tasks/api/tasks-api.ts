@@ -1,4 +1,5 @@
 import { apiRequest } from "@shared/api/http";
+import { qs } from "@shared/lib/query-string";
 
 export type TaskStatus = "OPEN" | "IN_PROGRESS" | "BLOCKED" | "DONE" | "CANCELLED";
 export type TaskKind = "TODO" | "PENDING" | "GOAL" | "OBJECTIVE" | "PLAN";
@@ -35,15 +36,6 @@ export interface TaskInput {
   priority?: number;
   status?: TaskStatus;
   related?: TaskRelated;
-}
-
-function qs(params: Record<string, unknown>): string {
-  const sp = new URLSearchParams();
-  for (const [k, v] of Object.entries(params)) {
-    if (v !== undefined && v !== null && v !== "") sp.set(k, String(v));
-  }
-  const s = sp.toString();
-  return s ? `?${s}` : "";
 }
 
 export const tasksApi = {
