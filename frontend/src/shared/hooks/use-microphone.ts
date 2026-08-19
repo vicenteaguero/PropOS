@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from "react";
+import { acquireMicStream, permissionHint, releaseMicStream } from "@shared/lib/mic-stream";
 
 interface UseMicrophoneReturn {
   isRecording: boolean;
@@ -21,7 +22,6 @@ export function useMicrophone(): UseMicrophoneReturn {
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
 
   const startRecording = useCallback(async () => {
     try {
@@ -34,8 +34,7 @@ export function useMicrophone(): UseMicrophoneReturn {
         );
       }
 
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
+      const stream = await acquireMicStream();
 
       const mimeType = MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "audio/mp4";
 
@@ -53,7 +52,7 @@ export function useMicrophone(): UseMicrophoneReturn {
         const blob = new Blob(chunksRef.current, { type: mimeType });
         setAudioBlob(blob);
         setAudioUrl(URL.createObjectURL(blob));
-        stream.getTracks().forEach((t) => t.stop());
+        releaseMicStream();
       };
 
       recorder.start();
@@ -64,13 +63,9 @@ export function useMicrophone(): UseMicrophoneReturn {
       }, 1000);
     } catch (err) {
       const name = err instanceof Error ? err.name : "";
-      const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
-      const isIos = /iPad|iPhone|iPod/.test(ua);
       let message = "No se pudo acceder al micrófono.";
       if (name === "NotAllowedError" || name === "SecurityError") {
-        message = isIos
-          ? "Permiso de micrófono denegado. Abre Ajustes → Safari (o PropOS si está instalada) → Micrófono → Permitir."
-          : "Permiso de micrófono denegado. Habilítalo en la configuración del navegador y vuelve a intentar.";
+        message = permissionHint();
       } else if (name === "NotFoundError" || name === "OverconstrainedError") {
         message = "No se encontró ningún micrófono en este dispositivo.";
       } else if (err instanceof Error && err.message) {

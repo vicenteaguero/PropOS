@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Check, Mic, MessageSquare } from "lucide-react";
 import { AgentInlineProposalCard } from "./agent-inline-proposal-card";
 import type { useAgentChat } from "../hooks/use-agent-chat";
+import { acquireMicStream, releaseMicStream } from "@shared/lib/mic-stream";
 
 type Chat = ReturnType<typeof useAgentChat>;
 
@@ -26,7 +27,6 @@ export function AgentVoice({ chat, onSwitchToChat, onClose }: Props) {
 
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
-  const streamRef = useRef<MediaStream | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -41,8 +41,7 @@ export function AgentVoice({ chat, onSwitchToChat, onClose }: Props) {
   const cleanup = () => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     rafRef.current = null;
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    streamRef.current = null;
+    releaseMicStream();
     if (audioCtxRef.current && audioCtxRef.current.state !== "closed") {
       audioCtxRef.current.close().catch(() => {});
     }
@@ -96,8 +95,7 @@ export function AgentVoice({ chat, onSwitchToChat, onClose }: Props) {
       if (!navigator.mediaDevices?.getUserMedia) {
         throw new Error("Tu navegador no soporta micrófono. Instala PropOS como app.");
       }
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
+      const stream = await acquireMicStream();
       const mime = MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "audio/mp4";
       mimeRef.current = mime;
       const rec = new MediaRecorder(stream, { mimeType: mime });
