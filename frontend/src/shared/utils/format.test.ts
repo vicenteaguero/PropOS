@@ -59,3 +59,21 @@ describe("date formatters", () => {
     expect(formatDateTime("not-a-date", "—")).toBe("—");
   });
 });
+
+describe("date formatters accept every shape a caller holds", () => {
+  const ms = Date.parse("2026-08-12T14:30:00.000Z");
+
+  it("accepts epoch milliseconds", () => {
+    expect(formatDate(ms)).toBe("12-08-2026");
+    expect(formatDayMonth(ms)).toBe("12 ago");
+  });
+
+  it("accepts a Date instance", () => {
+    expect(formatDate(new Date(ms))).toBe("12-08-2026");
+  });
+
+  it("treats 0 as a real timestamp, not as absent", () => {
+    // `!ts` would have swallowed the epoch; the guard checks null/undefined/"".
+    expect(formatDate(0)).not.toBe("");
+  });
+});

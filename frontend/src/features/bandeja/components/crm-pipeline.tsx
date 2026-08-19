@@ -5,6 +5,7 @@ import { useOpportunities } from "@features/opportunities/hooks/use-opportunitie
 import { useContacts } from "@features/contacts/hooks/use-contacts";
 import { PIPELINE_STAGES, STAGE_LABELS, type Opportunity } from "@features/opportunities/types";
 import { formatCLP } from "@/lib/locale-cl";
+import { formatDayMonth } from "@shared/utils/format";
 
 // One accent hue per stage so each lane dot reads distinctly. We avoid raw hex
 // in className by driving the dot color through an inline CSS var reference.
@@ -24,7 +25,7 @@ function relTime(iso: string | null): string {
   if (diff < day) return "hoy";
   const days = Math.floor(diff / day);
   if (days < 7) return `hace ${days}d`;
-  return new Date(iso).toLocaleDateString("es-CL", { day: "numeric", month: "short" });
+  return formatDayMonth(iso);
 }
 
 /**

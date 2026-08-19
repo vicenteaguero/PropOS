@@ -56,6 +56,7 @@ import { VersionHistoryDrawer } from "../components/version-history-drawer";
 import { DocumentSharePanel } from "../components/share-panel";
 import { Users } from "lucide-react";
 import { usePageTitle } from "@app/page-meta";
+import { formatDateTime } from "@shared/utils/format";
 
 export function DocumentDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -422,11 +423,8 @@ export function DocumentDetailPage() {
             <SectionLabel className="px-0">Información</SectionLabel>
             <dl className="mt-3 divide-y divide-border overflow-hidden rounded-2xl bg-card">
               <InfoRow label="Origen" value={doc.origin} />
-              <InfoRow label="Creado" value={new Date(doc.created_at).toLocaleString("es-CL")} />
-              <InfoRow
-                label="Actualizado"
-                value={new Date(doc.updated_at).toLocaleString("es-CL")}
-              />
+              <InfoRow label="Creado" value={formatDateTime(doc.created_at)} />
+              <InfoRow label="Actualizado" value={formatDateTime(doc.updated_at)} />
               {currentVersion && (
                 <>
                   <InfoRow label="MIME" value={currentVersion.mime_type} />

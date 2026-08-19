@@ -19,6 +19,7 @@ import { formatBytes } from "@shared/lib/format";
 import type { DocumentItem, ViewMode } from "../types";
 import { ErrorState } from "@shared/ui";
 import { SearchInput } from "@shared/components/search-input/search-input";
+import { formatDate } from "@shared/utils/format";
 
 const VIEW_MODE_KEY = "documents:view-mode";
 const GROUP_BY_KEY = "propos:documents-view";
@@ -326,7 +327,7 @@ function DocumentPreviewPane({
 
       <dl className="mt-4 divide-y divide-border overflow-hidden rounded-2xl bg-card">
         <PreviewRow label="Origen" value={doc.origin} />
-        <PreviewRow label="Creado" value={new Date(doc.created_at).toLocaleDateString("es-CL")} />
+        <PreviewRow label="Creado" value={formatDate(doc.created_at)} />
         {doc.assignments && doc.assignments.length > 0 && (
           <PreviewRow label="Vínculos" value={`${doc.assignments.length}`} />
         )}

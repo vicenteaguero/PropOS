@@ -25,32 +25,35 @@ export function initials(name: string | null | undefined): string {
   return letters || "?";
 }
 
-function safeDate(ts: string | null | undefined): Date | null {
-  if (!ts) return null;
-  const d = new Date(ts);
+/** Anything a caller might hold: an ISO string, epoch ms, or a Date. */
+export type DateLike = string | number | Date | null | undefined;
+
+function safeDate(ts: DateLike): Date | null {
+  if (ts === null || ts === undefined || ts === "") return null;
+  const d = ts instanceof Date ? ts : new Date(ts);
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
 /** "12-08-2026, 10:30 a. m." — the default for timestamps in lists and detail rows. */
-export function formatDateTime(ts: string | null | undefined, fallback = ""): string {
+export function formatDateTime(ts: DateLike, fallback = ""): string {
   const d = safeDate(ts);
   return d ? d.toLocaleString("es-CL", { dateStyle: "medium", timeStyle: "short" }) : fallback;
 }
 
 /** "12-08-26, 10:30 a. m." — two-digit year, for dense rows. */
-export function formatShortDateTime(ts: string | null | undefined, fallback = ""): string {
+export function formatShortDateTime(ts: DateLike, fallback = ""): string {
   const d = safeDate(ts);
   return d ? d.toLocaleString("es-CL", { dateStyle: "short", timeStyle: "short" }) : fallback;
 }
 
 /** "12 ago" — for compact cards where the year is noise. */
-export function formatDayMonth(ts: string | null | undefined, fallback = ""): string {
+export function formatDayMonth(ts: DateLike, fallback = ""): string {
   const d = safeDate(ts);
   return d ? d.toLocaleDateString("es-CL", { day: "numeric", month: "short" }) : fallback;
 }
 
 /** "12-08-2026" — date only. */
-export function formatDate(ts: string | null | undefined, fallback = ""): string {
+export function formatDate(ts: DateLike, fallback = ""): string {
   const d = safeDate(ts);
   return d ? d.toLocaleDateString("es-CL") : fallback;
 }

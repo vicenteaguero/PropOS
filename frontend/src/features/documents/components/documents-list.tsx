@@ -4,6 +4,7 @@ import { FileText, FileType2, FileImage, FileQuestion, WifiOff } from "lucide-re
 import { formatBytes } from "@shared/lib/format";
 import type { DocumentItem } from "../types";
 import { DocumentKindPill } from "./document-kind-pill";
+import { formatDate } from "@shared/utils/format";
 
 interface Props {
   documents: DocumentItem[];
@@ -49,7 +50,7 @@ export function DocumentsList({ documents, onOpen }: Props) {
             v ? `v${v.version_number}` : null,
             formatBytes(v?.size_bytes),
             `${doc.assignments?.length ?? 0} vínculos`,
-            new Date(doc.updated_at).toLocaleDateString("es-CL"),
+            formatDate(doc.updated_at),
           ]
             .filter(Boolean)
             .join(" · ");
