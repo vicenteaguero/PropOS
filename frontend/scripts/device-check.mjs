@@ -181,6 +181,10 @@ const ROUTES = [
   { path: "/admin", name: "home" },
   { path: "/admin/personas", name: "contacts" },
   { path: "/admin/properties", name: "properties" },
+  { path: "/admin/settings", name: "settings" },
+  { path: "/admin/calendario", name: "calendar" },
+  { path: "/admin/tareas", name: "tasks" },
+  { path: "/admin/client-inbox", name: "inbox" },
 ];
 
 const problems = [];
@@ -256,6 +260,21 @@ async function run() {
       await page.waitForTimeout(700);
       await audit(page, dev, route.name);
       await page.screenshot({ path: `${OUT}/${dev.name}__${route.name}.png` });
+    }
+
+    // The "Más" sheet is the phone's whole navigation; check it fits.
+    if (dev.touch) {
+      await page.goto(`${BASE}/admin`, { waitUntil: "networkidle" });
+      await page.waitForTimeout(500);
+      const more = page.getByRole("button", { name: /^más/i });
+      if (await more.count()) {
+        await more.first().click();
+        await page.waitForTimeout(600);
+        await audit(page, dev, "more-sheet");
+        await page.screenshot({ path: `${OUT}/${dev.name}__more-sheet.png` });
+        await page.keyboard.press("Escape").catch(() => {});
+        await page.waitForTimeout(300);
+      }
     }
 
     // The Propo overlay is the surface the phone screenshots showed failing.
@@ -343,7 +362,10 @@ async function audit(page, dev, routeName) {
         }
         if (contained) continue;
         if (insets.top && r.top < insets.top) out.occluded.push(`top ${label(el)} top=${Math.round(r.top)} < ${insets.top}`);
-        if (insets.bottom && r.bottom > vh - insets.bottom)
+        // Only chrome pinned to the viewport can be permanently covered by a
+        // bottom cutout; ordinary content past the fold simply scrolls.
+        const pinned = ["fixed", "sticky"].includes(getComputedStyle(el).position);
+        if (insets.bottom && pinned && r.bottom > vh - insets.bottom)
           out.occluded.push(`bottom ${label(el)} bottom=${Math.round(r.bottom)} > ${vh - insets.bottom}`);
         if (insets.left && r.left < insets.left) out.occluded.push(`left ${label(el)} left=${Math.round(r.left)}`);
         if (insets.right && r.right > vw - insets.right) out.occluded.push(`right ${label(el)} right=${Math.round(r.right)}`);
@@ -387,6 +409,23 @@ async function audit(page, dev, routeName) {
 
     if (document.documentElement.scrollWidth > vw + 1)
       out.overflow = `${document.documentElement.scrollWidth} > ${vw}`;
+
+    // 4. Fixed chrome that overruns a short viewport. In landscape the phone is
+    //    390px tall, so an overlay sized for portrait simply runs off-screen
+    //    with its actions unreachable.
+    out.tall = [];
+    for (const el of all) {
+      const pos = getComputedStyle(el).position;
+      if (pos !== "fixed" && pos !== "absolute") continue;
+      const r = el.getBoundingClientRect();
+      if (r.height <= vh + 1) continue;
+      // Fine if it scrolls internally.
+      const ov = getComputedStyle(el);
+      if (/(auto|scroll)/.test(ov.overflowY)) continue;
+      if ([...el.querySelectorAll("*")].some((c) => /(auto|scroll)/.test(getComputedStyle(c).overflowY)))
+        continue;
+      out.tall.push(`${label(el)} h=${Math.round(r.height)} > ${vh}`);
+    }
     return out;
   }, { insets: dev.insets, touch: !!dev.touch });
 
@@ -394,6 +433,7 @@ async function audit(page, dev, routeName) {
   for (const c of res.clipped.slice(0, 6)) add(dev.name, routeName, "clipped", c);
   for (const s of res.small.slice(0, 6)) add(dev.name, routeName, "touch", s);
   if (res.overflow) add(dev.name, routeName, "overflow", res.overflow);
+  for (const t of (res.tall ?? []).slice(0, 4)) add(dev.name, routeName, "tall", t);
 }
 
 run().catch((e) => {
