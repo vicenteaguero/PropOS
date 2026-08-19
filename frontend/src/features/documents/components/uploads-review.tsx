@@ -3,11 +3,10 @@ import { toast } from "sonner";
 import { Check, FileText, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useContacts, useInternalAreas, useProperties } from "../hooks/use-entities";
 import { usePortalUploads, usePromoteUpload, useRejectUpload } from "../hooks/use-portals";
 import type { AnonymousUpload, AssignmentTarget } from "../types";
-import { Field, FieldGroup } from "@shared/ui";
+import { Field, FieldGroup, ResponsiveSheet } from "@shared/ui";
 
 interface Props {
   portalId: string;
@@ -135,37 +134,37 @@ export function UploadsReview({ portalId, defaults }: Props) {
         ))}
       </ul>
 
-      <Dialog open={!!target} onOpenChange={(o) => !o && setTarget(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Aprobar y vincular</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <Field label="Nombre del documento" labelClassName="text-xs">
-              <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
-            </Field>
-            <FieldGroup label="Vínculos automáticos del enlace" className="text-xs">
-              <ul className="rounded-md border border-border bg-muted/30 p-2 text-muted-foreground">
-                {labelDefault("property", defaults.propertyId) && (
-                  <li>Propiedad: {labelDefault("property", defaults.propertyId)}</li>
-                )}
-                {labelDefault("contact", defaults.contactId) && (
-                  <li>Contacto: {labelDefault("contact", defaults.contactId)}</li>
-                )}
-                {labelDefault("area", defaults.areaId) && (
-                  <li>Área: {labelDefault("area", defaults.areaId)}</li>
-                )}
-                {!defaults.propertyId && !defaults.contactId && !defaults.areaId && (
-                  <li>Sin defaults configurados</li>
-                )}
-              </ul>
-            </FieldGroup>
-            <Button onClick={confirmPromote} disabled={promote.isPending} className="w-full">
-              Aprobar y crear documento
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <ResponsiveSheet
+        open={!!target}
+        onOpenChange={(o) => !o && setTarget(null)}
+        title="Aprobar y vincular"
+        desktopClassName="max-w-md"
+      >
+        <div className="space-y-3">
+          <Field label="Nombre del documento" labelClassName="text-xs">
+            <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+          </Field>
+          <FieldGroup label="Vínculos automáticos del enlace" className="text-xs">
+            <ul className="rounded-md border border-border bg-muted/30 p-2 text-muted-foreground">
+              {labelDefault("property", defaults.propertyId) && (
+                <li>Propiedad: {labelDefault("property", defaults.propertyId)}</li>
+              )}
+              {labelDefault("contact", defaults.contactId) && (
+                <li>Contacto: {labelDefault("contact", defaults.contactId)}</li>
+              )}
+              {labelDefault("area", defaults.areaId) && (
+                <li>Área: {labelDefault("area", defaults.areaId)}</li>
+              )}
+              {!defaults.propertyId && !defaults.contactId && !defaults.areaId && (
+                <li>Sin defaults configurados</li>
+              )}
+            </ul>
+          </FieldGroup>
+          <Button onClick={confirmPromote} disabled={promote.isPending} className="w-full">
+            Aprobar y crear documento
+          </Button>
+        </div>
+      </ResponsiveSheet>
     </>
   );
 }

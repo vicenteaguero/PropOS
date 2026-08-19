@@ -1,16 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Camera, SwitchCamera, RotateCcw, Save } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useCamera } from "@shared/hooks/use-camera";
 import { useMediaUpload } from "@shared/hooks/use-media-upload";
 import { toast } from "sonner";
+import { ResponsiveSheet } from "@shared/ui";
 
 interface CameraCaptureProps {
   onSaved?: (url: string) => void;
@@ -68,20 +62,18 @@ export function CameraCapture({ onSaved }: CameraCaptureProps) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" className="gap-2">
-          <Camera className="size-4" />
-          Abrir Cámara
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Cámara</DialogTitle>
-        </DialogHeader>
-
+    <>
+      <Button variant="outline" className="gap-2" onClick={() => setOpen(true)}>
+        <Camera className="size-4" />
+        Abrir Cámara
+      </Button>
+      <ResponsiveSheet
+        open={open}
+        onOpenChange={setOpen}
+        title="Cámara"
+        desktopClassName="max-w-md"
+      >
         {error && <p className="text-sm text-destructive">{error}</p>}
-
         {!photoUrl ? (
           <div className="space-y-3">
             <div className="relative aspect-[4/3] overflow-hidden rounded-lg bg-muted">
@@ -121,7 +113,7 @@ export function CameraCapture({ onSaved }: CameraCaptureProps) {
             </div>
           </div>
         )}
-      </DialogContent>
-    </Dialog>
+      </ResponsiveSheet>
+    </>
   );
 }

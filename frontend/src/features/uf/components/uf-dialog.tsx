@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import { Delete, Loader2, Minus, Plus, TrendingDown, TrendingUp } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { useUfToday, useUsdToday } from "../hooks/use-uf";
+import { ResponsiveSheet } from "@shared/ui";
 
 interface Props {
   open: boolean;
@@ -174,170 +174,167 @@ export function UfDialog({ open, onOpenChange }: Props) {
   const hasError = uf.isError && usd.isError;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm p-0 overflow-hidden">
-        <DialogHeader className="px-5 pt-5">
-          <DialogTitle>Conversor de moneda</DialogTitle>
-        </DialogHeader>
-
-        {loading ? (
-          <div className="flex justify-center py-10">
-            <Loader2 className="size-5 animate-spin text-muted-foreground" />
-          </div>
-        ) : hasError ? (
-          <p className="px-5 py-6 text-sm text-destructive">No pude cargar los valores.</p>
-        ) : (
-          <div className="space-y-3 px-4 pb-4">
-            <div className="rounded-2xl border border-border bg-background/40 p-4">
-              <p className="text-xs text-muted-foreground">
-                {dateStr
-                  ? new Date(dateStr).toLocaleDateString("es-CL", {
-                      weekday: "long",
-                      day: "numeric",
-                      month: "long",
-                    })
-                  : "—"}
-              </p>
-              <div className="mt-2.5 space-y-1.5">
-                <div className="flex items-center justify-between gap-2 rounded-md bg-muted/40 px-2.5 py-1.5">
-                  <span className="flex items-baseline gap-2">
-                    <span className="text-sm font-semibold text-primary">UF</span>
-                    <span className="text-sm text-muted-foreground">
-                      {ufValue != null ? `$${CLP_FMT.format(Math.round(ufValue))}` : "—"}
-                    </span>
+    <ResponsiveSheet
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Conversor de moneda"
+      desktopClassName="max-w-sm"
+    >
+      {loading ? (
+        <div className="flex justify-center py-10">
+          <Loader2 className="size-5 animate-spin text-muted-foreground" />
+        </div>
+      ) : hasError ? (
+        <p className="px-5 py-6 text-sm text-destructive">No pude cargar los valores.</p>
+      ) : (
+        <div className="space-y-3 px-4 pb-4">
+          <div className="rounded-2xl border border-border bg-background/40 p-4">
+            <p className="text-xs text-muted-foreground">
+              {dateStr
+                ? new Date(dateStr).toLocaleDateString("es-CL", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                  })
+                : "—"}
+            </p>
+            <div className="mt-2.5 space-y-1.5">
+              <div className="flex items-center justify-between gap-2 rounded-md bg-muted/40 px-2.5 py-1.5">
+                <span className="flex items-baseline gap-2">
+                  <span className="text-sm font-semibold text-primary">UF</span>
+                  <span className="text-sm text-muted-foreground">
+                    {ufValue != null ? `$${CLP_FMT.format(Math.round(ufValue))}` : "—"}
                   </span>
-                  <span className="flex items-center gap-1.5" title="Variación de la UF este mes">
-                    <span className="text-[10px] uppercase tracking-wide text-faint">mes</span>
-                    <DeltaBadge value={uf.data?.month_delta_pct ?? null} />
+                </span>
+                <span className="flex items-center gap-1.5" title="Variación de la UF este mes">
+                  <span className="text-[10px] uppercase tracking-wide text-faint">mes</span>
+                  <DeltaBadge value={uf.data?.month_delta_pct ?? null} />
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-2 rounded-md bg-muted/40 px-2.5 py-1.5">
+                <span className="flex items-baseline gap-2">
+                  <span className="text-sm font-semibold text-primary">USD</span>
+                  <span className="text-sm text-muted-foreground">
+                    {usdValue != null ? `$${CLP_FMT.format(Math.round(usdValue))}` : "—"}
                   </span>
-                </div>
-                <div className="flex items-center justify-between gap-2 rounded-md bg-muted/40 px-2.5 py-1.5">
-                  <span className="flex items-baseline gap-2">
-                    <span className="text-sm font-semibold text-primary">USD</span>
-                    <span className="text-sm text-muted-foreground">
-                      {usdValue != null ? `$${CLP_FMT.format(Math.round(usdValue))}` : "—"}
-                    </span>
-                  </span>
-                  <span className="text-[10px] uppercase tracking-wide text-faint">dólar obs.</span>
-                </div>
+                </span>
+                <span className="text-[10px] uppercase tracking-wide text-faint">dólar obs.</span>
               </div>
             </div>
+          </div>
 
-            <div className="flex gap-1 rounded-full bg-muted p-1">
-              {CURRENCIES.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setFrom(c)}
-                  className={cn(
-                    "flex-1 rounded-full py-1.5 text-xs font-semibold transition",
-                    from === c
-                      ? "bg-primary text-primary-foreground shadow"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {c}
-                </button>
+          <div className="flex gap-1 rounded-full bg-muted p-1">
+            {CURRENCIES.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => setFrom(c)}
+                className={cn(
+                  "flex-1 rounded-full py-1.5 text-xs font-semibold transition",
+                  from === c
+                    ? "bg-primary text-primary-foreground shadow"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+
+          <div className="rounded-2xl border border-border bg-background/40 p-4">
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                Monto
+              </span>
+              <div className="flex items-baseline gap-1.5 truncate">
+                <span className="truncate text-4xl font-light tracking-tight" title={display}>
+                  {display}
+                </span>
+                <span className="text-lg font-medium text-primary">{from}</span>
+              </div>
+            </div>
+            <div className="mt-3 space-y-1 border-t border-border/60 pt-3">
+              {targets.map((t) => (
+                <div key={t} className="flex items-baseline justify-between text-sm">
+                  <span className="text-xs font-medium text-muted-foreground">{t}</span>
+                  <span className="font-semibold">{formatCurrency(convertTo(t), t)}</span>
+                </div>
               ))}
             </div>
-
-            <div className="rounded-2xl border border-border bg-background/40 p-4">
-              <div className="flex items-baseline justify-between gap-3">
-                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                  Monto
-                </span>
-                <div className="flex items-baseline gap-1.5 truncate">
-                  <span className="truncate text-4xl font-light tracking-tight" title={display}>
-                    {display}
-                  </span>
-                  <span className="text-lg font-medium text-primary">{from}</span>
-                </div>
-              </div>
-              <div className="mt-3 space-y-1 border-t border-border/60 pt-3">
-                {targets.map((t) => (
-                  <div key={t} className="flex items-baseline justify-between text-sm">
-                    <span className="text-xs font-medium text-muted-foreground">{t}</span>
-                    <span className="font-semibold">{formatCurrency(convertTo(t), t)}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-border bg-background/40 p-4">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                  Comisión
-                </span>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    aria-label="Bajar comisión"
-                    onClick={() => setPct((p) => clampPct(p - 0.25))}
-                    disabled={pct <= 1}
-                    className="flex size-7 items-center justify-center rounded-full bg-secondary text-secondary-foreground transition active:scale-90 disabled:opacity-40"
-                  >
-                    <Minus className="size-3.5" />
-                  </button>
-                  <span className="w-16 text-center text-base font-semibold tabular-nums text-primary">
-                    {PCT_FMT.format(pct)}%
-                  </span>
-                  <button
-                    type="button"
-                    aria-label="Subir comisión"
-                    onClick={() => setPct((p) => clampPct(p + 0.25))}
-                    disabled={pct >= 10}
-                    className="flex size-7 items-center justify-center rounded-full bg-secondary text-secondary-foreground transition active:scale-90 disabled:opacity-40"
-                  >
-                    <Plus className="size-3.5" />
-                  </button>
-                </div>
-              </div>
-              <div className="mt-3 flex items-baseline justify-between border-t border-border/60 pt-3 text-sm">
-                <span className="text-xs font-medium text-muted-foreground">{from}</span>
-                <span className="text-lg font-semibold">
-                  {formatCurrency(commissionFrom, from)}
-                </span>
-              </div>
-              {from !== "CLP" && (
-                <div className="mt-1 flex items-baseline justify-between text-sm">
-                  <span className="text-xs font-medium text-muted-foreground">CLP</span>
-                  <span className="font-semibold">{formatCurrency(commissionClp, "CLP")}</span>
-                </div>
-              )}
-            </div>
-
-            <div className="grid grid-cols-3 gap-2">
-              <Key label="AC" variant="ghost" onClick={clear} />
-              <Key label="000" variant="ghost" onClick={pushTriple} />
-              <Key
-                label={<Delete className="mx-auto size-5" />}
-                variant="danger"
-                onClick={backspace}
-              />
-
-              <Key label="7" onClick={() => pushDigit("7")} />
-              <Key label="8" onClick={() => pushDigit("8")} />
-              <Key label="9" onClick={() => pushDigit("9")} />
-
-              <Key label="4" onClick={() => pushDigit("4")} />
-              <Key label="5" onClick={() => pushDigit("5")} />
-              <Key label="6" onClick={() => pushDigit("6")} />
-
-              <Key label="1" onClick={() => pushDigit("1")} />
-              <Key label="2" onClick={() => pushDigit("2")} />
-              <Key label="3" onClick={() => pushDigit("3")} />
-
-              <Key label="," variant="accent" onClick={pushDecimal} />
-              <Key label="0" onClick={() => pushDigit("0")} />
-              <Key label="00" variant="ghost" onClick={() => pushDigit("00")} />
-            </div>
-
-            <p className="text-center text-[10px] text-muted-foreground">
-              Fuente: mindicador.cl · Actualización diaria
-            </p>
           </div>
-        )}
-      </DialogContent>
-    </Dialog>
+
+          <div className="rounded-2xl border border-border bg-background/40 p-4">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                Comisión
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  aria-label="Bajar comisión"
+                  onClick={() => setPct((p) => clampPct(p - 0.25))}
+                  disabled={pct <= 1}
+                  className="flex size-7 items-center justify-center rounded-full bg-secondary text-secondary-foreground transition active:scale-90 disabled:opacity-40"
+                >
+                  <Minus className="size-3.5" />
+                </button>
+                <span className="w-16 text-center text-base font-semibold tabular-nums text-primary">
+                  {PCT_FMT.format(pct)}%
+                </span>
+                <button
+                  type="button"
+                  aria-label="Subir comisión"
+                  onClick={() => setPct((p) => clampPct(p + 0.25))}
+                  disabled={pct >= 10}
+                  className="flex size-7 items-center justify-center rounded-full bg-secondary text-secondary-foreground transition active:scale-90 disabled:opacity-40"
+                >
+                  <Plus className="size-3.5" />
+                </button>
+              </div>
+            </div>
+            <div className="mt-3 flex items-baseline justify-between border-t border-border/60 pt-3 text-sm">
+              <span className="text-xs font-medium text-muted-foreground">{from}</span>
+              <span className="text-lg font-semibold">{formatCurrency(commissionFrom, from)}</span>
+            </div>
+            {from !== "CLP" && (
+              <div className="mt-1 flex items-baseline justify-between text-sm">
+                <span className="text-xs font-medium text-muted-foreground">CLP</span>
+                <span className="font-semibold">{formatCurrency(commissionClp, "CLP")}</span>
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            <Key label="AC" variant="ghost" onClick={clear} />
+            <Key label="000" variant="ghost" onClick={pushTriple} />
+            <Key
+              label={<Delete className="mx-auto size-5" />}
+              variant="danger"
+              onClick={backspace}
+            />
+
+            <Key label="7" onClick={() => pushDigit("7")} />
+            <Key label="8" onClick={() => pushDigit("8")} />
+            <Key label="9" onClick={() => pushDigit("9")} />
+
+            <Key label="4" onClick={() => pushDigit("4")} />
+            <Key label="5" onClick={() => pushDigit("5")} />
+            <Key label="6" onClick={() => pushDigit("6")} />
+
+            <Key label="1" onClick={() => pushDigit("1")} />
+            <Key label="2" onClick={() => pushDigit("2")} />
+            <Key label="3" onClick={() => pushDigit("3")} />
+
+            <Key label="," variant="accent" onClick={pushDecimal} />
+            <Key label="0" onClick={() => pushDigit("0")} />
+            <Key label="00" variant="ghost" onClick={() => pushDigit("00")} />
+          </div>
+
+          <p className="text-center text-[10px] text-muted-foreground">
+            Fuente: mindicador.cl · Actualización diaria
+          </p>
+        </div>
+      )}
+    </ResponsiveSheet>
   );
 }

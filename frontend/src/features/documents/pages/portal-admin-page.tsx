@@ -6,11 +6,10 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
-import { ErrorState, PageSkeleton } from "@shared/ui";
+import { ErrorState, PageSkeleton, ResponsiveSheet } from "@shared/ui";
 import { PageLayout } from "@shared/components/page-layout";
 import { PageHeader } from "@shared/components/page-header";
 import { ConfirmDialog } from "@shared/components/confirm-dialog/confirm-dialog";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useIsDesktop } from "@/hooks/use-mobile";
 import { useDeletePortal, usePortals } from "../hooks/use-portals";
 import { portalsApi } from "../api/portals-api";
@@ -156,19 +155,19 @@ export function PortalAdminPage() {
         }}
       />
 
-      <Dialog open={!!qrOf} onOpenChange={(o) => !o && setQrOf(null)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>QR — {qrOf?.title}</DialogTitle>
-          </DialogHeader>
-          {qrOf && (
-            <div className="flex flex-col items-center gap-3">
-              <QRCodeSVG value={portalsApi.publicUrl(qrOf.slug)} size={220} />
-              <code className="break-all text-xs">{portalsApi.publicUrl(qrOf.slug)}</code>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <ResponsiveSheet
+        open={!!qrOf}
+        onOpenChange={(o) => !o && setQrOf(null)}
+        title={`QR — ${qrOf?.title ?? ""}`}
+        desktopClassName="max-w-sm"
+      >
+        {qrOf && (
+          <div className="flex flex-col items-center gap-3">
+            <QRCodeSVG value={portalsApi.publicUrl(qrOf.slug)} size={220} />
+            <code className="break-all text-xs">{portalsApi.publicUrl(qrOf.slug)}</code>
+          </div>
+        )}
+      </ResponsiveSheet>
     </PageLayout>
   );
 }

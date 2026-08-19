@@ -1,20 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { Camera, Check, Loader2, RotateCcw, SwitchCamera, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { useCamera } from "@shared/hooks/use-camera";
 import { imagesToPdf } from "@features/documents/services/pdf-from-images";
 import { compressBlob } from "@features/documents/services/image-compression";
 import { toast } from "sonner";
+import { ResponsiveSheet } from "@shared/ui";
 
 interface Props {
-  trigger?: React.ReactNode;
   onComplete: (pdfBlob: Blob) => Promise<void>;
   disabled?: boolean;
 }
@@ -26,7 +19,7 @@ type Step = "front" | "front-preview" | "back" | "back-preview" | "rendering" | 
  * 2 shots (front + back) → single A4 PDF via `imagesToPdf({mode:'id'})`.
  * No quad-edit, no crop, no filter UI. Visitor never sees the resulting PDF.
  */
-export function IdScanCapture({ trigger, onComplete, disabled }: Props) {
+export function IdScanCapture({ onComplete, disabled }: Props) {
   const [open, setOpen] = useState(false);
   const [facingMode, setFacingMode] = useState<"user" | "environment">("environment");
   const [step, setStep] = useState<Step>("front");
@@ -127,29 +120,25 @@ export function IdScanCapture({ trigger, onComplete, disabled }: Props) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger ?? (
-          <Button variant="outline" disabled={disabled} className="gap-2">
-            <Camera className="size-4" /> Escanear cédula
-          </Button>
-        )}
-      </DialogTrigger>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>
-            {step === "front" || step === "front-preview"
-              ? "Frente de la cédula"
-              : step === "back" || step === "back-preview"
-                ? "Reverso de la cédula"
-                : step === "rendering"
-                  ? "Generando…"
-                  : "Cédula"}
-          </DialogTitle>
-        </DialogHeader>
-
+    <>
+      <Button variant="outline" disabled={disabled} className="gap-2" onClick={() => setOpen(true)}>
+        <Camera className="size-4" /> Escanear cédula
+      </Button>
+      <ResponsiveSheet
+        open={open}
+        onOpenChange={setOpen}
+        title={
+          step === "front" || step === "front-preview"
+            ? "Frente de la cédula"
+            : step === "back" || step === "back-preview"
+              ? "Reverso de la cédula"
+              : step === "rendering"
+                ? "Generando…"
+                : "Cédula"
+        }
+        desktopClassName="max-w-md"
+      >
         {camera.error && <p className="text-sm text-destructive">{camera.error}</p>}
-
         {(step === "front" || step === "back") && (
           <div className="space-y-3">
             <div className="relative aspect-[1.586/1] overflow-hidden rounded-lg bg-muted">
@@ -180,7 +169,6 @@ export function IdScanCapture({ trigger, onComplete, disabled }: Props) {
             </div>
           </div>
         )}
-
         {(step === "front-preview" || step === "back-preview") && camera.photoUrl && (
           <div className="space-y-3">
             <img src={camera.photoUrl} alt="Captura" className="w-full rounded-lg" />
@@ -214,14 +202,13 @@ export function IdScanCapture({ trigger, onComplete, disabled }: Props) {
             )}
           </div>
         )}
-
         {step === "rendering" && (
           <div className="flex flex-col items-center gap-3 py-10">
             <Loader2 className="size-6 animate-spin text-primary" />
             <p className="text-sm text-muted-foreground">Generando PDF…</p>
           </div>
         )}
-      </DialogContent>
-    </Dialog>
+      </ResponsiveSheet>
+    </>
   );
 }

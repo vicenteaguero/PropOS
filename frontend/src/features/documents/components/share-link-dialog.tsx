@@ -2,13 +2,12 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
 import { Copy, Download, Link as LinkIcon } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCreateShareLink, useShareLinks, useUpdateShareLink } from "../hooks/use-share-links";
 import { shareLinksApi } from "../api/share-links-api";
 import type { DocumentVersion } from "../types";
-import { Field } from "@shared/ui";
+import { Field, ResponsiveSheet } from "@shared/ui";
 
 interface Props {
   documentId: string;
@@ -91,65 +90,63 @@ export function ShareLinkDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <LinkIcon className="size-4" /> Shortlink del documento
-          </DialogTitle>
-        </DialogHeader>
-
-        {url && (
-          <Field label="URL pública" labelClassName="text-xs">
-            <div className="flex gap-2">
-              <Input value={url} readOnly className="font-mono text-xs" />
-              <Button variant="secondary" size="icon" onClick={copy} aria-label="Copiar">
-                <Copy className="size-4" />
-              </Button>
-            </div>
-            <div className="rounded-md border border-border bg-card p-3">
-              <QRCodeSVG id={`qr-${existing?.id}`} value={url} size={180} />
-            </div>
-            <Button variant="outline" size="sm" onClick={downloadQr} className="w-full">
-              <Download className="size-4" /> Descargar QR
+    <ResponsiveSheet
+      open={open}
+      onOpenChange={onOpenChange}
+      title={
+        <>
+          <LinkIcon className="size-4" /> Shortlink del documento
+        </>
+      }
+      desktopClassName="max-w-md"
+    >
+      {url && (
+        <Field label="URL pública" labelClassName="text-xs">
+          <div className="flex gap-2">
+            <Input value={url} readOnly className="font-mono text-xs" />
+            <Button variant="secondary" size="icon" onClick={copy} aria-label="Copiar">
+              <Copy className="size-4" />
             </Button>
-          </Field>
-        )}
-
-        <Field label="Versión a servir" labelClassName="text-xs">
-          <select
-            value={pinned}
-            onChange={(e) => setPinned(e.target.value)}
-            className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm"
-          >
-            <option value="CURRENT">
-              Siempre la versión actual (
-              {currentVersionId
-                ? versions.find((v) => v.id === currentVersionId)?.version_number
-                : "?"}
-              )
+          </div>
+          <div className="rounded-md border border-border bg-card p-3">
+            <QRCodeSVG id={`qr-${existing?.id}`} value={url} size={180} />
+          </div>
+          <Button variant="outline" size="sm" onClick={downloadQr} className="w-full">
+            <Download className="size-4" /> Descargar QR
+          </Button>
+        </Field>
+      )}
+      <Field label="Versión a servir" labelClassName="text-xs">
+        <select
+          value={pinned}
+          onChange={(e) => setPinned(e.target.value)}
+          className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm"
+        >
+          <option value="CURRENT">
+            Siempre la versión actual (
+            {currentVersionId
+              ? versions.find((v) => v.id === currentVersionId)?.version_number
+              : "?"}
+            )
+          </option>
+          {versions.map((v) => (
+            <option key={v.id} value={v.id}>
+              Fijar v{v.version_number} ({v.sha256.slice(0, 8)})
             </option>
-            {versions.map((v) => (
-              <option key={v.id} value={v.id}>
-                Fijar v{v.version_number} ({v.sha256.slice(0, 8)})
-              </option>
-            ))}
-          </select>
-        </Field>
-
-        <Field label="Password opcional" labelClassName="text-xs">
-          <Input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder={existing?.has_password ? "Cambiar password..." : "Sin password"}
-          />
-        </Field>
-
-        <Button onClick={upsert} disabled={createLink.isPending || updateLink.isPending}>
-          {existing ? "Actualizar" : "Crear shortlink"}
-        </Button>
-      </DialogContent>
-    </Dialog>
+          ))}
+        </select>
+      </Field>
+      <Field label="Password opcional" labelClassName="text-xs">
+        <Input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder={existing?.has_password ? "Cambiar password..." : "Sin password"}
+        />
+      </Field>
+      <Button onClick={upsert} disabled={createLink.isPending || updateLink.isPending}>
+        {existing ? "Actualizar" : "Crear shortlink"}
+      </Button>
+    </ResponsiveSheet>
   );
 }

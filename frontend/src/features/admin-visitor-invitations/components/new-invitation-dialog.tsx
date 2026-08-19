@@ -2,13 +2,6 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { entitiesApi } from "@features/documents/api/entities-api";
@@ -18,7 +11,7 @@ import {
   type PreflightResponse,
 } from "../api/visitor-invitations";
 import { toast } from "sonner";
-import { FOCUS_RING, FieldGroup } from "@shared/ui";
+import { FOCUS_RING, FieldGroup, ResponsiveSheet, SheetActions } from "@shared/ui";
 
 interface Props {
   open: boolean;
@@ -88,106 +81,101 @@ export function NewInvitationDialog({ open, onOpenChange, defaultPropertyId }: P
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Invitar visitante</DialogTitle>
-        </DialogHeader>
-
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="vi_email">Email del visitante</Label>
-            <Input
-              id="vi_email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="visitante@example.com"
-            />
-          </div>
-
-          {hasWarnings && (
-            <div className="flex gap-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm">
-              <AlertTriangle className="size-4 shrink-0 text-warning" />
-              <div className="space-y-1">
-                {preflight!.warnings.map((w, i) => (
-                  <p key={i}>{w}</p>
-                ))}
-                <label className="mt-2 flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={confirmDup}
-                    onChange={(e) => setConfirmDup(e.target.checked)}
-                  />
-                  <span className="text-xs">Enviar de todos modos</span>
-                </label>
-              </div>
-            </div>
-          )}
-
-          <div className="space-y-2">
-            <Label htmlFor="vi_property">Propiedad</Label>
-            <select
-              id="vi_property"
-              value={propertyId}
-              onChange={(e) => setPropertyId(e.target.value)}
-              className={`flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm ${FOCUS_RING}`}
-            >
-              <option value="">
-                {propertiesQuery.isLoading ? "Cargando…" : "Selecciona propiedad"}
-              </option>
-              {(propertiesQuery.data ?? []).map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.title}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <FieldGroup label="Modo">
-            <div className="flex gap-2">
-              <button
-                type="button"
-                className={`flex-1 rounded-md border px-3 py-2 text-sm ${
-                  mode === "visitor_only"
-                    ? "border-primary bg-primary/10"
-                    : "border-border hover:bg-muted"
-                }`}
-                onClick={() => setMode("visitor_only")}
-              >
-                <span className="block font-medium">Solo registrar</span>
-                <span className="block text-xs text-muted-foreground">
-                  Sin cuenta. Solo guarda los datos del visitante.
-                </span>
-              </button>
-              <button
-                type="button"
-                className={`flex-1 rounded-md border px-3 py-2 text-sm ${
-                  mode === "auth_user"
-                    ? "border-primary bg-primary/10"
-                    : "border-border hover:bg-muted"
-                }`}
-                onClick={() => setMode("auth_user")}
-              >
-                <span className="block font-medium">Con cuenta</span>
-                <span className="block text-xs text-muted-foreground">
-                  Crea usuario con password + confirmación email.
-                </span>
-              </button>
-            </div>
-          </FieldGroup>
+    <ResponsiveSheet
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Invitar visitante"
+      desktopClassName="max-w-md"
+    >
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="vi_email">Email del visitante</Label>
+          <Input
+            id="vi_email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="visitante@example.com"
+          />
         </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancelar
-          </Button>
-          <Button disabled={!canSubmit} onClick={handleSubmit}>
-            {create.isPending ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
-            {hasWarnings && confirmDup ? "Enviar igual" : "Enviar invitación"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        {hasWarnings && (
+          <div className="flex gap-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm">
+            <AlertTriangle className="size-4 shrink-0 text-warning" />
+            <div className="space-y-1">
+              {preflight!.warnings.map((w, i) => (
+                <p key={i}>{w}</p>
+              ))}
+              <label className="mt-2 flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={confirmDup}
+                  onChange={(e) => setConfirmDup(e.target.checked)}
+                />
+                <span className="text-xs">Enviar de todos modos</span>
+              </label>
+            </div>
+          </div>
+        )}
+        <div className="space-y-2">
+          <Label htmlFor="vi_property">Propiedad</Label>
+          <select
+            id="vi_property"
+            value={propertyId}
+            onChange={(e) => setPropertyId(e.target.value)}
+            className={`flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm ${FOCUS_RING}`}
+          >
+            <option value="">
+              {propertiesQuery.isLoading ? "Cargando…" : "Selecciona propiedad"}
+            </option>
+            {(propertiesQuery.data ?? []).map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.title}
+              </option>
+            ))}
+          </select>
+        </div>
+        <FieldGroup label="Modo">
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className={`flex-1 rounded-md border px-3 py-2 text-sm ${
+                mode === "visitor_only"
+                  ? "border-primary bg-primary/10"
+                  : "border-border hover:bg-muted"
+              }`}
+              onClick={() => setMode("visitor_only")}
+            >
+              <span className="block font-medium">Solo registrar</span>
+              <span className="block text-xs text-muted-foreground">
+                Sin cuenta. Solo guarda los datos del visitante.
+              </span>
+            </button>
+            <button
+              type="button"
+              className={`flex-1 rounded-md border px-3 py-2 text-sm ${
+                mode === "auth_user"
+                  ? "border-primary bg-primary/10"
+                  : "border-border hover:bg-muted"
+              }`}
+              onClick={() => setMode("auth_user")}
+            >
+              <span className="block font-medium">Con cuenta</span>
+              <span className="block text-xs text-muted-foreground">
+                Crea usuario con password + confirmación email.
+              </span>
+            </button>
+          </div>
+        </FieldGroup>
+      </div>
+      <SheetActions>
+        <Button variant="outline" onClick={() => onOpenChange(false)}>
+          Cancelar
+        </Button>
+        <Button disabled={!canSubmit} onClick={handleSubmit}>
+          {create.isPending ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
+          {hasWarnings && confirmDup ? "Enviar igual" : "Enviar invitación"}
+        </Button>
+      </SheetActions>
+    </ResponsiveSheet>
   );
 }

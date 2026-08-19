@@ -14,17 +14,18 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Chip, Chips, RoundButton, Row, HOVER_REVEAL } from "@shared/ui";
+import {
+  Chip,
+  Chips,
+  HOVER_REVEAL,
+  ResponsiveSheet,
+  RoundButton,
+  Row,
+  SheetActions,
+} from "@shared/ui";
 import { useIsDesktop } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import {
@@ -253,52 +254,42 @@ export function InteractionsList({ personId, propertyId }: Props) {
       {!isLoading && !error && filtered.length === 0 && empty}
       {!isLoading && !error && filtered.length > 0 && (isDesktop ? desktopTable : mobileList)}
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Registrar interacción</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="i-kind">Tipo</Label>
-              <select
-                id="i-kind"
-                value={kind}
-                onChange={(e) => setKind(e.target.value as InteractionKind)}
-                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-              >
-                {INTERACTION_KINDS.map((k) => (
-                  <option key={k} value={k}>
-                    {INTERACTION_KIND_LABELS[k]}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="i-summary">Resumen</Label>
-              <Input id="i-summary" value={summary} onChange={(e) => setSummary(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="i-body">Detalle (opcional)</Label>
-              <Textarea
-                id="i-body"
-                value={body}
-                onChange={(e) => setBody(e.target.value)}
-                rows={3}
-              />
-            </div>
+      <ResponsiveSheet open={open} onOpenChange={setOpen} title="Registrar interacción">
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="i-kind">Tipo</Label>
+            <select
+              id="i-kind"
+              value={kind}
+              onChange={(e) => setKind(e.target.value as InteractionKind)}
+              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+            >
+              {INTERACTION_KINDS.map((k) => (
+                <option key={k} value={k}>
+                  {INTERACTION_KIND_LABELS[k]}
+                </option>
+              ))}
+            </select>
           </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setOpen(false)} disabled={create.isPending}>
-              Cancelar
-            </Button>
-            <Button onClick={submit} disabled={create.isPending} className="gap-2">
-              {create.isPending && <Loader2 className="size-4 animate-spin" />}
-              Guardar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          <div className="space-y-1.5">
+            <Label htmlFor="i-summary">Resumen</Label>
+            <Input id="i-summary" value={summary} onChange={(e) => setSummary(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="i-body">Detalle (opcional)</Label>
+            <Textarea id="i-body" value={body} onChange={(e) => setBody(e.target.value)} rows={3} />
+          </div>
+        </div>
+        <SheetActions>
+          <Button variant="ghost" onClick={() => setOpen(false)} disabled={create.isPending}>
+            Cancelar
+          </Button>
+          <Button onClick={submit} disabled={create.isPending} className="gap-2">
+            {create.isPending && <Loader2 className="size-4 animate-spin" />}
+            Guardar
+          </Button>
+        </SheetActions>
+      </ResponsiveSheet>
     </div>
   );
 }
