@@ -149,7 +149,7 @@ export function FinancePage() {
 
   const submit = async () => {
     if (!form.amount) {
-      toast.error("Ingresá un monto");
+      toast.error("Ingresa un monto");
       return;
     }
     await create.mutateAsync({
@@ -169,7 +169,7 @@ export function FinancePage() {
   const submitEdit = async () => {
     if (!editing) return;
     if (!form.amount) {
-      toast.error("Ingresá un monto");
+      toast.error("Ingresa un monto");
       return;
     }
     // Only the pending/settled pair is toggled here — a cancelled transaction

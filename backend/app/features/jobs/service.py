@@ -90,7 +90,7 @@ async def _send_with_retries(reminder: dict[str, Any]) -> Exception | None:
             await send_push(
                 tenant_id=reminder["tenant_id"],
                 title="Recordatorio",
-                body=reminder.get("message") or "Tenés un recordatorio pendiente",
+                body=reminder.get("message") or "Tienes un recordatorio pendiente",
                 user_id=reminder["user_id"],
                 url=reminder.get("url") or "/",
             )

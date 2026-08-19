@@ -66,7 +66,7 @@ export function CrmPipeline() {
     return (
       <EmptyState
         title="Sin oportunidades abiertas"
-        description="Las oportunidades aparecen acá a medida que avanzan en el pipeline."
+        description="Las oportunidades aparecen aquí a medida que avanzan en el pipeline."
       />
     );
   }

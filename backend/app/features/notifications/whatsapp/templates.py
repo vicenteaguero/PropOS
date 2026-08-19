@@ -29,14 +29,14 @@ REGISTRY: dict[str, Template] = {
         category="utility",
         language="es",
         variables=("contact_name", "property_address", "datetime"),
-        body=("Hola {{1}}, te confirmamos la visita a {{2}} el {{3}}. Si necesitás reagendar, respondé este mensaje."),
+        body=("Hola {{1}}, te confirmamos la visita a {{2}} el {{3}}. Si necesitas reagendar, responde este mensaje."),
     ),
     "new_listing_match": Template(
         name="new_listing_match",
         category="marketing",
         language="es",
         variables=("contact_name", "headline", "url"),
-        body=("Hola {{1}}, encontramos una propiedad que coincide con tu búsqueda: {{2}}. Mirá los detalles: {{3}}"),
+        body=("Hola {{1}}, encontramos una propiedad que coincide con tu búsqueda: {{2}}. Mira los detalles: {{3}}"),
     ),
     "proposal_accepted": Template(
         name="proposal_accepted",

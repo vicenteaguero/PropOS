@@ -61,7 +61,7 @@ export function UploadDropzone({ onFile, disabled, compact }: Props) {
         </span>
         <span className="text-sm font-semibold text-foreground">Subir archivo</span>
         <span className="text-[11px] leading-tight text-muted-foreground">
-          Arrastra o seleccioná
+          Arrastra o selecciona
         </span>
         <input
           aria-label="Seleccionar archivo"

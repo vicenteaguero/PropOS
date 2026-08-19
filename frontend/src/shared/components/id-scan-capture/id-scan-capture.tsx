@@ -158,8 +158,8 @@ export function IdScanCapture({ onComplete, disabled }: Props) {
             </div>
             <p className="text-center text-xs text-muted-foreground">
               {step === "front"
-                ? "Encuadrá el frente. Cámara trasera recomendada."
-                : "Da vuelta la cédula y encuadrá el reverso."}
+                ? "Encuadra el frente. Cámara trasera recomendada."
+                : "Da vuelta la cédula y encuadra el reverso."}
             </p>
             <div className="flex justify-center gap-3">
               <Button variant="outline" size="icon" onClick={handleFlip} title="Cambiar cámara">

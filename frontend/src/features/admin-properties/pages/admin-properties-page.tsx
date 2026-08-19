@@ -174,7 +174,7 @@ export function AdminPropertiesPage() {
 
       {!isLoading && !error && properties.length === 0 && (
         <div className="px-5 pt-2 lg:px-8">
-          {/* "Creá tu primera propiedad" is wrong when the portfolio is full and
+          {/* "Crea tu primera propiedad" is wrong when the portfolio is full and
               the search simply matched nothing — say which case this is. */}
           {debounced.trim() ? (
             <EmptyState
@@ -186,7 +186,7 @@ export function AdminPropertiesPage() {
           ) : (
             <EmptyState
               title="No hay propiedades"
-              description="Creá tu primera propiedad para esta empresa."
+              description="Crea tu primera propiedad para esta empresa."
               actionLabel="Crear propiedad"
               onAction={() => setDialogOpen(true)}
             />

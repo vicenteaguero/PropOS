@@ -23,7 +23,7 @@ export function InteractionSharePanel({ interactionId, initialCaps, open, onOpen
       caps={CAPS}
       capLabels={CAP_LABELS}
       title="Compartir visita"
-      description="Definí qué audiencia ve la visita y con qué nivel de detalle."
+      description="Define qué audiencia ve la visita y con qué nivel de detalle."
       initialCaps={initialCaps}
       open={open}
       onOpenChange={onOpenChange}

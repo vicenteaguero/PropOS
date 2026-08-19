@@ -124,7 +124,7 @@ export function ClientInboxPage() {
           <MessageThread conversation={selected} onBack={() => setSelectedId(null)} />
         ) : (
           <div className="flex h-full items-center justify-center p-6 text-sm text-muted-foreground">
-            Seleccioná una conversación.
+            Selecciona una conversación.
           </div>
         )
       }

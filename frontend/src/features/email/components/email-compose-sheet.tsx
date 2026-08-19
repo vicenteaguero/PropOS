@@ -92,12 +92,12 @@ export function EmailComposeSheet({ open, onOpenChange, onSent }: Props) {
             getKey={(c) => c.id}
             loading={contactsLoading}
             placeholder="Contacto o correo"
-            emptyText="Sin contactos: escribí el correo completo"
+            emptyText="Sin contactos: escribe el correo completo"
             ariaLabel="Destinatario"
           />
           {!!to && !EMAIL_RE.test(to) && (
             <p className="text-[12px] text-muted-foreground">
-              Elegí un contacto o escribí una dirección válida.
+              Elige un contacto o escribe una dirección válida.
             </p>
           )}
         </div>
@@ -119,7 +119,7 @@ export function EmailComposeSheet({ open, onOpenChange, onSent }: Props) {
             value={body}
             onChange={(e) => setBody(e.target.value)}
             rows={7}
-            placeholder="Escribí tu mensaje…"
+            placeholder="Escribe tu mensaje…"
             className={`w-full resize-none rounded-2xl border border-border bg-secondary px-4 py-3 text-sm text-foreground transition placeholder:text-muted-foreground ${FOCUS_RING}`}
           />
         </div>

@@ -121,7 +121,7 @@ export function VisitorRegistrationPage() {
           </span>
           <h1 className="text-xl font-bold tracking-tight">No se pudo cargar la invitación</h1>
           <p className="text-[15px] text-muted-foreground">
-            {error ?? "El link puede haber expirado o ya fue completado."}
+            {error ?? "El enlace puede haber expirado o ya fue completado."}
           </p>
           <Button variant="outline" size="block" asChild className="mt-2 max-w-xs">
             <Link to="/">Volver al inicio</Link>
@@ -183,7 +183,7 @@ export function VisitorRegistrationPage() {
         {showLoginPath ? (
           <div className="rounded-2xl border border-border bg-card p-5">
             <p className="mb-4 text-[15px]">
-              Ya tienes una cuenta. Para vincular esta propiedad a tu perfil, ingresá con tu
+              Ya tienes una cuenta. Para vincular esta propiedad a tu perfil, ingresa con tu
               contraseña.
             </p>
             <Button variant="ink" size="block" asChild>

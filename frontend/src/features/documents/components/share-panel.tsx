@@ -19,7 +19,7 @@ export function DocumentSharePanel({ documentId, initialCaps, open, onOpenChange
       caps={CAPS}
       capLabels={CAP_LABELS}
       title="Compartir documento"
-      description="Marcá qué audiencia puede ver/descargar este documento. Sin marcar = nadie fuera del admin."
+      description="Marca qué audiencia puede ver/descargar este documento. Sin marcar = nadie fuera del admin."
       initialCaps={initialCaps}
       open={open}
       onOpenChange={onOpenChange}

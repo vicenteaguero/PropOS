@@ -155,7 +155,7 @@ export function AdminVisitorInvitationsPage() {
         <div className="px-5 lg:px-8">
           <EmptyState
             title="Sin invitaciones"
-            description="Creá la primera invitación con el botón Invitar visitante."
+            description="Crea la primera invitación con el botón Invitar visitante."
             actionLabel="Invitar visitante"
             onAction={() => setOpen(true)}
           />

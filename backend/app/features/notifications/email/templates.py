@@ -30,7 +30,7 @@ _BASE = (
     "</td></tr>"
     '<tr><td style="padding:0 32px 32px;">'
     '<div style="font-size:12px;color:#737373;line-height:1.5;border-top:1px solid #262626;padding-top:16px;">'
-    "Este correo fue enviado automáticamente por PropOS. Si no esperabas recibirlo, podés ignorarlo."
+    "Este correo fue enviado automáticamente por PropOS. Si no esperabas recibirlo, puedes ignorarlo."
     "</div></td></tr></table></td></tr></table></body></html>"
 )
 
@@ -51,11 +51,11 @@ def invitation(*, full_name: str, invite_url: str) -> tuple[str, str]:
           {name}, te invitaron a unirte a PropOS.
         </p>
         <p style="margin:0 0 16px;color:#d4d4d4;line-height:1.6;font-size:15px;">
-          Hacé click en el botón para crear tu contraseña y entrar al panel.
+          Haz clic en el botón para crear tu contraseña y entrar al panel.
         </p>
         {_button(invite_url, "Activar cuenta")}
         <p style="margin:16px 0 0;color:#737373;line-height:1.5;font-size:13px;">
-          El link es de un solo uso y vence en 24 horas.
+          El enlace es de un solo uso y vence en 24 horas.
         </p>
     """
     html = _BASE.format(title="Invitación a PropOS", heading="Te dieron acceso a PropOS", body=body)
@@ -70,10 +70,10 @@ def recovery(*, full_name: str, recovery_url: str) -> tuple[str, str]:
         </p>
         {_button(recovery_url, "Restablecer contraseña")}
         <p style="margin:16px 0 0;color:#737373;line-height:1.5;font-size:13px;">
-          Si no fuiste vos, ignorá este mensaje. Tu contraseña actual sigue activa.
+          Si no fuiste tú, ignora este mensaje. Tu contraseña actual sigue activa.
         </p>
     """
-    html = _BASE.format(title="Restablecer contraseña", heading="Restablecé tu contraseña", body=body)
+    html = _BASE.format(title="Restablecer contraseña", heading="Restablece tu contraseña", body=body)
     return ("Restablecer tu contraseña en PropOS", html)
 
 
@@ -89,7 +89,7 @@ def visitor_invitation(*, invite_url: str, property_title: str, brand: str) -> t
         </p>
         {_button(invite_url, "Registrarme")}
         <p style="margin:16px 0 0;color:#737373;line-height:1.5;font-size:13px;">
-          El link expira en 7 días.
+          El enlace expira en 7 días.
         </p>
     """
     html = _BASE.format(
@@ -105,11 +105,11 @@ def visitor_existing_login(*, login_url: str, reset_url: str, brand: str) -> tup
     body = f"""
         <p style="margin:0 0 12px;color:#d4d4d4;line-height:1.6;font-size:15px;">
           Tienes una cuenta previa con nosotros. Para vincular esta nueva propiedad
-          a tu perfil, ingresá con tu contraseña.
+          a tu perfil, ingresa con tu contraseña.
         </p>
         {_button(login_url, "Ingresar")}
         <p style="margin:16px 0 0;color:#737373;line-height:1.5;font-size:13px;">
-          ¿Olvidaste tu contraseña? <a href="{reset_url}" style="color:#fafafa;">Restablecela acá</a>.
+          ¿Olvidaste tu contraseña? <a href="{reset_url}" style="color:#fafafa;">Restablécela aquí</a>.
         </p>
     """
     html = _BASE.format(
@@ -128,8 +128,8 @@ def email_change(*, full_name: str, confirm_url: str, new_email: str) -> tuple[s
         </p>
         {_button(confirm_url, "Confirmar nuevo correo")}
         <p style="margin:16px 0 0;color:#737373;line-height:1.5;font-size:13px;">
-          Si no fuiste vos, ignorá este mensaje.
+          Si no fuiste tú, ignora este mensaje.
         </p>
     """
-    html = _BASE.format(title="Confirmar nuevo correo", heading="Confirmá tu nuevo correo", body=body)
-    return ("Confirmá tu nuevo correo en PropOS", html)
+    html = _BASE.format(title="Confirmar nuevo correo", heading="Confirma tu nuevo correo", body=body)
+    return ("Confirma tu nuevo correo en PropOS", html)

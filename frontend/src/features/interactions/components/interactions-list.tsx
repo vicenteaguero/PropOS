@@ -90,7 +90,7 @@ export function InteractionsList({ personId, propertyId }: Props) {
 
   const submit = async () => {
     if (!summary.trim()) {
-      toast.error("Agregá un resumen");
+      toast.error("Agrega un resumen");
       return;
     }
     await create.mutateAsync({

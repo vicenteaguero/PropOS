@@ -63,21 +63,21 @@ async def run_chat_turn(
         )
         yield {
             "type": "text",
-            "text": ("Se acabó la cuota de IA por ahora. Probá de nuevo más tarde o avisá al equipo. 🙏"),
+            "text": ("Se acabó la cuota de IA por ahora. Prueba de nuevo más tarde o avisa al equipo. 🙏"),
         }
         yield {"type": "done", "proposals_created": [], "executed_rows": [], "error": "quota_exhausted"}
     except LLMUnavailableError as exc:
         logger.warning("turn_llm_unavailable", event_type="llm", session_id=str(session_id), error=str(exc)[:200])
         yield {
             "type": "text",
-            "text": "El proveedor de IA no está respondiendo. Probá de nuevo en unos segundos. 🙏",
+            "text": "El proveedor de IA no está respondiendo. Prueba de nuevo en unos segundos. 🙏",
         }
         yield {"type": "done", "proposals_created": [], "executed_rows": [], "error": "llm_unavailable"}
     except Exception as exc:  # noqa: BLE001
         logger.error("turn_failed", event_type="error", session_id=str(session_id), error=str(exc)[:300])
         yield {
             "type": "text",
-            "text": "Se me cayó algo procesando eso. Volvé a intentarlo y, si sigue, avisá al equipo. 🙏",
+            "text": "Se me cayó algo procesando eso. Vuelve a intentarlo y, si sigue, avisa al equipo. 🙏",
         }
         yield {"type": "done", "proposals_created": [], "executed_rows": [], "error": "turn_failed"}
 
@@ -101,7 +101,7 @@ async def _stream_turn(
             logger.info("turn_quota_exceeded", event_type="quota", user_id=str(user_id), cap=cap, used=int(used))
             yield {
                 "type": "text",
-                "text": (f"Llegaste al tope diario ({cap} turnos). Probá de nuevo mañana o bajá el ritmo. 🙏"),
+                "text": (f"Llegaste al tope diario ({cap} turnos). Prueba de nuevo mañana o baja el ritmo. 🙏"),
             }
             yield {"type": "done"}
             return
@@ -115,7 +115,7 @@ async def _stream_turn(
             "type": "text",
             "text": (
                 f"Se agotó el presupuesto diario de IA (US${exc.budget_usd:.2f}). "
-                "Se reinicia mañana; si lo necesitás antes, avisá al equipo. 🙏"
+                "Se reinicia mañana; si lo necesitas antes, avisa al equipo. 🙏"
             ),
         }
         yield {"type": "done", "proposals_created": [], "executed_rows": [], "error": "budget_exceeded"}
@@ -317,7 +317,7 @@ def _format_response(intent: str, outcome: dict[str, Any], resolved) -> str:
     confirmation. Tone matches the existing Spanish style."""
     kind = outcome.get("kind")
     if kind == "out_of_scope":
-        return outcome.get("message", "No entendí, ¿podés repetirlo?")
+        return outcome.get("message", "No entendí, ¿puedes repetirlo?")
     if kind == "clarify":
         reason = outcome.get("reason", "necesito más info")
         cands = outcome.get("candidates", [])
@@ -336,7 +336,7 @@ def _format_response(intent: str, outcome: dict[str, Any], resolved) -> str:
             return f"Cuento {summary['count']}."
         return f"Resultado: {json.dumps(summary, ensure_ascii=False)[:200]}"
     if kind == "needs_sql":
-        return "No alcancé a entender la pregunta. ¿Podés repetirla con más detalle?"
+        return "No alcancé a entender la pregunta. ¿Puedes repetirla con más detalle?"
     if kind == "query_sql":
         rows = outcome.get("rows", [])
         n = outcome.get("row_count", len(rows))

@@ -40,7 +40,7 @@ export function NotesList({ targetTable, targetRowId }: Props) {
           value={body}
           onChange={(e) => setBody(e.target.value)}
           rows={2}
-          placeholder="Escribí una nota…"
+          placeholder="Escribe una nota…"
         />
         <Button onClick={add} disabled={create.isPending} className="gap-2 self-end">
           {create.isPending ? (

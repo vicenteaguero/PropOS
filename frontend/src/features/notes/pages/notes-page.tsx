@@ -83,7 +83,7 @@ export function NotesPage() {
         value={body}
         onChange={(e) => setBody(e.target.value)}
         rows={2}
-        placeholder="Escribí una nota…"
+        placeholder="Escribe una nota…"
         className="mb-2 resize-none border-0 bg-transparent px-1 shadow-none focus-visible:ring-0"
       />
       <div className="flex justify-end">
@@ -130,7 +130,7 @@ export function NotesPage() {
     <ErrorState message="No se pudieron cargar las notas." onRetry={() => refetch()} />
   );
 
-  const empty = <EmptyState title="Sin notas" description="Escribí tu primera nota arriba." />;
+  const empty = <EmptyState title="Sin notas" description="Escribe tu primera nota arriba." />;
 
   const NoteCard = ({ note, index }: { note: Note; index: number }) => (
     <div

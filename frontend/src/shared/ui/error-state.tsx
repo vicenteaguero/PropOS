@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-const DEFAULT_MESSAGE = "No se pudo cargar. Intentá de nuevo.";
+const DEFAULT_MESSAGE = "No se pudo cargar. Intenta de nuevo.";
 
 interface ErrorStateProps {
   /** Overrides the derived text. Falls back to `error`, then to a generic Spanish message. */
