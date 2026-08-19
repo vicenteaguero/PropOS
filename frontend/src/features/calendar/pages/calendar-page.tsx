@@ -48,6 +48,8 @@ import {
   Row,
   SectionLabel,
   Segmented,
+  TOUCH_TARGET_HIT_AREA,
+  TOUCH_TARGET_ROW_COARSE,
 } from "@shared/ui";
 import { useIsDesktop } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
@@ -1119,6 +1121,7 @@ function MobileViewSwitch({
             onClick={() => onChange(it.id)}
             className={cn(
               "flex-1 rounded-full py-2.5 text-sm font-semibold transition active:scale-[0.98]",
+              TOUCH_TARGET_ROW_COARSE,
               active
                 ? "bg-foreground text-background"
                 : "border border-line-strong text-foreground hover:bg-secondary",
@@ -1156,7 +1159,10 @@ function WeekStrip({
             type="button"
             onClick={() => onSelect(day)}
             className={cn(
+              // Seven columns leave 42px per cell on a 360px phone, so the box
+              // cannot grow without overflowing — widen the hit area instead.
               "flex flex-1 flex-col items-center gap-1 rounded-2xl py-2 transition active:scale-[0.97]",
+              TOUCH_TARGET_HIT_AREA,
               isSelected ? "bg-foreground" : "hover:bg-secondary",
             )}
           >
