@@ -9,6 +9,8 @@ from app.features.uf import service as uf_service
 from app.features.uf.providers.base import UfProvider, UfProviderError
 
 TODAY = date(2026, 8, 18)
+FETCHED_TODAY = "2026-08-18T12:00:00+00:00"
+FETCHED_YESTERDAY = "2026-08-17T12:00:00+00:00"
 SERIES = [(date(2026, 8, 18), 40856.64), (date(2026, 9, 1), 40875.09)]
 
 
@@ -41,8 +43,8 @@ def _freeze_today(monkeypatch):
 
 @pytest.mark.asyncio
 @patch("app.features.uf.service.get_supabase_client")
-async def test_ensure_today_skips_network_when_row_exists(mock_client, monkeypatch):
-    mock_client.return_value.table.return_value = _table([{"value_clp": 40856.64}])
+async def test_ensure_today_skips_network_when_row_was_fetched_today(mock_client, monkeypatch):
+    mock_client.return_value.table.return_value = _table([{"value_clp": 40856.64, "fetched_at": FETCHED_TODAY}])
     provider = _StubProvider("sii.cl", SERIES)
     monkeypatch.setattr(uf_service, "build_chain", lambda: [provider])
 
@@ -50,6 +52,35 @@ async def test_ensure_today_skips_network_when_row_exists(mock_client, monkeypat
 
     assert (d, value, inserted) == (TODAY, 40856.64, False)
     assert provider.calls == 0
+
+
+@pytest.mark.asyncio
+@patch("app.features.uf.service.get_supabase_client")
+async def test_ensure_today_refetches_stale_row_to_pull_forward_block(mock_client, monkeypatch):
+    """Today's value alone is not enough — the forward block lands on the 9th."""
+    table = _table([{"value_clp": 40856.64, "fetched_at": FETCHED_YESTERDAY}])
+    mock_client.return_value.table.return_value = table
+    provider = _StubProvider("sii.cl", SERIES)
+    monkeypatch.setattr(uf_service, "build_chain", lambda: [provider])
+
+    d, value, inserted = await uf_service.ensure_today()
+
+    assert provider.calls == 1
+    # Refreshing an existing row is not an insert.
+    assert (d, value, inserted) == (TODAY, 40856.64, False)
+    assert "2026-09-01" in {row["date"] for row in table.upsert.call_args[0][0]}
+
+
+@pytest.mark.asyncio
+@patch("app.features.uf.service.get_supabase_client")
+async def test_ensure_today_refetches_when_fetched_at_is_missing(mock_client, monkeypatch):
+    mock_client.return_value.table.return_value = _table([{"value_clp": 40856.64}])
+    provider = _StubProvider("sii.cl", SERIES)
+    monkeypatch.setattr(uf_service, "build_chain", lambda: [provider])
+
+    await uf_service.ensure_today()
+
+    assert provider.calls == 1
 
 
 @pytest.mark.asyncio

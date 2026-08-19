@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, FileText, Loader2, Palette, Shield, Sparkles } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   ErrorState,
@@ -16,6 +17,7 @@ import { useIsDesktop } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { PageLayout } from "@shared/components/page-layout";
+import { PageHeader } from "@shared/components/page-header";
 import { settingsApi } from "../api/settings-api";
 import { AvatarUploader } from "../components/avatar-uploader";
 import { NotificationsCard } from "../components/notifications-card";
@@ -45,6 +47,37 @@ function RowIcon({ children }: { children: React.ReactNode }) {
     <span className="flex size-9 items-center justify-center rounded-xl bg-secondary text-foreground">
       {children}
     </span>
+  );
+}
+
+/**
+ * Icon + title + subtitle + trailing control. This exact block was written
+ * twice per section — once inside a DesktopCard, once inside a mobile Row —
+ * with identical Spanish copy in both, so a wording change had to be made in
+ * two places or the two layouts disagreed.
+ */
+function SettingLine({
+  icon: Icon,
+  title,
+  sub,
+  right,
+}: {
+  icon: LucideIcon;
+  title: string;
+  sub: string;
+  right?: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <RowIcon>
+        <Icon className="size-[18px]" strokeWidth={1.8} />
+      </RowIcon>
+      <div className="min-w-0 flex-1">
+        <div className="text-base font-semibold leading-tight text-foreground">{title}</div>
+        <div className="text-[13px] text-muted-foreground">{sub}</div>
+      </div>
+      {right}
+    </div>
   );
 }
 
@@ -207,114 +240,85 @@ export function SettingsPage() {
     </ResponsiveSheet>
   );
 
-  // ---- Desktop: wide, sectioned settings in a two-column grid ----
-  if (isDesktop) {
-    return (
-      <PageLayout width="md" noPadding className="pb-16 lg:max-w-5xl lg:px-8 lg:pt-7">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-[30px] font-bold leading-tight tracking-tight text-foreground">
-              Configuración
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Tu perfil, el agente IA y los documentos.
-            </p>
-          </div>
-          <Button
-            onClick={() => save.mutate()}
-            disabled={save.isPending}
-            variant="ink"
-            className="gap-2"
-          >
-            {save.isPending && <Loader2 className="size-4 animate-spin" strokeWidth={1.8} />}
-            Guardar
-          </Button>
-        </div>
-
-        <div className="mt-7 grid grid-cols-2 items-start gap-6">
-          {/* Perfil */}
-          {meQ.data ? (
-            <DesktopCard title="Perfil">
-              <AvatarUploader user={meQ.data} />
-            </DesktopCard>
-          ) : (
-            <DesktopCard title="Perfil">
-              <ErrorState
-                compact
-                message="No se pudo cargar tu perfil."
-                error={meQ.error}
-                onRetry={() => meQ.refetch()}
-              />
-            </DesktopCard>
-          )}
-
-          {/* Agente IA */}
-          <DesktopCard title="Agente IA">
-            <div className="flex items-center gap-3">
-              <RowIcon>
-                <Sparkles className="size-[18px]" strokeWidth={1.8} />
-              </RowIcon>
-              <div className="min-w-0 flex-1">
-                <div className="text-base font-semibold leading-tight text-foreground">
-                  Nombre del agente
-                </div>
-                <div className="text-[13px] text-muted-foreground">
-                  Visible en sidebar, chat, pendientes y notificaciones.
-                </div>
-              </div>
-              {agentNameInput}
-            </div>
-          </DesktopCard>
-
-          {/* Marca */}
-          <DesktopCard title="Marca">
-            <div className="flex items-center gap-3">
-              <RowIcon>
-                <Palette className="size-[18px]" strokeWidth={1.8} />
-              </RowIcon>
-              <div className="min-w-0 flex-1">
-                <div className="text-base font-semibold leading-tight text-foreground">
-                  Color de la empresa
-                </div>
-                <div className="text-[13px] text-muted-foreground">
-                  Acento de la interfaz para este workspace.
-                </div>
-              </div>
-            </div>
-            <div className="mt-4">{brandSwatches}</div>
-          </DesktopCard>
-
-          {/* Documentos */}
-          <DesktopCard title="Documentos">
-            <Row
-              left={
-                <RowIcon>
-                  <FileText className="size-[18px]" strokeWidth={1.8} />
-                </RowIcon>
-              }
-              title="Tamaño de página"
-              sub="Se aplica al generar PDFs desde escaneos."
+  // ---- One definition per section, two shells ---------------------------
+  // Every section below used to exist twice, with the same strings, icons and
+  // handlers in each branch. The layouts genuinely differ (a two-column card
+  // grid vs a single-column list), so the SHELL branches — the content does not.
+  const sections: { key: string; title: string; body: React.ReactNode }[] = [
+    {
+      key: "perfil",
+      title: "Perfil",
+      body: meQ.data ? (
+        <AvatarUploader user={meQ.data} />
+      ) : (
+        <ErrorState
+          compact
+          message="No se pudo cargar tu perfil."
+          error={meQ.error}
+          onRetry={() => meQ.refetch()}
+        />
+      ),
+    },
+    {
+      key: "agente",
+      title: "Agente IA",
+      body: (
+        <SettingLine
+          icon={Sparkles}
+          title="Nombre del agente"
+          sub="Visible en sidebar, chat, pendientes y notificaciones."
+          right={agentNameInput}
+        />
+      ),
+    },
+    {
+      key: "marca",
+      title: "Marca",
+      body: (
+        <>
+          <SettingLine
+            icon={Palette}
+            title="Color de la empresa"
+            sub="Acento de la interfaz para este workspace."
+          />
+          <div className="mt-4">{brandSwatches}</div>
+        </>
+      ),
+    },
+    {
+      key: "notificaciones",
+      title: "Notificaciones",
+      body: <NotificationsCard />,
+    },
+    {
+      key: "documentos",
+      title: "Documentos",
+      body: (
+        <SettingLine
+          icon={FileText}
+          title="Tamaño de página"
+          sub="Se aplica al generar PDFs desde escaneos."
+          right={
+            <button
+              type="button"
               onClick={() => setPaperOpen(true)}
-              divider={false}
-              className="-mx-5 rounded-xl"
-              right={
-                <span className="flex items-center gap-1 text-[15px] font-semibold text-foreground">
-                  {paper?.label ?? paperSize}
-                </span>
-              }
-            />
-          </DesktopCard>
-
-          {/* Notificaciones */}
-          <DesktopCard title="Notificaciones" className="overflow-hidden">
-            <div className="-mx-5 -my-5">
-              <NotificationsCard />
-            </div>
-          </DesktopCard>
-
-          {/* Permisos */}
-          {meQ.data && meQ.data.admin_scope.length > 0 && (
-            <DesktopCard title="Permisos">
+              className={cn(
+                "flex items-center gap-1 rounded-lg px-2 py-1 text-[15px] font-semibold text-foreground",
+                FOCUS_RING,
+              )}
+            >
+              {paper?.label ?? paperSize}
+            </button>
+          }
+        />
+      ),
+    },
+    ...(meQ.data && meQ.data.admin_scope.length > 0
+      ? [
+          {
+            key: "permisos",
+            title: "Permisos",
+            body: (
               <div className="flex items-start gap-3">
                 <RowIcon>
                   <Shield className="size-[18px]" strokeWidth={1.8} />
@@ -324,24 +328,60 @@ export function SettingsPage() {
                     Scope admin
                   </div>
                   <div className="mt-1.5 flex flex-wrap gap-1.5">
-                    {meQ.data.admin_scope.map((s) => (
-                      <Pill key={s} tone="neutral">
-                        {s}
+                    {meQ.data.admin_scope.map((sc) => (
+                      <Pill key={sc} tone="neutral">
+                        {sc}
                       </Pill>
                     ))}
                   </div>
                 </div>
               </div>
-            </DesktopCard>
-          )}
-        </div>
+            ),
+          },
+        ]
+      : []),
+  ];
 
+  const saveButton = (
+    <Button
+      onClick={() => save.mutate()}
+      disabled={save.isPending}
+      variant="ink"
+      size={isDesktop ? "default" : "block"}
+      className="gap-2"
+    >
+      {save.isPending && <Loader2 className="size-4 animate-spin" strokeWidth={1.8} />}
+      Guardar
+    </Button>
+  );
+
+  if (isDesktop) {
+    return (
+      <PageLayout width="md" noPadding className="pb-16 lg:max-w-5xl lg:px-8 lg:pt-7">
+        <PageHeader
+          title="Configuración"
+          description="Tu perfil, el agente IA y los documentos."
+          actions={saveButton}
+          className="mb-0"
+        />
+        <div className="mt-7 grid grid-cols-2 items-start gap-6">
+          {sections.map((sec) => (
+            <DesktopCard
+              key={sec.key}
+              title={sec.title}
+              className={sec.key === "notificaciones" ? "overflow-hidden" : undefined}
+            >
+              <div className={sec.key === "notificaciones" ? "-mx-5 -my-5" : undefined}>
+                {sec.body}
+              </div>
+            </DesktopCard>
+          ))}
+        </div>
         {paperSheet}
       </PageLayout>
     );
   }
 
-  // ---- Mobile: unchanged single-column flow ----
   return (
     // No bottom-nav pad here — the shell's <main> already clears --app-nav-h.
     <PageLayout width="md" noPadding className="pb-6">
@@ -354,113 +394,14 @@ export function SettingsPage() {
         </p>
       </div>
 
-      {meQ.data ? (
-        <AvatarUploader user={meQ.data} />
-      ) : (
-        <div className="px-5 pt-3">
-          <ErrorState
-            compact
-            message="No se pudo cargar tu perfil."
-            error={meQ.error}
-            onRetry={() => meQ.refetch()}
-          />
+      {sections.map((sec) => (
+        <div key={sec.key}>
+          <SectionLabel className="mb-2 mt-7">{sec.title}</SectionLabel>
+          <div className={sec.key === "notificaciones" ? undefined : "px-5"}>{sec.body}</div>
         </div>
-      )}
+      ))}
 
-      {/* Agente IA */}
-      <SectionLabel className="mb-2 mt-2">Agente IA</SectionLabel>
-      <Row
-        left={
-          <RowIcon>
-            <Sparkles className="size-[18px]" strokeWidth={1.8} />
-          </RowIcon>
-        }
-        title="Nombre del agente"
-        sub="Visible en sidebar, chat, pendientes y notificaciones."
-        divider={false}
-        right={agentNameInput}
-      />
-
-      {/* Marca */}
-      <SectionLabel className="mb-2 mt-7">Marca</SectionLabel>
-      <div className="px-5">
-        <div className="flex items-center gap-3">
-          <RowIcon>
-            <Palette className="size-[18px]" strokeWidth={1.8} />
-          </RowIcon>
-          <div className="min-w-0 flex-1">
-            <div className="text-base font-semibold leading-tight text-foreground">
-              Color de la empresa
-            </div>
-            <div className="text-[13px] text-muted-foreground">
-              Acento de la interfaz para este workspace.
-            </div>
-          </div>
-        </div>
-        <div className="mt-3">{brandSwatches}</div>
-      </div>
-
-      {/* Notificaciones */}
-      <SectionLabel className="mb-2 mt-7">Notificaciones</SectionLabel>
-      <NotificationsCard />
-
-      {/* Documentos */}
-      <SectionLabel className="mb-2 mt-7">Documentos</SectionLabel>
-      <Row
-        left={
-          <RowIcon>
-            <FileText className="size-[18px]" strokeWidth={1.8} />
-          </RowIcon>
-        }
-        title="Tamaño de página"
-        sub="Se aplica al generar PDFs desde escaneos."
-        onClick={() => setPaperOpen(true)}
-        divider={false}
-        right={
-          <span className="flex items-center gap-1 text-[15px] font-semibold text-foreground">
-            {paper?.label ?? paperSize}
-          </span>
-        }
-      />
-
-      {/* Scope admin */}
-      {meQ.data && meQ.data.admin_scope.length > 0 && (
-        <>
-          <SectionLabel className="mb-2 mt-7">Permisos</SectionLabel>
-          <div className="flex items-start gap-3 px-5">
-            <RowIcon>
-              <Shield className="size-[18px]" strokeWidth={1.8} />
-            </RowIcon>
-            <div className="min-w-0 flex-1">
-              <div className="text-base font-semibold leading-tight text-foreground">
-                Scope admin
-              </div>
-              <div className="mt-1.5 flex flex-wrap gap-1.5">
-                {meQ.data.admin_scope.map((s) => (
-                  <Pill key={s} tone="neutral">
-                    {s}
-                  </Pill>
-                ))}
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* Save CTA */}
-      <div className="mt-8 px-5">
-        <Button
-          onClick={() => save.mutate()}
-          disabled={save.isPending}
-          variant="ink"
-          size="block"
-          className="gap-2"
-        >
-          {save.isPending && <Loader2 className="size-4 animate-spin" strokeWidth={1.8} />}
-          Guardar
-        </Button>
-      </div>
-
+      <div className="mt-8 px-5">{saveButton}</div>
       {paperSheet}
     </PageLayout>
   );
