@@ -133,6 +133,9 @@ export function AdminPropertiesPage() {
         <SearchInput
           value={search}
           onChange={setSearch}
+          // Capped: a search field spanning 1770px on a 2560 display reads as a
+          // layout bug, not as generosity.
+          className="lg:max-w-xl"
           ariaLabel="Buscar propiedades"
           placeholder="Buscar por título o dirección"
         />
@@ -193,7 +196,7 @@ export function AdminPropertiesPage() {
 
       <ListCapNotice resource="properties" count={properties.length} className="lg:mx-8" />
       {!isLoading && !error && properties.length > 0 && view === "lista" && (
-        <div className="grid grid-cols-1 gap-3 px-5 lg:grid-cols-2 lg:gap-4 lg:px-8 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 px-5 lg:grid-cols-2 lg:gap-4 lg:px-8 xl:grid-cols-3 2xl:grid-cols-4">
           {properties.map((p) => (
             <PropertyCard
               key={p.id}
