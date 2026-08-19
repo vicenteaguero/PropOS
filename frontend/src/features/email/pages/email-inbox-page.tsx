@@ -37,7 +37,7 @@ export function EmailInboxPage() {
           <BrandMark brand="titan" size={22} />
         </span>
         <div className="min-w-0 flex-1">
-          <h1 className="text-[25px] font-bold leading-tight tracking-tight text-foreground">
+          <h1 className="text-[26px] font-bold leading-tight tracking-tight text-foreground">
             Correos
           </h1>
           <p className="text-[13px] text-muted-foreground">Leads de portales y conversaciones.</p>

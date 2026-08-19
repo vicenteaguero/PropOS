@@ -3,15 +3,33 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+/**
+ * Heading scale. `page` is the canonical size for an index or list page and is
+ * what most of the app already renders inline; `detail` is the smaller step
+ * used when a record's own name is the heading.
+ */
+const SIZES = {
+  page: "text-[26px]",
+  detail: "text-[24px]",
+} as const;
+
 interface PageHeaderProps {
   title: string;
   description?: string;
   actions?: React.ReactNode;
   backTo?: string;
+  size?: keyof typeof SIZES;
   className?: string;
 }
 
-export function PageHeader({ title, description, actions, backTo, className }: PageHeaderProps) {
+export function PageHeader({
+  title,
+  description,
+  actions,
+  backTo,
+  size = "page",
+  className,
+}: PageHeaderProps) {
   return (
     <div className={cn("mb-6 space-y-2", className)}>
       {backTo && (
@@ -24,8 +42,10 @@ export function PageHeader({ title, description, actions, backTo, className }: P
       )}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
-          <h1 className="text-xl font-semibold tracking-tight md:text-2xl">{title}</h1>
-          {description && <p className="text-sm text-muted-foreground">{description}</p>}
+          <h1 className={cn("font-bold leading-tight tracking-tight text-foreground", SIZES[size])}>
+            {title}
+          </h1>
+          {description && <p className="mt-0.5 text-[13px] text-muted-foreground">{description}</p>}
         </div>
         {actions && <div className="flex items-center gap-2">{actions}</div>}
       </div>

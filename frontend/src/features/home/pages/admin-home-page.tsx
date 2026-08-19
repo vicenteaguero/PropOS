@@ -391,7 +391,7 @@ export function AdminHomePage() {
         </div>
       </div>
 
-      <h1 className="px-5 text-[25px] font-bold leading-tight tracking-tight text-foreground">
+      <h1 className="px-5 text-[26px] font-bold leading-tight tracking-tight text-foreground">
         {greeting()}
         {firstName ? `, ${firstName}` : ""}
       </h1>
