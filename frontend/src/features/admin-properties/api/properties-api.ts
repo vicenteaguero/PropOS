@@ -48,7 +48,11 @@ export interface GeneratedDescription {
 }
 
 export const propertiesApi = {
-  list: () => apiRequest<Property[]>("/v1/properties"),
+  /** `q` is matched server-side, so search reaches past the 100-row cap. */
+  list: (params: { q?: string } = {}) =>
+    apiRequest<Property[]>(
+      `/v1/properties${params.q?.trim() ? `?q=${encodeURIComponent(params.q.trim())}` : ""}`,
+    ),
   get: (id: string) => apiRequest<Property>(`/v1/properties/${id}`),
   create: (body: PropertyInput) => apiRequest<Property>("/v1/properties", { method: "POST", body }),
   update: (id: string, body: Partial<PropertyInput>) =>
