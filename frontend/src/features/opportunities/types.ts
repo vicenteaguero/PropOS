@@ -8,14 +8,8 @@ export const PIPELINE_STAGES = [
 ] as const;
 export type PipelineStage = (typeof PIPELINE_STAGES)[number];
 
-export const STAGE_LABELS: Record<string, string> = {
-  LEAD: "Lead",
-  QUALIFIED: "Calificado",
-  VISIT: "Visita",
-  OFFER: "Oferta",
-  RESERVATION: "Reserva",
-  CLOSED: "Cerrado",
-};
+// Identical to the shared registry; re-exported under the local name callers use.
+export { PIPELINE_STAGE_LABELS as STAGE_LABELS } from "@shared/lib/labels";
 
 export type OpportunityStatus = "OPEN" | "WON" | "LOST";
 

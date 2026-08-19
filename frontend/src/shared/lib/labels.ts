@@ -30,7 +30,8 @@ export type LabelKind =
   | "conversationStatus"
   | "txDirection"
   | "txStatus"
-  | "txCategory";
+  | "txCategory"
+  | "listingKind";
 
 /** `tasks-api.ts` → `TaskStatus`. */
 export const TASK_STATUS_LABELS: Record<string, string> = {
@@ -144,6 +145,13 @@ export const TX_CATEGORY_LABELS: Record<string, string> = {
   OTHER: "Otro",
 };
 
+/** `properties` → `Property.listing_kind`. */
+export const LISTING_KIND_LABELS: Record<string, string> = {
+  SALE: "Venta",
+  RENT: "Arriendo",
+  LEASE: "Leasing",
+};
+
 const LABEL_MAPS: Record<LabelKind, Record<string, string>> = {
   taskStatus: TASK_STATUS_LABELS,
   pipelineStage: PIPELINE_STAGE_LABELS,
@@ -156,6 +164,7 @@ const LABEL_MAPS: Record<LabelKind, Record<string, string>> = {
   txDirection: TX_DIRECTION_LABELS,
   txStatus: TX_STATUS_LABELS,
   txCategory: TX_CATEGORY_LABELS,
+  listingKind: LISTING_KIND_LABELS,
 };
 
 /** Placeholder for null/empty values, matching the em-dash used elsewhere. */

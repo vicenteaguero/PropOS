@@ -3,11 +3,17 @@ from __future__ import annotations
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 
 from app.core.dependencies import get_current_user, require_role
-from app.features.uf.schemas import UfPoint, UfRefreshResponse, UfTodayResponse
+from app.features.uf.schemas import (
+    UfForwardResponse,
+    UfPoint,
+    UfRefreshResponse,
+    UfTodayResponse,
+)
 from app.features.uf.service import (
     UfFetchError,
     backfill_missing,
     ensure_today,
+    get_forward,
     get_today_with_deltas,
 )
 
@@ -30,6 +36,18 @@ async def get_uf_today(_=Depends(get_current_user)) -> UfTodayResponse:
         month_delta_pct=snapshot["month_delta_pct"],
         year_delta_pct=snapshot["year_delta_pct"],
     )
+
+
+@router.get("/forward", response_model=UfForwardResponse)
+async def get_uf_forward(_=Depends(get_current_user)) -> UfForwardResponse:
+    """UF values already published for dates after today.
+
+    The Banco Central fixes the whole 10th -> 9th window in advance, so these
+    are official figures a broker can quote for a future closing or lease
+    adjustment. Empty list is a valid answer (nothing published ahead yet, or
+    the active provider does not expose the forward block).
+    """
+    return UfForwardResponse(points=[UfPoint(**p) for p in get_forward()])
 
 
 @router.post(

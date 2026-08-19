@@ -13,18 +13,10 @@ export const CONTACT_TYPES = [
 
 export type ContactType = (typeof CONTACT_TYPES)[number];
 
-export const CONTACT_TYPE_LABELS: Record<ContactType, string> = {
-  BUYER: "Comprador",
-  SELLER: "Vendedor",
-  LANDOWNER: "Propietario",
-  NOTARY: "Notaría",
-  INVESTOR: "Inversionista",
-  EMPLOYEE: "Empleado",
-  FAMILY: "Familia",
-  VENDOR: "Proveedor",
-  STAKEHOLDER: "Stakeholder",
-  OTHER: "Otro",
-};
+// Labels + tones live in the shared registries so every surface agrees.
+// Re-exported here because callers already import them from this module.
+export { CONTACT_TYPE_LABELS } from "@shared/lib/labels";
+export { CONTACT_TYPE_TONES } from "@shared/lib/tones";
 
 export interface Contact {
   id: string;

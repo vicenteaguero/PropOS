@@ -23,7 +23,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useAuth } from "@shared/hooks/use-auth";
-import { ErrorState, Pill, RoundButton, Segmented, type PillTone } from "@shared/ui";
+import { ErrorState, Pill, RoundButton, Segmented } from "@shared/ui";
 import { toast } from "sonner";
 import { InteractionsList } from "@features/interactions/components/interactions-list";
 import { NotesList } from "@features/notes/components/notes-list";
@@ -31,21 +31,9 @@ import { ContactEmails } from "@features/email/components/contact-emails";
 import { useContact, useDeleteContact, useUpdateContact } from "../hooks/use-contacts";
 import { ContactFormDialog } from "./contact-form-dialog";
 import { ContactOpportunities } from "./contact-opportunities";
-import { CONTACT_TYPE_LABELS, type ContactType } from "../types";
+import { CONTACT_TYPE_LABELS } from "../types";
+import { CONTACT_TYPE_TONES } from "@shared/lib/tones";
 import { initials } from "@shared/utils/format";
-
-const TYPE_TONE: Record<ContactType, PillTone> = {
-  BUYER: "accent",
-  SELLER: "success",
-  LANDOWNER: "warning",
-  NOTARY: "neutral",
-  INVESTOR: "accent",
-  EMPLOYEE: "neutral",
-  FAMILY: "neutral",
-  VENDOR: "neutral",
-  STAKEHOLDER: "neutral",
-  OTHER: "neutral",
-};
 
 const TABS = [
   { id: "interacciones", label: "Interacciones" },
@@ -158,7 +146,7 @@ export function ContactDetail({ contactId, onBack, onDeleted }: ContactDetailPro
           {contact.full_name}
         </h1>
         <div className="mt-2">
-          <Pill tone={TYPE_TONE[contact.type]}>{CONTACT_TYPE_LABELS[contact.type]}</Pill>
+          <Pill tone={CONTACT_TYPE_TONES[contact.type]}>{CONTACT_TYPE_LABELS[contact.type]}</Pill>
         </div>
       </div>
 

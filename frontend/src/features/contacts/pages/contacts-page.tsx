@@ -15,7 +15,6 @@ import {
   MasterDetail,
   Pill,
   Row,
-  type PillTone,
 } from "@shared/ui";
 import { toast } from "sonner";
 import { useContacts, useCreateContact } from "../hooks/use-contacts";
@@ -23,21 +22,8 @@ import { ContactFormDialog } from "../components/contact-form-dialog";
 import { ContactDetail } from "../components/contact-detail";
 import { ContactAside } from "../components/contact-aside";
 import { CONTACT_TYPE_LABELS, CONTACT_TYPES, type ContactType } from "../types";
+import { CONTACT_TYPE_TONES } from "@shared/lib/tones";
 import { initials } from "@shared/utils/format";
-
-/** Soft tone per contact type (semantic tokens only). */
-const TYPE_TONE: Record<ContactType, PillTone> = {
-  BUYER: "accent",
-  SELLER: "success",
-  LANDOWNER: "warning",
-  NOTARY: "neutral",
-  INVESTOR: "accent",
-  EMPLOYEE: "neutral",
-  FAMILY: "neutral",
-  VENDOR: "neutral",
-  STAKEHOLDER: "neutral",
-  OTHER: "neutral",
-};
 
 export function ContactsPage() {
   const navigate = useNavigate();
@@ -159,7 +145,7 @@ export function ContactsPage() {
               }
               title={c.full_name}
               sub={[c.phone, c.email].filter(Boolean).join(" · ") || "Sin contacto"}
-              right={<Pill tone={TYPE_TONE[c.type]}>{CONTACT_TYPE_LABELS[c.type]}</Pill>}
+              right={<Pill tone={CONTACT_TYPE_TONES[c.type]}>{CONTACT_TYPE_LABELS[c.type]}</Pill>}
             />
           ))}
         </div>

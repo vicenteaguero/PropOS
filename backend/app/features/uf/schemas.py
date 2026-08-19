@@ -8,12 +8,20 @@ from pydantic import BaseModel
 class UfPoint(BaseModel):
     date: date_t
     value_clp: float
+    # Which provider supplied the row (sii.cl / cmf.cl / mindicador.cl).
+    source: str | None = None
 
 
 class UfTodayResponse(BaseModel):
     today: UfPoint
     month_delta_pct: float | None
     year_delta_pct: float | None
+
+
+class UfForwardResponse(BaseModel):
+    """Officially published UF values dated after today (not projections)."""
+
+    points: list[UfPoint]
 
 
 class UfRefreshResponse(BaseModel):
