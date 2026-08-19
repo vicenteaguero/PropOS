@@ -231,7 +231,7 @@ export function AgentVoice({ chat, onSwitchToChat, onClose }: Props) {
       )}
 
       {/* bottom controls */}
-      <div className="flex shrink-0 flex-col items-center gap-3.5 pt-1.5 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+      <div className="flex shrink-0 flex-col items-center gap-3.5 pt-1.5 pb-[calc(var(--safe-bottom)+1.5rem)]">
         {phase === "listening" && <canvas ref={canvasRef} className="h-10 w-full max-w-xs" />}
         {(phase === "idle" || phase === "thinking") && (
           <button

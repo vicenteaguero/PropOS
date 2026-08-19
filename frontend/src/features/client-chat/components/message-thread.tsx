@@ -132,7 +132,7 @@ export function MessageThread({ conversation, onBack }: Props) {
       </div>
 
       {/* Composer */}
-      <div className="border-t border-border px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <div className="border-t border-border px-4 py-3 pb-[calc(var(--safe-bottom)+0.75rem)]">
         {!inWindow && (
           <div className="mb-2 rounded-xl border border-destructive/40 bg-destructive/10 p-2.5 text-xs text-destructive">
             Fuera de la ventana de 24h — sólo plantillas aprobadas hasta nueva respuesta del

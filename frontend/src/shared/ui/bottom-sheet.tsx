@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useDismissOnBack } from "@shared/hooks/use-dismiss-on-back";
 import { Sheet, SheetContent, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
@@ -23,13 +24,17 @@ export function BottomSheet({
   children,
   className,
 }: BottomSheetProps) {
+  // Back dismisses the sheet instead of leaving the page — the behaviour a
+  // phone user expects from anything that slides up over the content.
+  useDismissOnBack(open, () => onOpenChange(false));
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
         showCloseButton={false}
         className={cn(
-          "max-h-[92dvh] gap-0 overflow-y-auto rounded-t-3xl border-border px-5 pt-3 pb-[max(2rem,env(safe-area-inset-bottom))]",
+          "max-h-[92dvh] gap-0 overflow-y-auto rounded-t-3xl border-border px-5 pt-3 pb-[calc(var(--safe-bottom)+2rem)]",
           className,
         )}
       >

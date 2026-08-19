@@ -91,6 +91,24 @@
    * viewport (MasterDetail, AppShellScroll, PageLayout) subtract BOTH this and
    * --app-header-h, and exactly one of the two is non-zero at a time. */
   --app-nav-h: 0px;
+
+  /* Device safe areas, named once.
+   *
+   * Two reasons this is a token rather than `env()` at each call site. First,
+   * every surface then agrees on the same value. Second, `env()` cannot be
+   * overridden, so a headless browser always reports 0 and a notch can never be
+   * regression-tested; a custom property can be set to a real device's insets
+   * in a test (see scripts/viewport-check.mjs).
+   *
+   * ALWAYS add to these, never `max()` against them. `max(1rem, 59px)` on a
+   * Dynamic Island resolves to 59px, which lands the content exactly on the
+   * cutout's edge with no clearance — that is the bug the phone screenshots
+   * showed. `calc(59px + 1rem)` keeps the padding as padding. */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+
   --radius: 0.625rem;
 
   /* tenant brand accent — hue injected inline per workspace by ThemeController.
