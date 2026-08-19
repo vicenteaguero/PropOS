@@ -254,3 +254,4 @@ backend/notebooks/
 
 # Playwright viewport-check output (screenshots + probe json)
 frontend/viewport-shots/
+frontend/device-shots/
