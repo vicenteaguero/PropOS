@@ -1,4 +1,14 @@
 # Backend build + deploy. Fired by the `propos-api-deploy` trigger on push to
+#
+# ENTRY POINT: the `deploy-backend` job in .github/workflows/ci.yml runs
+# `gcloud builds submit` with this config. The Cloud Build trigger that used to
+# fire it is DISABLED — its GitHub App installation link broke, so pushes to
+# main stopped producing a build. See docs/deployment.md.
+#
+# The job passes COMMIT_SHA and SHORT_SHA explicitly, because a submitted build
+# (unlike a triggered one) has neither: the ci-gate below needs COMMIT_SHA to
+# look up the commit's checks, and build-push needs SHORT_SHA to tag the image
+# so a rollback can name a revision.
 # main (paths backend/**, config/docker/**), or manually via `make deploy-backend`.
 #
 # Two things this file deliberately does at runtime instead of statically:
