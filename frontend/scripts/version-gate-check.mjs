@@ -80,14 +80,13 @@ try {
 }
 
 if (sawOverlay) {
-  try {
-    await page.waitForFunction((n) => window.__reloadProbe !== n, before, { timeout: 1000 });
-  } catch {
-    /* the reload itself is asserted below via navigation count */
-  }
-  await page.waitForTimeout(3000);
+  // Must cover a real network round trip plus the UPDATE_DEADLINE_MS ceiling in
+  // applyUpdate — a local preview reloads in milliseconds and hides regressions
+  // that only show up against a deployed origin.
+  const deadline = Date.now() + 12000;
+  while (reloads === before && Date.now() < deadline) await page.waitForTimeout(500);
   if (reloads > before) pass(`recargó (${reloads - before} navegación/es)`);
-  else fail("mostró el overlay pero nunca recargó");
+  else fail("mostró el overlay pero nunca recargó dentro de 12s");
 }
 
 // --- loop guard: a version that never arrives must not spin forever ---------

@@ -30,6 +30,14 @@ const MAX_ATTEMPTS = 2;
 /** Long enough for a new worker to take control, short enough not to strand the overlay. */
 const CONTROLLER_TIMEOUT_MS = 4000;
 
+/**
+ * Hard ceiling on the whole update path. `registration.update()` goes to the
+ * network and can hang there indefinitely on a flaky connection — and a loader
+ * that never resolves is worse than a tab that never updated, because the user
+ * cannot even keep working. Whatever the service worker is doing, reload by then.
+ */
+const UPDATE_DEADLINE_MS = 5000;
+
 /** Read the commit the server is currently serving. `null` means "don't know". */
 export async function fetchDeployedVersion(signal?: AbortSignal): Promise<string | null> {
   try {
@@ -93,9 +101,17 @@ export function clearAttempts(): void {
 
 /** Pull the new service worker into control, then reload onto the new bundle. */
 export async function applyUpdate(): Promise<void> {
+  // Every path below ends in a reload, and several can race — a controllerchange
+  // and the deadline can both fire. Reloading twice would throw away the second
+  // navigation, so the first one wins.
+  let reloaded = false;
   const reload = () => {
+    if (reloaded) return;
+    reloaded = true;
     window.location.reload();
   };
+
+  window.setTimeout(reload, UPDATE_DEADLINE_MS);
 
   if (!("serviceWorker" in navigator)) {
     reload();
