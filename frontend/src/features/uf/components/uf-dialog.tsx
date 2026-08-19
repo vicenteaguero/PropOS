@@ -207,7 +207,7 @@ export function UfDialog({ open, onOpenChange }: Props) {
                   </span>
                 </span>
                 <span className="flex items-center gap-1.5" title="Variación de la UF este mes">
-                  <span className="text-[10px] uppercase tracking-wide text-faint">mes</span>
+                  <span className="text-[11px] uppercase tracking-wide text-faint">mes</span>
                   <DeltaBadge value={uf.data?.month_delta_pct ?? null} />
                 </span>
               </div>
@@ -218,7 +218,7 @@ export function UfDialog({ open, onOpenChange }: Props) {
                     {usdValue != null ? `$${CLP_FMT.format(Math.round(usdValue))}` : "—"}
                   </span>
                 </span>
-                <span className="text-[10px] uppercase tracking-wide text-faint">dólar obs.</span>
+                <span className="text-[11px] uppercase tracking-wide text-faint">dólar obs.</span>
               </div>
             </div>
           </div>
@@ -243,7 +243,7 @@ export function UfDialog({ open, onOpenChange }: Props) {
 
           <div className="rounded-2xl border border-border bg-background/40 p-4">
             <div className="flex items-baseline justify-between gap-3">
-              <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
                 Monto
               </span>
               <div className="flex items-baseline gap-1.5 truncate">
@@ -265,7 +265,7 @@ export function UfDialog({ open, onOpenChange }: Props) {
 
           <div className="rounded-2xl border border-border bg-background/40 p-4">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
                 Comisión
               </span>
               <div className="flex items-center gap-2">
@@ -330,7 +330,7 @@ export function UfDialog({ open, onOpenChange }: Props) {
             <Key label="00" variant="ghost" onClick={() => pushDigit("00")} />
           </div>
 
-          <p className="text-center text-[10px] text-muted-foreground">
+          <p className="text-center text-[11px] text-muted-foreground">
             Fuente: mindicador.cl · Actualización diaria
           </p>
         </div>

@@ -24,7 +24,7 @@ export function CommandBar() {
       >
         <Search className="size-4 text-foreground" />
         <span className="flex-1 truncate">Buscar o ir a…</span>
-        <kbd className="rounded border border-border bg-background px-1.5 py-0.5 text-[10px] font-medium">
+        <kbd className="rounded border border-border bg-background px-1.5 py-0.5 text-[11px] font-medium">
           ⌘K
         </kbd>
       </button>

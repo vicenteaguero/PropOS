@@ -57,7 +57,7 @@ export function DocumentCard({ doc, onOpen }: Props) {
           <Icon className="size-12 text-muted-foreground" strokeWidth={1.4} />
         )}
         {v?.size_bytes ? (
-          <span className="absolute bottom-2 right-2 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
+          <span className="absolute bottom-2 right-2 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur-sm">
             {formatBytes(v.size_bytes)}
           </span>
         ) : null}
