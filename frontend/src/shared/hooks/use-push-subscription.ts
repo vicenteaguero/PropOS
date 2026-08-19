@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { ENV } from "@core/config/env";
-import { apiRequest } from "@features/documents/api/http";
+import { apiRequest } from "@shared/api/http";
 
 type PermissionState = NotificationPermission | "unsupported";
 

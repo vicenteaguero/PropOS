@@ -1,6 +1,6 @@
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@features/documents/api/http";
+import { apiRequest } from "@shared/api/http";
 import { PageLayout } from "@shared/components/page-layout";
 import { ErrorState, PageSkeleton, Pill, type PillTone } from "@shared/ui";
 

@@ -24,7 +24,7 @@ import {
   type PillTone,
 } from "@shared/ui";
 import { PageLayout } from "@shared/components/page-layout";
-import { apiRequest } from "@features/documents/api/http";
+import { apiRequest } from "@shared/api/http";
 import { toast } from "sonner";
 import { propertiesApi, type PropertyInput } from "../api/properties-api";
 import { PropertyFormDialog } from "../components/property-form-dialog";

@@ -1,4 +1,4 @@
-import { apiRequest } from "@features/documents/api/http";
+import { apiRequest } from "@shared/api/http";
 
 /** Tables a reminder can point at (mirrors `ReminderTargetTable` on the backend). */
 export type ReminderTargetTable = "events" | "tasks" | "transactions";

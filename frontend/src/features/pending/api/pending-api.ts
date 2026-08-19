@@ -1,4 +1,4 @@
-import { apiRequest } from "@features/documents/api/http";
+import { apiRequest } from "@shared/api/http";
 import type { PendingProposal } from "@features/agent/types";
 
 const BASE = "/v1/pending";

@@ -1,4 +1,4 @@
-import { apiRequest } from "@features/documents/api/http";
+import { apiRequest } from "@shared/api/http";
 import { ENV } from "@core/config/env";
 import { supabase } from "@core/supabase/client";
 import type { AgentMessage, AgentSession, AgentTranscript, ChatStreamEvent } from "../types";

@@ -27,7 +27,7 @@ import { useContacts } from "@features/contacts/hooks/use-contacts";
 import { useOpportunities } from "@features/opportunities/hooks/use-opportunities";
 import { useCalendarFeed } from "@features/calendar/hooks/use-calendar";
 import type { CalendarItem } from "@features/calendar/api/calendar-api";
-import { apiRequest } from "@features/documents/api/http";
+import { apiRequest } from "@shared/api/http";
 import { UfButton } from "@features/uf/components/uf-button";
 import { AgentOverlay } from "@features/agent/components/agent-overlay";
 import {

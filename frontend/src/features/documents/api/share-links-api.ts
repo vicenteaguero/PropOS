@@ -1,5 +1,5 @@
 import type { ShareLink, ShareLinkPublicView } from "../types";
-import { apiRequest, publicUrl } from "./http";
+import { apiRequest, publicUrl } from "@shared/api/http";
 
 export interface CreateShareInput {
   document_id: string;

@@ -1,5 +1,5 @@
 import type { ContactLite, InternalAreaLite, PropertyLite } from "../types";
-import { apiRequest } from "./http";
+import { apiRequest } from "@shared/api/http";
 
 export const entitiesApi = {
   listProperties: (q?: string) =>

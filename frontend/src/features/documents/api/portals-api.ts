@@ -5,7 +5,7 @@ import type {
   Portal,
   PortalAccess,
 } from "../types";
-import { apiRequest, publicUrl } from "./http";
+import { apiRequest, publicUrl } from "@shared/api/http";
 
 export interface CreatePortalInput {
   title: string;

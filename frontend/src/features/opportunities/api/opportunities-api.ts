@@ -1,4 +1,4 @@
-import { apiRequest } from "@features/documents/api/http";
+import { apiRequest } from "@shared/api/http";
 import type { Opportunity, OpportunityInput } from "../types";
 
 export interface ListOpportunitiesParams {

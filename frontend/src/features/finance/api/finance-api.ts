@@ -1,4 +1,4 @@
-import { apiRequest } from "@features/documents/api/http";
+import { apiRequest } from "@shared/api/http";
 
 export type TxDirection = "IN" | "OUT";
 export type TxStatus = "PENDING" | "COMPLETED" | "CANCELLED";

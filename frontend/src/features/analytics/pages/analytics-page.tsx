@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { ErrorState, RoundButton } from "@shared/ui";
-import { apiRequest } from "@features/documents/api/http";
+import { apiRequest } from "@shared/api/http";
 import { formatCLP } from "@/lib/locale-cl";
 import { label } from "@shared/lib/labels";
 import { PageLayout } from "@shared/components/page-layout";
