@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
-import { Loader2, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageLayout } from "@shared/components/page-layout";
 import { PageHeader } from "@shared/components/page-header";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
-import { AppShellScroll, ErrorState, ListCapNotice } from "@shared/ui";
+import { AppShellScroll, ErrorState, ListCapNotice, PageSkeleton } from "@shared/ui";
 import { toast } from "sonner";
 import { useContacts } from "@features/contacts/hooks/use-contacts";
 import {
@@ -71,11 +71,7 @@ export function OpportunitiesPage() {
 
         {/* Board region: fills remaining height on desktop, internal column scroll. */}
         <div className="px-4 md:px-6 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:px-8 lg:pb-6">
-          {isLoading && (
-            <div className="flex justify-center py-12">
-              <Loader2 className="size-5 animate-spin text-muted-foreground" />
-            </div>
-          )}
+          {isLoading && <PageSkeleton variant="cards" />}
           {error && (
             <ErrorState message="No se pudo cargar el pipeline." onRetry={() => refetch()} />
           )}

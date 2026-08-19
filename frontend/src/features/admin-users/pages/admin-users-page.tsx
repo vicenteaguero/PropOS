@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, Plus, Search } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageLayout } from "@shared/components/page-layout";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
-import { ErrorState, FOCUS_RING, Pill, Row } from "@shared/ui";
+import { ErrorState, FOCUS_RING, PageSkeleton, Pill, Row } from "@shared/ui";
 import { useIsDesktop } from "@/hooks/use-mobile";
 import {
   useAdminUsersList,
@@ -28,11 +28,7 @@ export function AdminUsersPage() {
   const openUser = (id: string) => navigate(`/admin/users/${id}`);
 
   // Shared states (loading / error / empty) — identical on both layouts.
-  const loadingBlock = isLoading && (
-    <div className="flex justify-center py-12">
-      <Loader2 className="size-5 animate-spin text-muted-foreground" />
-    </div>
-  );
+  const loadingBlock = isLoading && <PageSkeleton variant="table" />;
 
   const errorBlock = error && (
     <ErrorState

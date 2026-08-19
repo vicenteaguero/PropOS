@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
 import { AgentInlineProposalCard } from "@features/agent/components/agent-inline-proposal-card";
 import { PageLayout } from "@shared/components/page-layout";
 import { PageHeader } from "@shared/components/page-header";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
-import { ErrorState, Segmented, type SegmentedItem } from "@shared/ui";
+import { ErrorState, PageSkeleton, Segmented, type SegmentedItem } from "@shared/ui";
 import { useIsDesktop } from "@/hooks/use-mobile";
 import { usePendingProposals } from "../hooks/use-pending";
 import { useAgentName } from "@core/branding/agent-branding";
@@ -29,11 +28,7 @@ export function PendingPage() {
 
   const count = data?.length ?? 0;
 
-  const loading = (
-    <div className="flex justify-center py-12">
-      <Loader2 className="size-5 animate-spin text-muted-foreground" />
-    </div>
-  );
+  const loading = <PageSkeleton variant="list" />;
 
   const errorBox = <ErrorState message="No pude cargar la lista." onRetry={() => refetch()} />;
 
