@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Delete, Loader2, Minus, Plus, TrendingDown, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUfToday, useUsdToday } from "../hooks/use-uf";
-import { ResponsiveSheet } from "@shared/ui";
+import { ResponsiveSheet, TOUCH_TARGET_HIT_AREA } from "@shared/ui";
 
 interface Props {
   open: boolean;
@@ -274,7 +274,7 @@ export function UfDialog({ open, onOpenChange }: Props) {
                   aria-label="Bajar comisión"
                   onClick={() => setPct((p) => clampPct(p - 0.25))}
                   disabled={pct <= 1}
-                  className="flex size-7 items-center justify-center rounded-full bg-secondary text-secondary-foreground transition active:scale-90 disabled:opacity-40"
+                  className={`flex size-7 items-center justify-center rounded-full bg-secondary text-secondary-foreground transition active:scale-90 disabled:opacity-40 ${TOUCH_TARGET_HIT_AREA}`}
                 >
                   <Minus className="size-3.5" />
                 </button>
@@ -286,7 +286,7 @@ export function UfDialog({ open, onOpenChange }: Props) {
                   aria-label="Subir comisión"
                   onClick={() => setPct((p) => clampPct(p + 0.25))}
                   disabled={pct >= 10}
-                  className="flex size-7 items-center justify-center rounded-full bg-secondary text-secondary-foreground transition active:scale-90 disabled:opacity-40"
+                  className={`flex size-7 items-center justify-center rounded-full bg-secondary text-secondary-foreground transition active:scale-90 disabled:opacity-40 ${TOUCH_TARGET_HIT_AREA}`}
                 >
                   <Plus className="size-3.5" />
                 </button>

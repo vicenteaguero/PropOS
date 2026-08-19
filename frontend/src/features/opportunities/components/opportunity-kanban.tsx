@@ -8,7 +8,7 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { Check, X } from "lucide-react";
-import { Pill } from "@shared/ui";
+import { Pill, TOUCH_TARGET_HIT_AREA } from "@shared/ui";
 import { cn } from "@/lib/utils";
 import { PIPELINE_STAGES, STAGE_LABELS, type Opportunity } from "../types";
 
@@ -94,13 +94,13 @@ function Card({
       <div className="mt-2.5 flex gap-1.5">
         <button
           onClick={() => onWon(opp)}
-          className="inline-flex h-7 items-center gap-1 rounded-full bg-success/15 px-2.5 text-[11px] font-semibold text-success transition active:scale-95"
+          className={`inline-flex h-7 items-center gap-1 rounded-full bg-success/15 px-2.5 text-[11px] font-semibold text-success transition active:scale-95 ${TOUCH_TARGET_HIT_AREA}`}
         >
           <Check className="size-3" strokeWidth={1.8} /> Ganada
         </button>
         <button
           onClick={() => onLost(opp)}
-          className="inline-flex h-7 items-center gap-1 rounded-full bg-destructive/15 px-2.5 text-[11px] font-semibold text-destructive transition active:scale-95"
+          className={`inline-flex h-7 items-center gap-1 rounded-full bg-destructive/15 px-2.5 text-[11px] font-semibold text-destructive transition active:scale-95 ${TOUCH_TARGET_HIT_AREA}`}
         >
           <X className="size-3" strokeWidth={1.8} /> Perdida
         </button>

@@ -56,7 +56,7 @@ import {
 } from "../services/scanner/geometry";
 import { warpQuad } from "../services/scanner/perspective-warp";
 import type { Corner, FilterMode, Point, Quad, Side } from "../services/scanner/types";
-import { Field, FieldGroup } from "@shared/ui";
+import { Field, FieldGroup, TOUCH_TARGET_HIT_AREA } from "@shared/ui";
 
 export type BezierControls = { T?: Point; R?: Point; B?: Point; L?: Point };
 
@@ -1050,6 +1050,7 @@ export function CameraCaptureDocument({
               aria-pressed={hdEnabled}
               className={cn(
                 "flex h-9 items-center gap-1 rounded-full border px-3 text-xs font-medium transition",
+                TOUCH_TARGET_HIT_AREA,
                 hdEnabled
                   ? "border-primary bg-primary/15 text-primary"
                   : "border-border text-muted-foreground hover:text-foreground",

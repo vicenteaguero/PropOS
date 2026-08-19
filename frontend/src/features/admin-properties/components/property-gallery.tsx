@@ -2,7 +2,7 @@ import { useRef, useState, type ReactNode } from "react";
 import { ImagePlus, Loader2, Images, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ErrorState } from "@shared/ui";
+import { ErrorState, TOUCH_TARGET_HIT_AREA } from "@shared/ui";
 import { PhotoGrid } from "@shared/components/photo-grid/photo-grid";
 import { PhotoViewer } from "@shared/components/photo-viewer/photo-viewer";
 import { cn } from "@/lib/utils";
@@ -135,7 +135,7 @@ export function PropertyGallery({ propertyId, overlay, className }: PropertyGall
                     aria-label="Eliminar foto"
                     disabled={remove.isPending}
                     onClick={() => remove.mutate(photo.id)}
-                    className="absolute right-1.5 top-1.5 flex size-7 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-sm transition active:scale-95 disabled:opacity-60"
+                    className={`absolute right-1.5 top-1.5 flex size-7 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-sm transition active:scale-95 disabled:opacity-60 ${TOUCH_TARGET_HIT_AREA}`}
                   >
                     <X className="size-4" strokeWidth={2} />
                   </button>
