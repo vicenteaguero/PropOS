@@ -16,7 +16,8 @@ import {
 } from "@/components/ui/sidebar";
 import { useAuth } from "@shared/hooks/use-auth";
 import type { UserView } from "@shared/types/auth";
-import { useNavGroups, usePendingCount, type NavItem } from "@layouts/nav-items";
+import { type NavItem } from "@layouts/nav-items";
+import { useNavGroups, usePendingCount } from "@layouts/use-nav-groups";
 
 const ITEM_CLASS =
   "h-8 !px-2 text-[13px] [&>svg]:size-[18px] group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:[&>svg]:size-5 group-data-[collapsible=icon]:[&>span]:hidden";

@@ -4,12 +4,12 @@ import {
   CalendarDays,
   Check,
   Home,
+  LayoutGrid,
   LogOut,
   Moon,
   Settings,
   Sparkles,
   Sun,
-  User,
   Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -17,7 +17,8 @@ import { useAuth } from "@shared/hooks/use-auth";
 import { useThemeMode } from "@core/theme/theme-provider";
 import { hueForTenant } from "@core/theme/tenant-accent";
 import { AgentOverlay } from "@features/agent/components/agent-overlay";
-import { BottomSheet } from "@shared/ui";
+import { BottomSheet, Pill } from "@shared/ui";
+import { useNavGroups, usePendingCount } from "@layouts/use-nav-groups";
 import { cn } from "@/lib/utils";
 import type { UserView } from "@shared/types/auth";
 
@@ -90,7 +91,9 @@ export function MobileBottomNav() {
   const { theme, toggle } = useThemeMode();
   const navigate = useNavigate();
   const [propoOpen, setPropoOpen] = useState(false);
-  const [accountOpen, setAccountOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const { groups } = useNavGroups();
+  const pendingCount = usePendingCount();
   const navRef = useRef<HTMLElement>(null);
   usePublishNavHeight(navRef);
 
@@ -105,7 +108,7 @@ export function MobileBottomNav() {
   const canPropo = isAdminView && allow("agent");
 
   const go = (path: string) => {
-    setAccountOpen(false);
+    setMoreOpen(false);
     navigate(path);
   };
 
@@ -137,20 +140,30 @@ export function MobileBottomNav() {
           {allow("productividad") && (
             <NavTab to={`${base}/calendario`} icon={CalendarDays} label="Agenda" />
           )}
+          {/* Everything the sidebar can reach lives behind this tab. Without
+              it the phone shell could only open whatever the four tabs and the
+              home tiles hardcoded, stranding 13 routes at URL-only. */}
           <button
             type="button"
-            onClick={() => setAccountOpen(true)}
-            className="flex flex-1 flex-col items-center gap-0.5 py-1 text-muted-foreground"
+            onClick={() => setMoreOpen(true)}
+            aria-label={pendingCount > 0 ? `Más · ${pendingCount} pendientes` : "Más"}
+            className="relative flex flex-1 flex-col items-center gap-0.5 py-1 text-muted-foreground"
           >
-            <User className="size-[22px]" strokeWidth={1.8} />
-            <span className="text-[10.5px] font-medium">Cuenta</span>
+            <LayoutGrid className="size-[22px]" strokeWidth={1.8} />
+            {pendingCount > 0 && (
+              <span
+                aria-hidden
+                className="absolute right-[calc(50%-16px)] top-0 size-2 rounded-full bg-primary"
+              />
+            )}
+            <span className="text-[10.5px] font-medium">Más</span>
           </button>
         </div>
       </nav>
 
       {canPropo && propoOpen && <AgentOverlay onClose={() => setPropoOpen(false)} />}
 
-      <BottomSheet open={accountOpen} onOpenChange={setAccountOpen} title="Cuenta">
+      <BottomSheet open={moreOpen} onOpenChange={setMoreOpen} title="Todo">
         <div className="mt-3 flex items-center gap-3.5 pb-4">
           <div className="flex size-14 items-center justify-center rounded-full bg-secondary text-lg font-semibold text-foreground">
             {initials(user.fullName)}
@@ -165,6 +178,42 @@ export function MobileBottomNav() {
           </div>
         </div>
 
+        {/* The full destination tree, straight from the shared nav config —
+            the same groups the desktop sidebar renders. Two columns because a
+            24-item single-column list turns into a scroll marathon on a phone. */}
+        {groups.map((group, idx) => (
+          <div key={group.label ?? `g-${idx}`} className="border-t border-border py-2.5">
+            {group.label && (
+              <div className="px-1 pb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {group.label}
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-1">
+              {group.items.map((item) => {
+                const Icon = item.icon;
+                const badge = item.badge === "pending" && pendingCount > 0 ? pendingCount : null;
+                return (
+                  <button
+                    key={item.path}
+                    type="button"
+                    onClick={() => go(item.path)}
+                    className="flex min-h-11 items-center gap-2.5 rounded-xl px-2 py-2.5 text-left transition active:scale-[0.98] active:bg-secondary"
+                  >
+                    <Icon
+                      className="size-[18px] shrink-0 text-muted-foreground"
+                      strokeWidth={1.9}
+                    />
+                    <span className="min-w-0 flex-1 truncate text-[15px] font-medium text-foreground">
+                      {item.label}
+                    </span>
+                    {badge !== null && <Pill tone="accent">{badge}</Pill>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+
         {memberships.length > 1 && (
           <div className="border-t border-border py-2">
             <div className="px-1 pt-1 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -178,7 +227,7 @@ export function MobileBottomNav() {
                   type="button"
                   onClick={() => {
                     if (!active) void switchTenant(m.tenantId);
-                    setAccountOpen(false);
+                    setMoreOpen(false);
                   }}
                   className="flex w-full items-center gap-3 py-2.5 text-left"
                 >
@@ -216,7 +265,7 @@ export function MobileBottomNav() {
             icon={LogOut}
             label="Cerrar sesión"
             onClick={() => {
-              setAccountOpen(false);
+              setMoreOpen(false);
               signOut();
             }}
             destructive
