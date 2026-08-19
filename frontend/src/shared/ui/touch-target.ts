@@ -30,3 +30,17 @@ export const TOUCH_TARGET_ROW = "min-h-11";
 export const TOUCH_TARGET_HIT_AREA =
   "relative after:absolute after:left-1/2 after:top-1/2 after:size-11 " +
   "after:-translate-x-1/2 after:-translate-y-1/2 after:content-['']";
+
+/**
+ * The 44px floor, applied only where the pointer is a finger.
+ *
+ * `TOUCH_TARGET` grows the box unconditionally, which would inflate a dense
+ * mouse-driven toolbar for no benefit. These variants gate on
+ * `pointer: coarse`, so a laptop renders exactly as before while a phone or
+ * tablet gets a target a thumb can actually hit.
+ */
+export const TOUCH_TARGET_COARSE =
+  "[@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11";
+
+/** Height-only variant, for controls that already span enough width. */
+export const TOUCH_TARGET_ROW_COARSE = "[@media(pointer:coarse)]:min-h-11";

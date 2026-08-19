@@ -5,7 +5,9 @@ export { Pill, type PillTone } from "./pill";
 export { RoundButton, type RoundButtonTone } from "./round-button";
 export {
   TOUCH_TARGET,
+  TOUCH_TARGET_COARSE,
   TOUCH_TARGET_ROW,
+  TOUCH_TARGET_ROW_COARSE,
   TOUCH_TARGET_HIT_AREA,
   TOUCH_TARGET_PX,
 } from "./touch-target";

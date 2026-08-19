@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { TOUCH_TARGET_ROW_COARSE } from "./touch-target";
 
 interface SectionLabelProps {
   children: ReactNode;
@@ -17,7 +18,10 @@ export function SectionLabel({ children, action, onAction, className }: SectionL
         <button
           type="button"
           onClick={onAction}
-          className="shrink-0 text-sm font-semibold text-primary hover:underline"
+          className={cn(
+            "shrink-0 text-sm font-semibold text-primary hover:underline",
+            TOUCH_TARGET_ROW_COARSE,
+          )}
         >
           {action}
         </button>

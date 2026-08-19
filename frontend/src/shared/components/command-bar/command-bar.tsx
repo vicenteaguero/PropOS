@@ -20,7 +20,7 @@ export function CommandBar() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="hidden h-9 w-full max-w-md items-center gap-2.5 rounded-full border border-border bg-secondary/60 px-3.5 text-left text-sm text-muted-foreground transition hover:bg-secondary md:flex"
+        className="hidden h-9 w-full max-w-md items-center gap-2.5 rounded-full border border-border bg-secondary/60 px-3.5 text-left text-sm text-muted-foreground transition hover:bg-secondary md:flex [@media(pointer:coarse)]:min-h-11"
       >
         <Search className="size-4 text-foreground" />
         <span className="flex-1 truncate">Buscar o ir a…</span>

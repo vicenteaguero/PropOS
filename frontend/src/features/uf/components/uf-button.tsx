@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useUfToday } from "../hooks/use-uf";
 import { UfDialog } from "./uf-dialog";
+import { TOUCH_TARGET_ROW_COARSE } from "@shared/ui";
 
 const CLP_COMPACT = new Intl.NumberFormat("es-CL", {
   notation: "compact",
@@ -24,7 +25,7 @@ export function UfButton({ variant = "chip" }: Props) {
         size="sm"
         variant="outline"
         onClick={() => setOpen(true)}
-        className="h-7 gap-1.5 rounded-full px-2.5 text-[11px] font-medium"
+        className={`h-7 gap-1.5 rounded-full px-2.5 text-[11px] font-medium ${TOUCH_TARGET_ROW_COARSE}`}
         title="Calculadora UF"
       >
         <span className="text-primary">UF</span>

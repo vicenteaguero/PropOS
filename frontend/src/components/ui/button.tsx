@@ -20,17 +20,24 @@ const buttonVariants = cva(
         // Uber-style full-width "ink" button (black on light / white on dark)
         ink: "bg-foreground text-background hover:bg-foreground/90 active:scale-[0.985]",
       },
+      // Every size carries a coarse-pointer floor of 44px, the WCAG 2.5.5 /
+      // Apple HIG minimum. It is gated on `pointer: coarse` so a mouse-driven
+      // laptop keeps this exact density while a phone or tablet gets a target a
+      // thumb can hit — the sizes below are painted heights, not hit areas.
+      // `icon-xs` is left alone: it only appears inside dense editor chrome
+      // where growing it would break the layout, and it is never a primary
+      // action on a phone.
       size: {
-        default: "h-9 px-4 py-2 has-[>svg]:px-3",
+        default: "h-9 px-4 py-2 has-[>svg]:px-3 [@media(pointer:coarse)]:min-h-11",
         // Full-width block CTA (paired with variant ink / outline)
         block: "h-12 w-full rounded-xl px-5 text-[15px] font-semibold has-[>svg]:px-5",
         xs: "h-6 gap-1 rounded-md px-2 text-xs has-[>svg]:px-1.5 [&_svg:not([class*='size-'])]:size-3",
-        sm: "h-8 gap-1.5 rounded-md px-3 has-[>svg]:px-2.5",
-        lg: "h-10 rounded-md px-6 has-[>svg]:px-4",
-        icon: "size-9",
+        sm: "h-8 gap-1.5 rounded-md px-3 has-[>svg]:px-2.5 [@media(pointer:coarse)]:min-h-11",
+        lg: "h-10 rounded-md px-6 has-[>svg]:px-4 [@media(pointer:coarse)]:min-h-11",
+        icon: "size-9 [@media(pointer:coarse)]:size-11",
         "icon-xs": "size-6 rounded-md [&_svg:not([class*='size-'])]:size-3",
-        "icon-sm": "size-8",
-        "icon-lg": "size-10",
+        "icon-sm": "size-8 [@media(pointer:coarse)]:size-11",
+        "icon-lg": "size-10 [@media(pointer:coarse)]:size-11",
       },
     },
     defaultVariants: {
