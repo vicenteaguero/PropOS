@@ -1,4 +1,5 @@
 import { apiRequest } from "@shared/api/http";
+import { qs } from "@shared/lib/query-string";
 
 export interface CalendarItem {
   tenant_id: string;
@@ -45,15 +46,6 @@ export interface EventDetail {
   status: string;
   property_id: string | null;
   contact_id: string | null;
-}
-
-function qs(params: Record<string, unknown>): string {
-  const sp = new URLSearchParams();
-  for (const [k, v] of Object.entries(params)) {
-    if (v !== undefined && v !== null && v !== "") sp.set(k, String(v));
-  }
-  const s = sp.toString();
-  return s ? `?${s}` : "";
 }
 
 export const calendarApi = {

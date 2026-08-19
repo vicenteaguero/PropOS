@@ -1,21 +1,12 @@
 import type { Assignment, AssignmentTarget, DocumentItem } from "../types";
 import { apiRequest } from "@shared/api/http";
+import { qs } from "@shared/lib/query-string";
 
 export interface ListDocumentsParams {
   contactId?: string;
   propertyId?: string;
   areaId?: string;
   q?: string;
-}
-
-function qs(params: ListDocumentsParams): string {
-  const sp = new URLSearchParams();
-  if (params.contactId) sp.set("contact_id", params.contactId);
-  if (params.propertyId) sp.set("property_id", params.propertyId);
-  if (params.areaId) sp.set("area_id", params.areaId);
-  if (params.q) sp.set("q", params.q);
-  const s = sp.toString();
-  return s ? `?${s}` : "";
 }
 
 export const documentsApi = {

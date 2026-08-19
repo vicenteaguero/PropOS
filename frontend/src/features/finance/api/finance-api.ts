@@ -1,4 +1,5 @@
 import { apiRequest } from "@shared/api/http";
+import { qs } from "@shared/lib/query-string";
 
 export type TxDirection = "IN" | "OUT";
 export type TxStatus = "PENDING" | "COMPLETED" | "CANCELLED";
@@ -52,15 +53,6 @@ export interface FinanceSummary {
   net_cents: number;
   receivable_cents: number;
   payable_cents: number;
-}
-
-function qs(params: Record<string, unknown>): string {
-  const sp = new URLSearchParams();
-  for (const [k, v] of Object.entries(params)) {
-    if (v !== undefined && v !== null && v !== "") sp.set(k, String(v));
-  }
-  const s = sp.toString();
-  return s ? `?${s}` : "";
 }
 
 export const financeApi = {

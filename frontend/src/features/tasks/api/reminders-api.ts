@@ -1,4 +1,5 @@
 import { apiRequest } from "@shared/api/http";
+import { qs } from "@shared/lib/query-string";
 
 /** Tables a reminder can point at (mirrors `ReminderTargetTable` on the backend). */
 export type ReminderTargetTable = "events" | "tasks" | "transactions";
@@ -26,15 +27,6 @@ export interface ReminderInput {
   url?: string | null;
   /** Defaults to the creating user on the backend. */
   user_id?: string | null;
-}
-
-function qs(params: Record<string, unknown>): string {
-  const sp = new URLSearchParams();
-  for (const [k, v] of Object.entries(params)) {
-    if (v !== undefined && v !== null && v !== "") sp.set(k, String(v));
-  }
-  const s = sp.toString();
-  return s ? `?${s}` : "";
 }
 
 /**
