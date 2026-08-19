@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { PageLayout } from "@shared/components/page-layout";
 import { PageHeader } from "@shared/components/page-header";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
-import { AppShellScroll, ListCapNotice } from "@shared/ui";
+import { AppShellScroll, ErrorState, ListCapNotice } from "@shared/ui";
 import { toast } from "sonner";
 import { useContacts } from "@features/contacts/hooks/use-contacts";
 import {
@@ -77,12 +77,7 @@ export function OpportunitiesPage() {
             </div>
           )}
           {error && (
-            <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
-              No se pudo cargar el pipeline.
-              <Button variant="ghost" size="sm" className="ml-2" onClick={() => refetch()}>
-                Reintentar
-              </Button>
-            </div>
+            <ErrorState message="No se pudo cargar el pipeline." onRetry={() => refetch()} />
           )}
           {!isLoading && !error && (data?.length ?? 0) === 0 && (
             <EmptyState

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useCreateNote, useDeleteNote, useNotes } from "../hooks/use-notes";
+import { ErrorState } from "@shared/ui";
 
 interface Props {
   targetTable: string;
@@ -58,14 +59,7 @@ export function NotesList({ targetTable, targetRowId }: Props) {
           <Loader2 className="size-5 animate-spin text-muted-foreground" />
         </div>
       )}
-      {error && (
-        <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-          Error al cargar.
-          <Button variant="ghost" size="sm" className="ml-2" onClick={() => refetch()}>
-            Reintentar
-          </Button>
-        </div>
-      )}
+      {error && <ErrorState message="Error al cargar." onRetry={() => refetch()} compact />}
       {!isLoading && !error && (data?.length ?? 0) === 0 && (
         <p className="py-4 text-center text-sm text-muted-foreground">Sin notas.</p>
       )}

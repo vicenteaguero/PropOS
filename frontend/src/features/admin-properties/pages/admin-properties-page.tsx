@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { PageLayout } from "@shared/components/page-layout";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
 import { LoadingSpinner } from "@shared/components/loading-spinner/loading-spinner";
-import { FOCUS_RING, ListCapNotice, Pill, Segmented, type PillTone } from "@shared/ui";
+import { ErrorState, FOCUS_RING, ListCapNotice, Pill, Segmented, type PillTone } from "@shared/ui";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { propertiesApi, type Property, type PropertyInput } from "../api/properties-api";
@@ -203,12 +203,7 @@ export function AdminPropertiesPage() {
 
       {!isLoading && error && (
         <div className="px-5 lg:px-8">
-          <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
-            No se pudieron cargar las propiedades.
-            <Button variant="ghost" size="sm" className="ml-2" onClick={() => refetch()}>
-              Reintentar
-            </Button>
-          </div>
+          <ErrorState message="No se pudieron cargar las propiedades." onRetry={() => refetch()} />
         </div>
       )}
 

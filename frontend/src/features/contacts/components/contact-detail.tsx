@@ -23,7 +23,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useAuth } from "@shared/hooks/use-auth";
-import { Pill, RoundButton, Segmented, type PillTone } from "@shared/ui";
+import { ErrorState, Pill, RoundButton, Segmented, type PillTone } from "@shared/ui";
 import { toast } from "sonner";
 import { InteractionsList } from "@features/interactions/components/interactions-list";
 import { NotesList } from "@features/notes/components/notes-list";
@@ -119,14 +119,7 @@ export function ContactDetail({ contactId, onBack, onDeleted }: ContactDetailPro
   }
 
   if (error || !contact) {
-    return (
-      <div className="m-5 rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
-        No se pudo cargar el contacto.
-        <Button variant="ghost" size="sm" className="ml-2" onClick={() => refetch()}>
-          Reintentar
-        </Button>
-      </div>
-    );
+    return <ErrorState message="No se pudo cargar el contacto." onRetry={() => refetch()} />;
   }
 
   const phoneDigits = contact.phone?.replace(/[^\d]/g, "") ?? "";

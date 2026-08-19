@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Pill, Row, SectionLabel, type PillTone } from "@shared/ui";
+import { ErrorState, Pill, Row, SectionLabel, type PillTone } from "@shared/ui";
 import { toast } from "sonner";
 import {
   useCreateOpportunity,
@@ -48,12 +47,7 @@ export function ContactOpportunities({ personId }: { personId: string }) {
         </div>
       )}
       {error && (
-        <div className="mt-3 rounded-2xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-          Error al cargar.
-          <Button variant="ghost" size="sm" className="ml-2" onClick={() => refetch()}>
-            Reintentar
-          </Button>
-        </div>
+        <ErrorState message="Error al cargar." onRetry={() => refetch()} compact className="mt-3" />
       )}
       {!isLoading && !error && (data?.length ?? 0) === 0 && (
         <p className="py-6 text-center text-sm text-muted-foreground">Sin oportunidades.</p>

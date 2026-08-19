@@ -9,6 +9,7 @@ import { useIsDesktop } from "@/hooks/use-mobile";
 import {
   Chip,
   Chips,
+  ErrorState,
   FOCUS_RING,
   ListCapNotice,
   MasterDetail,
@@ -136,12 +137,7 @@ export function ContactsPage() {
       )}
 
       {error && (
-        <div className="mx-5 rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
-          No se pudieron cargar los contactos.
-          <Button variant="ghost" size="sm" className="ml-2" onClick={() => refetch()}>
-            Reintentar
-          </Button>
-        </div>
+        <ErrorState message="No se pudieron cargar los contactos." onRetry={() => refetch()} />
       )}
 
       {!isLoading && !error && filtered.length === 0 && (

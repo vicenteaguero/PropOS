@@ -18,6 +18,7 @@ import { NewDocumentActions } from "../components/fast-add-fab";
 import { useDocuments } from "../hooks/use-documents";
 import { formatBytes } from "@shared/lib/format";
 import type { DocumentItem, ViewMode } from "../types";
+import { ErrorState } from "@shared/ui";
 
 const VIEW_MODE_KEY = "documents:view-mode";
 const GROUP_BY_KEY = "propos:documents-view";
@@ -165,14 +166,7 @@ export function DocumentsPage() {
         </div>
       )}
 
-      {error && (
-        <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
-          Error al cargar documentos: {error instanceof Error ? error.message : "desconocido"}
-          <Button variant="ghost" size="sm" className="ml-2" onClick={() => refetch()}>
-            Reintentar
-          </Button>
-        </div>
-      )}
+      {error && <ErrorState error={error} onRetry={() => refetch()} />}
 
       {!isLoading && !error && data && data.length === 0 && (
         <EmptyState

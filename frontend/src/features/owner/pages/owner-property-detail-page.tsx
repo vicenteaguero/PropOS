@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@shared/components/loading-spinner/loading-spinner";
-import { Pill, Row } from "@shared/ui";
+import { ErrorState, Pill, Row } from "@shared/ui";
 import { apiRequest } from "@shared/api/http";
 import { documentsApi } from "@features/documents/api/documents-api";
 import { useGrantForProperty } from "@features/owner/hooks/use-my-grants";
@@ -177,17 +177,10 @@ export function OwnerPropertyDetailPage() {
                 </div>
               )}
               {docsQ.isError && (
-                <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
-                  No se pudieron cargar los documentos.
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="ml-2"
-                    onClick={() => docsQ.refetch()}
-                  >
-                    Reintentar
-                  </Button>
-                </div>
+                <ErrorState
+                  message="No se pudieron cargar los documentos."
+                  onRetry={() => docsQ.refetch()}
+                />
               )}
               {!docsQ.isLoading && !docsQ.isError && docs.length === 0 && (
                 <div className="rounded-2xl border border-border bg-card px-5 py-8 text-center text-sm text-muted-foreground">
@@ -267,17 +260,10 @@ export function OwnerPropertyDetailPage() {
                 </div>
               )}
               {visitsQ.isError && (
-                <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
-                  No se pudieron cargar las visitas.
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="ml-2"
-                    onClick={() => visitsQ.refetch()}
-                  >
-                    Reintentar
-                  </Button>
-                </div>
+                <ErrorState
+                  message="No se pudieron cargar las visitas."
+                  onRetry={() => visitsQ.refetch()}
+                />
               )}
               {!visitsQ.isLoading && !visitsQ.isError && visits.length === 0 && (
                 <div className="rounded-2xl border border-border bg-card px-5 py-8 text-center text-sm text-muted-foreground">

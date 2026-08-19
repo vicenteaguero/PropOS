@@ -4,7 +4,7 @@ import { Copy, Loader2, RefreshCw, UserPlus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageLayout } from "@shared/components/page-layout";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
-import { Pill, Row, type PillTone } from "@shared/ui";
+import { ErrorState, Pill, Row, type PillTone } from "@shared/ui";
 import { useIsDesktop } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import {
@@ -151,12 +151,7 @@ export function AdminVisitorInvitationsPage() {
       )}
 
       {error && (
-        <div className="mx-5 rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive lg:mx-8">
-          No pudimos cargar las invitaciones.
-          <Button variant="ghost" size="sm" className="ml-2" onClick={() => refetch()}>
-            Reintentar
-          </Button>
-        </div>
+        <ErrorState message="No pudimos cargar las invitaciones." onRetry={() => refetch()} />
       )}
 
       {!isLoading && !error && data && data.length === 0 && (
