@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@shared/api/http";
 import { PageLayout } from "@shared/components/page-layout";
 import { ErrorState, PageSkeleton, Pill, type PillTone } from "@shared/ui";
+import { usePageTitle } from "@app/page-meta";
 
 interface TimelineEvent {
   event_at: string;
@@ -45,6 +46,7 @@ const TYPE_TONE: Record<string, PillTone> = {
 };
 
 export function EntityTimelinePage() {
+  usePageTitle("Historial");
   const { table, id } = useParams<{ table: string; id: string }>();
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["timeline", table, id],

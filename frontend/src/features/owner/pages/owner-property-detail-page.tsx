@@ -11,6 +11,7 @@ import { Pill, Row } from "@shared/ui";
 import { apiRequest } from "@shared/api/http";
 import { documentsApi } from "@features/documents/api/documents-api";
 import { useGrantForProperty } from "@features/owner/hooks/use-my-grants";
+import { usePageTitle } from "@app/page-meta";
 
 interface ApiDocument {
   id: string;
@@ -41,6 +42,7 @@ function audienceHas(
 export function OwnerPropertyDetailPage() {
   const { id: propertyId } = useParams<{ id: string }>();
   const { grant, isLoading: grantLoading } = useGrantForProperty(propertyId);
+  usePageTitle(grant?.propertyTitle ?? "Propiedad");
 
   const docsQ = useQuery({
     queryKey: ["owner", "docs", propertyId],

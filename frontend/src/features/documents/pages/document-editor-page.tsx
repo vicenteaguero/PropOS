@@ -8,6 +8,7 @@ import { useAddVersion, useDocument } from "../hooks/use-documents";
 import { useDocumentBlob } from "../hooks/use-document-blob";
 import { DocumentEditor } from "../components/document-editor";
 import type { DocumentVersion } from "../types";
+import { usePageTitle } from "@app/page-meta";
 
 /**
  * Downloads the version bytes and mounts the editor. Split out so a failed
@@ -63,6 +64,7 @@ function EditorLoader({
 }
 
 export function DocumentEditorPage() {
+  usePageTitle("Editar documento");
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();

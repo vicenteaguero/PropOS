@@ -4,8 +4,10 @@ import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { PRIVACY_POLICY_MD } from "@features/legal/lib/privacy-policy-text";
 import { PublicFooter } from "@shared/components/public-footer/public-footer";
+import { usePageTitle } from "@app/page-meta";
 
 export function PrivacyPage() {
+  usePageTitle("Privacidad");
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
       <header className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur">

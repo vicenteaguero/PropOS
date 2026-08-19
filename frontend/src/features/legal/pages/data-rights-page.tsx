@@ -1,10 +1,12 @@
 import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { PublicFooter } from "@shared/components/public-footer/public-footer";
+import { usePageTitle } from "@app/page-meta";
 
 const PRIVACY_EMAIL = "privacidad@propos.cl";
 
 export function DataRightsPage() {
+  usePageTitle("Derechos de datos");
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
       <header className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur">

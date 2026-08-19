@@ -93,6 +93,21 @@ function HeaderThemeToggle() {
   );
 }
 
+/**
+ * First thing in the tab order, visible only once focused. Without it a
+ * keyboard user pays the entire sidebar — up to 24 links — on every page.
+ */
+function SkipToContent() {
+  return (
+    <a
+      href="#main-content"
+      className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-primary-foreground"
+    >
+      Saltar al contenido
+    </a>
+  );
+}
+
 export function AppLayout() {
   const { user, signOut } = useAuth();
   const shellMode = useShellMode();
@@ -133,7 +148,14 @@ export function AppLayout() {
       // viewport-pinned primitive below subtracts 56px that doesn't exist.
       // --app-nav-h is published by MobileBottomNav from its own measured box.
       <div className="flex min-h-dvh flex-col bg-background [--app-header-h:0px]">
-        <main id="main-content" className="flex-1 pb-[var(--app-nav-h,0px)]">
+        <SkipToContent />
+        {/* tabIndex -1 so PageMetaProvider can move focus here on navigation
+            without putting the region itself in the tab sequence. */}
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="flex-1 outline-none pb-[var(--app-nav-h,0px)]"
+        >
           <Outlet />
         </main>
         <MobileBottomNav />
@@ -144,6 +166,7 @@ export function AppLayout() {
 
   return (
     <SidebarProvider open={sidebarOpen} onOpenChange={setSidebarOpen}>
+      <SkipToContent />
       <AppSidebar />
       {/* Bound the shell to the viewport so the inner <main> is the scroll
           container — keeps the header pinned (a window-level scroll trapped the
@@ -187,7 +210,11 @@ export function AppLayout() {
             </DropdownMenu>
           </div>
         </header>
-        <main className="min-h-0 flex-1 overflow-y-auto">
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="min-h-0 flex-1 overflow-y-auto outline-none"
+        >
           <Outlet />
         </main>
         {/* FAB only where the header command bar is hidden (below md). */}

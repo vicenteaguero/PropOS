@@ -29,6 +29,7 @@ import {
   useSetPassword,
   useUpdateMembership,
 } from "@features/admin-users/hooks/use-admin-users";
+import { usePageTitle } from "@app/page-meta";
 
 const SELECT_CLASS = `h-9 w-full rounded-xl border border-border bg-background px-3 text-sm ${FOCUS_RING}`;
 
@@ -45,6 +46,7 @@ export function AdminUserDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { user: currentUser } = useAuth();
   const { data, isLoading, error, refetch } = useAdminUserDetail(id);
+  usePageTitle(data?.full_name || data?.email);
   const isDev = !!currentUser?.isDevAdmin;
 
   const resetPwd = useResetPassword();
