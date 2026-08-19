@@ -1,5 +1,6 @@
 import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { TOUCH_TARGET_ROW_COARSE } from "./touch-target";
 
 const NO_SCROLLBAR =
   "[-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
@@ -31,6 +32,7 @@ export function Chip({ active, count, className, children, type = "button", ...p
       type={type}
       className={cn(
         "shrink-0 whitespace-nowrap rounded-full border px-3.5 py-2 text-[13px] font-semibold transition",
+        TOUCH_TARGET_ROW_COARSE,
         active
           ? "border-foreground bg-foreground text-background"
           : "border-line-strong text-foreground hover:bg-secondary",

@@ -1,6 +1,7 @@
 import { forwardRef } from "react";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { TOUCH_TARGET_ROW_COARSE } from "./touch-target";
 
 interface WorkspacePillProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   label: string;
@@ -20,6 +21,7 @@ export const WorkspacePill = forwardRef<HTMLButtonElement, WorkspacePillProps>(
         type="button"
         className={cn(
           "inline-flex items-center gap-2 rounded-full border border-line-strong bg-background py-1.5 pr-3 pl-2.5 transition active:scale-95",
+          TOUCH_TARGET_ROW_COARSE,
           className,
         )}
         {...props}
