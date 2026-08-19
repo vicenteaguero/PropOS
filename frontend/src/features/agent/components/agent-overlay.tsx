@@ -8,6 +8,7 @@ import { AgentComposer } from "./agent-composer";
 import { AgentMessageList } from "./agent-message-list";
 import { AgentVoice } from "./agent-voice";
 import { useAgentName } from "@core/branding/agent-branding";
+import { TOUCH_TARGET_HIT_AREA } from "@shared/ui";
 
 interface Props {
   onClose: () => void;
@@ -93,7 +94,7 @@ export function AgentOverlay({ onClose, initialMode = "chat" }: Props) {
                 onClick={handleNew}
                 disabled={!sessionId || closing || chat.isStreaming}
                 aria-label="Nueva conversación"
-                className="flex size-9 items-center justify-center rounded-full bg-white/10 transition active:scale-90 disabled:opacity-40"
+                className={`flex size-9 items-center justify-center rounded-full bg-white/10 transition active:scale-90 disabled:opacity-40 ${TOUCH_TARGET_HIT_AREA}`}
               >
                 {closing ? (
                   <Loader2 className="size-4 animate-spin" />
@@ -106,7 +107,7 @@ export function AgentOverlay({ onClose, initialMode = "chat" }: Props) {
               type="button"
               onClick={() => setMode((m) => (m === "voice" ? "chat" : "voice"))}
               aria-label={mode === "voice" ? "Cambiar a chat" : "Cambiar a voz"}
-              className="flex size-9 items-center justify-center rounded-full bg-white/10 transition active:scale-90"
+              className={`flex size-9 items-center justify-center rounded-full bg-white/10 transition active:scale-90 ${TOUCH_TARGET_HIT_AREA}`}
             >
               {mode === "voice" ? (
                 <MessageSquare className="size-[18px]" />
@@ -118,7 +119,7 @@ export function AgentOverlay({ onClose, initialMode = "chat" }: Props) {
               type="button"
               onClick={onClose}
               aria-label="Cerrar"
-              className="flex h-9 items-center justify-center gap-1.5 rounded-full bg-white/20 px-3.5 transition hover:bg-white/30 active:scale-90 md:size-9 md:px-0"
+              className={`flex h-9 items-center justify-center gap-1.5 rounded-full bg-white/20 px-3.5 transition hover:bg-white/30 active:scale-90 md:size-9 md:px-0 ${TOUCH_TARGET_HIT_AREA}`}
             >
               <X className="size-5 md:size-[18px]" strokeWidth={2.2} />
               <span className="text-sm font-semibold md:hidden">Cerrar</span>

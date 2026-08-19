@@ -29,6 +29,7 @@ import {
   RoundButton,
   Row,
   SectionLabel,
+  TOUCH_TARGET_HIT_AREA,
 } from "@shared/ui";
 import { toast } from "sonner";
 import { useCreateTask, useDeleteTask, useTasks, useUpdateTask } from "../hooks/use-tasks";
@@ -110,7 +111,7 @@ function BucketSection({
                 <button
                   type="button"
                   onClick={() => onComplete(t.id)}
-                  className="flex size-6 shrink-0 items-center justify-center rounded-full border-2 border-line-strong text-transparent transition-colors hover:border-success hover:text-success"
+                  className={`flex size-6 shrink-0 items-center justify-center rounded-full border-2 border-line-strong text-transparent transition-colors hover:border-success hover:text-success ${TOUCH_TARGET_HIT_AREA}`}
                   aria-label="Completar"
                 />
               }

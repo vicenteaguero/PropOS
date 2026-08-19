@@ -4,12 +4,13 @@ import { Check, FileText, Loader2, Palette, Shield, Sparkles } from "lucide-reac
 import { Button } from "@/components/ui/button";
 import {
   ErrorState,
+  FOCUS_RING,
   PageSkeleton,
   Pill,
   ResponsiveSheet,
   Row,
   SectionLabel,
-  FOCUS_RING,
+  TOUCH_TARGET_HIT_AREA,
 } from "@shared/ui";
 import { useIsDesktop } from "@/hooks/use-mobile";
 import { toast } from "sonner";
@@ -152,6 +153,7 @@ export function SettingsPage() {
         onClick={() => setBrandColor(null)}
         className={cn(
           "flex size-9 items-center justify-center rounded-full border-2 text-[11px] font-bold transition",
+          TOUCH_TARGET_HIT_AREA,
           brandColor === null
             ? "border-foreground text-foreground"
             : "border-border text-muted-foreground",
@@ -168,6 +170,7 @@ export function SettingsPage() {
           style={{ background: hex }}
           className={cn(
             "size-9 rounded-full ring-2 ring-offset-2 ring-offset-background transition",
+            TOUCH_TARGET_HIT_AREA,
             brandColor === hex ? "ring-foreground" : "ring-transparent",
           )}
         />

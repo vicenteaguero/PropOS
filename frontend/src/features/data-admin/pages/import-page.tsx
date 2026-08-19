@@ -9,6 +9,7 @@ import {
   Pill,
   Row,
   Segmented,
+  TOUCH_TARGET_HIT_AREA,
   type PillTone,
 } from "@shared/ui";
 import { toast } from "sonner";
@@ -149,7 +150,7 @@ export function ImportPage() {
                 <button
                   type="button"
                   aria-label="Quitar archivo"
-                  className={`flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted ${FOCUS_RING}`}
+                  className={`flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted ${FOCUS_RING} ${TOUCH_TARGET_HIT_AREA}`}
                   onClick={() => {
                     setFile(null);
                     setPreview(null);

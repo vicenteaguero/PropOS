@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Bell, Loader2, Send } from "lucide-react";
-import { Row } from "@shared/ui";
+import { Row, TOUCH_TARGET_HIT_AREA } from "@shared/ui";
 import { toast } from "sonner";
 import { usePushSubscription } from "@shared/hooks/use-push-subscription";
 
@@ -123,7 +123,7 @@ function PushToggle({
       disabled={disabled}
       onClick={onToggle}
       className={
-        "relative h-7 w-12 shrink-0 rounded-full transition disabled:opacity-40 " +
+        `relative h-7 w-12 shrink-0 rounded-full transition disabled:opacity-40 ${TOUCH_TARGET_HIT_AREA} ` +
         (on ? "bg-foreground" : "bg-line-strong")
       }
     >

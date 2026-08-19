@@ -37,6 +37,7 @@ import {
   Pill,
   Row,
   SectionLabel,
+  TOUCH_TARGET_HIT_AREA,
   WorkspacePill,
   type PillTone,
 } from "@shared/ui";
@@ -385,7 +386,7 @@ export function AdminHomePage() {
               type="button"
               aria-label={pendingCount > 0 ? `Pendientes (${pendingCount})` : "Pendientes"}
               onClick={() => navigate(`${base}/pendientes`)}
-              className="relative flex size-10 items-center justify-center rounded-full bg-secondary text-foreground transition active:scale-90"
+              className={`relative flex size-10 items-center justify-center rounded-full bg-secondary text-foreground transition active:scale-90 ${TOUCH_TARGET_HIT_AREA}`}
             >
               <Bell className="size-[18px]" strokeWidth={1.9} />
               {pendingCount > 0 && (
