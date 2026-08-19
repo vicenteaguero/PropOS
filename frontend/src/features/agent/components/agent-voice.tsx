@@ -154,6 +154,8 @@ export function AgentVoice({ chat, onSwitchToChat, onClose }: Props) {
     autoStarted.current = true;
     const id = setTimeout(() => void start(), 1000);
     return () => clearTimeout(id);
+    // Deliberate narrow deps: `start` is recreated every render; the autoStarted ref already makes this run once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chat.pendingAudio.length, chat.isStreaming]);
 
   const lastAudio = chat.pendingAudio[chat.pendingAudio.length - 1];

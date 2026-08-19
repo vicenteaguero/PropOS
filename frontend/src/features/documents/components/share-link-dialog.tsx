@@ -39,6 +39,8 @@ export function ShareLinkDialog({
     if (existing) {
       setPinned(existing.pinned_version_id ?? "CURRENT");
     }
+    // Deliberate narrow deps: Keyed to the link identity — refetches produce a new object with the same id.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [existing?.id]);
 
   const url = existing ? shareLinksApi.publicShortLinkUrl(existing.slug) : null;
