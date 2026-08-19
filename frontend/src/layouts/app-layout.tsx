@@ -149,11 +149,19 @@ export function AppLayout() {
       <div className="flex min-h-dvh flex-col bg-background [--app-header-h:0px]">
         <SkipToContent />
         {/* tabIndex -1 so PageMetaProvider can move focus here on navigation
-            without putting the region itself in the tab sequence. */}
+            without putting the region itself in the tab sequence.
+
+            The insets are why this element needs padding at all. This shell has
+            no header of its own, so under viewport-fit=cover every page's own
+            title row rendered straight beneath the notch, the Dynamic Island or
+            an Android punch-hole — the overlays had inset handling, the main
+            scroll container never did. Left/right matter in landscape, where the
+            cutout moves to the side. All four resolve to 0 on a laptop or
+            tablet, so those layouts are unchanged. */}
         <main
           id="main-content"
           tabIndex={-1}
-          className="flex-1 outline-none pb-[var(--app-nav-h,0px)]"
+          className="flex-1 outline-none pt-[var(--safe-top)] pr-[var(--safe-right)] pb-[var(--app-nav-h,0px)] pl-[var(--safe-left)]"
         >
           <Outlet />
         </main>
@@ -165,13 +173,16 @@ export function AppLayout() {
   }
 
   return (
+    // pl/pr carry the landscape insets: on a phone held sideways the notch sits
+    // beside the nav rail, and the sidebar rendered straight under it. Both are
+    // 0 on a laptop or tablet, so those layouts are untouched.
     <SidebarProvider open={sidebarOpen} onOpenChange={setSidebarOpen}>
       <SkipToContent />
       <AppSidebar />
       {/* Bound the shell to the viewport so the inner <main> is the scroll
           container — keeps the header pinned (a window-level scroll trapped the
           header's sticky inside the wrapper's overflow-hidden). */}
-      <SidebarInset className="h-svh overflow-hidden">
+      <SidebarInset className="h-svh overflow-hidden pr-[var(--safe-right)]">
         <header className="sticky top-0 z-10 flex h-[var(--app-header-h)] shrink-0 items-center gap-2 border-b border-border bg-background px-4">
           <SidebarTrigger className="-ml-1" />
           <HeaderWorkspaceSwitcher />
@@ -183,7 +194,7 @@ export function AppLayout() {
           <div className="block">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <button className="flex items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:coarse)]:size-11">
                   <Avatar size="sm">
                     {user?.avatarUrl && <AvatarImage src={user.avatarUrl} alt={user.fullName} />}
                     <AvatarFallback>{user ? initials(user.fullName) : "?"}</AvatarFallback>

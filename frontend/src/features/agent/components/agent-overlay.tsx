@@ -9,6 +9,7 @@ import { AgentMessageList } from "./agent-message-list";
 import { AgentVoice } from "./agent-voice";
 import { useAgentName } from "@core/branding/agent-branding";
 import { TOUCH_TARGET_HIT_AREA } from "@shared/ui";
+import { useDismissOnBack } from "@shared/hooks/use-dismiss-on-back";
 
 interface Props {
   onClose: () => void;
@@ -28,6 +29,9 @@ const SUGGESTIONS = [
  * regardless of the app theme.
  */
 export function AgentOverlay({ onClose, initialMode = "chat" }: Props) {
+  // Android Back (and the iOS edge swipe in standalone) closes this, rather
+  // than navigating away and discarding whatever was typed.
+  useDismissOnBack(true, onClose);
   const sessionQuery = useAgentSession();
   const sessionId = sessionQuery.data?.id;
   const messagesQuery = useAgentMessages(sessionId);
@@ -71,7 +75,7 @@ export function AgentOverlay({ onClose, initialMode = "chat" }: Props) {
       <div className="dark relative flex h-full w-full flex-col overflow-hidden bg-[#0A0A0A] text-white duration-300 animate-in fade-in max-md:slide-in-from-bottom-4 md:w-[26rem] md:slide-in-from-right md:border-l md:border-white/10 md:shadow-2xl">
         {/* header */}
         <div
-          className={`flex shrink-0 items-center justify-between px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-3 md:pt-4 ${
+          className={`flex shrink-0 items-center justify-between px-4 pt-[calc(var(--safe-top)+1rem)] pl-[calc(var(--safe-left)+1rem)] pr-[calc(var(--safe-right)+1rem)] pb-3 md:pt-4 ${
             mode === "chat" ? "border-b border-white/10" : ""
           }`}
         >
@@ -172,7 +176,7 @@ export function AgentOverlay({ onClose, initialMode = "chat" }: Props) {
               )}
             </div>
             {chat.error && <p className="px-4 text-xs text-red-400">{chat.error}</p>}
-            <div className="shrink-0 border-t border-white/10 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            <div className="shrink-0 border-t border-white/10 p-3 pb-[calc(var(--safe-bottom)+0.75rem)]">
               <AgentComposer
                 onSend={chat.send}
                 onAudio={chat.submitAudio}
