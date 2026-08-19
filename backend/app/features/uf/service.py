@@ -101,12 +101,30 @@ async def _try_chain(fetch: str, year: int | None = None) -> tuple[UfProvider, U
     return None
 
 
+def _fetched_on(raw: str | None) -> date | None:
+    """Santiago-local date of a `fetched_at` timestamp."""
+    if not raw:
+        return None
+    try:
+        return datetime.fromisoformat(str(raw).replace("Z", "+00:00")).astimezone(SANTIAGO).date()
+    except ValueError:
+        return None
+
+
 async def ensure_today() -> tuple[date, float, bool]:
-    """Make sure today's UF is in DB. Returns (date, value, inserted)."""
+    """Make sure today's UF is in DB. Returns (date, value, inserted).
+
+    Having today's row is not enough to skip the network: the forward block is
+    published on the 9th, so a row written before that leaves the upcoming
+    month missing. The short-circuit therefore requires today's row to have
+    been *fetched* today, which still caps the chain at one hit per day.
+    """
     client = get_supabase_client()
     today = today_santiago()
-    existing = client.table(UF_TABLE).select("value_clp").eq("date", today.isoformat()).limit(1).execute().data
-    if existing:
+    existing = (
+        client.table(UF_TABLE).select("value_clp,fetched_at").eq("date", today.isoformat()).limit(1).execute().data
+    )
+    if existing and _fetched_on(existing[0].get("fetched_at")) == today:
         return today, float(existing[0]["value_clp"]), False
 
     result = await _try_chain("recent")
@@ -118,7 +136,8 @@ async def ensure_today() -> tuple[date, float, bool]:
 
     by_date = dict(series)
     if today in by_date:
-        return today, by_date[today], True
+        # "inserted" means the row is new, not merely refreshed.
+        return today, by_date[today], not existing
 
     # The source may not have published today yet (early morning, weekends).
     # Use the most recent value at or before today as the effective value, but
