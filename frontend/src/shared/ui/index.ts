@@ -10,6 +10,7 @@ export {
   TOUCH_TARGET_PX,
 } from "./touch-target";
 export { Field, FieldGroup } from "./field";
+export { StatCard, ChartCard } from "./stat-card";
 export { ListCapNotice, isCapped, LIST_CAPS, type CappedResource } from "./list-cap-notice";
 export { FOCUS_RING } from "./focus-ring";
 export { HOVER_REVEAL } from "./hover-reveal";
