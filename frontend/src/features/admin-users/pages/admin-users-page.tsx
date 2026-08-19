@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Search } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageLayout } from "@shared/components/page-layout";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
-import { ErrorState, FOCUS_RING, PageSkeleton, Pill, Row } from "@shared/ui";
+import { ErrorState, PageSkeleton, Pill, Row } from "@shared/ui";
 import { useIsDesktop } from "@/hooks/use-mobile";
 import {
   useAdminUsersList,
@@ -13,6 +13,7 @@ import {
 import { useAuth } from "@shared/hooks/use-auth";
 import { InviteUserDrawer } from "@features/admin-users/components/invite-user-drawer";
 import { initials } from "@shared/utils/format";
+import { SearchInput } from "@shared/components/search-input/search-input";
 
 export function AdminUsersPage() {
   const navigate = useNavigate();
@@ -83,19 +84,14 @@ export function AdminUsersPage() {
 
       {/* Search */}
       <div className="px-5 pb-4 lg:px-8 lg:pb-5">
-        <div className="relative lg:max-w-md">
-          <Search
-            className="pointer-events-none absolute left-4 top-1/2 size-[18px] -translate-y-1/2 text-muted-foreground"
-            strokeWidth={1.8}
-          />
-          <input
-            aria-label="Buscar usuarios"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por email, nombre o RUT"
-            className={`h-12 w-full rounded-full border border-border bg-secondary pl-11 pr-4 text-[15px] text-foreground placeholder:text-muted-foreground ${FOCUS_RING}`}
-          />
-        </div>
+        <SearchInput
+          value={search}
+          onChange={setSearch}
+          ariaLabel="Buscar usuarios"
+          placeholder="Buscar por email, nombre o RUT"
+          debounceMs={0}
+          className="lg:max-w-md"
+        />
       </div>
 
       {loadingBlock}

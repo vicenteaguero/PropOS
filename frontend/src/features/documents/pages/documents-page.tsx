@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ExternalLink, FileText, Folder, Search, X } from "lucide-react";
+import { ExternalLink, FileText, Folder } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { PageLayout } from "@shared/components/page-layout";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
@@ -19,6 +18,7 @@ import { useDocuments } from "../hooks/use-documents";
 import { formatBytes } from "@shared/lib/format";
 import type { DocumentItem, ViewMode } from "../types";
 import { ErrorState } from "@shared/ui";
+import { SearchInput } from "@shared/components/search-input/search-input";
 
 const VIEW_MODE_KEY = "documents:view-mode";
 const GROUP_BY_KEY = "propos:documents-view";
@@ -111,29 +111,12 @@ export function DocumentsPage() {
   const goToDocument = (id: string) => navigate(`/${role}/documents/${id}`);
 
   const searchField = (
-    <div className="relative">
-      <Search
-        className="absolute left-4 top-1/2 size-[18px] -translate-y-1/2 text-muted-foreground"
-        strokeWidth={1.8}
-      />
-      <Input
-        aria-label="Buscar documentos"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder="Buscar por nombre..."
-        className="h-12 rounded-full border-line-strong pl-11 pr-11 text-[15px]"
-      />
-      {search && (
-        <button
-          type="button"
-          onClick={() => setSearch("")}
-          aria-label="Limpiar búsqueda"
-          className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground transition hover:text-foreground"
-        >
-          <X className="size-4" />
-        </button>
-      )}
-    </div>
+    <SearchInput
+      value={search}
+      onChange={setSearch}
+      ariaLabel="Buscar documentos"
+      placeholder="Buscar por nombre..."
+    />
   );
 
   const entityBanner = (contactId || propertyId || areaId) && (
