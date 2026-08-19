@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Mic, Square, Send, Loader2 } from "lucide-react";
 import { useAgentName } from "@core/branding/agent-branding";
+import { acquireMicStream, releaseMicStream } from "@shared/lib/mic-stream";
 
 interface Props {
   onSend: (text: string) => void;
@@ -27,7 +28,6 @@ export function AgentComposer({ onSend, onAudio, isStreaming }: Props) {
 
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
-  const streamRef = useRef<MediaStream | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -40,8 +40,7 @@ export function AgentComposer({ onSend, onAudio, isStreaming }: Props) {
     rafRef.current = null;
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = null;
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    streamRef.current = null;
+    releaseMicStream();
     if (audioCtxRef.current && audioCtxRef.current.state !== "closed") {
       audioCtxRef.current.close().catch(() => {});
     }
@@ -98,8 +97,7 @@ export function AgentComposer({ onSend, onAudio, isStreaming }: Props) {
           "Tu navegador no soporta micrófono. En iOS, abre PropOS desde la pantalla de inicio (PWA instalada).",
         );
       }
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
+      const stream = await acquireMicStream();
       const mimeType = MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "audio/mp4";
       mimeRef.current = mimeType;
       const recorder = new MediaRecorder(stream, { mimeType });
