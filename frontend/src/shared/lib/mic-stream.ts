@@ -77,6 +77,11 @@ export function releaseMicStream({ immediate = false } = {}): void {
   releaseTimer = setTimeout(stopNow, IDLE_RELEASE_MS);
 }
 
+/** True when a capture can be reused without prompting. */
+export function hasLiveMicStream(): boolean {
+  return isUsable(cached);
+}
+
 /** Test seam — drops the shared capture and any pending release. */
 export function resetMicStream(): void {
   cancelRelease();

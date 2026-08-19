@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Check, Mic, MessageSquare } from "lucide-react";
 import { AgentInlineProposalCard } from "./agent-inline-proposal-card";
 import type { useAgentChat } from "../hooks/use-agent-chat";
-import { acquireMicStream, releaseMicStream } from "@shared/lib/mic-stream";
+import { acquireMicStream, hasLiveMicStream, releaseMicStream } from "@shared/lib/mic-stream";
 
 type Chat = ReturnType<typeof useAgentChat>;
 
@@ -145,9 +145,16 @@ export function AgentVoice({ chat, onSwitchToChat, onClose }: Props) {
   // Auto-start listening ~1s after entering voice mode: a brief "warming up"
   // beat (pulsing mic) so it feels intentional rather than grabbing the mic the
   // instant the overlay opens. Skipped when resuming an in-flight conversation.
+  //
+  // Only when a capture is already live, though. WebKit re-prompts per capture in
+  // an installed web app, so auto-starting from cold put a permission dialog in
+  // front of the user every single time they opened Propo — including when they
+  // only wanted to type. Cold start now waits for the mic button: one deliberate
+  // tap, one prompt.
   const autoStarted = useRef(false);
   useEffect(() => {
     if (autoStarted.current) return;
+    if (!hasLiveMicStream()) return;
     if (chat.pendingAudio.length > 0 || chat.isStreaming) return;
     autoStarted.current = true;
     const id = setTimeout(() => void start(), 1000);

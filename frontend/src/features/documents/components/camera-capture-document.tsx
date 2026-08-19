@@ -58,6 +58,7 @@ import { warpQuad } from "../services/scanner/perspective-warp";
 import type { Corner, FilterMode, Point, Quad, Side } from "../services/scanner/types";
 import { Field, FieldGroup, TOUCH_TARGET_HIT_AREA } from "@shared/ui";
 import { formatDate } from "@shared/utils/format";
+import { acquireCameraStream, releaseCameraStream } from "@shared/lib/camera-stream";
 
 export type BezierControls = { T?: Point; R?: Point; B?: Point; L?: Point };
 
@@ -233,11 +234,12 @@ export function CameraCaptureDocument({
   }, [shotUrls]);
 
   // ---------- camera stream lifecycle ----------
+  // Hands the capture back to the shared broker rather than killing it: WebKit
+  // re-prompts for every new capture in an installed web app, so closing the
+  // viewfinder must not cost the user a permission dialog on the next scan.
   const stopStream = useCallback(() => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((t) => t.stop());
-      streamRef.current = null;
-    }
+    streamRef.current = null;
+    releaseCameraStream();
   }, []);
 
   useEffect(() => {
@@ -269,17 +271,14 @@ export function CameraCaptureDocument({
         // on. Standard mode caps at 1920x1080 to keep memory in check on older
         // devices. `advanced` constraint is a hint Safari/Chrome will satisfy
         // best-effort and silently lower to native max if unsupported.
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: { ideal: "environment" },
-            width: { ideal: hdEnabled ? 4032 : 1920 },
-            height: { ideal: hdEnabled ? 3024 : 1080 },
-            advanced: hdEnabled ? [{ width: { min: 2560 }, height: { min: 1440 } }] : undefined,
-          },
-          audio: false,
+        const stream = await acquireCameraStream({
+          facingMode: "environment",
+          width: hdEnabled ? 4032 : 1920,
+          height: hdEnabled ? 3024 : 1080,
+          advanced: hdEnabled ? [{ width: { min: 2560 }, height: { min: 1440 } }] : undefined,
         });
         if (cancelled) {
-          stream.getTracks().forEach((t) => t.stop());
+          releaseCameraStream();
           return;
         }
         streamRef.current = stream;
