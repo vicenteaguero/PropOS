@@ -1,13 +1,6 @@
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,6 +12,7 @@ import {
   type ContactInput,
   type ContactType,
 } from "../types";
+import { ResponsiveSheet, SheetActions } from "@shared/ui";
 
 interface Props {
   open: boolean;
@@ -67,87 +61,87 @@ export function ContactFormDialog({ open, onOpenChange, contact, onSubmit, pendi
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{contact ? "Editar contacto" : "Nuevo contacto"}</DialogTitle>
-        </DialogHeader>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1.5 sm:col-span-2">
-            <Label htmlFor="c-name">Nombre completo</Label>
-            <Input
-              id="c-name"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="Juan Pérez"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="c-type">Tipo</Label>
-            <select
-              id="c-type"
-              value={type}
-              onChange={(e) => setType(e.target.value as ContactType)}
-              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-            >
-              {CONTACT_TYPES.map((t) => (
-                <option key={t} value={t}>
-                  {CONTACT_TYPE_LABELS[t]}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="c-phone">Teléfono</Label>
-            <Input
-              id="c-phone"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="+569..."
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="c-email">Email</Label>
-            <Input
-              id="c-email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="c-rut">RUT</Label>
-            <Input
-              id="c-rut"
-              value={rut}
-              onChange={(e) => setRut(e.target.value)}
-              placeholder="12.345.678-9"
-            />
-          </div>
-          <div className="space-y-1.5 sm:col-span-2">
-            <Label htmlFor="c-address">Dirección</Label>
-            <Input id="c-address" value={address} onChange={(e) => setAddress(e.target.value)} />
-          </div>
-          <div className="space-y-1.5 sm:col-span-2">
-            <Label htmlFor="c-notes">Notas</Label>
-            <Textarea
-              id="c-notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={3}
-            />
-          </div>
+    <ResponsiveSheet
+      open={open}
+      onOpenChange={onOpenChange}
+      title={contact ? "Editar contacto" : "Nuevo contacto"}
+      desktopClassName="max-w-lg"
+    >
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label htmlFor="c-name">Nombre completo</Label>
+          <Input
+            id="c-name"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            placeholder="Juan Pérez"
+          />
         </div>
-        <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>
-            Cancelar
-          </Button>
-          <Button onClick={submit} disabled={pending} className="gap-2">
-            {pending && <Loader2 className="size-4 animate-spin" />}
-            {contact ? "Guardar" : "Crear"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        <div className="space-y-1.5">
+          <Label htmlFor="c-type">Tipo</Label>
+          <select
+            id="c-type"
+            value={type}
+            onChange={(e) => setType(e.target.value as ContactType)}
+            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+          >
+            {CONTACT_TYPES.map((t) => (
+              <option key={t} value={t}>
+                {CONTACT_TYPE_LABELS[t]}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="c-phone">Teléfono</Label>
+          <Input
+            id="c-phone"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="+569..."
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="c-email">Email</Label>
+          <Input
+            id="c-email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="c-rut">RUT</Label>
+          <Input
+            id="c-rut"
+            value={rut}
+            onChange={(e) => setRut(e.target.value)}
+            placeholder="12.345.678-9"
+          />
+        </div>
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label htmlFor="c-address">Dirección</Label>
+          <Input id="c-address" value={address} onChange={(e) => setAddress(e.target.value)} />
+        </div>
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label htmlFor="c-notes">Notas</Label>
+          <Textarea
+            id="c-notes"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={3}
+          />
+        </div>
+      </div>
+      <SheetActions>
+        <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>
+          Cancelar
+        </Button>
+        <Button onClick={submit} disabled={pending} className="gap-2">
+          {pending && <Loader2 className="size-4 animate-spin" />}
+          {contact ? "Guardar" : "Crear"}
+        </Button>
+      </SheetActions>
+    </ResponsiveSheet>
   );
 }

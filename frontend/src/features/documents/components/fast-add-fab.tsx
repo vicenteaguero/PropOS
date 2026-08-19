@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Camera, FilePlus2, Plus, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@shared/hooks/use-auth";
@@ -18,7 +17,7 @@ import {
   useCreateDraftProperty,
   useProperties,
 } from "../hooks/use-entities";
-import { Field } from "@shared/ui";
+import { Field, ResponsiveSheet } from "@shared/ui";
 
 // Lazy-load the camera capture flow so the documents page chunk stays small.
 // The scanner modules + dnd-kit only fetch when the user opens the camera.
@@ -294,156 +293,149 @@ function FastAddDialogBody(state: ReturnType<typeof useFastAdd>) {
 
   return (
     <>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="text-base">Nuevo documento</DialogTitle>
-            <p className="text-xs text-muted-foreground">
-              Escanea con la cámara o arrastra un archivo.
+      <ResponsiveSheet
+        open={open}
+        onOpenChange={setOpen}
+        title="Nuevo documento"
+        desktopClassName="max-w-lg"
+      >
+        {!pendingFile && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                setCameraOpen(true);
+              }}
+              className="group flex aspect-[5/4] flex-col items-center justify-center gap-2 rounded-xl border border-border bg-card p-5 text-center transition hover:border-primary/60 hover:bg-card/70"
+            >
+              <span className="grid size-12 place-items-center rounded-full bg-primary/15 text-primary transition group-hover:bg-primary/25">
+                <Camera className="size-6" strokeWidth={1.6} />
+              </span>
+              <span className="text-sm font-semibold text-foreground">Escanear</span>
+              <span className="text-[11px] leading-tight text-muted-foreground">
+                Cámara · ID · varias páginas
+              </span>
+            </button>
+            <Suspense
+              fallback={
+                <div className="aspect-[5/4] animate-pulse rounded-xl border border-dashed border-border/60 bg-card/30" />
+              }
+            >
+              <UploadDropzone onFile={handleSelectFile} compact />
+            </Suspense>
+            <p className="col-span-full text-center text-[11px] text-muted-foreground">
+              <Upload className="-mt-0.5 mr-1 inline-block size-3" /> PDF · DOCX · JPG · PNG · WebP
+              · HEIC — hasta 50 MB
             </p>
-          </DialogHeader>
-
-          {!pendingFile && (
-            <div className="grid gap-3 sm:grid-cols-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setOpen(false);
-                  setCameraOpen(true);
-                }}
-                className="group flex aspect-[5/4] flex-col items-center justify-center gap-2 rounded-xl border border-border bg-card p-5 text-center transition hover:border-primary/60 hover:bg-card/70"
+          </div>
+        )}
+        {pendingFile && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 rounded-md border border-border bg-card p-2 text-sm">
+              <FilePlus2 className="size-4 text-primary/70" />
+              <span className="flex-1 truncate">{pendingFile.name}</span>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-6 w-6"
+                onClick={() => setPendingFile(null)}
               >
-                <span className="grid size-12 place-items-center rounded-full bg-primary/15 text-primary transition group-hover:bg-primary/25">
-                  <Camera className="size-6" strokeWidth={1.6} />
-                </span>
-                <span className="text-sm font-semibold text-foreground">Escanear</span>
-                <span className="text-[11px] leading-tight text-muted-foreground">
-                  Cámara · ID · varias páginas
-                </span>
-              </button>
-
-              <Suspense
-                fallback={
-                  <div className="aspect-[5/4] animate-pulse rounded-xl border border-dashed border-border/60 bg-card/30" />
-                }
-              >
-                <UploadDropzone onFile={handleSelectFile} compact />
-              </Suspense>
-
-              <p className="col-span-full text-center text-[11px] text-muted-foreground">
-                <Upload className="-mt-0.5 mr-1 inline-block size-3" /> PDF · DOCX · JPG · PNG ·
-                WebP · HEIC — hasta 50 MB
-              </p>
-            </div>
-          )}
-
-          {pendingFile && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 rounded-md border border-border bg-card p-2 text-sm">
-                <FilePlus2 className="size-4 text-primary/70" />
-                <span className="flex-1 truncate">{pendingFile.name}</span>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-6 w-6"
-                  onClick={() => setPendingFile(null)}
-                >
-                  <X className="size-3" />
-                </Button>
-              </div>
-              <Field label="Nombre del documento" labelClassName="text-xs">
-                <Input
-                  value={displayName}
-                  onChange={(e) => {
-                    setDisplayName(e.target.value);
-                    setNameTouched(true);
-                  }}
-                />
-              </Field>
-              <Field label="Propiedad (existente o nueva como borrador)" labelClassName="text-xs">
-                <EntityCombobox<PropertyLite>
-                  value={propertyTitle}
-                  onChange={(text) => {
-                    setPropertyTitle(text);
-                    if (selectedProperty && text.trim() !== selectedProperty.title.trim()) {
-                      setSelectedProperty(null);
-                    }
-                  }}
-                  onSelect={(p) => setSelectedProperty(p)}
-                  items={properties}
-                  getLabel={(p) => p.title}
-                  getKey={(p) => p.id}
-                  loading={loadingProperties}
-                  placeholder="Av. Reñaca 115"
-                  emptyText="Sin propiedades"
-                  manualEntries={manualProperties}
-                  onAddNew={(text) => {
-                    setSelectedProperty(null);
-                    setPropertyTitle(text);
-                    setManualProperties((prev) =>
-                      prev.some((m) => m.label.toLowerCase() === text.toLowerCase())
-                        ? prev
-                        : [...prev, { label: text, key: text.toLowerCase() }],
-                    );
-                  }}
-                  ariaLabel="Seleccionar propiedad"
-                />
-              </Field>
-              <Field label="Contacto (existente o nuevo como borrador)" labelClassName="text-xs">
-                <EntityCombobox<ContactLite>
-                  value={contactName}
-                  onChange={setContactName}
-                  onSelect={(c) => setSelectedContact(c)}
-                  items={contacts}
-                  getLabel={(c) => c.full_name}
-                  getKey={(c) => c.id}
-                  loading={loadingContacts}
-                  placeholder="Jaime Pérez"
-                  emptyText="Sin contactos"
-                  manualEntries={manualContacts}
-                  onAddNew={(text) => {
-                    setSelectedContact(null);
-                    setContactName(text);
-                    setManualContacts((prev) =>
-                      prev.some((m) => m.label.toLowerCase() === text.toLowerCase())
-                        ? prev
-                        : [...prev, { label: text, key: text.toLowerCase() }],
-                    );
-                  }}
-                  ariaLabel="Seleccionar contacto"
-                />
-                {selectedProperty && (
-                  <p className="text-[11px] text-muted-foreground">
-                    Filtrado por {selectedProperty.title}
-                  </p>
-                )}
-              </Field>
-              <Field label="Etiqueta" labelClassName="text-xs">
-                <div className="flex flex-wrap gap-2">
-                  {QUICK_TAGS.map((t) => (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => setTag(tag === t ? undefined : t)}
-                      className={cn(
-                        "rounded-full border px-3 py-1 text-xs transition",
-                        tag === t
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-border text-muted-foreground hover:text-foreground",
-                      )}
-                    >
-                      {t}
-                    </button>
-                  ))}
-                </div>
-              </Field>
-              <Button onClick={submit} disabled={busy} className="w-full">
-                {busy ? "Subiendo..." : "Crear documento"}
+                <X className="size-3" />
               </Button>
             </div>
-          )}
-        </DialogContent>
-      </Dialog>
+            <Field label="Nombre del documento" labelClassName="text-xs">
+              <Input
+                value={displayName}
+                onChange={(e) => {
+                  setDisplayName(e.target.value);
+                  setNameTouched(true);
+                }}
+              />
+            </Field>
+            <Field label="Propiedad (existente o nueva como borrador)" labelClassName="text-xs">
+              <EntityCombobox<PropertyLite>
+                value={propertyTitle}
+                onChange={(text) => {
+                  setPropertyTitle(text);
+                  if (selectedProperty && text.trim() !== selectedProperty.title.trim()) {
+                    setSelectedProperty(null);
+                  }
+                }}
+                onSelect={(p) => setSelectedProperty(p)}
+                items={properties}
+                getLabel={(p) => p.title}
+                getKey={(p) => p.id}
+                loading={loadingProperties}
+                placeholder="Av. Reñaca 115"
+                emptyText="Sin propiedades"
+                manualEntries={manualProperties}
+                onAddNew={(text) => {
+                  setSelectedProperty(null);
+                  setPropertyTitle(text);
+                  setManualProperties((prev) =>
+                    prev.some((m) => m.label.toLowerCase() === text.toLowerCase())
+                      ? prev
+                      : [...prev, { label: text, key: text.toLowerCase() }],
+                  );
+                }}
+                ariaLabel="Seleccionar propiedad"
+              />
+            </Field>
+            <Field label="Contacto (existente o nuevo como borrador)" labelClassName="text-xs">
+              <EntityCombobox<ContactLite>
+                value={contactName}
+                onChange={setContactName}
+                onSelect={(c) => setSelectedContact(c)}
+                items={contacts}
+                getLabel={(c) => c.full_name}
+                getKey={(c) => c.id}
+                loading={loadingContacts}
+                placeholder="Jaime Pérez"
+                emptyText="Sin contactos"
+                manualEntries={manualContacts}
+                onAddNew={(text) => {
+                  setSelectedContact(null);
+                  setContactName(text);
+                  setManualContacts((prev) =>
+                    prev.some((m) => m.label.toLowerCase() === text.toLowerCase())
+                      ? prev
+                      : [...prev, { label: text, key: text.toLowerCase() }],
+                  );
+                }}
+                ariaLabel="Seleccionar contacto"
+              />
+              {selectedProperty && (
+                <p className="text-[11px] text-muted-foreground">
+                  Filtrado por {selectedProperty.title}
+                </p>
+              )}
+            </Field>
+            <Field label="Etiqueta" labelClassName="text-xs">
+              <div className="flex flex-wrap gap-2">
+                {QUICK_TAGS.map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setTag(tag === t ? undefined : t)}
+                    className={cn(
+                      "rounded-full border px-3 py-1 text-xs transition",
+                      tag === t
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </Field>
+            <Button onClick={submit} disabled={busy} className="w-full">
+              {busy ? "Subiendo..." : "Crear documento"}
+            </Button>
+          </div>
+        )}
+      </ResponsiveSheet>
 
       {cameraOpen && (
         <Suspense fallback={null}>

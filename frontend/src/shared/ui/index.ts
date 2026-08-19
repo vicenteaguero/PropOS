@@ -20,6 +20,7 @@ export { ErrorState } from "./error-state";
 export { PageSkeleton, type PageSkeletonVariant } from "./page-skeleton";
 export { BottomSheet } from "./bottom-sheet";
 export { ResponsiveSheet } from "./responsive-sheet";
+export { SheetActions } from "./sheet-actions";
 export { MasterDetail } from "./master-detail";
 export { AppShellScroll } from "./app-shell-scroll";
 export { WorkspacePill } from "./workspace-pill";

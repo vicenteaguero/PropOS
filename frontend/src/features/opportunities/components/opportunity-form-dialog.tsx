@@ -1,18 +1,11 @@
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useContacts } from "@features/contacts/hooks/use-contacts";
 import { PIPELINE_STAGES, STAGE_LABELS, type Opportunity, type OpportunityInput } from "../types";
-import { Field } from "@shared/ui";
+import { Field, ResponsiveSheet, SheetActions } from "@shared/ui";
 
 interface Props {
   open: boolean;
@@ -65,75 +58,74 @@ export function OpportunityFormDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{opportunity ? "Editar oportunidad" : "Nueva oportunidad"}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-3">
-          {!lockedPersonId && (
-            <Field label="Contacto">
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar contacto"
-              />
-              <select
-                value={personId}
-                onChange={(e) => setPersonId(e.target.value)}
-                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-              >
-                <option value="">Sin contacto</option>
-                {(contacts ?? []).map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.full_name}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          )}
-          <Field label="Etapa">
+    <ResponsiveSheet
+      open={open}
+      onOpenChange={onOpenChange}
+      title={opportunity ? "Editar oportunidad" : "Nueva oportunidad"}
+    >
+      <div className="space-y-3">
+        {!lockedPersonId && (
+          <Field label="Contacto">
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar contacto"
+            />
             <select
-              id="o-stage"
-              value={stage}
-              onChange={(e) => setStage(e.target.value)}
+              value={personId}
+              onChange={(e) => setPersonId(e.target.value)}
               className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
             >
-              {PIPELINE_STAGES.map((s) => (
-                <option key={s} value={s}>
-                  {STAGE_LABELS[s]}
+              <option value="">Sin contacto</option>
+              {(contacts ?? []).map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.full_name}
                 </option>
               ))}
             </select>
           </Field>
-          <Field label="Valor esperado (CLP)">
-            <Input
-              id="o-value"
-              type="number"
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              placeholder="0"
-            />
-          </Field>
-          <Field label="Notas">
-            <Textarea
-              id="o-notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={3}
-            />
-          </Field>
-        </div>
-        <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>
-            Cancelar
-          </Button>
-          <Button onClick={submit} disabled={pending} className="gap-2">
-            {pending && <Loader2 className="size-4 animate-spin" />}
-            {opportunity ? "Guardar" : "Crear"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        )}
+        <Field label="Etapa">
+          <select
+            id="o-stage"
+            value={stage}
+            onChange={(e) => setStage(e.target.value)}
+            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+          >
+            {PIPELINE_STAGES.map((s) => (
+              <option key={s} value={s}>
+                {STAGE_LABELS[s]}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Valor esperado (CLP)">
+          <Input
+            id="o-value"
+            type="number"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder="0"
+          />
+        </Field>
+        <Field label="Notas">
+          <Textarea
+            id="o-notes"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={3}
+          />
+        </Field>
+      </div>
+      <SheetActions>
+        <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>
+          Cancelar
+        </Button>
+        <Button onClick={submit} disabled={pending} className="gap-2">
+          {pending && <Loader2 className="size-4 animate-spin" />}
+          {opportunity ? "Guardar" : "Crear"}
+        </Button>
+      </SheetActions>
+    </ResponsiveSheet>
   );
 }

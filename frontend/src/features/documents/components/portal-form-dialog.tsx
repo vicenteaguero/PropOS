@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { toast } from "sonner";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Field } from "@shared/ui";
+import { Field, ResponsiveSheet } from "@shared/ui";
 import { useCreatePortal } from "../hooks/use-portals";
 import type { PortalAccess } from "../types";
 
@@ -44,56 +43,47 @@ export function PortalFormDialog({ open, onOpenChange }: Props) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Nuevo enlace de subida</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-3">
-          <Field label="Título" labelClassName="text-xs">
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} />
+    <ResponsiveSheet open={open} onOpenChange={onOpenChange} title="Nuevo enlace de subida">
+      <div className="space-y-3">
+        <Field label="Título" labelClassName="text-xs">
+          <Input value={title} onChange={(e) => setTitle(e.target.value)} />
+        </Field>
+        <Field label="Descripción" labelClassName="text-xs">
+          <Input
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Sube tus documentos aquí..."
+          />
+        </Field>
+        <Field label="Acceso" labelClassName="text-xs">
+          <select
+            value={accessMode}
+            onChange={(e) => setAccessMode(e.target.value as PortalAccess)}
+            className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm"
+          >
+            <option value="PUBLIC">Público (cualquiera con el link)</option>
+            <option value="PASSWORD">Con password</option>
+            <option value="QR_ONLY">Solo QR</option>
+          </select>
+        </Field>
+        {accessMode === "PASSWORD" && (
+          <Field label="Password" labelClassName="text-xs">
+            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
           </Field>
-          <Field label="Descripción" labelClassName="text-xs">
-            <Input
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Sube tus documentos aquí..."
-            />
-          </Field>
-          <Field label="Acceso" labelClassName="text-xs">
-            <select
-              value={accessMode}
-              onChange={(e) => setAccessMode(e.target.value as PortalAccess)}
-              className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm"
-            >
-              <option value="PUBLIC">Público (cualquiera con el link)</option>
-              <option value="PASSWORD">Con password</option>
-              <option value="QR_ONLY">Solo QR</option>
-            </select>
-          </Field>
-          {accessMode === "PASSWORD" && (
-            <Field label="Password" labelClassName="text-xs">
-              <Input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </Field>
-          )}
-          <Field label="Tamaño máximo por archivo (MB)" labelClassName="text-xs">
-            <Input
-              type="number"
-              min={1}
-              max={200}
-              value={maxMb}
-              onChange={(e) => setMaxMb(Number(e.target.value) || 50)}
-            />
-          </Field>
-          <Button onClick={submit} disabled={create.isPending} className="w-full">
-            Crear enlace
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+        )}
+        <Field label="Tamaño máximo por archivo (MB)" labelClassName="text-xs">
+          <Input
+            type="number"
+            min={1}
+            max={200}
+            value={maxMb}
+            onChange={(e) => setMaxMb(Number(e.target.value) || 50)}
+          />
+        </Field>
+        <Button onClick={submit} disabled={create.isPending} className="w-full">
+          Crear enlace
+        </Button>
+      </div>
+    </ResponsiveSheet>
   );
 }
