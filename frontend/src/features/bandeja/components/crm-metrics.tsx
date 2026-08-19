@@ -19,7 +19,13 @@ import { useEmailThreads } from "@features/email/hooks/use-email";
 import { useOpportunities } from "@features/opportunities/hooks/use-opportunities";
 import { STAGE_LABELS } from "@features/opportunities/types";
 import { ErrorState, PageSkeleton } from "@shared/ui";
-import { CHART_COLORS, CHART_HEIGHT } from "@shared/lib/chart-config";
+import {
+  AXIS_TICK,
+  CHART_HEIGHT,
+  STAGE_COLORS,
+  STAGE_ORDER,
+  TOOLTIP_STYLE,
+} from "@shared/lib/chart-config";
 
 interface PipelineRow {
   pipeline_stage: string;
@@ -40,27 +46,8 @@ function pct(part: number, total: number): number {
   return total === 0 ? 0 : Math.round((part / total) * 100);
 }
 
-const STAGE_ORDER = ["LEAD", "QUALIFIED", "VISIT", "OFFER", "RESERVATION", "CLOSED"];
-const STAGE_COLORS = [
-  CHART_COLORS.primary,
-  CHART_COLORS.accent,
-  CHART_COLORS.surface,
-  CHART_COLORS.success,
-  CHART_COLORS.warning,
-  CHART_COLORS.neutral,
-];
-
 // WhatsApp / Email channel accents for the donut. CSS vars only (no raw hex).
 const CHANNEL_COLORS = ["var(--chart-1)", "var(--chart-3)"];
-
-const AXIS_TICK = { fontSize: 11, fill: "var(--muted-foreground)" };
-const TOOLTIP_STYLE = {
-  fontSize: 12,
-  background: "var(--card)",
-  border: "1px solid var(--border)",
-  borderRadius: 12,
-  color: "var(--foreground)",
-};
 
 /**
  * Métricas tab. Reuses the existing analytics `/pipeline` endpoint for the

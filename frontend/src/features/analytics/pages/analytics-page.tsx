@@ -6,7 +6,14 @@ import { apiRequest } from "@shared/api/http";
 import { formatCLP } from "@/lib/locale-cl";
 import { label } from "@shared/lib/labels";
 import { PageLayout } from "@shared/components/page-layout";
-import { CHART_COLORS, CHART_HEIGHT } from "@shared/lib/chart-config";
+import {
+  AXIS_TICK,
+  CHART_COLORS,
+  CHART_HEIGHT,
+  STAGE_COLORS,
+  STAGE_ORDER,
+  TOOLTIP_STYLE,
+} from "@shared/lib/chart-config";
 import { useAgentName } from "@core/branding/agent-branding";
 import {
   Bar,
@@ -56,25 +63,6 @@ interface FunnelRow {
   status: string;
   opp_count: number;
 }
-
-const STAGE_ORDER = ["LEAD", "QUALIFIED", "VISIT", "OFFER", "RESERVATION", "CLOSED"];
-const STAGE_COLORS = [
-  CHART_COLORS.primary,
-  CHART_COLORS.accent,
-  CHART_COLORS.surface,
-  CHART_COLORS.success,
-  CHART_COLORS.warning,
-  CHART_COLORS.neutral,
-];
-
-const AXIS_TICK = { fontSize: 11, fill: "var(--muted-foreground)" };
-const TOOLTIP_STYLE = {
-  fontSize: 12,
-  background: "var(--card)",
-  border: "1px solid var(--border)",
-  borderRadius: 12,
-  color: "var(--foreground)",
-};
 
 export function AnalyticsPage() {
   const queryClient = useQueryClient();
