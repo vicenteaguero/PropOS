@@ -21,6 +21,7 @@ import { PageHeader } from "@shared/components/page-header";
 import { settingsApi } from "../api/settings-api";
 import { AvatarUploader } from "../components/avatar-uploader";
 import { NotificationsCard } from "../components/notifications-card";
+import { usePageTitle } from "@app/page-meta";
 
 const PAPER_OPTIONS = [
   { value: "A4", label: "A4", detail: "210×297 mm" },
@@ -102,6 +103,7 @@ function DesktopCard({
 }
 
 export function SettingsPage() {
+  usePageTitle("Configuración");
   const qc = useQueryClient();
   const isDesktop = useIsDesktop();
   const tenantQ = useQuery({

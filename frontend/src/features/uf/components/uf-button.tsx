@@ -15,7 +15,7 @@ interface Props {
 export function UfButton({ variant = "chip" }: Props) {
   const [open, setOpen] = useState(false);
   const today = useUfToday();
-  const value = today.data?.today.value_clp ?? null;
+  const value = today.data?.today?.value_clp ?? null;
 
   return (
     <>

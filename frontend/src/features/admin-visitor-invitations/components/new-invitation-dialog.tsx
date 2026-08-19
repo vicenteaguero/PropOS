@@ -67,7 +67,7 @@ export function NewInvitationDialog({ open, onOpenChange, defaultPropertyId }: P
     return () => clearTimeout(t);
   }, [email, open]);
 
-  const hasWarnings = (preflight?.warnings.length ?? 0) > 0;
+  const hasWarnings = (preflight?.warnings?.length ?? 0) > 0;
   const canSubmit =
     email.includes("@") && propertyId && (!hasWarnings || confirmDup) && !create.isPending;
 

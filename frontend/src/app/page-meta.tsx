@@ -5,24 +5,42 @@ import type { UserView } from "@shared/types/auth";
 
 const APP_NAME = "PropOS";
 
+interface TitleEntry {
+  path: string;
+  label: string;
+  /** Exact-match only. Mirrors NavItem.end — the role roots use it. */
+  end: boolean;
+}
+
 /** Every path the nav tree knows about, longest first so /a/b beats /a. */
-function titleIndex(): Array<[string, string]> {
+function titleIndex(): TitleEntry[] {
   const views: UserView[] = ["admin", "admin-dev", "agent", "owner", "buyer", "content"];
-  const seen = new Map<string, string>();
+  const seen = new Map<string, TitleEntry>();
   for (const view of views) {
     for (const group of buildGroups(view, "Propo", true) as NavGroup[]) {
-      for (const item of group.items) seen.set(item.path, item.label);
+      for (const item of group.items) {
+        seen.set(item.path, { path: item.path, label: item.label, end: !!item.end });
+      }
     }
   }
-  return [...seen.entries()].sort((a, b) => b[0].length - a[0].length);
+  return [...seen.values()].sort((a, b) => b.path.length - a.path.length);
 }
 
 const INDEX = titleIndex();
 
-/** Nav label for a pathname, or null when no entry owns it (detail routes). */
+/**
+ * Nav label for a pathname, or null when no entry owns it.
+ *
+ * Prefix matching is deliberate so `/admin/personas/:id` inherits "Personas",
+ * but entries flagged `end` match exactly — without that, every unlisted route
+ * under `/admin` inherited the root's "Inicio", which is how `/admin/settings`
+ * came out titled "Inicio".
+ */
 export function titleForPath(pathname: string): string | null {
-  const hit = INDEX.find(([path]) => pathname === path || pathname.startsWith(`${path}/`));
-  return hit ? hit[1] : null;
+  const hit = INDEX.find((e) =>
+    e.end ? pathname === e.path : pathname === e.path || pathname.startsWith(`${e.path}/`),
+  );
+  return hit ? hit.label : null;
 }
 
 const PageTitleContext = createContext<((title: string | null) => void) | null>(null);

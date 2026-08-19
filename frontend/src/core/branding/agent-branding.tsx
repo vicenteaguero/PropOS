@@ -14,9 +14,9 @@ interface TenantResponse {
   id: string;
   name: string;
   slug: string;
-  settings: {
-    ai_assistant_name: string;
-    default_paper_size: string;
+  settings?: {
+    ai_assistant_name?: string;
+    default_paper_size?: string;
     brand_color?: string | null;
   };
 }
@@ -41,10 +41,14 @@ export function AgentBrandingProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<TenantBranding>(() => {
     if (!query.data) return DEFAULT;
+    // Guarded: this provider wraps the entire app, so a tenant row that comes
+    // back without `settings` used to throw during render and white-screen
+    // every page rather than just losing the custom agent name.
+    const settings = query.data.settings;
     return {
-      agentName: query.data.settings.ai_assistant_name || DEFAULT.agentName,
-      defaultPaperSize: query.data.settings.default_paper_size || DEFAULT.defaultPaperSize,
-      brandColor: query.data.settings.brand_color || null,
+      agentName: settings?.ai_assistant_name || DEFAULT.agentName,
+      defaultPaperSize: settings?.default_paper_size || DEFAULT.defaultPaperSize,
+      brandColor: settings?.brand_color || null,
       slug: query.data.slug || null,
     };
   }, [query.data]);

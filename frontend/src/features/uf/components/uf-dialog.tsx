@@ -126,9 +126,9 @@ export function UfDialog({ open, onOpenChange }: Props) {
   const [pct, setPct] = useState(4);
   const clampPct = (v: number) => Math.min(10, Math.max(1, Math.round(v * 4) / 4));
 
-  const ufValue = uf.data?.today.value_clp ?? null;
+  const ufValue = uf.data?.today?.value_clp ?? null;
   const usdValue = usd.data?.value_clp ?? null;
-  const dateStr = uf.data?.today.date ?? null;
+  const dateStr = uf.data?.today?.date ?? null;
 
   const amountNum = useMemo(() => parseAmount(raw), [raw]);
   const display = useMemo(() => formatAmount(raw), [raw]);
@@ -380,7 +380,7 @@ export function UfDialog({ open, onOpenChange }: Props) {
           </div>
 
           <p className="text-center text-[11px] text-muted-foreground">
-            UF: {sourceLabel(uf.data?.today.source)} · USD: mindicador.cl · Actualización diaria
+            UF: {sourceLabel(uf.data?.today?.source)} · USD: mindicador.cl · Actualización diaria
           </p>
         </div>
       )}
