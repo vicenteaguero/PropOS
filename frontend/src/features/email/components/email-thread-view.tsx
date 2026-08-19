@@ -5,11 +5,7 @@ import { Pill, type PillTone, RoundButton, FOCUS_RING } from "@shared/ui";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useEmailThread, useReplyEmail } from "../hooks/use-email";
-
-function fmt(ts: string | null): string {
-  if (!ts) return "";
-  return new Date(ts).toLocaleString("es-CL", { dateStyle: "short", timeStyle: "short" });
-}
+import { formatShortDateTime } from "@shared/utils/format";
 
 function statusTone(status: string): PillTone {
   return status.toUpperCase() === "OPEN" ? "success" : "neutral";
@@ -135,7 +131,7 @@ export function EmailThreadView({ threadId, onBack }: Props) {
                     <span className="truncate font-medium">
                       {isOut ? "Yo" : m.from_name || m.from_email}
                     </span>
-                    <span className="shrink-0">{fmt(m.sent_at)}</span>
+                    <span className="shrink-0">{formatShortDateTime(m.sent_at)}</span>
                   </div>
                   <p className="whitespace-pre-wrap">{m.body_text || m.snippet}</p>
                 </div>

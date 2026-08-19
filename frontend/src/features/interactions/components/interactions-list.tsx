@@ -35,6 +35,7 @@ import {
   useInteractions,
 } from "../hooks/use-interactions";
 import { INTERACTION_KINDS, INTERACTION_KIND_LABELS, type InteractionKind } from "../types";
+import { formatDateTime } from "@shared/utils/format";
 
 interface Props {
   /** Filter + prefill participant by contact. */
@@ -53,11 +54,6 @@ const KIND_ICON: Record<InteractionKind, LucideIcon> = {
   SHOWING: DoorOpen,
   OTHER: MessageSquare,
 };
-
-function fmt(ts: string | null): string {
-  if (!ts) return "";
-  return new Date(ts).toLocaleString("es-CL", { dateStyle: "medium", timeStyle: "short" });
-}
 
 function KindIcon({ kind, size = 10 }: { kind: InteractionKind; size?: number }) {
   const Icon = KIND_ICON[kind] ?? CalendarClock;
@@ -173,7 +169,7 @@ export function InteractionsList({ personId, propertyId }: Props) {
                 </span>
               </td>
               <td className="px-4 py-3 whitespace-nowrap text-[13px] text-muted-foreground">
-                {fmt(it.occurred_at ?? it.created_at)}
+                {formatDateTime(it.occurred_at ?? it.created_at)}
               </td>
               <td className="px-4 py-3 text-right">
                 <RoundButton
@@ -204,7 +200,7 @@ export function InteractionsList({ personId, propertyId }: Props) {
           title={it.summary ?? INTERACTION_KIND_LABELS[it.kind] ?? it.kind}
           sub={
             <>
-              <span className="block">{fmt(it.occurred_at ?? it.created_at)}</span>
+              <span className="block">{formatDateTime(it.occurred_at ?? it.created_at)}</span>
               {it.body && (
                 <span className="mt-0.5 line-clamp-2 block whitespace-normal text-[13px] text-muted-foreground">
                   {it.body}

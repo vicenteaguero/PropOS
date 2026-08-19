@@ -2,11 +2,7 @@ import { Link } from "react-router-dom";
 import { BrandMark, Pill, SectionLabel } from "@shared/ui";
 import { useAuth } from "@shared/hooks/use-auth";
 import type { ClientConversation } from "../types";
-
-function fmt(ts: string | null): string {
-  if (!ts) return "—";
-  return new Date(ts).toLocaleString("es-CL", { dateStyle: "medium", timeStyle: "short" });
-}
+import { formatDateTime } from "@shared/utils/format";
 
 /**
  * 2xl context rail for the WhatsApp inbox. Summarises the selected conversation
@@ -51,11 +47,15 @@ export function ConversationAside({ conversation }: { conversation: ClientConver
           </div>
           <div className="flex items-center justify-between gap-3">
             <dt className="text-muted-foreground">Último mensaje</dt>
-            <dd className="text-right text-foreground">{fmt(conversation.last_message_at)}</dd>
+            <dd className="text-right text-foreground">
+              {formatDateTime(conversation.last_message_at, "—")}
+            </dd>
           </div>
           <div className="flex items-center justify-between gap-3">
             <dt className="text-muted-foreground">Última respuesta</dt>
-            <dd className="text-right text-foreground">{fmt(conversation.last_inbound_at)}</dd>
+            <dd className="text-right text-foreground">
+              {formatDateTime(conversation.last_inbound_at, "—")}
+            </dd>
           </div>
         </dl>
       </div>

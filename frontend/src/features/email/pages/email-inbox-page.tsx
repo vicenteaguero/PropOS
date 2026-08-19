@@ -14,11 +14,7 @@ import {
 import { useEmailThreads } from "../hooks/use-email";
 import { EmailComposeSheet } from "../components/email-compose-sheet";
 import { EmailThreadView } from "../components/email-thread-view";
-
-function fmt(ts: string | null): string {
-  if (!ts) return "";
-  return new Date(ts).toLocaleString("es-CL", { dateStyle: "short", timeStyle: "short" });
-}
+import { formatShortDateTime } from "@shared/utils/format";
 
 function statusTone(status: string): PillTone {
   return status.toUpperCase() === "OPEN" ? "success" : "neutral";
@@ -87,7 +83,9 @@ export function EmailInboxPage() {
                 sub={
                   <>
                     <span className="block truncate">{t.subject || "(sin asunto)"}</span>
-                    <span className="block text-faint">{fmt(t.last_message_at)}</span>
+                    <span className="block text-faint">
+                      {formatShortDateTime(t.last_message_at)}
+                    </span>
                   </>
                 }
                 right={

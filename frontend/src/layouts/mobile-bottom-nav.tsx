@@ -21,15 +21,7 @@ import { BottomSheet, Pill } from "@shared/ui";
 import { useNavGroups, usePendingCount } from "@layouts/use-nav-groups";
 import { cn } from "@/lib/utils";
 import type { UserView } from "@shared/types/auth";
-
-function initials(name: string): string {
-  return name
-    .split(" ")
-    .map((p) => p[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
+import { initials } from "@shared/utils/format";
 
 function NavTab({
   to,

@@ -32,6 +32,7 @@ import { useContact, useDeleteContact, useUpdateContact } from "../hooks/use-con
 import { ContactFormDialog } from "./contact-form-dialog";
 import { ContactOpportunities } from "./contact-opportunities";
 import { CONTACT_TYPE_LABELS, type ContactType } from "../types";
+import { initials } from "@shared/utils/format";
 
 const TYPE_TONE: Record<ContactType, PillTone> = {
   BUYER: "accent",
@@ -52,15 +53,6 @@ const TABS = [
   { id: "notas", label: "Notas" },
   { id: "correos", label: "Correos" },
 ];
-
-function initials(name: string): string {
-  return name
-    .split(" ")
-    .map((p) => p[0] ?? "")
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
 
 /** Round quick-action button with a label underneath. Disabled when no target. */
 function QuickAction({

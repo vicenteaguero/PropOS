@@ -11,6 +11,7 @@ import { Check, X } from "lucide-react";
 import { Pill, TOUCH_TARGET_HIT_AREA } from "@shared/ui";
 import { cn } from "@/lib/utils";
 import { PIPELINE_STAGES, STAGE_LABELS, type Opportunity } from "../types";
+import { initials } from "@shared/utils/format";
 
 interface Props {
   opportunities: Opportunity[];
@@ -38,14 +39,6 @@ function formatClp(cents: number | null): string {
     currency: "CLP",
     maximumFractionDigits: 0,
   }).format(cents / 100);
-}
-
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "·";
-  const first = parts[0]?.[0] ?? "";
-  const last = parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? "") : "";
-  return (first + last).toUpperCase();
 }
 
 function Card({

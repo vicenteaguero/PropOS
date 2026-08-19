@@ -15,6 +15,7 @@ import {
 import { toast } from "sonner";
 import { type ImportJob, type ImportPreview } from "../api/imports-api";
 import { useCommitImport, useImports, usePreviewImport } from "../hooks/use-imports";
+import { formatDateTime } from "@shared/utils/format";
 
 const ENTITIES = [
   { id: "contacts", label: "Contactos" },
@@ -47,10 +48,6 @@ function entityLabel(id: string): string {
 function jobCounts(job: ImportJob): string {
   if (job.status === "COMMITTED") return `${job.inserted_rows ?? 0} importados`;
   return `${job.valid_rows ?? 0} de ${job.total_rows ?? 0} válidos`;
-}
-
-function fmtDate(iso: string): string {
-  return new Date(iso).toLocaleString("es-CL", { dateStyle: "medium", timeStyle: "short" });
 }
 
 export function ImportPage() {
@@ -260,7 +257,7 @@ export function ImportPage() {
                 key={job.id}
                 divider={i < history.length - 1}
                 title={job.filename ?? "import.csv"}
-                sub={`${entityLabel(job.entity)} · ${fmtDate(job.created_at)}`}
+                sub={`${entityLabel(job.entity)} · ${formatDateTime(job.created_at)}`}
                 right={
                   <div className="flex flex-col items-end gap-1">
                     <Pill tone={STATUS_TONE[job.status] ?? "neutral"}>

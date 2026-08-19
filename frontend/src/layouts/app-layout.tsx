@@ -27,15 +27,7 @@ import { InstallNudge } from "@shared/components/install-nudge/install-nudge";
 import { useUfDailyRefresh } from "@features/uf/hooks/use-uf";
 import { UfButton } from "@features/uf/components/uf-button";
 import { WorkspacePill } from "@shared/ui";
-
-function getInitials(name: string): string {
-  return name
-    .split(" ")
-    .map((part) => part[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
+import { initials } from "@shared/utils/format";
 
 /** Top-bar workspace selector (always visible). Dropdown when >1 membership. */
 function HeaderWorkspaceSwitcher() {
@@ -194,7 +186,7 @@ export function AppLayout() {
                 <button className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring">
                   <Avatar size="sm">
                     {user?.avatarUrl && <AvatarImage src={user.avatarUrl} alt={user.fullName} />}
-                    <AvatarFallback>{user ? getInitials(user.fullName) : "?"}</AvatarFallback>
+                    <AvatarFallback>{user ? initials(user.fullName) : "?"}</AvatarFallback>
                   </Avatar>
                 </button>
               </DropdownMenuTrigger>
