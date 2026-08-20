@@ -6,8 +6,10 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query
 
 from app.core.dependencies import get_current_user, get_tenant_id, require_role, require_scope
+from app.features.contacts.overview import build_overview
 from app.features.contacts.schemas import (
     ContactCreate,
+    ContactOverview,
     ContactResponse,
     ContactUpdate,
     PersonAliasResponse,
@@ -50,6 +52,15 @@ async def get_contact(
     tenant_id: UUID = Depends(get_tenant_id),
 ) -> dict:
     return await ContactService.get_contact(contact_id, tenant_id)
+
+
+@router.get("/{contact_id}/overview", response_model=ContactOverview)
+async def contact_overview(
+    contact_id: UUID,
+    tenant_id: UUID = Depends(get_tenant_id),
+) -> ContactOverview:
+    """Deals, next booking, last contact and link counts in one round trip."""
+    return build_overview(tenant_id, contact_id)
 
 
 @router.post("", response_model=ContactResponse, status_code=201)

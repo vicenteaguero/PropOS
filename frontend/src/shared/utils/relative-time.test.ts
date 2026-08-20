@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { listTime, timeAgo } from "./relative-time";
+import { listTime, timeAgo, timeAgoInline } from "./relative-time";
 
 // UTC throughout: the suite runs with TZ=UTC (see package.json), so anchoring
 // the fixtures to a Chilean offset moved them across day boundaries.
@@ -45,5 +45,17 @@ describe("timeAgo", () => {
 
   it("says Recién instead of 0 min", () => {
     expect(timeAgo("2026-08-20T14:59:45Z", NOW)).toBe("Recién");
+  });
+});
+
+describe("timeAgoInline", () => {
+  const now = new Date("2026-08-20T12:00:00Z");
+
+  it("lowercases the leading word so it can follow other words", () => {
+    expect(timeAgoInline("2026-08-20T09:00:00Z", now)).toBe("hace 3 h");
+  });
+
+  it("returns an empty string for a missing date, like timeAgo", () => {
+    expect(timeAgoInline(null, now)).toBe("");
   });
 });

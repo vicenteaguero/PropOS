@@ -62,3 +62,15 @@ export function timeAgo(iso: string | null | undefined, now: Date = new Date()):
   const years = Math.round(days / 365);
   return `Hace ${years} año${years === 1 ? "" : "s"}`;
 }
+
+/**
+ * The same delay, mid-sentence: "Último contacto hace 3 h".
+ *
+ * `timeAgo` is written for a standalone slot, so it capitalises. Dropping that
+ * capital at the call site is one `toLowerCase()` away, but "Recién" must stay
+ * capitalised nowhere and lowercase everywhere it follows other words.
+ */
+export function timeAgoInline(iso: string | null | undefined, now: Date = new Date()): string {
+  const text = timeAgo(iso, now);
+  return text ? text.charAt(0).toLowerCase() + text.slice(1) : "";
+}
