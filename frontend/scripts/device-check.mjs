@@ -344,7 +344,12 @@ async function audit(page, dev, routeName) {
     const all = [...document.querySelectorAll("body *")].filter(visible);
 
     // 1. Anything meaningful inside the cutout strip.
-    if (insets) {
+    //
+    // Only meaningful AT REST. Once the page is scrolled, content passing under
+    // a translucent sticky bar legitimately enters the strip — that is the iOS
+    // pattern, not a bug — and every route would report it. The rule is about
+    // chrome that sits in the cutout when nothing has moved.
+    if (insets && window.scrollY === 0) {
       for (const el of all) {
         if (!el.matches("button, a, input, textarea, select, h1, h2, [role=button]")) continue;
         const r = el.getBoundingClientRect();

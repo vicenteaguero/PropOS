@@ -22,19 +22,8 @@ import { useNavGroups, usePendingCount } from "@layouts/use-nav-groups";
 import { SETTINGS_PATH } from "@layouts/nav-items";
 import { cn } from "@/lib/utils";
 import type { UserView } from "@shared/types/auth";
+import { shortName } from "./short-name";
 import { initials } from "@shared/utils/format";
-
-/**
- * "Juan Ignacio Pérez Salas" -> "Juan Pérez". The sheet header is 200px wide on
- * a phone, so a full Chilean legal name (two given names, two surnames) either
- * truncated mid-word or pushed the controls beside it off the row.
- */
-function shortName(full: string): string {
-  const parts = full.trim().split(/\s+/).filter(Boolean);
-  if (parts.length <= 2) return full.trim();
-  // Two given names is the common case, so the surname is the third token.
-  return `${parts[0]} ${parts[parts.length >= 4 ? 2 : 1]}`;
-}
 
 function NavTab({
   to,
