@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { TOUCH_TARGET_ROW_COARSE } from "./touch-target";
@@ -29,6 +29,8 @@ interface SectionTabsProps {
  * at exactly what the sender was looking at.
  */
 export function SectionTabs({ tabs, param = "tab", className }: SectionTabsProps) {
+  const barRef = useRef<HTMLDivElement>(null);
+  usePublishTabsHeight(barRef);
   const [params, setParams] = useSearchParams();
   const requested = params.get(param);
   const active = tabs.find((t) => t.id === requested) ?? tabs[0];
@@ -39,7 +41,10 @@ export function SectionTabs({ tabs, param = "tab", className }: SectionTabsProps
       {/* Horizontal scroll instead of wrapping: a wrapped second row of tabs
           pushes the content down by a whole line on exactly the narrow screens
           that can least afford it. */}
-      <div className="flex gap-4 overflow-x-auto border-b border-border px-[var(--page-x)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div
+        ref={barRef}
+        className="flex gap-4 overflow-x-auto border-b border-border px-[var(--page-x)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
         {tabs.map((t) => {
           const isActive = t.id === active.id;
           return (
@@ -67,4 +72,25 @@ export function SectionTabs({ tabs, param = "tab", className }: SectionTabsProps
       <div className="min-h-0 flex-1">{active.render()}</div>
     </div>
   );
+}
+
+/**
+ * Publishes the bar's measured height to `--section-tabs-h` and clears it on
+ * unmount. Measured rather than hardcoded because the bar's height follows the
+ * font scale and the coarse-pointer touch padding.
+ */
+function usePublishTabsHeight(ref: React.RefObject<HTMLElement | null>) {
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const root = document.documentElement;
+    const publish = () => root.style.setProperty("--section-tabs-h", `${el.offsetHeight}px`);
+    publish();
+    const ro = new ResizeObserver(publish);
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      root.style.removeProperty("--section-tabs-h");
+    };
+  }, [ref]);
 }
