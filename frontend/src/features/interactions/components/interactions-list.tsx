@@ -18,9 +18,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Chip,
-  Chips,
   ErrorState,
+  FilterSelect,
   HOVER_REVEAL,
   ResponsiveSheet,
   ResponsiveTable,
@@ -110,17 +109,17 @@ export function InteractionsList({ personId, propertyId }: Props) {
     setOpen(false);
   };
 
+  // A dropdown, not a chip scroller. Eight kinds never fit beside the Register
+  // button, so the row clipped its own last chip and the active filter could
+  // sit off screen — the one thing a filter control must always say.
   const filterChips = (
-    <Chips className="-mx-1 px-1">
-      <Chip active={filter === "ALL"} onClick={() => setFilter("ALL")}>
-        Todas
-      </Chip>
-      {INTERACTION_KINDS.map((k) => (
-        <Chip key={k} active={filter === k} onClick={() => setFilter(k)}>
-          {INTERACTION_KIND_LABELS[k]}
-        </Chip>
-      ))}
-    </Chips>
+    <FilterSelect
+      label="Tipo"
+      value={filter === "ALL" ? null : filter}
+      onChange={(v) => setFilter((v ?? "ALL") as typeof filter)}
+      allLabel="Todas"
+      options={INTERACTION_KINDS.map((k) => ({ value: k, label: INTERACTION_KIND_LABELS[k] }))}
+    />
   );
 
   const loading = (
