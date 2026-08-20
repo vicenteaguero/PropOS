@@ -245,6 +245,10 @@ docs/audits/*
 docs/versions/*.pdf
 _archive/design-exports/
 
+# Third-party portal API audits (MercadoLibre/Portal Inmobiliario, TocToc):
+# scraped vendor docs + our integration strategy. Competitive material, keep local.
+docs/apis/
+
 # Analysis notebooks — real client data (mailbox exports, property sheets)
 notebooks/
 backend/notebooks/
