@@ -30,6 +30,11 @@ DEMO_TENANT_NAME = "PropOS Demo"
 # reverse. Keeping one list means a new generator cannot leave orphans behind.
 SEEDED_TABLES: tuple[str, ...] = (
     "tenants",
+    # Must sit right after `tenants`: the wipe walks this list in REVERSE, so a
+    # membership listed here is deleted before the tenant row it points at.
+    # Left out, a wipe stranded the admin's membership against a tenant that no
+    # longer existed.
+    "tenant_memberships",
     "organizations",
     "people",
     "places",
@@ -119,6 +124,22 @@ def wipe(conn: psycopg.Connection, tables: Iterable[str] = SEEDED_TABLES) -> Non
     """Delete the demo tenant's rows, children first. Never touches other tenants."""
     assert_safe_to_write(DEMO_TENANT_ID)
     with conn.cursor() as cur:
+        # `profiles.tenant_id` is the user's ACTIVE workspace, and switching into
+        # the demo one points a real account at this tenant. Deleting it then
+        # fails on the FK — correctly, but with a raw psycopg traceback that
+        # says nothing about what to do. Say it plainly instead: the fix is to
+        # switch workspace in the app, never to delete the profile.
+        cur.execute(
+            "SELECT email FROM public.profiles WHERE tenant_id = %s",
+            (DEMO_TENANT_ID,),
+        )
+        blocking = [row["email"] for row in cur.fetchall()]
+        if blocking:
+            raise SeedAbortError(
+                "these accounts have the demo workspace active, so the tenant row "
+                f"cannot be deleted: {', '.join(blocking)}. Switch workspace in the "
+                "app (or repoint profiles.tenant_id) and re-run."
+            )
         for table in reversed(list(tables)):
             cur.execute(
                 f"DELETE FROM public.{table} WHERE tenant_id = %s"
