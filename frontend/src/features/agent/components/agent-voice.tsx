@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Check, Mic, MessageSquare } from "lucide-react";
 import { AgentInlineProposalCard } from "./agent-inline-proposal-card";
 import type { useAgentChat } from "../hooks/use-agent-chat";
-import { acquireMicStream, hasLiveMicStream, releaseMicStream } from "@shared/lib/mic-stream";
+import { acquireMicStream, canAutoStartMic, releaseMicStream } from "@shared/lib/mic-stream";
 
 type Chat = ReturnType<typeof useAgentChat>;
 
@@ -146,19 +146,27 @@ export function AgentVoice({ chat, onSwitchToChat, onClose }: Props) {
   // beat (pulsing mic) so it feels intentional rather than grabbing the mic the
   // instant the overlay opens. Skipped when resuming an in-flight conversation.
   //
-  // Only when a capture is already live, though. WebKit re-prompts per capture in
-  // an installed web app, so auto-starting from cold put a permission dialog in
-  // front of the user every single time they opened Propo — including when they
-  // only wanted to type. Cold start now waits for the mic button: one deliberate
-  // tap, one prompt.
+  // Only when opening the mic is known not to prompt. WebKit re-prompts per
+  // capture in an installed web app, so auto-starting from cold used to put a
+  // permission dialog in front of the user every time they opened Propo —
+  // including when they only wanted to type. `canAutoStartMic` keeps that
+  // guarantee while covering the ordinary cold open, where no capture is cached
+  // yet but the permission is already granted.
   const autoStarted = useRef(false);
   useEffect(() => {
     if (autoStarted.current) return;
-    if (!hasLiveMicStream()) return;
     if (chat.pendingAudio.length > 0 || chat.isStreaming) return;
-    autoStarted.current = true;
-    const id = setTimeout(() => void start(), 1000);
-    return () => clearTimeout(id);
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    void canAutoStartMic().then((allowed) => {
+      if (cancelled || !allowed || autoStarted.current) return;
+      autoStarted.current = true;
+      timer = setTimeout(() => void start(), 1000);
+    });
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
     // Deliberate narrow deps: `start` is recreated every render; the autoStarted ref already makes this run once.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chat.pendingAudio.length, chat.isStreaming]);
