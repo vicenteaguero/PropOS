@@ -27,7 +27,11 @@ export function Row({ left, title, sub, right, onClick, divider = true, classNam
     </>
   );
   const cls = cn(
-    "flex w-full items-center gap-3 px-5 py-3 text-left",
+    // The gutter is the page's, not the row's. `px-5` was baked in here and
+    // could not be overridden, so every container that wanted a different
+    // inset (a 22rem master-detail pane, a card) had to fight it with a
+    // negative margin. --page-x already widens on md+; className still wins.
+    "flex w-full items-center gap-3 px-[var(--page-x)] py-3 text-left",
     divider && "border-b border-border",
     interactive && "transition hover:bg-secondary/50 active:scale-[0.99]",
     className,

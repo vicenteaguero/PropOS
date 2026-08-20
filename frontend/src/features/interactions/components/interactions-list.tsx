@@ -23,18 +23,23 @@ import {
   ErrorState,
   HOVER_REVEAL,
   ResponsiveSheet,
+  ResponsiveTable,
   RoundButton,
-  Row,
   SheetActions,
+  type ResponsiveColumn,
 } from "@shared/ui";
-import { useIsDesktop } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import {
   useCreateInteraction,
   useDeleteInteraction,
   useInteractions,
 } from "../hooks/use-interactions";
-import { INTERACTION_KINDS, INTERACTION_KIND_LABELS, type InteractionKind } from "../types";
+import {
+  INTERACTION_KINDS,
+  INTERACTION_KIND_LABELS,
+  type Interaction,
+  type InteractionKind,
+} from "../types";
 import { formatDateTime } from "@shared/utils/format";
 
 interface Props {
@@ -68,7 +73,6 @@ function KindIcon({ kind, size = 10 }: { kind: InteractionKind; size?: number })
 }
 
 export function InteractionsList({ personId, propertyId }: Props) {
-  const isDesktop = useIsDesktop();
   const { data, isLoading, error, refetch } = useInteractions({
     person_id: personId,
     property_id: propertyId,
@@ -133,96 +137,56 @@ export function InteractionsList({ personId, propertyId }: Props) {
     </p>
   );
 
-  // Desktop: a dense table that uses the full width — one row per interaction
-  // with discrete columns (type · summary · detail · date · delete) instead of
-  // the stacked mobile card list.
-  const desktopTable = (
-    <div className="overflow-hidden rounded-xl border border-border bg-card">
-      <table className="w-full text-left text-sm">
-        <thead>
-          <tr className="border-b border-border text-xs font-medium text-muted-foreground">
-            <th className="px-4 py-3 font-medium">Tipo</th>
-            <th className="px-4 py-3 font-medium">Resumen</th>
-            <th className="hidden px-4 py-3 font-medium 2xl:table-cell">Detalle</th>
-            <th className="px-4 py-3 font-medium whitespace-nowrap">Fecha</th>
-            <th className="w-px px-4 py-3" />
-          </tr>
-        </thead>
-        <tbody>
-          {filtered.map((it) => (
-            <tr
-              key={it.id}
-              className="group border-b border-border last:border-0 hover:bg-secondary/40"
-            >
-              <td className="px-4 py-3">
-                <span className="inline-flex items-center gap-2 whitespace-nowrap text-foreground">
-                  <KindIcon kind={it.kind} size={8} />
-                  {INTERACTION_KIND_LABELS[it.kind] ?? it.kind}
-                </span>
-              </td>
-              <td className="px-4 py-3 font-medium text-foreground">
-                {it.summary ?? INTERACTION_KIND_LABELS[it.kind] ?? it.kind}
-              </td>
-              <td className="hidden max-w-md px-4 py-3 2xl:table-cell">
-                <span className="line-clamp-2 text-[13px] text-muted-foreground">
-                  {it.body || "—"}
-                </span>
-              </td>
-              <td className="px-4 py-3 whitespace-nowrap text-[13px] text-muted-foreground">
-                {formatDateTime(it.occurred_at ?? it.created_at)}
-              </td>
-              <td className="px-4 py-3 text-right">
-                <RoundButton
-                  tone="ghost"
-                  size={32}
-                  className={`text-muted-foreground hover:text-destructive ${HOVER_REVEAL}`}
-                  onClick={() => del.mutate(it.id)}
-                  aria-label="Eliminar interacción"
-                >
-                  <Trash2 className="size-3.5" strokeWidth={1.8} />
-                </RoundButton>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+  const deleteButton = (it: Interaction) => (
+    <RoundButton
+      tone="ghost"
+      size={32}
+      className={`text-muted-foreground hover:text-destructive ${HOVER_REVEAL}`}
+      onClick={() => del.mutate(it.id)}
+      aria-label="Eliminar interacción"
+    >
+      <Trash2 className="size-3.5" strokeWidth={1.8} />
+    </RoundButton>
   );
 
-  // Mobile: stacked card list (unchanged).
-  const mobileList = (
-    <div className="overflow-hidden rounded-xl border border-border bg-card">
-      {filtered.map((it, i) => (
-        <Row
-          key={it.id}
-          divider={i < filtered.length - 1}
-          left={<KindIcon kind={it.kind} />}
-          title={it.summary ?? INTERACTION_KIND_LABELS[it.kind] ?? it.kind}
-          sub={
-            <>
-              <span className="block">{formatDateTime(it.occurred_at ?? it.created_at)}</span>
-              {it.body && (
-                <span className="mt-0.5 line-clamp-2 block whitespace-normal text-[13px] text-muted-foreground">
-                  {it.body}
-                </span>
-              )}
-            </>
-          }
-          right={
-            <RoundButton
-              tone="ghost"
-              size={32}
-              className="text-muted-foreground hover:text-destructive"
-              onClick={() => del.mutate(it.id)}
-              aria-label="Eliminar interacción"
-            >
-              <Trash2 className="size-3.5" strokeWidth={1.8} />
-            </RoundButton>
-          }
-        />
-      ))}
-    </div>
-  );
+  // Declared once. This screen used to carry a full <table> AND a full <Row>
+  // list, both built on every render and picked between with `isDesktop ? a : b`
+  // — two renderings of the same records, already drifting (the table showed a
+  // `Detalle` column the phone list rendered as a second sub-line, and only one
+  // of them hid the delete button until hover).
+  const columns: ResponsiveColumn<Interaction>[] = [
+    {
+      key: "kind",
+      header: "Tipo",
+      cell: (it) => (
+        <span className="inline-flex items-center gap-2 whitespace-nowrap text-foreground">
+          <KindIcon kind={it.kind} size={8} />
+          {INTERACTION_KIND_LABELS[it.kind] ?? it.kind}
+        </span>
+      ),
+    },
+    {
+      key: "summary",
+      header: "Resumen",
+      className: "font-medium text-foreground",
+      cell: (it) => it.summary ?? INTERACTION_KIND_LABELS[it.kind] ?? it.kind,
+    },
+    {
+      key: "body",
+      header: "Detalle",
+      className: "max-w-md",
+      cell: (it) => (
+        <span className="line-clamp-2 text-[13px] text-muted-foreground">{it.body || "—"}</span>
+      ),
+    },
+    {
+      key: "date",
+      header: "Fecha",
+      className: "whitespace-nowrap text-[13px] text-muted-foreground",
+      cell: (it) => formatDateTime(it.occurred_at ?? it.created_at),
+    },
+    { key: "actions", header: "", align: "right", cell: deleteButton },
+  ];
 
   return (
     <div className="space-y-4">
@@ -242,7 +206,29 @@ export function InteractionsList({ personId, propertyId }: Props) {
       {isLoading && loading}
       {error && errorBox}
       {!isLoading && !error && filtered.length === 0 && empty}
-      {!isLoading && !error && filtered.length > 0 && (isDesktop ? desktopTable : mobileList)}
+      {!isLoading && !error && filtered.length > 0 && (
+        <ResponsiveTable
+          rows={filtered}
+          rowKey={(it) => it.id}
+          columns={columns}
+          mobileRow={(it) => ({
+            left: <KindIcon kind={it.kind} />,
+            title: it.summary ?? INTERACTION_KIND_LABELS[it.kind] ?? it.kind,
+            sub: (
+              <>
+                <span className="block">{formatDateTime(it.occurred_at ?? it.created_at)}</span>
+                {it.body && (
+                  <span className="mt-0.5 line-clamp-2 block whitespace-normal text-[13px] text-muted-foreground">
+                    {it.body}
+                  </span>
+                )}
+              </>
+            ),
+            right: deleteButton(it),
+          })}
+          className="-mx-[var(--page-x)] md:mx-0"
+        />
+      )}
 
       <ResponsiveSheet open={open} onOpenChange={setOpen} title="Registrar interacción">
         <div className="space-y-3">

@@ -1,10 +1,7 @@
 import { useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { PageLayout } from "@shared/components/page-layout";
-import { PageHeader } from "@shared/components/page-header";
-import { EmptyState } from "@shared/components/empty-state/empty-state";
-import { AppShellScroll, ErrorState, ListCapNotice, PageSkeleton } from "@shared/ui";
+import { AppShellScroll, ListCapNotice, ListShell } from "@shared/ui";
 import { toast } from "sonner";
 import { useContacts } from "@features/contacts/hooks/use-contacts";
 import {
@@ -16,6 +13,15 @@ import { OpportunityKanban } from "../components/opportunity-kanban";
 import { OpportunityFormDialog } from "../components/opportunity-form-dialog";
 import type { Opportunity } from "../types";
 
+/**
+ * Pipeline — the open deals as a board.
+ *
+ * The header used to be a `<PageHeader>` with no `title`, which still rendered
+ * its `<h1>`: an empty heading reserving a line of vertical space above the
+ * board and announcing nothing to a screen reader. The board is the page, so
+ * the header now names it and carries the search and the create button on one
+ * line with it.
+ */
 export function OpportunitiesPage() {
   const { data, isLoading, error, refetch } = useOpportunities({ status: "OPEN", limit: 500 });
   const { data: contacts } = useContacts({ limit: 500 });
@@ -24,6 +30,7 @@ export function OpportunitiesPage() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Opportunity | undefined>();
+  const [search, setSearch] = useState("");
 
   const nameMap = useMemo(() => {
     const m = new Map<string, string>();
@@ -33,6 +40,17 @@ export function OpportunitiesPage() {
 
   const nameFor = (personId: string | null) =>
     personId ? (nameMap.get(personId) ?? "Sin contacto") : "Sin contacto";
+
+  // Filtering the board rather than a list: with 100+ open deals, finding one
+  // by eye means scanning six columns. The lanes stay, they just get shorter.
+  const shown = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return data ?? [];
+    return (data ?? []).filter((o) =>
+      `${nameFor(o.person_id)} ${o.notes ?? ""}`.toLowerCase().includes(q),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- nameFor is derived from nameMap
+  }, [data, search, nameMap]);
 
   const move = (id: string, stage: string) =>
     update.mutate({ id, body: { pipeline_stage: stage } });
@@ -45,60 +63,57 @@ export function OpportunitiesPage() {
     toast("Oportunidad marcada como perdida");
   };
 
+  const openNew = () => {
+    setEditing(undefined);
+    setDialogOpen(true);
+  };
+
   return (
-    <PageLayout width="app" noPadding>
-      <AppShellScroll>
-        {/* Fixed header on desktop; normal flow on mobile. */}
-        <div className="shrink-0 px-4 py-6 md:px-6 md:py-8 lg:px-8 lg:pb-4 lg:pt-7">
-          <PageHeader
-            className="mb-0"
-            actions={
-              <Button
-                onClick={() => {
-                  setEditing(undefined);
-                  setDialogOpen(true);
-                }}
-                className="gap-2"
-              >
-                <Plus className="size-4" />
-                Nueva
-              </Button>
-            }
+    <AppShellScroll>
+      <ListShell
+        fill
+        className="min-h-0 flex-1"
+        title="Pipeline"
+        meta={shown.length > 0 ? `${shown.length} abiertas` : undefined}
+        search={{
+          value: search,
+          onChange: setSearch,
+          placeholder: "Buscar por persona o nota",
+          ariaLabel: "Buscar oportunidades",
+        }}
+        action={
+          <Button size="sm" className="gap-1.5" onClick={openNew}>
+            <Plus className="size-4" strokeWidth={1.8} />
+            Nueva
+          </Button>
+        }
+        skeleton="board"
+        bodyPadding="page"
+        isLoading={isLoading}
+        error={error}
+        errorMessage="No se pudo cargar el pipeline."
+        onRetry={() => refetch()}
+        isEmpty={shown.length === 0}
+        emptyTitle={search ? "Sin coincidencias" : "Sin oportunidades abiertas"}
+        emptyAction={search ? undefined : { label: "Nueva oportunidad", onClick: openNew }}
+        footer={<ListCapNotice resource="opportunities" count={data?.length} className="mx-0" />}
+      >
+        {/* h-full so the board fills the pane and its columns scroll internally,
+            instead of the pane scrolling a board taller than the viewport. */}
+        <div className="h-full pb-2">
+          <OpportunityKanban
+            opportunities={shown}
+            nameFor={nameFor}
+            onMove={move}
+            onWon={won}
+            onLost={lost}
+            onEdit={(opp) => {
+              setEditing(opp);
+              setDialogOpen(true);
+            }}
           />
         </div>
-
-        {/* Board region: fills remaining height on desktop, internal column scroll. */}
-        <div className="px-4 md:px-6 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:px-8 lg:pb-6">
-          {isLoading && <PageSkeleton variant="board" />}
-          {error && (
-            <ErrorState message="No se pudo cargar el pipeline." onRetry={() => refetch()} />
-          )}
-          {!isLoading && !error && (data?.length ?? 0) === 0 && (
-            <EmptyState
-              title="Sin oportunidades abiertas"
-              actionLabel="Nueva oportunidad"
-              onAction={() => {
-                setEditing(undefined);
-                setDialogOpen(true);
-              }}
-            />
-          )}
-          <ListCapNotice resource="opportunities" count={data?.length} className="mx-0" />
-          {!isLoading && !error && data && data.length > 0 && (
-            <OpportunityKanban
-              opportunities={data}
-              nameFor={nameFor}
-              onMove={move}
-              onWon={won}
-              onLost={lost}
-              onEdit={(opp) => {
-                setEditing(opp);
-                setDialogOpen(true);
-              }}
-            />
-          )}
-        </div>
-      </AppShellScroll>
+      </ListShell>
 
       <OpportunityFormDialog
         open={dialogOpen}
@@ -115,6 +130,6 @@ export function OpportunitiesPage() {
           }
         }}
       />
-    </PageLayout>
+    </AppShellScroll>
   );
 }

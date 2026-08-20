@@ -109,7 +109,7 @@ export function ContactDetail({ contactId, onBack, onDeleted }: ContactDetailPro
   return (
     <div className="pb-6">
       {/* Top bar */}
-      <div className="flex items-center justify-between px-5 pt-4 pb-2">
+      <div className="flex items-center justify-between px-[var(--page-x)] pt-4 pb-2">
         {onBack ? (
           <RoundButton tone="ghost" onClick={onBack} aria-label="Volver">
             <ArrowLeft className="size-5" strokeWidth={1.8} />
@@ -133,7 +133,7 @@ export function ContactDetail({ contactId, onBack, onDeleted }: ContactDetailPro
       </div>
 
       {/* Identity */}
-      <div className="flex flex-col items-center px-5 pt-2 pb-5 text-center">
+      <div className="flex flex-col items-center px-[var(--page-x)] pt-2 pb-5 text-center">
         <span className="flex size-20 items-center justify-center rounded-full bg-secondary text-2xl font-bold text-foreground">
           {initials(contact.full_name)}
         </span>
@@ -146,7 +146,7 @@ export function ContactDetail({ contactId, onBack, onDeleted }: ContactDetailPro
       </div>
 
       {/* Quick actions */}
-      <div className="flex items-start justify-center gap-7 px-5 pb-6">
+      <div className="flex items-start justify-center gap-7 px-[var(--page-x)] pb-6">
         <QuickAction
           icon={<MessageCircle className="size-5" strokeWidth={1.8} />}
           label="WhatsApp"
@@ -173,7 +173,7 @@ export function ContactDetail({ contactId, onBack, onDeleted }: ContactDetailPro
       </div>
 
       {/* Detail fields */}
-      <div className="mx-5 mb-5 space-y-2.5 rounded-xl bg-card p-4">
+      <div className="mx-[var(--page-x)] mb-5 space-y-2.5 rounded-xl bg-card p-4">
         {contact.phone && (
           <div className="flex items-center gap-3 text-sm">
             <Phone className="size-4 shrink-0 text-muted-foreground" strokeWidth={1.8} />
@@ -212,8 +212,10 @@ export function ContactDetail({ contactId, onBack, onDeleted }: ContactDetailPro
       </div>
 
       {/* Tabs */}
-      <Segmented items={TABS} value={tab} onChange={setTab} />
-      <div className="px-5 pt-4">
+      {/* Pill, not underline: an underline bar here would sit directly under
+          the section's own underline bar and read as one broken strip. */}
+      <Segmented items={TABS} value={tab} onChange={setTab} variant="pill" />
+      <div className="px-[var(--page-x)] pt-4">
         {tab === "interacciones" && <InteractionsList personId={contact.id} />}
         {tab === "oportunidades" && <ContactOpportunities personId={contact.id} />}
         {tab === "notas" && <NotesList targetTable="contacts" targetRowId={contact.id} />}

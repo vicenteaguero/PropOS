@@ -8,26 +8,13 @@ import {
 } from "@features/opportunities/hooks/use-opportunities";
 import { OpportunityFormDialog } from "@features/opportunities/components/opportunity-form-dialog";
 import { STAGE_LABELS, type OpportunityStatus } from "@features/opportunities/types";
-
-function formatClp(cents: number | null): string {
-  if (!cents) return "";
-  return new Intl.NumberFormat("es-CL", {
-    style: "currency",
-    currency: "CLP",
-    maximumFractionDigits: 0,
-  }).format(cents / 100);
-}
+import { formatClp } from "@shared/utils/currency";
+import { label } from "@shared/lib/labels";
 
 const STATUS_TONE: Record<OpportunityStatus, PillTone> = {
   WON: "success",
   LOST: "destructive",
   OPEN: "neutral",
-};
-
-const STATUS_LABEL: Record<OpportunityStatus, string> = {
-  WON: "Ganada",
-  LOST: "Perdida",
-  OPEN: "Abierta",
 };
 
 export function ContactOpportunities({ personId }: { personId: string }) {
@@ -61,7 +48,7 @@ export function ContactOpportunities({ personId }: { personId: string }) {
               title={
                 <span className="flex items-center gap-2">
                   <Pill tone="accent">{STAGE_LABELS[o.pipeline_stage] ?? o.pipeline_stage}</Pill>
-                  <Pill tone={STATUS_TONE[o.status]}>{STATUS_LABEL[o.status]}</Pill>
+                  <Pill tone={STATUS_TONE[o.status]}>{label("opportunityStatus", o.status)}</Pill>
                 </span>
               }
               sub={o.notes || undefined}

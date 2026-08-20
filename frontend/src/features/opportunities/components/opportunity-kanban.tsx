@@ -10,8 +10,9 @@ import {
 import { Check, X } from "lucide-react";
 import { Pill, TOUCH_TARGET_HIT_AREA } from "@shared/ui";
 import { cn } from "@/lib/utils";
-import { PIPELINE_STAGES, STAGE_LABELS, type Opportunity } from "../types";
+import { PIPELINE_STAGES, STAGE_LABELS, stageDot, type Opportunity } from "../types";
 import { initials } from "@shared/utils/format";
+import { formatClp } from "@shared/utils/currency";
 
 interface Props {
   opportunities: Opportunity[];
@@ -20,25 +21,6 @@ interface Props {
   onWon: (opp: Opportunity) => void;
   onLost: (opp: Opportunity) => void;
   onEdit: (opp: Opportunity) => void;
-}
-
-// Per-stage accent dot. Semantic tokens only (resolved to CSS vars at runtime).
-const STAGE_DOT: Record<string, string> = {
-  LEAD: "var(--muted-foreground)",
-  QUALIFIED: "var(--accent-brand)",
-  VISIT: "var(--primary)",
-  OFFER: "var(--warning)",
-  RESERVATION: "var(--warning)",
-  CLOSED: "var(--success)",
-};
-
-function formatClp(cents: number | null): string {
-  if (!cents) return "";
-  return new Intl.NumberFormat("es-CL", {
-    style: "currency",
-    currency: "CLP",
-    maximumFractionDigits: 0,
-  }).format(cents / 100);
 }
 
 function Card({
@@ -53,7 +35,9 @@ function Card({
     ? { transform: `translate(${transform.x}px, ${transform.y}px)` }
     : undefined;
   const name = nameFor(opp.person_id);
-  const value = formatClp(opp.expected_value_cents);
+  // Empty string, not the em dash: a card with no figure should show nothing
+  // rather than a placeholder competing with the name for attention.
+  const value = formatClp(opp.expected_value_cents, "");
   return (
     <div
       ref={setNodeRef}
@@ -114,10 +98,7 @@ function Column({
     <div className="flex w-72 shrink-0 flex-col lg:h-full lg:w-auto lg:min-w-0 lg:flex-1">
       <div className="mb-2.5 flex items-center justify-between px-1">
         <div className="flex min-w-0 items-center gap-2">
-          <span
-            className="size-2 shrink-0 rounded-full"
-            style={{ background: STAGE_DOT[stage] ?? "var(--muted-foreground)" }}
-          />
+          <span className="size-2 shrink-0 rounded-full" style={{ background: stageDot(stage) }} />
           <span className="truncate text-base font-bold tracking-tight text-foreground">
             {STAGE_LABELS[stage] ?? stage}
           </span>

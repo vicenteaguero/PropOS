@@ -39,6 +39,20 @@ export function useReplyEmail(id: string) {
   });
 }
 
+/**
+ * Archives a thread (`status` → `ARCHIVED`). One-way: the API exposes no
+ * un-archive, so the inbox only offers the control on active threads.
+ */
+export function useArchiveEmailThread() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => emailApi.archive(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: emailKeys.all }),
+    onError: (err) =>
+      toast.error(err instanceof Error ? err.message : "No se pudo archivar el correo"),
+  });
+}
+
 /** Starts a brand-new thread (first contact). Delivery goes through Resend. */
 export function useSendEmail() {
   const qc = useQueryClient();
