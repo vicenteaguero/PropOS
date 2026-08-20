@@ -1,23 +1,23 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Archive, ArchiveRestore, PenSquare } from "lucide-react";
+import { Archive, ArchiveRestore, Inbox, Mail, PenSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   BrandMark,
-  Chip,
-  Chips,
+  FilterSelect,
   HOVER_REVEAL,
   ListShell,
   MasterDetail,
   Pill,
-  Row,
   RoundButton,
-  TabBar,
+  Row,
+  ViewToggle,
   type PillTone,
 } from "@shared/ui";
-import { CONTACT_TYPE_LABELS } from "@shared/lib/labels";
-import { formatShortDateTime } from "@shared/utils/format";
+import { listTime } from "@shared/utils/relative-time";
 import { useContacts } from "@features/contacts/hooks/use-contacts";
+import { useOpportunities } from "@features/opportunities/hooks/use-opportunities";
+import { useProperties } from "@features/documents/hooks/use-entities";
 import {
   useArchiveConversation,
   useConversations,
@@ -43,7 +43,9 @@ interface InboxEntry {
   id: string;
   channel: InboxChannel;
   title: string;
-  sub: string;
+  /** The property the thread is about. The single most useful fact in a row:
+   *  a broker recognises "Depto 2D Ñuñoa" instantly and a phone number never. */
+  property: string | null;
   /** epoch ms of the last activity; 0 sorts last */
   time: number;
   statusLabel: string;
@@ -84,16 +86,22 @@ function toMs(iso: string | null | undefined): number {
   return iso ? Date.parse(iso) : 0;
 }
 
-function conversationEntry(c: ClientConversation, roleLabel: string | undefined): InboxEntry {
+function conversationEntry(
+  c: ClientConversation,
+  name: string | undefined,
+  property: string | null,
+): InboxEntry {
   const last = toMs(c.last_message_at);
   const inbound = toMs(c.last_inbound_at);
-  const title = c.external_phone_e164 ?? "(sin número)";
+  // A name whenever we have one: the phone number is a fallback identity, not a
+  // label. Rows that all read "+569…" are unscannable.
+  const title = name || c.external_phone_e164 || "(sin número)";
   return {
     key: `whatsapp:${c.id}`,
     id: c.id,
     channel: "whatsapp",
     title,
-    sub: [roleLabel, c.ai_enabled ? "IA activa" : "IA en pausa"].filter(Boolean).join(" · "),
+    property,
     time: last,
     statusLabel: conversationStatusLabel(c.status),
     statusTone: CONVERSATION_STATUS_TONES[c.status] ?? "neutral",
@@ -102,11 +110,11 @@ function conversationEntry(c: ClientConversation, roleLabel: string | undefined)
     needsReply: c.status !== "closed" && inbound > 0 && inbound >= last,
     archived: !!c.archived_at,
     closed: c.status === "closed",
-    haystack: `${title} ${roleLabel ?? ""}`.toLowerCase(),
+    haystack: `${title} ${c.external_phone_e164 ?? ""} ${property ?? ""}`.toLowerCase(),
   };
 }
 
-function threadEntry(t: EmailThread, roleLabel: string | undefined): InboxEntry {
+function threadEntry(t: EmailThread, property: string | null): InboxEntry {
   const who = t.counterpart_name || t.counterpart_email || "(sin remitente)";
   const subject = t.subject || "(sin asunto)";
   const archived = t.status.toUpperCase() === "ARCHIVED";
@@ -115,7 +123,7 @@ function threadEntry(t: EmailThread, roleLabel: string | undefined): InboxEntry 
     id: t.id,
     channel: "email",
     title: who,
-    sub: [roleLabel, subject].filter(Boolean).join(" · "),
+    property: property ?? subject,
     time: toMs(t.last_message_at),
     statusLabel: emailStatusLabel(t.status),
     statusTone: EMAIL_STATUS_TONES[t.status.toUpperCase()] ?? "neutral",
@@ -179,14 +187,37 @@ export function BandejaPage({ channels = ["whatsapp", "email"] }: BandejaPagePro
   // Contacts resolve a role (comprador / propietario / …) per row. One fetch,
   // joined by contact_id; TanStack dedupes it with the Personas tab's copy.
   const contacts = useContacts({ limit: 500 });
+  const opportunities = useOpportunities({ status: "OPEN", limit: 500 });
+  const properties = useProperties();
   const archiveConversation = useArchiveConversation();
   const archiveThread = useArchiveEmailThread();
 
-  const roleLabels = useMemo(() => {
+  const namesById = useMemo(() => {
     const m = new Map<string, string>();
-    for (const c of contacts.data ?? []) m.set(c.id, CONTACT_TYPE_LABELS[c.type] ?? c.type);
+    for (const c of contacts.data ?? []) if (c.full_name) m.set(c.id, c.full_name);
     return m;
   }, [contacts.data]);
+
+  /**
+   * contact → the property they are currently dealing on.
+   *
+   * This is the join the inbox was missing, and the reason it felt disconnected
+   * from the database: a thread is always ABOUT something, and until the row
+   * says which property, the broker has to open it to find out. Resolved from
+   * the person's open opportunity; both queries are already in cache from the
+   * Personas and Pipeline tabs, so this costs nothing extra in practice.
+   */
+  const propertyByContact = useMemo(() => {
+    const titles = new Map<string, string>();
+    for (const p of properties.data ?? []) if (p.title) titles.set(p.id, p.title);
+    const m = new Map<string, string>();
+    for (const o of opportunities.data ?? []) {
+      if (!o.person_id || !o.property_id) continue;
+      const title = titles.get(o.property_id);
+      if (title && !m.has(o.person_id)) m.set(o.person_id, title);
+    }
+    return m;
+  }, [opportunities.data, properties.data]);
 
   const conversationById = useMemo(() => {
     const m = new Map<string, ClientConversation>();
@@ -198,14 +229,22 @@ export function BandejaPage({ channels = ["whatsapp", "email"] }: BandejaPagePro
     const out: InboxEntry[] = [];
     if (showWhatsApp) {
       for (const c of convos.data ?? [])
-        out.push(conversationEntry(c, c.contact_id ? roleLabels.get(c.contact_id) : undefined));
+        out.push(
+          conversationEntry(
+            c,
+            c.contact_id ? namesById.get(c.contact_id) : undefined,
+            c.contact_id ? (propertyByContact.get(c.contact_id) ?? null) : null,
+          ),
+        );
     }
     if (showEmail) {
       for (const t of emails.data ?? [])
-        out.push(threadEntry(t, t.contact_id ? roleLabels.get(t.contact_id) : undefined));
+        out.push(
+          threadEntry(t, t.contact_id ? (propertyByContact.get(t.contact_id) ?? null) : null),
+        );
     }
     return out.sort((a, b) => b.time - a.time);
-  }, [convos.data, emails.data, roleLabels, showWhatsApp, showEmail]);
+  }, [convos.data, emails.data, namesById, propertyByContact, showWhatsApp, showEmail]);
 
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -250,33 +289,46 @@ export function BandejaPage({ channels = ["whatsapp", "email"] }: BandejaPagePro
     if (showEmail) void emails.refetch();
   };
 
+  /**
+   * One row, two controls.
+   *
+   * This used to be a pill TabBar for the channel PLUS a horizontally
+   * scrolling chip strip for the state — two scrolling rows on a phone, where
+   * the active state could be off screen. The channel is three options and
+   * belongs in an icon switch; the state is a single choice and belongs in a
+   * dropdown that says which one is active without scrolling to find out.
+   */
   const filters = (
-    <div className="flex flex-wrap items-center gap-3">
+    <div className="flex items-center gap-2">
       {showWhatsApp && showEmail && (
-        <TabBar
-          variant="pill"
-          gutter={false}
+        <ViewToggle
           value={channel}
-          onChange={(id) => setChannel(id as ChannelFilter)}
-          items={[
-            { id: "todos", label: "Todo" },
-            { id: "whatsapp", label: CHANNEL_LABEL.whatsapp },
-            { id: "email", label: CHANNEL_LABEL.email },
+          onChange={(v: string) => setChannel(v as ChannelFilter)}
+          options={[
+            { value: "todos", label: "Todo", icon: <Inbox className="size-4" strokeWidth={1.9} /> },
+            {
+              value: "whatsapp",
+              label: CHANNEL_LABEL.whatsapp,
+              icon: <BrandMark brand="whatsapp" size={17} />,
+            },
+            {
+              value: "email",
+              label: CHANNEL_LABEL.email,
+              icon: <Mail className="size-4" strokeWidth={1.9} />,
+            },
           ]}
         />
       )}
-      <Chips className="min-w-0 flex-1">
-        {STATE_FILTERS.map((f) => (
-          <Chip
-            key={f.id}
-            active={state === f.id}
-            count={f.id === "pending" && pendingCount > 0 ? pendingCount : undefined}
-            onClick={() => setState(f.id)}
-          >
-            {f.label}
-          </Chip>
-        ))}
-      </Chips>
+      <FilterSelect
+        label="Estado"
+        value={state === "todos" ? null : state}
+        onChange={(v) => setState((v ?? "todos") as StateFilter)}
+        allLabel="Todas"
+        options={STATE_FILTERS.filter((f) => f.id !== "todos").map((f) => ({
+          value: f.id,
+          label: f.id === "pending" && pendingCount > 0 ? `${f.label} (${pendingCount})` : f.label,
+        }))}
+      />
     </div>
   );
 
@@ -292,10 +344,17 @@ export function BandejaPage({ channels = ["whatsapp", "email"] }: BandejaPagePro
         ariaLabel: "Buscar conversaciones",
       }}
       action={
+        // Icon-only: a labelled button here took a third of the header row on a
+        // phone to say what a pencil already says.
         showEmail ? (
-          <Button size="sm" className="gap-1.5" onClick={() => setComposeOpen(true)}>
+          <Button
+            size="icon"
+            aria-label="Escribir correo"
+            title="Escribir correo"
+            className="rounded-full"
+            onClick={() => setComposeOpen(true)}
+          >
             <PenSquare className="size-4" strokeWidth={1.8} />
-            Escribir
           </Button>
         ) : undefined
       }
@@ -319,20 +378,19 @@ export function BandejaPage({ channels = ["whatsapp", "email"] }: BandejaPagePro
                 ? "bg-secondary/60"
                 : undefined
             }
-            left={
-              <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-secondary">
-                <BrandMark brand={e.channel === "whatsapp" ? "whatsapp" : "email"} size={26} />
-              </span>
-            }
+            // The mark, bare. A tinted circle behind a brand glyph adds a
+            // second shape to parse per row and says nothing the glyph doesn't.
+            left={<BrandMark brand={e.channel === "whatsapp" ? "whatsapp" : "email"} size={22} />}
             title={e.title}
-            sub={
-              <>
-                <span className="block truncate">{e.sub}</span>
-                <span className="block text-faint">{formatShortDateTime(e.time)}</span>
-              </>
-            }
+            sub={<span className="block truncate">{e.property ?? "Sin propiedad vinculada"}</span>}
             right={
-              <span className="flex shrink-0 flex-col items-end gap-1.5">
+              // pr-9 reserves the archive control's column. It used to sit
+              // BELOW the pill with a spacer holding its place, which made every
+              // row three lines tall for a control most rows never use.
+              <span className="flex shrink-0 flex-col items-end gap-1 pr-9">
+                <span className="text-[12px] whitespace-nowrap text-faint">
+                  {listTime(e.time ? new Date(e.time).toISOString() : null)}
+                </span>
                 {e.needsReply ? (
                   <Pill tone="destructive" dot="var(--destructive)">
                     Sin responder
@@ -340,8 +398,6 @@ export function BandejaPage({ channels = ["whatsapp", "email"] }: BandejaPagePro
                 ) : (
                   <Pill tone={e.statusTone}>{e.statusLabel}</Pill>
                 )}
-                {/* Keeps the pill clear of the archive control above it. */}
-                <span className="size-8 shrink-0" aria-hidden />
               </span>
             }
           />
@@ -350,7 +406,7 @@ export function BandejaPage({ channels = ["whatsapp", "email"] }: BandejaPagePro
             size={32}
             aria-label={e.archived ? "Restaurar" : "Archivar"}
             title={e.archived ? "Restaurar" : "Archivar"}
-            className={`absolute right-[var(--page-x)] bottom-3 ${HOVER_REVEAL}`}
+            className={`absolute right-[var(--page-x)] top-1/2 -translate-y-1/2 ${HOVER_REVEAL}`}
             onClick={() => archive(e)}
           >
             {e.archived ? (

@@ -8,7 +8,7 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { Check, X } from "lucide-react";
-import { Pill, TOUCH_TARGET_HIT_AREA } from "@shared/ui";
+import { HOVER_REVEAL, Pill, TOUCH_TARGET_HIT_AREA } from "@shared/ui";
 import { cn } from "@/lib/utils";
 import { PIPELINE_STAGES, STAGE_LABELS, stageDot, type Opportunity } from "../types";
 import { initials } from "@shared/utils/format";
@@ -17,6 +17,9 @@ import { formatClp } from "@shared/utils/currency";
 interface Props {
   opportunities: Opportunity[];
   nameFor: (personId: string | null) => string;
+  /** Title of the property the deal is about — the fact that makes a card
+   *  recognisable. Without it every card is a name and an amount. */
+  propertyFor: (propertyId: string | null) => string | null;
   onMove: (id: string, stage: string) => void;
   onWon: (opp: Opportunity) => void;
   onLost: (opp: Opportunity) => void;
@@ -26,6 +29,7 @@ interface Props {
 function Card({
   opp,
   nameFor,
+  propertyFor,
   onWon,
   onLost,
   onEdit,
@@ -35,6 +39,7 @@ function Card({
     ? { transform: `translate(${transform.x}px, ${transform.y}px)` }
     : undefined;
   const name = nameFor(opp.person_id);
+  const property = propertyFor(opp.property_id);
   // Empty string, not the em dash: a card with no figure should show nothing
   // rather than a placeholder competing with the name for attention.
   const value = formatClp(opp.expected_value_cents, "");
@@ -42,7 +47,7 @@ function Card({
     <div
       ref={setNodeRef}
       style={style}
-      className={`rounded-xl border border-border bg-card p-3 transition-shadow ${
+      className={`group rounded-xl border border-border bg-card p-3 transition-shadow ${
         isDragging ? "opacity-50 shadow-lg" : "shadow-sm"
       }`}
     >
@@ -55,8 +60,13 @@ function Card({
             <span className="block truncate text-sm font-semibold leading-tight text-foreground">
               {name}
             </span>
+            {property && (
+              <span className="mt-0.5 block truncate text-[12.5px] text-muted-foreground">
+                {property}
+              </span>
+            )}
             {value && (
-              <span className="mt-0.5 block truncate text-[13px] text-muted-foreground">
+              <span className="mt-0.5 block truncate text-[13px] font-semibold tabular-nums text-foreground">
                 {value}
               </span>
             )}
@@ -68,7 +78,11 @@ function Card({
           </p>
         )}
       </div>
-      <div className="mt-2.5 flex gap-1.5">
+      {/* Won/lost stay out of the way until the card is engaged. Rendered on
+          every card they were 186 buttons of chrome on a full board, and they
+          are the two actions a broker takes least often — the usual move is to
+          drag the card to the next stage. */}
+      <div className={`mt-2.5 flex gap-1.5 ${HOVER_REVEAL}`}>
         <button
           onClick={() => onWon(opp)}
           className={`inline-flex h-7 items-center gap-1 rounded-full bg-success/15 px-2.5 text-[11px] font-semibold text-success transition active:scale-95 ${TOUCH_TARGET_HIT_AREA}`}
@@ -95,7 +109,10 @@ function Column({
   return (
     // Mobile: fixed-width column in a horizontal scroller.
     // Desktop: equal-width (flex-1), full-height, list scrolls internally.
-    <div className="flex w-72 shrink-0 flex-col lg:h-full lg:w-auto lg:min-w-0 lg:flex-1">
+    // Fixed column width at every size, with the board scrolling horizontally.
+    // Splitting the viewport between six stages left ~200px each, which
+    // truncated every name and amount on the card.
+    <div className="flex w-72 shrink-0 flex-col lg:h-full">
       <div className="mb-2.5 flex items-center justify-between px-1">
         <div className="flex min-w-0 items-center gap-2">
           <span className="size-2 shrink-0 rounded-full" style={{ background: stageDot(stage) }} />
