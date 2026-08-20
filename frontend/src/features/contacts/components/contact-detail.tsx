@@ -168,7 +168,7 @@ export function ContactDetail({ contactId, onBack, onDeleted }: ContactDetailPro
         <QuickAction
           icon={<CalendarPlus className="size-5" strokeWidth={1.8} />}
           label="Agendar"
-          onClick={() => navigate(`/${role}/calendario`)}
+          onClick={() => navigate(`/${role}/agenda`)}
         />
       </div>
 

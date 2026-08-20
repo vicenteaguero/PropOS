@@ -61,8 +61,7 @@ export function ContactsPage() {
     <div className="pb-6">
       {/* Header */}
       <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-3">
-        <div>
-        </div>
+        <div></div>
         <Button
           variant="ink"
           size="icon-lg"
