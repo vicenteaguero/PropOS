@@ -99,6 +99,14 @@ export function MobileBottomNav() {
   // Propo (agent pipeline) is backend ADMIN-only.
   const canPropo = isAdminView && allow("agent");
 
+  // The sheet lists what the tab bar cannot reach. Repeating Inicio, CRM and
+  // Agenda there would spend the top of the sheet on the three destinations the
+  // user already has permanently under their thumb.
+  const tabPaths = new Set([base, `${base}/crm`, `${base}/agenda`]);
+  const sheetGroups = groups
+    .map((g) => ({ ...g, items: g.items.filter((i) => !tabPaths.has(i.path)) }))
+    .filter((g) => g.items.length > 0);
+
   const go = (path: string) => {
     setMoreOpen(false);
     navigate(path);
@@ -176,7 +184,7 @@ export function MobileBottomNav() {
         {/* The destination tree, straight from the shared nav config — the same
             groups the desktop sidebar renders. The grid is auto-fill so a wide
             phone or a tablet uses the room instead of leaving a dead column. */}
-        {groups.map((group, idx) => (
+        {sheetGroups.map((group, idx) => (
           <div key={group.label ?? `g-${idx}`} className="border-t border-border py-2">
             {group.label && (
               <div className="px-1 pb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
