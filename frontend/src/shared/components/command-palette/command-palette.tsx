@@ -1,16 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  Briefcase,
-  Building2,
-  LogOut,
-  Moon,
-  Settings,
-  Sparkles,
-  Sun,
-  User,
-  Check,
-} from "lucide-react";
+import { Building2, LogOut, Moon, Settings, Sparkles, Sun, User, Check } from "lucide-react";
 import {
   Command,
   CommandEmpty,
@@ -91,25 +81,27 @@ export function CommandPalette({
   const searching = term.length >= 2;
 
   const roleRoot = `/${(user?.role ?? "ADMIN").toLowerCase()}`;
+  // Two kinds, not three. Opportunities have no page of their own — every hit
+  // landed on the same board — and resolving one costs a join through people
+  // and properties, so the palette ended up waiting on its slowest query for a
+  // result that told the user nothing.
   const people = useEntitySearch("CONTACT", term, searching);
   const properties = useEntitySearch("PROPERTY", term, searching);
-  const deals = useEntitySearch("OPPORTUNITY", term, searching);
 
   const records: { hit: EntityHit; to: string }[] = useMemo(() => {
     if (!searching) return [];
     const path: Record<EntityKind, (id: string) => string> = {
       CONTACT: (id) => `${roleRoot}/personas/${id}`,
       PROPERTY: (id) => `${roleRoot}/properties/${id}`,
-      // A deal has no page of its own; the board is where it is worked.
       OPPORTUNITY: () => `${roleRoot}/crm?tab=pipeline`,
       EVENT: () => `${roleRoot}/agenda`,
       PROJECT: () => `${roleRoot}/crm?tab=propiedades`,
       PLACE: () => `${roleRoot}/crm?tab=propiedades`,
     };
-    return [...(people.data ?? []), ...(properties.data ?? []), ...(deals.data ?? [])]
+    return [...(people.data ?? []), ...(properties.data ?? [])]
       .slice(0, 12)
       .map((hit) => ({ hit, to: path[hit.kind](hit.id) }));
-  }, [searching, people.data, properties.data, deals.data, roleRoot]);
+  }, [searching, people.data, properties.data, roleRoot]);
 
   const canPropo = useMemo(() => {
     if (!isAdminView) return false;
@@ -124,7 +116,6 @@ export function CommandPalette({
     },
     [onOpenChange],
   );
-
   if (!user) return null;
 
   return (
@@ -147,12 +138,7 @@ export function CommandPalette({
               {records.length > 0 && (
                 <CommandGroup heading="Registros">
                   {records.map(({ hit, to }) => {
-                    const Icon =
-                      hit.kind === "CONTACT"
-                        ? User
-                        : hit.kind === "PROPERTY"
-                          ? Building2
-                          : Briefcase;
+                    const Icon = hit.kind === "CONTACT" ? User : Building2;
                     return (
                       <CommandItem
                         key={`${hit.kind}-${hit.id}`}
