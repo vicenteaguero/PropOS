@@ -113,8 +113,24 @@ Nota de entorno (2026-08-16): el venv de Poetry se había perdido y `make query`
 ```bash
 make query SQL="..."       # read-only via backend/scripts/db_query.py + pooler
 make query-write SQL="..." # mutations
+make seed-demo             # large `PropOS Demo` tenant (WIPE=1 to rebuild)
+make seed-demo-wipe        # remove it again
 make migrate               # supabase db push via percent-encoded pooler URL
 ```
+
+**Demo data.** `make seed-demo` builds the `PropOS Demo` tenant
+(`dededede-0000-4000-8000-000000000001`) — ~250 personas, 40 propiedades con fotos reales en
+Storage, 120 oportunidades, 800 interacciones, 300 tareas/eventos (incluidos eventos de hoy),
+150 conversaciones de WhatsApp, 400 transacciones. **Vive en `public`, la misma base que
+producción**: lo único que lo separa de datos reales es el `tenant_id`, y ese guard está en
+`backend/scripts/seed_demo/context.py:assert_safe_to_write`. No lo relajes. El slug vive en el
+enum `tenant_slug` (migración `...0055`), así que la etiqueta es permanente aunque borres las
+filas.
+
+**Schema toggle en dev.** El header `X-Db-Schema` cambia el schema por request; el middleware
+(`backend/app/core/middleware/dev_schema.py`) sólo se instala con `APP_ENV=development`. El
+switch está en Configuración → Desarrollo (sólo en builds dev). Ojo: `propos_test` no tiene
+`profiles` ni RLS, sirve para probar el backend, no para navegar la app.
 
 **Un solo proyecto Supabase.** `public` es producción. `propos_test` es el schema espejo que usa la suite de integración; se regenera desde la estructura viva con `make test-schema-rebuild` (`make test-schema-rebuild DRY=1` imprime el SQL sin ejecutar). No se mantiene a mano: la migración `...0002` lo dejó congelado en 28 tablas mientras `public` llegaba a 59. El fixture de integración aborta si PostgREST no expone `propos_test`, en vez de caer a `public`.
 
@@ -172,7 +188,29 @@ V0 prototype features (`properties`, `contacts`, `projects`, `chat`, `documents`
 
 `_archive/v0-prototype/` keeps reference patterns: kanban with @dnd-kit, photo lightbox via yet-another-react-lightbox, Supabase realtime conversations, document viewer, interactions timeline, 6 archived migrations. Reference only — rewrite for production quality, don't drop in as-is.
 
-Sidebar nav (`frontend/src/layouts/app-sidebar.tsx` `NAV_ITEMS_BY_ROLE`) and router (`frontend/src/app/router.tsx`) are placeholder shells per role; new feature adds entries.
+Nav lives in `frontend/src/layouts/nav-items.ts` (`buildGroups`), consumed by BOTH shells
+(desktop sidebar + mobile "Más" sheet) — edit it once, both update.
+
+**Information architecture (2026-08-20).** The app is four sections plus Inicio, not a route
+per noun. Each section hosts the former list pages as tabs via `shared/ui/section-tabs.tsx`,
+with the active tab in a `?tab=` query param:
+
+| Section | Route | Tabs |
+|---|---|---|
+| CRM | `/:role/crm` | Bandeja · WhatsApp · Personas · Oportunidades · Interacciones · Propiedades · Correos |
+| Agenda | `/:role/agenda` | Calendario · Tareas · Notas |
+| Finanzas | `/:role/finanzas` | Movimientos · Analítica · Costo Propo (dev admin) |
+| Documentos | `/:role/documentos` | Archivos · Enlaces |
+
+Detail routes keep their original paths (`/:role/personas/:id`, `/:role/properties/:id`,
+`/:role/documents/:id`); the old LIST paths are `<Navigate>` redirects into the right tab, so
+saved links and push-notification deep links still land. A new capability should become a tab,
+not a fifth section.
+
+Design rules that came out of the same pass: no page subtitles and no explanatory copy
+(`PageHeader` has no `description` slot on purpose), `--radius` is 8px with every radius going
+through a token, and the page gutter is `--page-x` on the container — never `px-5` repeated per
+section.
 
 ## Disaster recovery
 
