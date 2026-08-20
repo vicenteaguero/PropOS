@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ExternalLink, Folder, Plus, QrCode } from "lucide-react";
+import { ExternalLink, Folder, Plus, QrCode } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -17,7 +16,6 @@ import { PortalFormDialog } from "../components/portal-form-dialog";
 import { UploadsReview } from "../components/uploads-review";
 
 export function PortalAdminPage() {
-  const navigate = useNavigate();
   const isDesktop = useIsDesktop();
   const { data: portals, isLoading, error, refetch } = usePortals();
   const deletePortal = useDeletePortal();
@@ -28,16 +26,12 @@ export function PortalAdminPage() {
   return (
     // Desktop fills the app surface; mobile keeps the capped reading column.
     <PageLayout width={isDesktop ? "app" : "lg"}>
+      {/* No back button: this is a tab now, and its siblings are one tap away. */}
       <PageHeader
         actions={
-          <>
-            <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
-              <ArrowLeft className="size-4" /> Volver
-            </Button>
-            <Button size="sm" onClick={() => setCreateOpen(true)}>
-              <Plus className="size-4" /> Nuevo enlace
-            </Button>
-          </>
+          <Button size="sm" onClick={() => setCreateOpen(true)}>
+            <Plus className="size-4" /> Nuevo enlace
+          </Button>
         }
       />
 

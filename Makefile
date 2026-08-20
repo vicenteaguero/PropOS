@@ -1,7 +1,7 @@
 include .env
 export
 
-.PHONY: setup dev dev-frontend dev-hmr dev-pwa dev-pwa-hmr dev-pwa-hmr-kapso dev-docker-hmr dev-docker-pwa-hmr dev-docker-pwa-hmr-kapso stop build migrate seed format lint test clean logs backend-shell db-studio gcloud-auth deploy-setup deploy-secrets-sync deploy-trigger-setup deploy-trigger-list deploy-backend deploy-verify deploy-frontend-edge deploy-rollback kapso-templates-sync kapso-webhook-tunnel query query-write test-schema-rebuild backfill-thumbnails jupyter
+.PHONY: seed-demo seed-demo-wipe setup dev dev-frontend dev-hmr dev-pwa dev-pwa-hmr dev-pwa-hmr-kapso dev-docker-hmr dev-docker-pwa-hmr dev-docker-pwa-hmr-kapso stop build migrate seed format lint test clean logs backend-shell db-studio gcloud-auth deploy-setup deploy-secrets-sync deploy-trigger-setup deploy-trigger-list deploy-backend deploy-verify deploy-frontend-edge deploy-rollback kapso-templates-sync kapso-webhook-tunnel query query-write test-schema-rebuild backfill-thumbnails jupyter
 
 setup:
 	@bash scripts/setup.sh
@@ -75,6 +75,17 @@ seed:
 seed-admins:
 	@bash scripts/log.sh MAKE "👤" "Seeding admin users + sample property/grant/doc"
 	$(.AGENT_ENV) && cd backend && poetry run python -m scripts.seed_admins
+
+# Large demo dataset for the `PropOS Demo` tenant. Writes into `public` — the
+# same schema production serves — so isolation rests entirely on the tenant_id
+# guard in scripts/seed_demo/context.py. WIPE=1 rebuilds from scratch.
+seed-demo:
+	@bash scripts/log.sh MAKE "🌱" "Seeding PropOS Demo tenant"
+	$(.AGENT_ENV) && cd backend && poetry run python -m scripts.seed_demo $(if $(WIPE),--wipe,)
+
+seed-demo-wipe:
+	@bash scripts/log.sh MAKE "🧹" "Removing PropOS Demo tenant data"
+	$(.AGENT_ENV) && cd backend && poetry run python -m scripts.seed_demo --wipe-only
 
 db-nuke:
 	@if [ "$(APP_ENV)" != "development" ]; then \
