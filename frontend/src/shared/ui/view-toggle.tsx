@@ -40,7 +40,7 @@ export function ViewToggle<T extends string>({
           aria-pressed={o.value === value}
           onClick={() => onChange(o.value)}
           className={cn(
-            "flex size-8 items-center justify-center rounded-full transition [@media(pointer:coarse)]:size-9",
+            "flex size-8 items-center justify-center rounded-full transition [@media(pointer:coarse)]:size-11",
             o.value === value
               ? "bg-background text-foreground shadow-sm"
               : "text-muted-foreground hover:text-foreground",
