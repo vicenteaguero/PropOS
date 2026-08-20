@@ -11,7 +11,7 @@ import { applyTenantAccent, clearTenantAccent } from "./tenant-accent";
  */
 export function ThemeController() {
   const { user, memberships } = useAuth();
-  const { brandColor } = useTenantBranding();
+  const { brandColor, brandTint } = useTenantBranding();
   const tenantId = user?.tenantId ?? null;
   // Derive the workspace slug from the auth membership (updates instantly on
   // switch) rather than the /tenants/me query (which lags behind its staleTime
@@ -20,9 +20,12 @@ export function ThemeController() {
   const slug = memberships.find((m) => m.tenantId === tenantId)?.tenantSlug ?? null;
 
   useEffect(() => {
-    if (tenantId || brandColor) applyTenantAccent({ seed: tenantId, color: brandColor });
-    else clearTenantAccent();
-  }, [tenantId, brandColor]);
+    if (tenantId || brandColor) {
+      applyTenantAccent({ seed: tenantId, color: brandColor, tint: brandTint });
+    } else {
+      clearTenantAccent();
+    }
+  }, [tenantId, brandColor, brandTint]);
 
   // Curated per-workspace palette (mockup parity): a [data-tenant="<slug>"] CSS
   // block in index.css restyles every surface for tenants that have one;

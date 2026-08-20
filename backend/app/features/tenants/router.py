@@ -25,6 +25,7 @@ def _hydrate(row: dict) -> TenantResponse:
         ai_assistant_name=settings_json.get("ai_assistant_name") or "Propo",
         default_paper_size=settings_json.get("default_paper_size") or "A4",
         brand_color=settings_json.get("brand_color") or None,
+        brand_tint=settings_json.get("brand_tint"),
     )
     return TenantResponse(
         id=UUID(row["id"]),
@@ -62,6 +63,8 @@ async def update_my_tenant_settings(
     if payload.brand_color is not None:
         # Empty string clears the override (falls back to the derived accent).
         settings["brand_color"] = payload.brand_color or None
+    if payload.brand_tint is not None:
+        settings["brand_tint"] = payload.brand_tint
     if payload.extra:
         settings.update(payload.extra)
     row = client.table("tenants").update({"settings": settings}).eq("id", str(tenant_id)).execute().data[0]

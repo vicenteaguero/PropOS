@@ -12,6 +12,10 @@ class TenantSettings(BaseModel):
     default_paper_size: str = "A4"
     # Optional hex brand color (e.g. "#2E6B52"); drives the UI accent per workspace.
     brand_color: str | None = None
+    # 0-12: how much of the brand bleeds into every surface. The frontend writes
+    # it to --tint, which every surface token in index.css mixes against, so one
+    # number tints backgrounds, cards, borders and the sidebar together.
+    brand_tint: int | None = None
 
 
 class TenantResponse(BaseModel):
@@ -46,4 +50,5 @@ class TenantSettingsUpdate(BaseModel):
     ai_assistant_name: str | None = None
     default_paper_size: str | None = None
     brand_color: str | None = None
+    brand_tint: int | None = Field(default=None, ge=0, le=12)
     extra: dict[str, Any] | None = None

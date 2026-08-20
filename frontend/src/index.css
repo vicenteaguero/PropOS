@@ -120,7 +120,7 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
 
-  --radius: 0.5rem;
+  --radius: 0.375rem;
 
   /* Horizontal page gutter, named once so a page's sections cannot drift apart.
    * Sections used to each carry their own `px-5`; the token makes the container
@@ -136,8 +136,11 @@
   --accent-brand: hsl(var(--accent-hue) var(--accent-sat) 45%);
   --accent-brand-foreground: #ffffff;
 
-  /* Neutral base (global / no workspace). Real per-workspace theming is done by
-   * the [data-tenant="…"] palette blocks below; --tint stays 0% here. */
+  /* Neutral base. 0% here is only the DEFAULT: ThemeController writes --tint
+   * inline from the workspace's brand_tint setting, and every surface token
+   * below mixes against it, so one number tints the whole app toward the brand.
+   * The hand-written [data-tenant="…"] blocks further down predate this and are
+   * kept for the two workspaces that already had curated palettes. */
   --tint: 0%;
   --background: color-mix(in srgb, var(--accent-brand) var(--tint), #ffffff);
   --foreground: color-mix(in srgb, var(--accent-brand) var(--tint), #0a0a0a);
@@ -629,4 +632,15 @@
     (1 - var(--kb-open)) * (var(--safe-bottom) + 0.75rem) + var(--kb-open) *
       (var(--kb-inset) + 0.5rem)
   );
+}
+
+/* Sweeping bar for RefreshIndicator: a cached screen is already painted, so the
+ * signal has to say "still arriving" without implying "nothing here yet". */
+@keyframes propos-sweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
 }
