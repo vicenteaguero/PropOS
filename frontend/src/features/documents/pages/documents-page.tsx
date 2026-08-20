@@ -163,20 +163,6 @@ export function DocumentsPage() {
   if (!isDesktop) {
     return (
       <PageLayout width="md">
-        {/* Header */}
-        <div className="mb-5 flex items-start justify-between gap-3">
-          <div className="space-y-1">
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="rounded-full"
-            onClick={() => navigate(`/${role}/documents/portals`)}
-          >
-            <Folder className="size-4" strokeWidth={1.8} /> Enlaces
-          </Button>
-        </div>
-
         {/* Primary actions */}
         <div className="mb-5">
           <NewDocumentActions />
@@ -204,20 +190,6 @@ export function DocumentsPage() {
   return (
     <PageLayout width="app" noPadding>
       <div className="flex h-[calc(100dvh-var(--app-header-h,3.5rem)-var(--app-nav-h,0px))] flex-col overflow-hidden">
-        {/* Top bar: title + Enlaces */}
-        <div className="flex items-start justify-between gap-3 border-b border-border px-8 py-5">
-          <div className="space-y-1">
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="rounded-full"
-            onClick={() => navigate(`/${role}/documents/portals`)}
-          >
-            <Folder className="size-4" strokeWidth={1.8} /> Enlaces
-          </Button>
-        </div>
-
         <div className="grid min-h-0 flex-1 grid-cols-[17rem_minmax(0,1fr)_22rem] overflow-hidden">
           {/* Filter rail */}
           <aside className="min-h-0 space-y-5 overflow-y-auto border-r border-border p-5">
