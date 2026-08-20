@@ -17,6 +17,51 @@
 /** Long enough to cover "record, listen back, record again", short enough not to squat on the mic. */
 const IDLE_RELEASE_MS = 60_000;
 
+/**
+ * Remembers that this browser granted the mic at least once. Only consulted
+ * where the Permissions API cannot answer (Safari), so it is a hint, never an
+ * authority: `getUserMedia` still decides.
+ */
+const GRANT_FLAG = "propos:mic-granted";
+
+function rememberGrant(): void {
+  try {
+    window.localStorage.setItem(GRANT_FLAG, "1");
+  } catch {
+    // Private mode / storage disabled — auto-start just stays off.
+  }
+}
+
+function forgetGrant(): void {
+  try {
+    window.localStorage.removeItem(GRANT_FLAG);
+  } catch {
+    // ignored, same reason
+  }
+}
+
+function hasRememberedGrant(): boolean {
+  try {
+    return window.localStorage.getItem(GRANT_FLAG) === "1";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * iOS Safari outside an installed app: the grant lives with the capture and is
+ * gone the moment the page reloads, so a remembered grant means nothing there.
+ */
+function isIosTabWithoutInstall(): boolean {
+  const ua = typeof navigator === "undefined" ? "" : navigator.userAgent;
+  if (!/iPad|iPhone|iPod/.test(ua)) return false;
+  const installed =
+    typeof window !== "undefined" &&
+    (window.matchMedia("(display-mode: standalone)").matches ||
+      (navigator as { standalone?: boolean }).standalone === true);
+  return !installed;
+}
+
 let cached: MediaStream | null = null;
 let releaseTimer: ReturnType<typeof setTimeout> | null = null;
 let pageHideBound = false;
@@ -60,7 +105,17 @@ export async function acquireMicStream(): Promise<MediaStream> {
   if (isUsable(cached)) return cached;
 
   stopNow(); // clear a dead stream before asking for a new one
-  cached = await navigator.mediaDevices.getUserMedia({ audio: true });
+  try {
+    cached = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (err) {
+    // A refusal invalidates the remembered grant; otherwise a user who revoked
+    // the mic would keep getting an unwanted prompt on every open.
+    if (err instanceof Error && (err.name === "NotAllowedError" || err.name === "SecurityError")) {
+      forgetGrant();
+    }
+    throw err;
+  }
+  rememberGrant();
   return cached;
 }
 
@@ -82,10 +137,31 @@ export function hasLiveMicStream(): boolean {
   return isUsable(cached);
 }
 
+/**
+ * Whether the mic may be opened without a tap — i.e. whether doing so can be
+ * counted on not to raise a permission dialog.
+ *
+ * A live capture is the certain case. Beyond it, `permissions.query` answers on
+ * Chromium and Firefox. Safari answers "unknown", which is why this used to
+ * require a live stream and, as a result, never auto-started from a cold open:
+ * the shared capture is dropped after a minute idle and whenever the page is
+ * hidden, so arriving at Propo from the home screen always failed the check.
+ * There, a grant remembered from a previous session stands in — except in an
+ * iOS tab, where the grant does not survive and the prompt would come back.
+ */
+export async function canAutoStartMic(): Promise<boolean> {
+  if (isUsable(cached)) return true;
+  const state = await micPermissionState();
+  if (state === "granted") return true;
+  if (state === "unknown") return hasRememberedGrant() && !isIosTabWithoutInstall();
+  return false;
+}
+
 /** Test seam — drops the shared capture and any pending release. */
 export function resetMicStream(): void {
   cancelRelease();
   stopNow();
+  forgetGrant();
 }
 
 export type MicPermissionState = "granted" | "denied" | "prompt" | "unknown";
