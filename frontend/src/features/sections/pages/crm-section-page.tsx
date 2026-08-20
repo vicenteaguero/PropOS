@@ -1,10 +1,10 @@
 import { lazy, Suspense } from "react";
 import { PageSkeleton, SectionTabs, type SectionTab } from "@shared/ui";
 import { useAuth } from "@shared/hooks/use-auth";
-import type { InboxChannel } from "@features/bandeja/pages/bandeja-page";
+import type { InboxChannel } from "@features/attention/pages/attention-page";
 
-const BandejaPage = lazy(() =>
-  import("@features/bandeja/pages/bandeja-page").then((m) => ({ default: m.BandejaPage })),
+const AttentionPage = lazy(() =>
+  import("@features/attention/pages/attention-page").then((m) => ({ default: m.AttentionPage })),
 );
 const ContactsPage = lazy(() =>
   import("@features/contacts/pages/contacts-page").then((m) => ({ default: m.ContactsPage })),
@@ -21,7 +21,7 @@ const AdminPropertiesPage = lazy(() =>
 );
 
 /**
- * CRM in four tabs: what is waiting, who it is waiting on, what it is worth,
+ * CRM in four tabs: what needs answering, who it is about, what it is worth,
  * and what we are selling.
  *
  * It was seven. `WhatsApp` and `Correos` were the same screen twice, split by
@@ -48,10 +48,13 @@ export function CrmSectionPage() {
     ...(channels.length > 0
       ? [
           {
-            id: "bandeja",
-            label: "Bandeja",
-            aliases: ["whatsapp", "correos"],
-            render: () => <BandejaPage channels={channels} />,
+            id: "atencion",
+            label: "Atención",
+            // Every path this tab has ever had. The inbox was `whatsapp` and
+            // `correos` before it merged, and `bandeja` before it grew the
+            // ranked queue; push notifications and bookmarks still use them.
+            aliases: ["bandeja", "whatsapp", "correos"],
+            render: () => <AttentionPage channels={channels} />,
           },
         ]
       : []),

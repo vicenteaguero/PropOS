@@ -1,4 +1,4 @@
-import { BandejaPage } from "@features/bandeja/pages/bandeja-page";
+import { AttentionPage } from "@features/attention/pages/attention-page";
 
 /**
  * `/<role>/client-inbox` — the WhatsApp-only view of the unified Bandeja.
@@ -12,7 +12,7 @@ import { BandejaPage } from "@features/bandeja/pages/bandeja-page";
  * with the channel switcher off.
  */
 export function ClientInboxPage() {
-  return <BandejaPage channels={["whatsapp"]} />;
+  return <AttentionPage channels={["whatsapp"]} />;
 }
 
 // Default export so the router can code-split this page with React.lazy.

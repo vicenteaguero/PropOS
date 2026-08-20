@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Archive, ArchiveRestore, Inbox, Mail, PenSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +15,15 @@ import {
   type PillTone,
 } from "@shared/ui";
 import { listTime } from "@shared/utils/relative-time";
+import { useAuth } from "@shared/hooks/use-auth";
+import { useAttention } from "../hooks/use-attention";
+import {
+  AttentionRow,
+  KIND_LABEL,
+  URGENCY_LABEL,
+  URGENCY_ORDER,
+} from "../components/attention-row";
+import type { AttentionItem, AttentionKind } from "../api/attention-api";
 import { useContacts } from "@features/contacts/hooks/use-contacts";
 import { useOpportunities } from "@features/opportunities/hooks/use-opportunities";
 import { useProperties } from "@features/documents/hooks/use-entities";
@@ -35,7 +44,10 @@ import type { EmailThread } from "@features/email/api/email-api";
 export type InboxChannel = "whatsapp" | "email";
 
 type ChannelFilter = "todos" | InboxChannel;
-type StateFilter = "todos" | "pending" | "open" | "closed" | "archived";
+/** Conversation states, plus one entry per attention kind. */
+type StateFilter = "todos" | "open" | "closed" | "archived" | AttentionKind;
+
+const ATTENTION_KINDS: AttentionKind[] = ["unanswered", "lead", "visit", "task", "stalled"];
 
 /** One row of the inbox, whatever channel it came from. */
 interface InboxEntry {
@@ -60,12 +72,23 @@ interface InboxEntry {
 }
 
 const STATE_FILTERS: { id: StateFilter; label: string }[] = [
-  { id: "todos", label: "Todas" },
-  { id: "pending", label: "Sin responder" },
-  { id: "open", label: "Abiertas" },
+  ...ATTENTION_KINDS.map((kind) => ({ id: kind as StateFilter, label: KIND_LABEL[kind] })),
+  { id: "open", label: "Conversaciones abiertas" },
   { id: "closed", label: "Cerradas" },
   { id: "archived", label: "Archivadas" },
 ];
+
+/** Section heading inside the list. Says what the rows below have in common. */
+function SectionLabel({ children, count }: { children: React.ReactNode; count?: number }) {
+  return (
+    <div className="flex items-baseline gap-2 border-b border-border bg-secondary/40 px-[var(--page-x)] py-1.5">
+      <span className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+        {children}
+      </span>
+      {count !== undefined && count > 0 && <span className="text-[11px] text-faint">{count}</span>}
+    </div>
+  );
+}
 
 const CHANNEL_LABEL: Record<InboxChannel, string> = {
   whatsapp: "WhatsApp",
@@ -137,7 +160,7 @@ function threadEntry(t: EmailThread, property: string | null): InboxEntry {
   };
 }
 
-interface BandejaPageProps {
+interface AttentionPageProps {
   /**
    * Channels this user may see, from their admin scope. A single channel hides
    * the channel switcher — a one-item tab bar is a lie about having a choice.
@@ -146,16 +169,21 @@ interface BandejaPageProps {
 }
 
 /**
- * Bandeja — every inbound conversation, one list.
+ * Atención — everything waiting on the broker, then everything else.
  *
- * WhatsApp and email used to be two top-level tabs with two separate
- * implementations of the same screen, plus a third "bandeja" tab that merged
- * them read-only and, when tapped, threw you into one of the other two. The
- * broker's question is "who is waiting on me", which has nothing to do with
- * which pipe the message arrived through — so the channel is a filter, and
- * opening a row opens the thread right here.
+ * This was Bandeja: every inbound conversation in one list, which already beat
+ * the two-tabs-per-transport screen it replaced. It still answered the wrong
+ * question. "Who is waiting on me" is not only a messaging question — a visit
+ * at 15:30, a lead a portal sent to four brokers at once, and a deal nobody has
+ * opened in a month all expire on their own, and each lived on a different
+ * screen with its own idea of what "recent" meant.
+ *
+ * So the top of this list is the ranked queue from `/v1/attention`: one row per
+ * real-world obligation, each carrying the reason it surfaced and how soon it
+ * stops being fixable. Conversations that are already in that queue do not
+ * repeat below it — everything else follows in the order it arrived.
  */
-export function BandejaPage({ channels = ["whatsapp", "email"] }: BandejaPageProps) {
+export function AttentionPage({ channels = ["whatsapp", "email"] }: AttentionPageProps) {
   const [channel, setChannel] = useState<ChannelFilter>("todos");
   const [state, setState] = useState<StateFilter>("todos");
   const [query, setQuery] = useState("");
@@ -175,6 +203,10 @@ export function BandejaPage({ channels = ["whatsapp", "email"] }: BandejaPagePro
     setParams(next, { replace: true });
   };
   const [composeOpen, setComposeOpen] = useState(false);
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const role = (user?.role ?? "ADMIN").toLowerCase();
+  const attention = useAttention();
 
   const showWhatsApp = channels.includes("whatsapp");
   const showEmail = channels.includes("email");
@@ -246,30 +278,82 @@ export function BandejaPage({ channels = ["whatsapp", "email"] }: BandejaPagePro
     return out.sort((a, b) => b.time - a.time);
   }, [convos.data, emails.data, namesById, propertyByContact, showWhatsApp, showEmail]);
 
+  const kindFilter: AttentionKind | null = ATTENTION_KINDS.includes(state as AttentionKind)
+    ? (state as AttentionKind)
+    : null;
+
+  /**
+   * The queue, filtered the same way the list below it is.
+   *
+   * The channel switch applies here too: picking WhatsApp must not leave a
+   * ranked email lead sitting above a WhatsApp-only list. Rows with no channel
+   * at all — a visit, an overdue task — belong to "Todo" only.
+   */
+  const attentionItems = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const items = attention.data?.items ?? [];
+    return items.filter((item) => {
+      if (archivedView) return false;
+      if (kindFilter && item.kind !== kindFilter) return false;
+      // "Cerradas" is a question about the mailbox; the queue has no answer.
+      if (!kindFilter && state === "closed") return false;
+      if (channel === "whatsapp" && !item.conversation_id) return false;
+      if (channel === "email" && !item.thread_id) return false;
+      if (!showWhatsApp && item.conversation_id) return false;
+      if (!showEmail && item.thread_id) return false;
+      if (q && !`${item.title} ${item.subtitle ?? ""} ${item.reason}`.toLowerCase().includes(q)) {
+        return false;
+      }
+      return true;
+    });
+  }, [attention.data, kindFilter, state, channel, archivedView, query, showWhatsApp, showEmail]);
+
+  /** Threads already represented in the queue, so they are not listed twice. */
+  const queuedThreadKeys = useMemo(() => {
+    const keys = new Set<string>();
+    for (const item of attentionItems) {
+      if (item.conversation_id) keys.add(`whatsapp:${item.conversation_id}`);
+      if (item.thread_id) keys.add(`email:${item.thread_id}`);
+    }
+    return keys;
+  }, [attentionItems]);
+
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
+    // A kind filter is a question about the queue, not about the mailbox: it
+    // would otherwise show "Visitas" over the full conversation list.
+    if (kindFilter) return [];
     return entries.filter((e) => {
       if (channel !== "todos" && e.channel !== channel) return false;
       // Archived is a view, not a facet: everywhere else archived rows are out.
       if (archivedView ? !e.archived : e.archived) return false;
-      if (state === "pending" && !e.needsReply) return false;
+      if (!archivedView && queuedThreadKeys.has(e.key)) return false;
       if (state === "open" && e.closed) return false;
       if (state === "closed" && !e.closed) return false;
       if (q && !e.haystack.includes(q)) return false;
       return true;
     });
-  }, [entries, channel, state, archivedView, query]);
-
-  const pendingCount = useMemo(
-    () => entries.filter((e) => e.needsReply && !e.archived).length,
-    [entries],
-  );
+  }, [entries, channel, state, kindFilter, archivedView, queuedThreadKeys, query]);
 
   const isLoading =
-    (showWhatsApp && convos.isPending) || (showEmail && emails.isLoading) || contacts.isLoading;
+    (showWhatsApp && convos.isPending) ||
+    (showEmail && emails.isLoading) ||
+    contacts.isLoading ||
+    attention.isLoading;
   // A failed fetch must not read as an empty inbox: real messages would go
   // unanswered inside WhatsApp's 24h freeform window and nobody would know.
-  const error = (showWhatsApp && convos.error) || (showEmail && emails.error) || null;
+  const error =
+    (showWhatsApp && convos.error) || (showEmail && emails.error) || attention.error || null;
+
+  /** Where an item is worked. Conversations open in this pane; the rest route. */
+  const openAttention = (item: AttentionItem) => {
+    if (item.conversation_id) return openThread("whatsapp", item.conversation_id);
+    if (item.thread_id) return openThread("email", item.thread_id);
+    if (item.event_id) return navigate(`/${role}/agenda?tab=calendario`);
+    if (item.task_id) return navigate(`/${role}/agenda?tab=tareas`);
+    if (item.opportunity_id) return navigate(`/${role}/crm?tab=pipeline`);
+    if (item.contact_id) return navigate(`/${role}/personas/${item.contact_id}`);
+  };
 
   /**
    * Archiving is per-channel: WhatsApp toggles `archived_at`, email flips the
@@ -323,11 +407,13 @@ export function BandejaPage({ channels = ["whatsapp", "email"] }: BandejaPagePro
         label="Estado"
         value={state === "todos" ? null : state}
         onChange={(v) => setState((v ?? "todos") as StateFilter)}
-        allLabel="Todas"
-        options={STATE_FILTERS.filter((f) => f.id !== "todos").map((f) => ({
-          value: f.id,
-          label: f.id === "pending" && pendingCount > 0 ? `${f.label} (${pendingCount})` : f.label,
-        }))}
+        allLabel="Todo"
+        options={STATE_FILTERS.filter((f) => f.id !== "todos").map((f) => {
+          // A count only where the API supplies one, and only when non-zero: a
+          // filter labelled "Leads (0)" invites a tap that shows nothing.
+          const count = attention.data?.counts?.[f.id as AttentionKind];
+          return { value: f.id, label: count ? `${f.label} (${count})` : f.label };
+        })}
       />
     </div>
   );
@@ -335,8 +421,16 @@ export function BandejaPage({ channels = ["whatsapp", "email"] }: BandejaPagePro
   const list = (
     <ListShell
       fill
-      title="Bandeja"
-      meta={shown.length > 0 ? `${shown.length}` : undefined}
+      title="Atención"
+      meta={
+        // The queue's real size, not the page's: the API caps the list, and
+        // "60 por resolver" beside a section counting 9 read as a bug.
+        attentionItems.length > 0
+          ? `${attention.data?.total ?? attentionItems.length} por resolver`
+          : shown.length > 0
+            ? `${shown.length}`
+            : undefined
+      }
       search={{
         value: query,
         onChange: setQuery,
@@ -363,9 +457,38 @@ export function BandejaPage({ channels = ["whatsapp", "email"] }: BandejaPagePro
       error={error}
       errorMessage="No se pudo cargar la bandeja."
       onRetry={retry}
-      isEmpty={shown.length === 0}
-      emptyTitle={query ? "Sin coincidencias" : "Bandeja vacía"}
+      isEmpty={shown.length === 0 && attentionItems.length === 0}
+      emptyTitle={query ? "Sin coincidencias" : "Nada pendiente"}
     >
+      {URGENCY_ORDER.map((urgency) => {
+        const group = attentionItems.filter((item) => item.urgency === urgency);
+        if (group.length === 0) return null;
+        return (
+          <div key={urgency}>
+            {/* The heading carries the urgency so the rows do not have to. */}
+            <SectionLabel count={group.length}>
+              {kindFilter
+                ? `${KIND_LABEL[kindFilter]} · ${URGENCY_LABEL[urgency]}`
+                : URGENCY_LABEL[urgency]}
+            </SectionLabel>
+            {group.map((item, i) => (
+              <AttentionRow
+                key={item.id}
+                item={item}
+                divider={i < group.length - 1}
+                selected={
+                  (selected?.channel === "whatsapp" && selected.id === item.conversation_id) ||
+                  (selected?.channel === "email" && selected.id === item.thread_id)
+                }
+                onOpen={openAttention}
+              />
+            ))}
+          </div>
+        );
+      })}
+      {attentionItems.length > 0 && shown.length > 0 && (
+        <SectionLabel>{archivedView ? "Archivadas" : "Conversaciones"}</SectionLabel>
+      )}
       {shown.map((e, i) => (
         // Wrapper, not a `right` slot: Row is itself a <button> when tappable,
         // and a button inside a button is invalid and unreachable by keyboard.
@@ -465,4 +588,4 @@ export function BandejaPage({ channels = ["whatsapp", "email"] }: BandejaPagePro
   );
 }
 
-export default BandejaPage;
+export default AttentionPage;
