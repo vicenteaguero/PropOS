@@ -162,7 +162,7 @@ async def upload_property_photos(
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Empty file")
         if len(content) > MAX_PHOTO_BYTES:
             raise HTTPException(
-                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                status_code=status.HTTP_413_CONTENT_TOO_LARGE,
                 detail=f"Photo exceeds {MAX_PHOTO_BYTES // (1024 * 1024)}MB",
             )
         payload.append((content, mime, upload.filename))

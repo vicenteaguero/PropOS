@@ -99,7 +99,15 @@ async def test_no_profile_returns_401(mock_verify, mock_profile, raw_client):
 
 
 @pytest.mark.asyncio
-async def test_missing_token_returns_403(raw_client):
+async def test_missing_token_returns_401(raw_client):
+    """No credentials at all is 401, the same as bad ones.
+
+    It used to be 403, because that is what FastAPI's `HTTPBearer` historically
+    raised when the header was absent. Starlette 1.x corrected it, and the new
+    answer is the right one: 401 means "who are you", 403 means "I know who you
+    are and you may not". Our own 403s — `require_role` and `require_scope` —
+    keep the second meaning and are unaffected.
+    """
     response = await raw_client.get("/api/v1/users/me")
 
-    assert response.status_code == 403
+    assert response.status_code == 401
