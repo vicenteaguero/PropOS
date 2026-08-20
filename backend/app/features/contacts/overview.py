@@ -18,7 +18,7 @@ from collections.abc import Callable
 from typing import Any
 from uuid import UUID
 
-from app.core.supabase.client import get_supabase_client
+from app.core.supabase.client import get_thread_client
 from app.features.contacts.schemas import (
     ContactOverview,
     OverviewCounts,
@@ -34,7 +34,9 @@ _OPEN_TASK_STATUSES = ("OPEN", "IN_PROGRESS", "BLOCKED")
 
 
 def _client():
-    return get_supabase_client()
+    # Thread-local: every reader below runs inside `asyncio.to_thread`, and the
+    # shared client's HTTP/2 connection cannot be used by two threads at once.
+    return get_thread_client()
 
 
 async def _gather(*calls: Callable[[], Any]) -> list[Any]:
@@ -53,11 +55,11 @@ async def _gather(*calls: Callable[[], Any]) -> list[Any]:
 async def build_overview(tenant_id: UUID, contact_id: UUID) -> ContactOverview:
     tid, cid = str(tenant_id), str(contact_id)
     now = dt.datetime.now(dt.UTC)
-    client = _client()
 
     def participants():
         return (
-            client.table("interaction_participants")
+            _client()
+            .table("interaction_participants")
             .select("interaction_id")
             .eq("tenant_id", tid)
             .eq("person_id", cid)
@@ -69,7 +71,8 @@ async def build_overview(tenant_id: UUID, contact_id: UUID) -> ContactOverview:
 
     def open_deals():
         return (
-            client.table("opportunities")
+            _client()
+            .table("opportunities")
             .select("id,pipeline_stage,property_id,expected_value_cents,currency,updated_at")
             .eq("tenant_id", tid)
             .eq("person_id", cid)
@@ -84,7 +87,8 @@ async def build_overview(tenant_id: UUID, contact_id: UUID) -> ContactOverview:
 
     def next_event():
         return (
-            client.table("events")
+            _client()
+            .table("events")
             .select("id,kind,title,starts_at,location,property_id")
             .eq("tenant_id", tid)
             .eq("contact_id", cid)
@@ -100,7 +104,8 @@ async def build_overview(tenant_id: UUID, contact_id: UUID) -> ContactOverview:
 
     def live_conversation():
         return (
-            client.table("client_conversations")
+            _client()
+            .table("client_conversations")
             .select("id,status,last_inbound_at,last_message_at,archived_at")
             .eq("tenant_id", tid)
             .eq("contact_id", cid)
@@ -115,7 +120,8 @@ async def build_overview(tenant_id: UUID, contact_id: UUID) -> ContactOverview:
 
     def open_tasks() -> int:
         return (
-            client.table("tasks")
+            _client()
+            .table("tasks")
             .select("id", count="exact")
             # `related` is {"<table>": [ids]} — the same shape tasks already use
             # for the properties and events they belong to.
@@ -131,7 +137,7 @@ async def build_overview(tenant_id: UUID, contact_id: UUID) -> ContactOverview:
 
     def counted(table: str, column: str, *, soft_delete: bool = True) -> Callable[[], int]:
         def run() -> int:
-            q = client.table(table).select("id", count="exact").eq("tenant_id", tid).eq(column, cid)
+            q = _client().table(table).select("id", count="exact").eq("tenant_id", tid).eq(column, cid)
             if soft_delete:
                 q = q.is_("deleted_at", "null")
             return q.limit(1).execute().count or 0
@@ -168,7 +174,8 @@ async def build_overview(tenant_id: UUID, contact_id: UUID) -> ContactOverview:
         if not interaction_ids:
             return []
         return (
-            client.table("interactions")
+            _client()
+            .table("interactions")
             .select("id,kind,occurred_at")
             .eq("tenant_id", tid)
             .in_("id", interaction_ids)
@@ -184,7 +191,8 @@ async def build_overview(tenant_id: UUID, contact_id: UUID) -> ContactOverview:
         if not property_ids:
             return []
         return (
-            client.table("properties")
+            _client()
+            .table("properties")
             .select("id,title")
             .eq("tenant_id", tid)
             .in_("id", list(dict.fromkeys(property_ids)))
