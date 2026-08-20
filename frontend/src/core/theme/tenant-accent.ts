@@ -55,12 +55,31 @@ function readableForeground(hex: string): string {
 interface AccentInput {
   seed?: string | null;
   color?: string | null;
+  /**
+   * How much of the brand bleeds into every surface, 0-12%.
+   *
+   * index.css writes EVERY surface token as
+   * `color-mix(in srgb, var(--accent-brand) var(--tint), <neutral>)`, so this
+   * one number tints backgrounds, cards, borders, muted text and the sidebar at
+   * once. It shipped hard-coded at 0%, which is why the palette machinery was
+   * there but the app looked uniformly grey whatever the brand colour was.
+   */
+  tint?: number | null;
 }
 
+/** Clamp: past ~12% the neutrals stop reading as neutral and text contrast goes. */
+const MAX_TINT = 12;
+
 /** Inject the tenant accent + surface tint inline on <html>. */
-export function applyTenantAccent({ seed, color }: AccentInput): void {
+export function applyTenantAccent({ seed, color, tint }: AccentInput): void {
   if (typeof document === "undefined") return;
   const style = document.documentElement.style;
+
+  if (typeof tint === "number" && Number.isFinite(tint)) {
+    style.setProperty("--tint", `${Math.min(MAX_TINT, Math.max(0, tint))}%`);
+  } else {
+    style.removeProperty("--tint");
+  }
 
   if (color && HEX_RE.test(color)) {
     const hex = color.startsWith("#") ? color : `#${color}`;

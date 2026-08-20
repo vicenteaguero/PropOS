@@ -7,6 +7,8 @@ interface TenantBranding {
   agentName: string;
   defaultPaperSize: string;
   brandColor: string | null;
+  /** Surface tint percentage, 0-12. See applyTenantAccent. */
+  brandTint: number | null;
   slug: string | null;
 }
 
@@ -18,6 +20,7 @@ interface TenantResponse {
     ai_assistant_name?: string;
     default_paper_size?: string;
     brand_color?: string | null;
+    brand_tint?: number | null;
   };
 }
 
@@ -25,6 +28,7 @@ const DEFAULT: TenantBranding = {
   agentName: "Propo",
   defaultPaperSize: "A4",
   brandColor: null,
+  brandTint: null,
   slug: null,
 };
 
@@ -49,6 +53,7 @@ export function AgentBrandingProvider({ children }: { children: ReactNode }) {
       agentName: settings?.ai_assistant_name || DEFAULT.agentName,
       defaultPaperSize: settings?.default_paper_size || DEFAULT.defaultPaperSize,
       brandColor: settings?.brand_color || null,
+      brandTint: typeof settings?.brand_tint === "number" ? settings.brand_tint : null,
       slug: query.data.slug || null,
     };
   }, [query.data]);
