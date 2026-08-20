@@ -260,16 +260,37 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2 # need the parent to diff against
+          # Full history: the diff below spans a whole push, which for a
+          # fast-forward merge of a feature branch is many commits.
+          fetch-depth: 0
 
       - name: Did anything the image contains change?
         id: changed
+        env:
+          BEFORE: ${{ github.event.before }}
         run: |
-          if git diff --quiet HEAD^ HEAD -- backend/ config/docker/; then
+          # Compare against what main pointed at BEFORE this push, not against
+          # HEAD^.
+          #
+          # `HEAD^ HEAD` inspects a single commit. Merging a branch
+          # fast-forward lands N commits at once, and if the last of them
+          # happens to touch only frontend/, the backend deploy was skipped —
+          # production silently stayed on the previous image while main moved
+          # on. That is the exact failure the Cloud Build trigger had, and it
+          # fails quietly, which is what makes it dangerous.
+          #
+          # `before` is all-zeros for a new branch or after a force-push; deploy
+          # rather than guess in that case.
+          if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ] \
+             || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            echo "value=true" >> "$GITHUB_OUTPUT"
+            echo "No usable base ref — deploying to be safe."
+          elif git diff --quiet "$BEFORE" HEAD -- backend/ config/docker/; then
             echo "value=false" >> "$GITHUB_OUTPUT"
-            echo "No backend/ or config/docker/ changes — skipping deploy."
+            echo "No backend/ or config/docker/ changes since $BEFORE — skipping deploy."
           else
             echo "value=true" >> "$GITHUB_OUTPUT"
+            echo "Backend changed since $BEFORE — deploying."
           fi
 
       - uses: google-github-actions/auth@v2
