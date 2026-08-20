@@ -10,6 +10,7 @@ import {
 } from "../hooks/use-agent-session";
 import { useAgentChat } from "../hooks/use-agent-chat";
 import { agentApi } from "../api/agent-api";
+import { useKeyboardInset } from "@shared/hooks/use-keyboard-inset";
 import { AgentComposer } from "../components/agent-composer";
 import { AgentMessageList } from "../components/agent-message-list";
 import { useAgentName } from "@core/branding/agent-branding";
@@ -88,6 +89,7 @@ function SessionList({
 }
 
 export function AgentChatPage() {
+  useKeyboardInset();
   const agentName = useAgentName();
   const [sessionId, setSessionId] = useState<string | undefined>();
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -271,7 +273,7 @@ export function AgentChatPage() {
               </div>
             </div>
             {chat.error && <p className="px-4 text-xs text-destructive">{chat.error}</p>}
-            <div className="shrink-0 border-t border-border p-4">
+            <div className="shrink-0 border-t border-border p-3 pb-[max(calc(var(--safe-bottom)+0.75rem),calc(var(--kb-inset)+0.75rem))]">
               <div className="mx-auto max-w-3xl">
                 <AgentComposer
                   onSend={chat.send}

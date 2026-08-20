@@ -176,7 +176,7 @@ export function AdminPropertyDetailPage() {
         {/* Cómo llegar */}
         {p.address && (
           <div className="px-5 pt-5 lg:col-start-2 lg:row-span-4 lg:row-start-1 lg:px-0 lg:pt-0">
-            <SectionLabel className="px-0">Cómo llegar</SectionLabel>
+            <SectionLabel>Cómo llegar</SectionLabel>
             <iframe
               title="Ubicación"
               src={`https://maps.google.com/maps?q=${encodeURIComponent(p.address)}&z=15&output=embed`}

@@ -412,7 +412,7 @@ export function DocumentDetailPage() {
         </div>
         <aside className="space-y-6">
           <section>
-            <SectionLabel className="px-0" action="+ Vincular" onAction={() => setPickerOpen(true)}>
+            <SectionLabel action="+ Vincular" onAction={() => setPickerOpen(true)}>
               Asignado a
             </SectionLabel>
             <div className="mt-3">
@@ -420,7 +420,7 @@ export function DocumentDetailPage() {
             </div>
           </section>
           <section>
-            <SectionLabel className="px-0">Información</SectionLabel>
+            <SectionLabel>Información</SectionLabel>
             <dl className="mt-3 divide-y divide-border overflow-hidden rounded-xl bg-card">
               <InfoRow label="Origen" value={doc.origin} />
               <InfoRow label="Creado" value={formatDateTime(doc.created_at)} />

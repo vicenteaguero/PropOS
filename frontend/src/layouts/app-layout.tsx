@@ -23,6 +23,7 @@ import { useShellMode } from "@shared/hooks/use-shell-mode";
 import { useThemeMode } from "@core/theme/theme-provider";
 import { hueForTenant } from "@core/theme/tenant-accent";
 import { AgentFAB } from "@features/agent/components/agent-fab";
+import { AgentOverlayProvider } from "@features/agent/components/agent-overlay-host";
 import { InstallNudge } from "@shared/components/install-nudge/install-nudge";
 import { useUfDailyRefresh } from "@features/uf/hooks/use-uf";
 import { UfButton } from "@features/uf/components/uf-button";
@@ -146,9 +147,10 @@ export function AppLayout() {
       // This shell has NO header, so --app-header-h must read 0 here or every
       // viewport-pinned primitive below subtracts 56px that doesn't exist.
       // --app-nav-h is published by MobileBottomNav from its own measured box.
-      <div className="flex min-h-dvh flex-col bg-background [--app-header-h:0px]">
-        <SkipToContent />
-        {/* tabIndex -1 so PageMetaProvider can move focus here on navigation
+      <AgentOverlayProvider>
+        <div className="flex min-h-dvh flex-col bg-background [--app-header-h:0px]">
+          <SkipToContent />
+          {/* tabIndex -1 so PageMetaProvider can move focus here on navigation
             without putting the region itself in the tab sequence.
 
             The insets are why this element needs padding at all. This shell has
@@ -158,17 +160,18 @@ export function AppLayout() {
             scroll container never did. Left/right matter in landscape, where the
             cutout moves to the side. All four resolve to 0 on a laptop or
             tablet, so those layouts are unchanged. */}
-        <main
-          id="main-content"
-          tabIndex={-1}
-          className="flex-1 outline-none pt-[var(--safe-top)] pr-[var(--safe-right)] pb-[var(--app-nav-h,0px)] pl-[var(--safe-left)]"
-        >
-          <Outlet />
-        </main>
-        <MobileBottomNav />
-        <MobileCommandPalette />
-        <InstallNudge />
-      </div>
+          <main
+            id="main-content"
+            tabIndex={-1}
+            className="flex-1 outline-none pt-[var(--safe-top)] pr-[var(--safe-right)] pb-[var(--app-nav-h,0px)] pl-[var(--safe-left)]"
+          >
+            <Outlet />
+          </main>
+          <MobileBottomNav />
+          <MobileCommandPalette />
+          <InstallNudge />
+        </div>
+      </AgentOverlayProvider>
     );
   }
 
@@ -176,72 +179,74 @@ export function AppLayout() {
     // pl/pr carry the landscape insets: on a phone held sideways the notch sits
     // beside the nav rail, and the sidebar rendered straight under it. Both are
     // 0 on a laptop or tablet, so those layouts are untouched.
-    <SidebarProvider open={sidebarOpen} onOpenChange={setSidebarOpen}>
-      <SkipToContent />
-      <AppSidebar />
-      {/* Bound the shell to the viewport so the inner <main> is the scroll
+    <AgentOverlayProvider>
+      <SidebarProvider open={sidebarOpen} onOpenChange={setSidebarOpen}>
+        <SkipToContent />
+        <AppSidebar />
+        {/* Bound the shell to the viewport so the inner <main> is the scroll
           container — keeps the header pinned (a window-level scroll trapped the
           header's sticky inside the wrapper's overflow-hidden). */}
-      <SidebarInset className="h-svh overflow-hidden pr-[var(--safe-right)]">
-        <header className="sticky top-0 z-10 flex h-[var(--app-header-h)] shrink-0 items-center gap-2 border-b border-border bg-background px-4">
-          <SidebarTrigger className="-ml-1" />
-          <HeaderWorkspaceSwitcher />
-          <div className="flex flex-1 items-center justify-center px-2">
-            <CommandBar />
+        <SidebarInset className="h-svh overflow-hidden pr-[var(--safe-right)]">
+          <header className="sticky top-0 z-10 flex h-[var(--app-header-h)] shrink-0 items-center gap-2 border-b border-border bg-background px-4">
+            <SidebarTrigger className="-ml-1" />
+            <HeaderWorkspaceSwitcher />
+            <div className="flex flex-1 items-center justify-center px-2">
+              <CommandBar />
+            </div>
+            <UfButton />
+            <HeaderThemeToggle />
+            <div className="block">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:coarse)]:size-11">
+                    <Avatar size="sm">
+                      {user?.avatarUrl && <AvatarImage src={user.avatarUrl} alt={user.fullName} />}
+                      <AvatarFallback>{user ? initials(user.fullName) : "?"}</AvatarFallback>
+                    </Avatar>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  {user && (
+                    <>
+                      <DropdownMenuLabel className="font-normal">
+                        <p className="text-sm font-medium">{user.fullName}</p>
+                        <p className="text-xs text-muted-foreground capitalize">
+                          {user.role.toLowerCase()}
+                        </p>
+                      </DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                    </>
+                  )}
+                  <DropdownMenuItem onClick={signOut}>
+                    <LogOut className="size-4" />
+                    Cerrar sesión
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </header>
+          <main
+            id="main-content"
+            tabIndex={-1}
+            className="min-h-0 flex-1 overflow-y-auto outline-none"
+          >
+            <Outlet />
+          </main>
+          {/* FAB only where the header command bar is hidden (below md). */}
+          <div className="md:hidden">
+            {(() => {
+              // Propo is ADMIN-only (backend require_role ADMIN). Gate on view,
+              // not scope-emptiness, so it never renders for non-admin roles.
+              const view = user?.view;
+              const isAdmin = view === "admin" || view === "admin-dev";
+              const scope = user?.adminScope ?? [];
+              if (!isAdmin || (scope.length > 0 && !scope.includes("agent"))) return null;
+              return <AgentFAB />;
+            })()}
           </div>
-          <UfButton />
-          <HeaderThemeToggle />
-          <div className="block">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="flex items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:coarse)]:size-11">
-                  <Avatar size="sm">
-                    {user?.avatarUrl && <AvatarImage src={user.avatarUrl} alt={user.fullName} />}
-                    <AvatarFallback>{user ? initials(user.fullName) : "?"}</AvatarFallback>
-                  </Avatar>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                {user && (
-                  <>
-                    <DropdownMenuLabel className="font-normal">
-                      <p className="text-sm font-medium">{user.fullName}</p>
-                      <p className="text-xs text-muted-foreground capitalize">
-                        {user.role.toLowerCase()}
-                      </p>
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                  </>
-                )}
-                <DropdownMenuItem onClick={signOut}>
-                  <LogOut className="size-4" />
-                  Cerrar sesión
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </header>
-        <main
-          id="main-content"
-          tabIndex={-1}
-          className="min-h-0 flex-1 overflow-y-auto outline-none"
-        >
-          <Outlet />
-        </main>
-        {/* FAB only where the header command bar is hidden (below md). */}
-        <div className="md:hidden">
-          {(() => {
-            // Propo is ADMIN-only (backend require_role ADMIN). Gate on view,
-            // not scope-emptiness, so it never renders for non-admin roles.
-            const view = user?.view;
-            const isAdmin = view === "admin" || view === "admin-dev";
-            const scope = user?.adminScope ?? [];
-            if (!isAdmin || (scope.length > 0 && !scope.includes("agent"))) return null;
-            return <AgentFAB />;
-          })()}
-        </div>
-        <InstallNudge />
-      </SidebarInset>
-    </SidebarProvider>
+          <InstallNudge />
+        </SidebarInset>
+      </SidebarProvider>
+    </AgentOverlayProvider>
   );
 }

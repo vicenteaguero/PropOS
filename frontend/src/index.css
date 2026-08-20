@@ -92,6 +92,11 @@
    * --app-header-h, and exactly one of the two is non-zero at a time. */
   --app-nav-h: 0px;
 
+  /* Height of the strip the on-screen keyboard covers. Published from
+   * visualViewport by useKeyboardInset; 0 whenever the keyboard is closed or
+   * the platform resizes the layout viewport itself. */
+  --kb-inset: 0px;
+
   /* Device safe areas, named once.
    *
    * Two reasons this is a token rather than `env()` at each call site. First,

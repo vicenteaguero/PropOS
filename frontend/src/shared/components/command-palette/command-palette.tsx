@@ -15,7 +15,7 @@ import { useAuth } from "@shared/hooks/use-auth";
 import { useThemeMode } from "@core/theme/theme-provider";
 import { useAgentName } from "@core/branding/agent-branding";
 import { useNavGroups } from "@layouts/use-nav-groups";
-import { AgentOverlay } from "@features/agent/components/agent-overlay";
+import { useAgentOverlay } from "@features/agent/components/agent-overlay-host";
 
 /**
  * Returns true when focus is somewhere the user is typing prose, so a bare
@@ -72,7 +72,7 @@ export function CommandPalette({
   const { theme, toggle } = useThemeMode();
   const agentName = useAgentName();
   const { groups, isAdminView } = useNavGroups();
-  const [propoOpen, setPropoOpen] = useState(false);
+  const propo = useAgentOverlay();
 
   const canPropo = useMemo(() => {
     if (!isAdminView) return false;
@@ -107,7 +107,7 @@ export function CommandPalette({
                 <CommandGroup heading={agentName}>
                   <CommandItem
                     value={`${agentName} preguntar asistente ia`}
-                    onSelect={() => run(() => setPropoOpen(true))}
+                    onSelect={() => run(() => propo.open())}
                   >
                     <Sparkles className="size-4" />
                     Pedirle algo a {agentName}
@@ -182,8 +182,6 @@ export function CommandPalette({
           </Command>
         </DialogContent>
       </Dialog>
-
-      {canPropo && propoOpen && <AgentOverlay onClose={() => setPropoOpen(false)} />}
     </>
   );
 }

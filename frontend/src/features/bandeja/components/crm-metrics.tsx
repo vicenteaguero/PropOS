@@ -139,7 +139,7 @@ export function CrmMetrics() {
     pipeline.error || convos.error || emails.error || opportunities.error || properties.error;
 
   if (isLoading) {
-    return <PageSkeleton variant="detail" className="pt-4" />;
+    return <PageSkeleton variant="kpi-grid" columns={2} className="pt-4" />;
   }
 
   if (error) {

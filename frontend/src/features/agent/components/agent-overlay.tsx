@@ -10,6 +10,7 @@ import { AgentVoice } from "./agent-voice";
 import { useAgentName } from "@core/branding/agent-branding";
 import { TOUCH_TARGET_HIT_AREA } from "@shared/ui";
 import { useDismissOnBack } from "@shared/hooks/use-dismiss-on-back";
+import { useKeyboardInset } from "@shared/hooks/use-keyboard-inset";
 
 interface Props {
   onClose: () => void;
@@ -32,6 +33,8 @@ export function AgentOverlay({ onClose, initialMode = "chat" }: Props) {
   // Android Back (and the iOS edge swipe in standalone) closes this, rather
   // than navigating away and discarding whatever was typed.
   useDismissOnBack(true, onClose);
+  // Keeps the composer above the on-screen keyboard instead of behind it.
+  useKeyboardInset();
   const sessionQuery = useAgentSession();
   const sessionId = sessionQuery.data?.id;
   const messagesQuery = useAgentMessages(sessionId);
@@ -147,9 +150,6 @@ export function AgentOverlay({ onClose, initialMode = "chat" }: Props) {
             <div className="min-h-0 flex-1 overflow-hidden px-4">
               {showSuggestions ? (
                 <div className="flex h-full flex-col justify-end gap-2 pb-2">
-                  <p className="px-1 pb-1 text-[14px] text-white/60">
-                    Hola 👋 Soy {agentName}. Dime qué necesitas o prueba con:
-                  </p>
                   {SUGGESTIONS.map((s) => (
                     <button
                       key={s}
@@ -176,7 +176,10 @@ export function AgentOverlay({ onClose, initialMode = "chat" }: Props) {
               )}
             </div>
             {chat.error && <p className="px-4 text-xs text-red-400">{chat.error}</p>}
-            <div className="shrink-0 border-t border-white/10 p-3 pb-[calc(var(--safe-bottom)+0.75rem)]">
+            {/* Both insets, never summed: while the keyboard is up it covers the
+                home indicator, so --safe-bottom must not be added on top of it.
+                max() is correct here precisely because only one is ever live. */}
+            <div className="shrink-0 border-t border-white/10 p-3 pb-[max(calc(var(--safe-bottom)+0.75rem),calc(var(--kb-inset)+0.75rem))]">
               <AgentComposer
                 onSend={chat.send}
                 onAudio={chat.submitAudio}

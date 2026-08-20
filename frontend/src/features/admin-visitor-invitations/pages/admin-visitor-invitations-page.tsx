@@ -142,7 +142,7 @@ export function AdminVisitorInvitationsPage() {
         </Button>
       </div>
 
-      {isLoading && <PageSkeleton variant="table" />}
+      {isLoading && <PageSkeleton variant={isDesktop ? "table" : "list"} />}
 
       {error && (
         <ErrorState message="No pudimos cargar las invitaciones." onRetry={() => refetch()} />

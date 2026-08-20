@@ -392,7 +392,7 @@ export function SettingsPage() {
 
       {sections.map((sec) => (
         <div key={sec.key}>
-          <SectionLabel className="mb-2 mt-7">{sec.title}</SectionLabel>
+          <SectionLabel className="mb-2 mt-7 px-5 lg:px-0">{sec.title}</SectionLabel>
           <div className={sec.key === "notificaciones" ? undefined : "px-5"}>{sec.body}</div>
         </div>
       ))}

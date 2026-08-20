@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, Loader2 } from "lucide-react";
+import { AudioPlayer } from "@shared/ui";
 import { AgentInlineProposalCard } from "./agent-inline-proposal-card";
 import { useAgentName } from "@core/branding/agent-branding";
 import type { AgentMessage } from "../types";
@@ -128,12 +129,12 @@ function AudioBubble({
   transcript: string | null;
   error: string | null;
 }) {
-  const [showTranscript, setShowTranscript] = useState(false);
+  // Open by default: the transcript is what the assistant actually acted on,
+  // so hiding it behind a disclosure made every voice turn unreadable.
+  const [showTranscript, setShowTranscript] = useState(true);
   return (
-    <div className="ml-6 rounded-lg bg-primary/10 px-3 py-2 text-sm">
-      {/* Voice memo recorded in-app; there is no caption track to point at. */}
-      {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-      <audio controls src={url} className="h-8 w-full" />
+    <div className="max-w-[85%] self-end rounded-lg bg-primary/10 px-3 py-2 text-[15px]">
+      <AudioPlayer src={url} />
       {transcribing && (
         <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
           <Loader2 className="size-3 animate-spin" />
@@ -145,7 +146,7 @@ function AudioBubble({
         <button
           type="button"
           onClick={() => setShowTranscript((v) => !v)}
-          className="mt-1 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+          className="mt-1.5 flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
         >
           {showTranscript ? (
             <ChevronDown className="size-3" />
@@ -156,7 +157,7 @@ function AudioBubble({
         </button>
       )}
       {showTranscript && transcript && (
-        <p className="mt-1 whitespace-pre-wrap break-words text-xs text-muted-foreground">
+        <p className="mt-1 whitespace-pre-wrap break-words text-[13px] text-muted-foreground">
           {transcript}
         </p>
       )}
@@ -192,7 +193,7 @@ export function AgentMessageList({
 
   return (
     <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto pr-2 -mr-2">
-      <div className="space-y-3 py-2">
+      <div className="flex flex-col items-start gap-2 py-2">
         {renderable.map((m) => {
           const text = extractText(m.content);
           const tools = extractTools(m.content);
@@ -217,8 +218,8 @@ export function AgentMessageList({
               key={m.id}
               className={
                 m.role === "user"
-                  ? "rounded-lg bg-primary/10 px-3 py-2 ml-6 text-sm"
-                  : "rounded-lg bg-muted px-3 py-2 mr-6 text-sm"
+                  ? "max-w-[85%] self-end rounded-lg bg-primary/10 px-3 py-2 text-[15px] leading-snug"
+                  : "max-w-[92%] self-start rounded-lg bg-muted px-3 py-2 text-[15px] leading-snug"
               }
             >
               {text && <p className="whitespace-pre-wrap break-words">{text}</p>}
@@ -251,13 +252,13 @@ export function AgentMessageList({
           ))}
 
         {pendingUserText && (
-          <div className="rounded-lg bg-primary/10 px-3 py-2 ml-6 text-sm whitespace-pre-wrap break-words">
+          <div className="max-w-[85%] self-end rounded-lg bg-primary/10 px-3 py-2 text-[15px] leading-snug whitespace-pre-wrap break-words">
             {pendingUserText}
           </div>
         )}
 
         {isThinking && (
-          <div className="rounded-lg bg-muted px-3 py-2 mr-6 text-sm flex items-center gap-2">
+          <div className="flex max-w-[92%] items-center gap-2 self-start rounded-lg bg-muted px-3 py-2 text-[15px]">
             <span className="inline-flex gap-1">
               <span className="size-1.5 rounded-full bg-muted-foreground animate-pulse" />
               <span className="size-1.5 rounded-full bg-muted-foreground animate-pulse [animation-delay:150ms]" />
@@ -268,14 +269,14 @@ export function AgentMessageList({
         )}
 
         {isStreaming && liveText && (
-          <div className="rounded-lg bg-muted px-3 py-2 mr-6 text-sm">
+          <div className="max-w-[92%] self-start rounded-lg bg-muted px-3 py-2 text-[15px] leading-snug">
             <p className="whitespace-pre-wrap break-words">{liveText}</p>
             <p className="text-xs text-muted-foreground">▍</p>
           </div>
         )}
 
         {liveProposals.length > 0 && (
-          <div className="space-y-2 mr-6">
+          <div className="w-full space-y-2 self-start">
             {liveProposals.map((id) => (
               <AgentInlineProposalCard key={id} proposalId={id} />
             ))}

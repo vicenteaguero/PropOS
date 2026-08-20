@@ -173,7 +173,7 @@ export function AgentComposer({ onSend, onAudio, isStreaming }: Props) {
       {error && <p className="text-xs text-destructive">{error}</p>}
 
       {recording ? (
-        <div className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2">
+        <div className="flex h-11 items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3">
           <span className="size-2 animate-pulse rounded-full bg-destructive" />
           <canvas ref={canvasRef} className="h-8 flex-1" />
           <span className="text-xs tabular-nums text-muted-foreground">{fmt(duration)}</span>
@@ -183,12 +183,16 @@ export function AgentComposer({ onSend, onAudio, isStreaming }: Props) {
             variant="destructive"
             onClick={stopRecording}
             title="Parar grabación"
+            className="size-8 [@media(pointer:coarse)]:size-8"
           >
             <Square className="size-4 fill-current" />
           </Button>
         </div>
       ) : (
-        <div className="flex gap-2">
+        // h-11 on the input, not just the buttons: `size="icon"` grows to 44px
+        // under a coarse pointer while Input stays at its base h-9, which left
+        // the field 4px short of the buttons on every phone.
+        <div className="flex items-center gap-2">
           <Input
             aria-label="Mensaje para el asistente"
             value={text}
@@ -201,7 +205,7 @@ export function AgentComposer({ onSend, onAudio, isStreaming }: Props) {
             }}
             placeholder={`Habla o escribe a ${agentName}…`}
             disabled={isStreaming}
-            className="flex-1"
+            className="h-11 flex-1 rounded-lg"
           />
           <Button
             type="button"
@@ -210,6 +214,7 @@ export function AgentComposer({ onSend, onAudio, isStreaming }: Props) {
             onClick={handleMicClick}
             disabled={isStreaming}
             title="Hablar"
+            className="size-11 shrink-0 [@media(pointer:coarse)]:size-11"
           >
             <Mic className="size-4" />
           </Button>
@@ -219,6 +224,7 @@ export function AgentComposer({ onSend, onAudio, isStreaming }: Props) {
             onClick={handleSend}
             disabled={!text.trim() || isStreaming}
             title="Enviar"
+            className="size-11 shrink-0 [@media(pointer:coarse)]:size-11"
           >
             {isStreaming ? (
               <Loader2 className="size-4 animate-spin" />

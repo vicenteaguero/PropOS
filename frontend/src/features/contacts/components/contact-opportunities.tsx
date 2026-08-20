@@ -37,7 +37,7 @@ export function ContactOpportunities({ personId }: { personId: string }) {
 
   return (
     <div>
-      <SectionLabel action="Nueva" onAction={() => setOpen(true)} className="px-0">
+      <SectionLabel action="Nueva" onAction={() => setOpen(true)}>
         Oportunidades
       </SectionLabel>
 

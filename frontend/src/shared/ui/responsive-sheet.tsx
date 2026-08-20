@@ -14,6 +14,8 @@ interface ResponsiveSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title?: ReactNode;
+  /** Accessible name when no title should be painted (Radix requires one either way). */
+  srOnlyTitle?: string;
   description?: ReactNode;
   children: ReactNode;
   /** Applied to both presentations. */
@@ -40,6 +42,7 @@ export function ResponsiveSheet({
   open,
   onOpenChange,
   title,
+  srOnlyTitle,
   description,
   children,
   className,
@@ -51,11 +54,15 @@ export function ResponsiveSheet({
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className={cn("max-w-lg", className, desktopClassName)}>
-          {(title || description) && (
+          {title || description ? (
             <DialogHeader>
               {title && <DialogTitle>{title}</DialogTitle>}
               {description && <DialogDescription>{description}</DialogDescription>}
             </DialogHeader>
+          ) : (
+            // Radix warns (and screen readers get nothing) without a title, so a
+            // titleless dialog still carries one — just unpainted.
+            <DialogTitle className="sr-only">{srOnlyTitle ?? "Detalle"}</DialogTitle>
           )}
           {children}
         </DialogContent>
@@ -68,6 +75,7 @@ export function ResponsiveSheet({
       open={open}
       onOpenChange={onOpenChange}
       title={title}
+      srOnlyTitle={srOnlyTitle}
       description={description}
       className={className}
     >

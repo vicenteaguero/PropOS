@@ -131,7 +131,7 @@ export function AdminPhonesPage() {
 
   const createUserSection = (
     <section className="space-y-4 rounded-xl border border-border bg-card p-5">
-      <SectionLabel className="px-0">Crear usuario</SectionLabel>
+      <SectionLabel>Crear usuario</SectionLabel>
       <form onSubmit={onCreateUser} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="cu-name">Nombre completo *</Label>
@@ -207,7 +207,7 @@ export function AdminPhonesPage() {
 
   const assignPhoneSection = (
     <section className="space-y-4 rounded-xl border border-border bg-card p-5">
-      <SectionLabel className="px-0">Asignar teléfono</SectionLabel>
+      <SectionLabel>Asignar teléfono</SectionLabel>
       <form onSubmit={onAssign} className="space-y-3">
         <div className="space-y-1.5">
           <Label htmlFor="assign-user">Usuario</Label>
@@ -247,7 +247,7 @@ export function AdminPhonesPage() {
   const assignedPhonesSection = (
     <section className="space-y-3">
       <div className="flex items-center justify-between">
-        <SectionLabel className="px-0">Teléfonos asignados</SectionLabel>
+        <SectionLabel>Teléfonos asignados</SectionLabel>
         {phones.length > 0 && (
           <span className="text-[13px] tabular-nums text-muted-foreground">{phones.length}</span>
         )}
