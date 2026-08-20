@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { propertiesApi, type PropertyInput } from "../api/properties-api";
 import { PropertyFormDialog } from "../components/property-form-dialog";
 import { PropertyGallery } from "../components/property-gallery";
+import { PropertyLocationMap } from "../components/property-location-map";
 import { usePageTitle } from "@app/page-meta";
 import { formatClp } from "@shared/utils/currency";
 import { label } from "@shared/lib/labels";
@@ -177,12 +178,9 @@ export function AdminPropertyDetailPage() {
         {p.address && (
           <div className="px-5 pt-5 lg:col-start-2 lg:row-span-4 lg:row-start-1 lg:px-0 lg:pt-0">
             <SectionLabel>Cómo llegar</SectionLabel>
-            <iframe
-              title="Ubicación"
-              src={`https://maps.google.com/maps?q=${encodeURIComponent(p.address)}&z=15&output=embed`}
-              className="mt-2 h-44 w-full rounded-xl border border-border lg:h-72"
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
+            <PropertyLocationMap
+              property={p}
+              className="mt-2 h-44 w-full overflow-hidden rounded-xl border border-border lg:h-72"
             />
             <div className="mt-3 grid grid-cols-2 gap-3">
               <a

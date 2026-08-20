@@ -1,8 +1,8 @@
-import { useRef, useState, type ReactNode } from "react";
-import { ImagePlus, Loader2, Images, Trash2, X } from "lucide-react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
+import { ImagePlus, Loader2, Images, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ErrorState, TOUCH_TARGET_HIT_AREA } from "@shared/ui";
+import { ErrorState } from "@shared/ui";
 import { PhotoGrid } from "@shared/components/photo-grid/photo-grid";
 import { PhotoViewer } from "@shared/components/photo-viewer/photo-viewer";
 import { cn } from "@/lib/utils";
@@ -22,9 +22,14 @@ interface PropertyGalleryProps {
 const HERO_CLASS = "relative h-52 w-full overflow-hidden rounded-xl lg:h-72";
 
 /**
- * Property photo gallery: hero + thumbnail grid + lightbox, with upload and
+ * Property photo gallery: hero + thumbnail strip + lightbox, with upload and
  * removal. Reads the same `media_assets` rows the agent writes when a broker
  * sends photos over WhatsApp, so both sources land in one place.
+ *
+ * The thumbnails scroll horizontally rather than wrapping: the previous grid
+ * laid every remaining photo out square, so a property with twelve photos
+ * pushed its own title a full viewport down the page. Only the lightbox loads
+ * originals — the hero takes the `card` derivative, the strip takes `thumb`.
  */
 export function PropertyGallery({ propertyId, overlay, className }: PropertyGalleryProps) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -35,9 +40,20 @@ export function PropertyGallery({ propertyId, overlay, className }: PropertyGall
   const upload = useUploadPropertyPhotos(propertyId);
   const remove = useDeletePropertyPhoto(propertyId);
 
-  const items = photos ?? [];
+  const items = useMemo(() => photos ?? [], [photos]);
   const hero = items[0];
-  const slides = items.map((p) => ({ src: p.url }));
+  const slides = useMemo(() => items.map((p) => ({ src: p.url })), [items]);
+  // Manage mode shows every photo (the hero included, or it could never be
+  // deleted); browsing shows the rest, since the hero is already on screen.
+  const tiles = useMemo(
+    () =>
+      (managing ? items : items.slice(1)).map((p) => ({
+        id: p.id,
+        url: p.thumb_url || p.url,
+        alt: p.title ?? undefined,
+      })),
+    [items, managing],
+  );
 
   const handleFiles = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? []);
@@ -108,46 +124,26 @@ export function PropertyGallery({ propertyId, overlay, className }: PropertyGall
             onClick={() => setViewerIndex(0)}
           >
             <img
-              src={hero.url}
+              src={hero.card_url || hero.url}
               alt={hero.title ?? "Foto principal"}
               className="size-full object-cover"
+              decoding="async"
+              sizes="(min-width: 1024px) 50vw, 100vw"
             />
             {overlay && (
               <span className="absolute left-3 top-3 flex items-center gap-2">{overlay}</span>
             )}
           </button>
 
-          {managing ? (
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-              {items.map((photo) => (
-                <div
-                  key={photo.id}
-                  className="relative aspect-square overflow-hidden rounded-lg border border-border bg-muted"
-                >
-                  <img
-                    src={photo.url}
-                    alt={photo.title ?? "Foto"}
-                    className="size-full object-cover"
-                    loading="lazy"
-                  />
-                  <button
-                    type="button"
-                    aria-label="Eliminar foto"
-                    disabled={remove.isPending}
-                    onClick={() => remove.mutate(photo.id)}
-                    className={`absolute right-1.5 top-1.5 flex size-7 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-sm transition active:scale-95 disabled:opacity-60 ${TOUCH_TARGET_HIT_AREA}`}
-                  >
-                    <X className="size-4" strokeWidth={2} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <PhotoGrid
-              photos={items.slice(1).map((p) => ({ id: p.id, url: p.url }))}
-              onPhotoClick={(index) => setViewerIndex(index + 1)}
-            />
-          )}
+          {/* One component for both modes: the manage view used to be a second,
+              drifting copy of the same grid. */}
+          <PhotoGrid
+            photos={tiles}
+            layout={managing ? "grid" : "strip"}
+            onPhotoClick={(index) => setViewerIndex(managing ? index : index + 1)}
+            onRemove={managing ? (id) => remove.mutate(id) : undefined}
+            removeDisabled={remove.isPending}
+          />
 
           <div className="flex items-center gap-2">
             {uploadButton}

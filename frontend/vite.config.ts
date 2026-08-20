@@ -135,6 +135,7 @@ export default defineConfig({
           "assets/heic2any-*.js", // HEIC decode, iOS photo upload only
           "assets/vendor-pdf-*.js", // pdf-lib + react-pdf, document viewer only
           "assets/vendor-charts-*.js", // recharts, analytics pages only
+          "assets/property-map-*.js", // maplibre-gl, properties map view only
           "pdfjs/**", // worker already has its own CacheFirst rule
         ],
         runtimeCaching: devPwa

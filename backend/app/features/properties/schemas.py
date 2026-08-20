@@ -71,6 +71,10 @@ class PropertyResponse(PropertyBase):
     created_by: UUID | None = None
     created_at: datetime
     updated_at: datetime
+    # Signed `card` derivative of the property's first photo. Present on list
+    # responses so the grid can render a real image without one request per row;
+    # None when the property has no photos.
+    cover_url: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -93,6 +97,10 @@ class PropertyPhoto(BaseModel):
     id: UUID
     media_file_id: UUID
     url: str
+    # WebP derivatives (~400px / ~800px long edge). Both fall back to `url` when
+    # the photo predates derivative generation and has not been backfilled.
+    thumb_url: str = ""
+    card_url: str = ""
     role: str = "PHOTO"
     position: int = 0
     title: str | None = None

@@ -6,6 +6,7 @@ from uuid import UUID
 
 from app.core.logging.logger import get_logger
 from app.core.supabase.client import get_supabase_client
+from app.features.properties.photos import PropertyPhotoService
 
 PROPERTIES_TABLE = "properties"
 
@@ -50,7 +51,13 @@ class PropertyService:
             builder = builder.eq("is_draft", False)
         if query:
             builder = builder.ilike("title", f"%{query}%")
-        return builder.execute().data
+        rows = builder.execute().data or []
+        # Attach covers here rather than letting the grid call the per-property
+        # photo endpoint: that was one request and ~6 sign calls per card.
+        covers = await PropertyPhotoService.covers_for_properties([UUID(r["id"]) for r in rows], tenant_id)
+        for row in rows:
+            row["cover_url"] = covers.get(row["id"])
+        return rows
 
     @staticmethod
     async def get_property(property_id: UUID, tenant_id: UUID) -> dict:

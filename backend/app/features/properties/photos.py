@@ -11,13 +11,23 @@ private. External URLs (media we did not upload) pass through untouched.
 
 from __future__ import annotations
 
+import io
 from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import unquote, urlparse
 from uuid import UUID, uuid4
 
+from PIL import Image, ImageOps
+
 from app.core.logging.logger import get_logger
 from app.core.supabase.client import get_supabase_client
+
+try:  # HEIC/HEIF come straight off iPhones; without this Pillow cannot open them.
+    import pillow_heif
+
+    pillow_heif.register_heif_opener()
+except Exception:  # noqa: BLE001 — derivatives are optional, the original still serves
+    pass
 
 MEDIA_BUCKET = "media"
 MEDIA_ASSETS = "media_assets"
@@ -27,6 +37,12 @@ TARGET_TABLE = "properties"
 PHOTO_ROLE = "PHOTO"
 
 DEFAULT_SIGNED_URL_TTL = 3600
+
+# Long-edge box for each WebP derivative generated beside the original.
+# `thumb` feeds list covers and the gallery strip, `card` the hero; the
+# lightbox is the only surface that still loads the full-resolution original.
+DERIVATIVE_SIZES: dict[str, int] = {"thumb": 400, "card": 800}
+DERIVATIVE_QUALITY = 78
 MAX_PHOTO_BYTES = 15 * 1024 * 1024
 MAX_PHOTOS_PER_REQUEST = 20
 
@@ -117,6 +133,95 @@ def display_url(stored_url: str | None, expires_in: int = DEFAULT_SIGNED_URL_TTL
         return stored_url or ""
 
 
+def derivative_path(object_path: str, variant: str) -> str:
+    """Storage path of a derivative, derived from the original's path.
+
+    Deterministic on purpose: nothing records which derivatives exist, so every
+    consumer can name them without a lookup and `sign_many` decides availability
+    from whether the object signs.
+    """
+    base = object_path.rsplit(".", 1)[0] if "." in object_path.rsplit("/", 1)[-1] else object_path
+    return f"{base}.{variant}.webp"
+
+
+def build_derivatives(content: bytes) -> dict[str, bytes]:
+    """WebP renditions keyed by variant name. Empty when the bytes are unreadable.
+
+    `exif_transpose` first: iPhone photos carry rotation in EXIF, which WebP
+    output drops — without it landscape shots would render on their side.
+    """
+    try:
+        with Image.open(io.BytesIO(content)) as source:
+            image = ImageOps.exif_transpose(source) or source
+            image = image.convert("RGB")
+            out: dict[str, bytes] = {}
+            for variant, edge in DERIVATIVE_SIZES.items():
+                copy = image.copy()
+                copy.thumbnail((edge, edge), Image.LANCZOS)
+                buffer = io.BytesIO()
+                copy.save(buffer, format="WEBP", quality=DERIVATIVE_QUALITY, method=4)
+                out[variant] = buffer.getvalue()
+            return out
+    except Exception as exc:  # noqa: BLE001 — an undecodable upload must still store
+        logger.warning("derivatives_failed", event_type="error", error=str(exc)[:200])
+        return {}
+
+
+def upload_derivatives(client: Any, object_path: str, content: bytes) -> list[str]:
+    """Write the WebP derivatives beside `object_path`. Returns the paths written.
+
+    Best effort by design: the original is already stored and every consumer
+    falls back to it, so a failure here degrades quality, not correctness.
+    """
+    written: list[str] = []
+    for variant, data in build_derivatives(content).items():
+        path = derivative_path(object_path, variant)
+        try:
+            client.storage.from_(MEDIA_BUCKET).upload(
+                path=path,
+                file=data,
+                file_options={"content-type": "image/webp", "upsert": "true"},
+            )
+            written.append(path)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("derivative_upload_failed", event_type="error", path=path, error=str(exc)[:200])
+    return written
+
+
+def sign_many(paths: list[str], expires_in: int = DEFAULT_SIGNED_URL_TTL) -> dict[str, str]:
+    """Sign many objects in ONE request. Missing objects are simply absent.
+
+    Storage's batch endpoint reports per-path failures instead of raising, which
+    is what lets callers name a derivative that may not have been generated yet
+    and fall back to the original without a prior existence check.
+    """
+    unique = list(dict.fromkeys(p for p in paths if p))
+    if not unique:
+        return {}
+    client = get_supabase_client()
+    try:
+        results = client.storage.from_(MEDIA_BUCKET).create_signed_urls(unique, expires_in)
+    except Exception as exc:  # noqa: BLE001 — a page of broken images beats a 500
+        logger.error("batch_sign_failed", event_type="error", count=len(unique), error=str(exc)[:200])
+        return {}
+    signed: dict[str, str] = {}
+    for item in results or []:
+        if item.get("error"):
+            continue
+        url = item.get("signedURL") or item.get("signedUrl")
+        path = item.get("path")
+        if url and path:
+            signed[unquote(path)] = url
+    return signed
+
+
+def _variant_url(signed: dict[str, str], path: str | None, variant: str, fallback: str) -> str:
+    """Signed derivative, or `fallback` when it was never generated."""
+    if not path:
+        return fallback
+    return signed.get(derivative_path(path, variant)) or fallback
+
+
 def _assert_property(client: Any, property_id: UUID, tenant_id: UUID) -> None:
     found = (
         client.table(PROPERTIES_TABLE)
@@ -177,16 +282,35 @@ class PropertyPhotoService:
         )
         by_id = {f["id"]: f for f in files if not f.get("deleted_at")}
 
+        # One batch sign for the whole gallery — originals plus both derivatives.
+        # Signing per photo meant 3 round trips per image; a 40-photo property
+        # spent 120 requests before the first byte of markup left the server.
+        wanted: list[str] = []
+        for media in by_id.values():
+            path = storage_path_from_url(media.get("url"))
+            if not path:
+                continue
+            wanted.append(path)
+            wanted.extend(derivative_path(path, v) for v in DERIVATIVE_SIZES)
+        signed = sign_many(wanted)
+
         photos: list[dict] = []
         for asset in assets:
             media = by_id.get(asset["media_file_id"])
             if media is None:
                 continue
+            stored = media.get("url")
+            path = storage_path_from_url(stored)
+            # External media (nothing we uploaded) has no path and no derivatives;
+            # it passes through verbatim on all three fields.
+            original = signed.get(path or "", stored or "") if path else (stored or "")
             photos.append(
                 {
                     "id": asset["id"],
                     "media_file_id": asset["media_file_id"],
-                    "url": display_url(media.get("url")),
+                    "url": original,
+                    "thumb_url": _variant_url(signed, path, "thumb", original),
+                    "card_url": _variant_url(signed, path, "card", original),
                     "role": asset.get("role") or PHOTO_ROLE,
                     "position": asset.get("position") or 0,
                     "title": media.get("title"),
@@ -194,6 +318,68 @@ class PropertyPhotoService:
                 }
             )
         return photos
+
+    @staticmethod
+    async def covers_for_properties(property_ids: list[UUID], tenant_id: UUID) -> dict[str, str]:
+        """Lowest-`position` photo per property, as a signed `card` URL.
+
+        Three queries and one batch sign for the whole page, regardless of how
+        many properties it holds — the list grid used to have no photo at all
+        precisely because the per-property photo endpoint could not be afforded
+        40 times over.
+        """
+        if not property_ids:
+            return {}
+        client = get_supabase_client()
+        ids = [str(pid) for pid in property_ids]
+        assets = (
+            client.table(MEDIA_ASSETS)
+            .select("media_file_id, target_row_id, position, created_at")
+            .eq("tenant_id", str(tenant_id))
+            .eq("target_table", TARGET_TABLE)
+            .in_("target_row_id", ids)
+            .eq("role", PHOTO_ROLE)
+            .order("position")
+            .order("created_at")
+            .execute()
+            .data
+            or []
+        )
+        # Ordered by (position, created_at), so the first row seen per property
+        # is its cover. PostgREST has no DISTINCT ON, hence the client-side pick.
+        first_by_property: dict[str, str] = {}
+        for asset in assets:
+            first_by_property.setdefault(asset["target_row_id"], asset["media_file_id"])
+        if not first_by_property:
+            return {}
+
+        files = (
+            client.table(MEDIA_FILES)
+            .select("id, url, deleted_at")
+            .in_("id", list(dict.fromkeys(first_by_property.values())))
+            .eq("tenant_id", str(tenant_id))
+            .execute()
+            .data
+            or []
+        )
+        url_by_file = {f["id"]: f["url"] for f in files if not f.get("deleted_at")}
+
+        paths: dict[str, str | None] = {
+            pid: storage_path_from_url(url_by_file.get(file_id)) for pid, file_id in first_by_property.items()
+        }
+        wanted = [derivative_path(path, "card") for path in paths.values() if path]
+        wanted += [path for path in paths.values() if path]
+        signed = sign_many(wanted)
+
+        covers: dict[str, str] = {}
+        for pid, path in paths.items():
+            file_id = first_by_property[pid]
+            stored = url_by_file.get(file_id)
+            if not stored:
+                continue
+            original = signed.get(path, stored) if path else stored
+            covers[pid] = _variant_url(signed, path, "card", original)
+        return covers
 
     @staticmethod
     async def add_photos(
@@ -216,6 +402,10 @@ class PropertyPhotoService:
                 file=content,
                 file_options={"content-type": content_type, "upsert": "true"},
             )
+            # Derivatives live beside the original under a derived path, so no
+            # column has to record them and the backfill can produce the same
+            # names for photos uploaded before this existed.
+            upload_derivatives(client, object_path, content)
             # Canonical locator only — reads always go through display_url().
             locator = str(client.storage.from_(MEDIA_BUCKET).get_public_url(object_path)).rstrip("?")
 
@@ -252,11 +442,15 @@ class PropertyPhotoService:
                 .execute()
                 .data[0]
             )
+            signed_original = display_url(locator)
+            derived = sign_many([derivative_path(object_path, v) for v in DERIVATIVE_SIZES])
             created.append(
                 {
                     "id": asset["id"],
                     "media_file_id": media_file["id"],
-                    "url": display_url(locator),
+                    "url": signed_original,
+                    "thumb_url": _variant_url(derived, object_path, "thumb", signed_original),
+                    "card_url": _variant_url(derived, object_path, "card", signed_original),
                     "role": PHOTO_ROLE,
                     "position": position,
                     "title": media_file.get("title"),
@@ -311,7 +505,11 @@ class PropertyPhotoService:
             path = storage_path_from_url(media[0]["url"]) if media else None
             if path:
                 try:
-                    client.storage.from_(MEDIA_BUCKET).remove([path])
+                    # Derivatives are not tracked anywhere, so they can only be
+                    # collected here, by name, alongside the original.
+                    client.storage.from_(MEDIA_BUCKET).remove(
+                        [path, *(derivative_path(path, v) for v in DERIVATIVE_SIZES)]
+                    )
                 except Exception as exc:  # noqa: BLE001 — orphan object is recoverable, a 500 is not
                     logger.error("object_delete_failed", event_type="error", path=path, error=str(exc)[:200])
             (

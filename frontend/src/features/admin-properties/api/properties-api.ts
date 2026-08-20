@@ -15,6 +15,11 @@ export interface Property {
   currency: string;
   listing_kind: string;
   year_built: number | null;
+  /** Returned by the API and required by the map; previously dropped here. */
+  lat: number | null;
+  lng: number | null;
+  /** Signed `card` derivative of the first photo, or null when there are none. */
+  cover_url: string | null;
 }
 
 export interface PropertyInput {
@@ -34,7 +39,12 @@ export interface PropertyInput {
 export interface PropertyPhoto {
   id: string;
   media_file_id: string;
+  /** Full-resolution original. Only the lightbox should load this. */
   url: string;
+  /** ~400px WebP; falls back to `url` when the photo has no derivative yet. */
+  thumb_url: string;
+  /** ~800px WebP; same fallback. */
+  card_url: string;
   role: string;
   position: number;
   title: string | null;
