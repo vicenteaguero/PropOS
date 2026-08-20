@@ -3,7 +3,7 @@ import { titleForPath } from "./page-meta";
 
 describe("titleForPath", () => {
   it("names a listed route", () => {
-    expect(titleForPath("/admin/crm")).toBe("CRM");
+    expect(titleForPath("/admin/clientes")).toBe("Clientes");
     expect(titleForPath("/admin/pendientes")).toBe("Pendientes");
   });
 
@@ -30,13 +30,13 @@ describe("titleForPath", () => {
 
   it("prefers the longest matching entry", () => {
     expect(titleForPath("/admin/documentos")).toBe("Documentos");
-    expect(titleForPath("/admin/crm")).toBe("CRM");
+    expect(titleForPath("/admin/clientes")).toBe("Clientes");
   });
 
   it("keeps a section's own name when an entry points at one of its tabs", () => {
-    // /admin/crm?tab=propiedades shares a pathname with the CRM entry; the
+    // /admin/clientes?tab=propiedades shares a pathname with the Clientes entry; the
     // section wins so the tab does not rename the whole page.
-    expect(titleForPath("/admin/crm")).toBe("CRM");
+    expect(titleForPath("/admin/clientes")).toBe("Clientes");
   });
 
   it("returns null for routes the nav tree does not own", () => {

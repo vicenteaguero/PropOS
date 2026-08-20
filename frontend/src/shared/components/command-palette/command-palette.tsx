@@ -93,10 +93,10 @@ export function CommandPalette({
     const path: Record<EntityKind, (id: string) => string> = {
       CONTACT: (id) => `${roleRoot}/personas/${id}`,
       PROPERTY: (id) => `${roleRoot}/properties/${id}`,
-      OPPORTUNITY: () => `${roleRoot}/crm?tab=pipeline`,
+      OPPORTUNITY: () => `${roleRoot}/clientes?tab=negocios`,
       EVENT: () => `${roleRoot}/agenda`,
-      PROJECT: () => `${roleRoot}/crm?tab=propiedades`,
-      PLACE: () => `${roleRoot}/crm?tab=propiedades`,
+      PROJECT: () => `${roleRoot}/clientes?tab=propiedades`,
+      PLACE: () => `${roleRoot}/clientes?tab=propiedades`,
     };
     return [...(people.data ?? []), ...(properties.data ?? [])]
       .slice(0, 12)

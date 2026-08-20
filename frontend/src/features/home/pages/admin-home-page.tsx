@@ -162,9 +162,9 @@ export function AdminHomePage() {
   const destinationTiles: Tile[] = [
     { to: `${base}/agenda?tab=tareas`, label: "Tareas", icon: CheckSquare, scope: "productividad" },
     { to: `${base}/agenda?tab=notas`, label: "Notas", icon: StickyNote, scope: "productividad" },
-    { to: `${base}/crm?tab=whatsapp`, label: "WhatsApp", icon: MessageCircle, scope: "inbox" },
+    { to: `${base}/clientes?tab=whatsapp`, label: "WhatsApp", icon: MessageCircle, scope: "inbox" },
     { to: `${base}/documentos`, label: "Docs", icon: FileText, scope: "documents" },
-    { to: `${base}/crm?tab=propiedades`, label: "Propiedades", icon: Building2 },
+    { to: `${base}/clientes?tab=propiedades`, label: "Propiedades", icon: Building2 },
     { to: "/admin/finanzas", label: "Finanzas", icon: Receipt, scope: "finanzas", adminOnly: true },
   ];
 
@@ -176,13 +176,13 @@ export function AdminHomePage() {
       scope: "productividad",
     },
     {
-      to: `${base}/crm?tab=personas&nuevo=1`,
+      to: `${base}/clientes?tab=personas&nuevo=1`,
       label: "Persona",
       icon: UserPlus,
       scope: "crm",
     },
     {
-      to: `${base}/crm?tab=propiedades&nuevo=1`,
+      to: `${base}/clientes?tab=propiedades&nuevo=1`,
       label: "Propiedad",
       icon: Building2,
     },
@@ -321,7 +321,7 @@ export function AdminHomePage() {
   const pipelineStrip = (
     <button
       type="button"
-      onClick={() => navigate(`${base}/crm?tab=oportunidades`)}
+      onClick={() => navigate(`${base}/clientes?tab=negocios`)}
       className={cn(
         "flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-background py-3 text-left transition hover:border-primary/40",
         CARD_X,
@@ -366,7 +366,7 @@ export function AdminHomePage() {
 
   const peopleWidget = (
     <section className="flex min-w-0 flex-col gap-2">
-      <SectionLabel action="Ver todas" onAction={() => navigate(`${base}/crm?tab=personas`)}>
+      <SectionLabel action="Ver todas" onAction={() => navigate(`${base}/clientes?tab=personas`)}>
         Personas
       </SectionLabel>
       <div className="overflow-hidden rounded-xl border border-border">
@@ -449,7 +449,7 @@ export function AdminHomePage() {
 
   const activityWidget = activity.length > 0 && (
     <section className="flex min-w-0 flex-col gap-2">
-      <SectionLabel action="Ver todo" onAction={() => navigate(`${base}/crm?tab=interacciones`)}>
+      <SectionLabel action="Ver todo" onAction={() => navigate(`${base}/clientes?tab=personas`)}>
         Actividad
       </SectionLabel>
       <div className="overflow-hidden rounded-xl border border-border">

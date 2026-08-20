@@ -7,14 +7,30 @@ import { cn } from "@/lib/utils";
 
 type Severity = "ERROR" | "WARNING";
 
+/** Mirrors `FindingEntity` on the API. */
+type FindingEntity = "contacts" | "properties" | "opportunities";
+
 interface Finding {
   code: string;
   severity: Severity;
   title: string;
   hint: string;
   count: number;
-  path: string | null;
+  entity: FindingEntity | null;
 }
+
+/**
+ * Where each finding is fixed.
+ *
+ * The route lives here, not in the API payload. The backend used to ship a
+ * literal `"crm?tab=personas"`, so renaming the section broke every link in
+ * this card without a single test noticing.
+ */
+const TAB_BY_ENTITY: Record<FindingEntity, string> = {
+  contacts: "personas",
+  properties: "propiedades",
+  opportunities: "negocios",
+};
 
 interface DataHealth {
   findings: Finding[];
@@ -66,7 +82,7 @@ export function DataHealthCard() {
         <button
           key={f.code}
           type="button"
-          onClick={() => f.path && navigate(`/${role}/${f.path}`)}
+          onClick={() => f.entity && navigate(`/${role}/clientes?tab=${TAB_BY_ENTITY[f.entity]}`)}
           className={cn(
             "flex w-full items-center gap-3 px-3.5 py-2.5 text-left transition hover:bg-secondary/50",
             i > 0 && "border-t border-border",

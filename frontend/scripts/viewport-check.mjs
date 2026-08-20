@@ -222,7 +222,7 @@ const VIEWPORTS = [
 
 const ROUTES = [
   { path: "/admin", name: "home" },
-  { path: "/admin/crm?tab=atencion", name: "crm-attention" },
+  { path: "/admin/clientes?tab=conversaciones", name: "clientes-conversaciones" },
   { path: "/admin/personas", name: "contacts" },
   { path: "/admin/properties", name: "properties" },
   { path: "/admin/settings", name: "settings" },

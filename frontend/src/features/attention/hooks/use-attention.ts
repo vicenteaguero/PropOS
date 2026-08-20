@@ -1,5 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { attentionKeys, fetchAttention, type AttentionFeed } from "../api/attention-api";
+import {
+  attentionKeys,
+  fetchAttention,
+  type AttentionFeed,
+  type AttentionKind,
+} from "../api/attention-api";
 
 /**
  * Everything waiting on a person, ranked.
@@ -8,10 +13,10 @@ import { attentionKeys, fetchAttention, type AttentionFeed } from "../api/attent
  * current — an answered message that keeps showing as unanswered is worse than
  * no queue at all.
  */
-export function useAttention(limit = 60) {
+export function useAttention(limit = 60, kinds?: AttentionKind[]) {
   return useQuery<AttentionFeed>({
-    queryKey: attentionKeys.feed(limit),
-    queryFn: () => fetchAttention(limit),
+    queryKey: attentionKeys.feed(limit, kinds),
+    queryFn: () => fetchAttention(limit, kinds),
     staleTime: 30_000,
     refetchOnWindowFocus: true,
   });

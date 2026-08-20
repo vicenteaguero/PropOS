@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useOpenOnParam } from "@shared/hooks/use-open-on-param";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@shared/hooks/use-auth";
 import { Bath, BedDouble, Maximize, Plus, LayoutGrid, Map as MapIcon } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -83,6 +84,10 @@ function PropertyCard({ property, onClick }: { property: Property; onClick: () =
 
 export function AdminPropertiesPage() {
   const navigate = useNavigate();
+  // Never hardcode /admin: an AGENT tapping a card was thrown out of their own
+  // role root and into a tree they cannot open.
+  const { user } = useAuth();
+  const role = (user?.role ?? "ADMIN").toLowerCase();
   const qc = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   useOpenOnParam("nuevo", () => setDialogOpen(true));
@@ -199,7 +204,7 @@ export function AdminPropertiesPage() {
               <PropertyCard
                 key={p.id}
                 property={p}
-                onClick={() => navigate(`/admin/properties/${p.id}`)}
+                onClick={() => navigate(`/${role}/propiedades/${p.id}`)}
               />
             ))}
           </div>

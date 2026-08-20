@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useParams } from "react-router-dom";
 import { ProtectedRoute } from "@shared/components/protected-route/protected-route";
 import { useAuth } from "@shared/hooks/use-auth";
 import { LoginPage } from "@features/auth/pages/login-page";
@@ -10,6 +10,7 @@ import { EmptyDashboard } from "@shared/components/empty-dashboard/empty-dashboa
 import { PageMetaProvider } from "@app/page-meta";
 import { AppSkeleton } from "@shared/components/app-skeleton/app-skeleton";
 import type { UserRole, UserView } from "@shared/types/auth";
+import { LEGACY_AGENDA_ROUTES, LEGACY_CLIENT_ROUTES } from "@app/legacy-routes";
 
 // Route-level code splitting. Every page below is fetched on first navigation
 // instead of riding in the initial bundle. The auth pages stay eager: they are
@@ -122,8 +123,10 @@ const WorkflowsPage = lazy(() =>
 
 // Section shells. Each hosts the former sibling pages as tabs; see
 // shared/ui/section-tabs.tsx for why the tab lives in a query param.
-const CrmSectionPage = lazy(() =>
-  import("@features/sections/pages/crm-section-page").then((m) => ({ default: m.CrmSectionPage })),
+const ClientsSectionPage = lazy(() =>
+  import("@features/sections/pages/clients-section-page").then((m) => ({
+    default: m.ClientsSectionPage,
+  })),
 );
 const AgendaSectionPage = lazy(() =>
   import("@features/sections/pages/agenda-section-page").then((m) => ({
@@ -157,6 +160,18 @@ function ViewRedirect() {
   }
   if (!user) return <Navigate to="/login" replace />;
   return <Navigate to={VIEW_HOME_PATHS[user.view] ?? "/admin"} replace />;
+}
+
+/**
+ * `/:role/properties/:id` → `/:role/propiedades/:id`, keeping the id.
+ *
+ * A plain `<Navigate>` cannot do this: the target depends on a path param, so
+ * the redirect has to read it. Property links were shared and pushed for
+ * months under the English path.
+ */
+function PropertyDetailRedirect() {
+  const { id } = useParams();
+  return <Navigate to={`../propiedades/${id}`} replace />;
 }
 
 // LANDOWNER omitted: those users have view "owner" and are routed to the real
@@ -230,7 +245,7 @@ export function AppRouter() {
                   The old list paths below redirect into the right tab. */}
               {(role === "ADMIN" || role === "AGENT") && (
                 <>
-                  <Route path="crm" element={<CrmSectionPage />} />
+                  <Route path="clientes" element={<ClientsSectionPage />} />
                   <Route path="agenda" element={<AgendaSectionPage />} />
                   <Route
                     path="personas/:id"
@@ -240,33 +255,18 @@ export function AppRouter() {
                       </ProtectedRoute>
                     }
                   />
-                  <Route path="properties/:id" element={<AdminPropertyDetailPage />} />
+                  <Route path="propiedades/:id" element={<AdminPropertyDetailPage />} />
 
-                  <Route path="bandeja" element={<Navigate to="../crm?tab=bandeja" replace />} />
-                  <Route path="personas" element={<Navigate to="../crm?tab=personas" replace />} />
-                  <Route
-                    path="oportunidades"
-                    element={<Navigate to="../crm?tab=oportunidades" replace />}
-                  />
-                  <Route
-                    path="interacciones"
-                    element={<Navigate to="../crm?tab=interacciones" replace />}
-                  />
-                  <Route
-                    path="properties"
-                    element={<Navigate to="../crm?tab=propiedades" replace />}
-                  />
-                  <Route
-                    path="client-inbox"
-                    element={<Navigate to="../crm?tab=whatsapp" replace />}
-                  />
-                  <Route path="correos" element={<Navigate to="../crm?tab=correos" replace />} />
-                  <Route
-                    path="calendario"
-                    element={<Navigate to="../agenda?tab=calendario" replace />}
-                  />
-                  <Route path="tareas" element={<Navigate to="../agenda?tab=tareas" replace />} />
-                  <Route path="notas" element={<Navigate to="../agenda?tab=notas" replace />} />
+                  {/* Every path this section has ever had, from one table so
+                      the test can assert against the real router rather than a
+                      hand-built copy of it. See app/legacy-routes.ts. */}
+                  {LEGACY_CLIENT_ROUTES.map(({ from, to }) => (
+                    <Route key={from} path={from} element={<Navigate to={to} replace />} />
+                  ))}
+                  <Route path="properties/:id" element={<PropertyDetailRedirect />} />
+                  {LEGACY_AGENDA_ROUTES.map(({ from, to }) => (
+                    <Route key={from} path={from} element={<Navigate to={to} replace />} />
+                  ))}
                 </>
               )}
 

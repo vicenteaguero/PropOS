@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { useAuth } from "@shared/hooks/use-auth";
 import {
   ArrowLeft,
   Bath,
@@ -37,6 +38,9 @@ interface ApiGrant {
 export function AdminPropertyDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  // Role root, not /admin: this page is reachable by AGENT too.
+  const { user } = useAuth();
+  const role = (user?.role ?? "ADMIN").toLowerCase();
   const qc = useQueryClient();
   const [editOpen, setEditOpen] = useState(false);
   const [draft, setDraft] = useState<string | null>(null);
@@ -87,7 +91,7 @@ export function AdminPropertyDetailPage() {
           variant="outline"
           size="sm"
           className="mt-3 gap-1.5"
-          onClick={() => navigate("/admin/properties")}
+          onClick={() => navigate(`/${role}/clientes?tab=propiedades`)}
         >
           <ArrowLeft className="size-4" strokeWidth={1.8} /> Propiedades
         </Button>
@@ -121,7 +125,7 @@ export function AdminPropertyDetailPage() {
       {/* Header bar */}
       <div className="flex items-center justify-between px-5 pt-4 pb-2 lg:px-8 lg:pt-6">
         <Link
-          to="/admin/properties"
+          to={`/${role}/clientes?tab=propiedades`}
           className="inline-flex items-center gap-1.5 text-[13px] font-medium text-muted-foreground transition hover:text-foreground"
         >
           <ArrowLeft className="size-4" strokeWidth={1.8} /> Propiedades
