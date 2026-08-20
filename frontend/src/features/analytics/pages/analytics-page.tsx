@@ -113,8 +113,7 @@ export function AnalyticsPage() {
     // Mobile: capped centered column (unchanged). Desktop: full-bleed dashboard.
     <PageLayout width="lg" noPadding className="pb-10 lg:max-w-none">
       <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-4 lg:px-8 lg:pt-7">
-        <div>
-        </div>
+        <div></div>
         <RoundButton
           tone="muted"
           size={44}

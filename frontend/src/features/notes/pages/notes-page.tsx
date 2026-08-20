@@ -189,9 +189,5 @@ export function NotesPage() {
     </>
   );
 
-  return (
-    <PageLayout width={isDesktop ? "app" : "md"}>
-      {content}
-    </PageLayout>
-  );
+  return <PageLayout width={isDesktop ? "app" : "md"}>{content}</PageLayout>;
 }
