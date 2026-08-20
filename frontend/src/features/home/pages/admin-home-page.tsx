@@ -170,32 +170,32 @@ export function AdminHomePage() {
   const actionTiles: Tile[] = [
     {
       to: `${base}/agenda?tab=calendario&nuevo=1`,
-      label: "Agendar visita",
+      label: "Agendar",
       icon: CalendarPlus,
       scope: "productividad",
     },
     {
       to: `${base}/crm?tab=personas&nuevo=1`,
-      label: "Nueva persona",
+      label: "Persona",
       icon: UserPlus,
       scope: "crm",
     },
     {
       to: `${base}/crm?tab=propiedades&nuevo=1`,
-      label: "Nueva propiedad",
+      label: "Propiedad",
       icon: Building2,
     },
-    { to: `${base}/documentos?nuevo=1`, label: "Subir doc", icon: Upload, scope: "documents" },
+    { to: `${base}/documentos?nuevo=1`, label: "Documento", icon: Upload, scope: "documents" },
     {
       to: "/admin/finanzas?nuevo=1",
-      label: "Nuevo gasto",
+      label: "Gasto",
       icon: Receipt,
       scope: "finanzas",
       adminOnly: true,
     },
     {
       to: `${base}/agenda?tab=notas&nuevo=1`,
-      label: "Nota rápida",
+      label: "Nota",
       icon: StickyNote,
       scope: "productividad",
     },
@@ -215,7 +215,7 @@ export function AdminHomePage() {
           CARD_X,
         )}
       >
-        <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-foreground text-background">
+        <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-ink text-ink-foreground">
           <Sparkles className="size-4" />
         </span>
         <span className="truncate text-[15px] text-muted-foreground">
@@ -226,7 +226,7 @@ export function AdminHomePage() {
         type="button"
         aria-label={`Hablar con ${agentName}`}
         onClick={() => propo.open("voice")}
-        className="flex w-12 shrink-0 items-center justify-center rounded-xl bg-foreground text-background transition active:scale-95"
+        className="flex w-12 shrink-0 items-center justify-center rounded-xl bg-ink text-ink-foreground transition active:scale-95"
       >
         <Mic className="size-[21px]" strokeWidth={1.9} />
       </button>
@@ -240,7 +240,7 @@ export function AdminHomePage() {
    * unbounded "Hoy" list.
    */
   const agendaWidget = (
-    <div className="overflow-hidden rounded-xl bg-foreground text-background">
+    <div className="overflow-hidden rounded-xl bg-ink text-ink-foreground">
       <button
         type="button"
         onClick={() => navigate(`${base}/agenda`)}
@@ -332,7 +332,10 @@ export function AdminHomePage() {
         { value: negociacion, label: "Negociación" },
       ].map((stat) => (
         <span key={stat.label} className="min-w-0 flex-1">
-          <span className="block text-2xl font-bold leading-none tracking-tight tabular-nums text-primary">
+          {/* Ink, not the brand accent. Colour in this app means money — pine
+              for what comes in, brick for what goes out — so tinting a headcount
+              green made three neutral figures read as revenue. */}
+          <span className="block font-display text-2xl font-semibold leading-none tabular-nums text-foreground">
             {oppsQ.isPending ? "…" : stat.value}
           </span>
           <span className="mt-1 block truncate text-[12.5px] text-muted-foreground">

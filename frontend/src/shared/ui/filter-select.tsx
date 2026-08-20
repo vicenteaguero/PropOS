@@ -57,7 +57,7 @@ export function FilterSelect({
             "inline-flex max-w-full items-center gap-1.5 rounded-full border px-3 text-[13px] font-medium transition",
             TOUCH_TARGET_ROW_COARSE,
             active
-              ? "border-foreground bg-foreground text-background"
+              ? "border-foreground bg-ink text-ink-foreground"
               : "border-border text-muted-foreground hover:text-foreground",
             className,
           )}

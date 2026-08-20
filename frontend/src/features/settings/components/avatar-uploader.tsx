@@ -60,7 +60,7 @@ export function AvatarUploader({ user }: Props) {
             {initials(user.full_name)}
           </AvatarFallback>
         </Avatar>
-        <span className="absolute -bottom-0.5 -right-0.5 flex size-8 items-center justify-center rounded-full bg-foreground text-background shadow-sm">
+        <span className="absolute -bottom-0.5 -right-0.5 flex size-8 items-center justify-center rounded-full bg-ink text-ink-foreground shadow-sm">
           {busy ? (
             <Loader2 className="size-4 animate-spin" strokeWidth={1.8} />
           ) : (

@@ -25,7 +25,7 @@ export function StatCard({
     <div
       className={cn(
         "rounded-xl p-4",
-        isInk ? "bg-foreground text-background" : "bg-secondary text-foreground",
+        isInk ? "bg-ink text-ink-foreground" : "bg-secondary text-foreground",
         className,
       )}
     >

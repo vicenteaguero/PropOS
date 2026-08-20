@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { registerSW } from "virtual:pwa-register";
+import "@fontsource-variable/archivo";
 import "@fontsource-variable/geist";
 import "@fontsource-variable/geist-mono";
 import { App } from "@app/app";

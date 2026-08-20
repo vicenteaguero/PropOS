@@ -102,7 +102,7 @@ export function TabBar({
                 underline && !active && "text-muted-foreground hover:bg-secondary/60",
                 underline && active && "text-foreground",
                 !underline && !active && "text-muted-foreground hover:text-foreground",
-                !underline && active && "bg-foreground text-background",
+                !underline && active && "bg-ink text-ink-foreground",
               )}
             >
               {it.label}

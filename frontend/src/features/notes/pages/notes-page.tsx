@@ -134,7 +134,7 @@ export function NotesPage() {
       onClick={() => (canPropo ? propo.open("voice") : focusComposer())}
       className="flex w-full items-center gap-3 rounded-xl border border-dashed border-line-strong p-3.5 text-left transition active:scale-[0.99]"
     >
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-foreground text-background">
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-ink text-ink-foreground">
         <Sparkles className="size-[18px]" />
       </span>
       <span className="min-w-0 flex-1">

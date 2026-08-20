@@ -797,7 +797,7 @@ function PropoCard({ onOpen }: { onOpen: () => void }) {
       onClick={onOpen}
       className="flex w-full items-center gap-3 rounded-xl border border-dashed border-line-strong bg-transparent p-3.5 text-left transition active:scale-[0.99]"
     >
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-foreground text-background">
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-ink text-ink-foreground">
         <Sparkles className="size-[18px]" />
       </span>
       <span className="min-w-0 flex-1">
@@ -853,7 +853,7 @@ function MonthGrid({
                 className={cn(
                   "flex size-9 items-center justify-center rounded-full text-sm font-semibold transition",
                   isSelected
-                    ? "bg-foreground text-background"
+                    ? "bg-ink text-ink-foreground"
                     : isToday
                       ? "text-primary"
                       : inMonth
@@ -975,7 +975,7 @@ function TimeGrid({
                 <span
                   className={cn(
                     "flex size-8 items-center justify-center rounded-full text-sm font-bold",
-                    isToday ? "bg-foreground text-background" : "text-foreground",
+                    isToday ? "bg-ink text-ink-foreground" : "text-foreground",
                   )}
                 >
                   {format(day, "d")}
@@ -1121,7 +1121,7 @@ function MobileViewSwitch({
               "flex-1 rounded-full py-2.5 text-sm font-semibold transition active:scale-[0.98]",
               TOUCH_TARGET_ROW_COARSE,
               active
-                ? "bg-foreground text-background"
+                ? "bg-ink text-ink-foreground"
                 : "border border-line-strong text-foreground hover:bg-secondary",
             )}
           >

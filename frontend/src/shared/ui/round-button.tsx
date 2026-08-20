@@ -6,7 +6,7 @@ export type RoundButtonTone = "muted" | "ink" | "ghost";
 
 const TONE: Record<RoundButtonTone, string> = {
   muted: "bg-secondary text-foreground hover:bg-muted",
-  ink: "bg-foreground text-background hover:bg-foreground/90",
+  ink: "bg-ink text-ink-foreground hover:bg-foreground/90",
   ghost: "text-foreground hover:bg-secondary",
 };
 
