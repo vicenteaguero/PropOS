@@ -7,13 +7,8 @@ import { ContactOpportunities } from "./contact-opportunities";
  */
 export function ContactAside({ contactId }: { contactId: string }) {
   return (
-    <div className="space-y-6 p-5">
-      <div>
-        <SectionLabel>Contexto</SectionLabel>
-        <p className="mt-1 text-[13px] text-muted-foreground">
-          Pipeline y oportunidades de esta persona.
-        </p>
-      </div>
+    <div className="space-y-5 p-[var(--page-x)]">
+      <SectionLabel>Contexto</SectionLabel>
       <ContactOpportunities personId={contactId} />
     </div>
   );

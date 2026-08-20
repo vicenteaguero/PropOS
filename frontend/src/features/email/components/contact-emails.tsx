@@ -26,7 +26,7 @@ export function ContactEmails({ contactId }: { contactId: string }) {
         <Row
           key={t.id}
           divider={i < data.length - 1}
-          onClick={() => navigate(`/${role}/crm?tab=correos`)}
+          onClick={() => navigate(`/${role}/crm?tab=bandeja`)}
           left={
             <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-secondary">
               <BrandMark brand="titan" size={22} />

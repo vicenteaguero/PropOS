@@ -1,5 +1,7 @@
 /** Chile-specific helpers used by Anita transcript normalization. */
 
+import { formatClpAmount } from "@shared/utils/currency";
+
 const RUT_RE = /^\d{1,8}-?[0-9kK]$/;
 
 export function formatRut(raw: string): string {
@@ -15,14 +17,12 @@ export function isValidRut(raw: string): boolean {
   return RUT_RE.test(raw.replace(/\./g, ""));
 }
 
-export function formatCLP(amount: number, fractionDigits = 0): string {
-  return new Intl.NumberFormat("es-CL", {
-    style: "currency",
-    currency: "CLP",
-    minimumFractionDigits: fractionDigits,
-    maximumFractionDigits: fractionDigits,
-  }).format(amount);
-}
+/**
+ * Whole pesos in, formatted string out. Kept under this name because the agent
+ * pipeline and analytics import it; the implementation lives in
+ * `@shared/utils/currency` so the app has exactly one CLP formatter.
+ */
+export const formatCLP = formatClpAmount;
 
 /** "50 lucas" → 50000, "2 palos" → 2_000_000 */
 export function parseChileanAmount(text: string): number | null {

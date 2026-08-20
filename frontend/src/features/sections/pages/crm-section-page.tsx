@@ -1,7 +1,7 @@
 import { lazy, Suspense } from "react";
-import { SectionTabs, type SectionTab } from "@shared/ui";
-import { PageSkeleton } from "@shared/ui";
+import { PageSkeleton, SectionTabs, type SectionTab } from "@shared/ui";
 import { useAuth } from "@shared/hooks/use-auth";
+import type { InboxChannel } from "@features/bandeja/pages/bandeja-page";
 
 const BandejaPage = lazy(() =>
   import("@features/bandeja/pages/bandeja-page").then((m) => ({ default: m.BandejaPage })),
@@ -14,19 +14,6 @@ const OpportunitiesPage = lazy(() =>
     default: m.OpportunitiesPage,
   })),
 );
-const InteractionsPage = lazy(() =>
-  import("@features/interactions/pages/interactions-page").then((m) => ({
-    default: m.InteractionsPage,
-  })),
-);
-const ClientInboxPage = lazy(() =>
-  import("@features/client-chat/pages/client-inbox-page").then((m) => ({
-    default: m.ClientInboxPage,
-  })),
-);
-const EmailInboxPage = lazy(() =>
-  import("@features/email/pages/email-inbox-page").then((m) => ({ default: m.EmailInboxPage })),
-);
 const AdminPropertiesPage = lazy(() =>
   import("@features/admin-properties/pages/admin-properties-page").then((m) => ({
     default: m.AdminPropertiesPage,
@@ -34,33 +21,56 @@ const AdminPropertiesPage = lazy(() =>
 );
 
 /**
- * CRM in one place: the inbox, the people, the deals, the history and the
- * portfolio. These were five sibling routes; nothing about them was separable
- * in the user's head, only in the router's.
+ * CRM in four tabs: what is waiting, who it is waiting on, what it is worth,
+ * and what we are selling.
+ *
+ * It was seven. `WhatsApp` and `Correos` were the same screen twice, split by
+ * transport rather than by anything the broker cares about, so they collapsed
+ * into `Bandeja` with a channel filter. `Oportunidades` and `Interacciones`
+ * were lists of rows that only mean something attached to a person — a bare
+ * "Llamada · 14 mar" is unreadable — so they moved inside the person's detail,
+ * which is where you go looking for them anyway.
  */
 export function CrmSectionPage() {
   const { user } = useAuth();
   const scope = user?.adminScope ?? [];
+  // An empty scope is full admin; otherwise the scope list is a whitelist.
   const allow = (s?: string) => !s || scope.length === 0 || scope.includes(s);
 
+  // Bandeja survives if EITHER channel is permitted, and shows only that one.
+  // Gating the whole tab on both would hide the inbox from an inbox-only user.
+  const channels: InboxChannel[] = [
+    ...(allow("inbox") ? (["whatsapp"] as const) : []),
+    ...(allow("email") ? (["email"] as const) : []),
+  ];
+
   const tabs: SectionTab[] = [
-    { id: "bandeja", label: "Bandeja", scope: "crm", render: () => <BandejaPage /> },
-    { id: "whatsapp", label: "WhatsApp", scope: "inbox", render: () => <ClientInboxPage /> },
-    { id: "personas", label: "Personas", scope: "crm", render: () => <ContactsPage /> },
+    ...(channels.length > 0
+      ? [
+          {
+            id: "bandeja",
+            label: "Bandeja",
+            aliases: ["whatsapp", "correos"],
+            render: () => <BandejaPage channels={channels} />,
+          },
+        ]
+      : []),
     {
-      id: "oportunidades",
-      label: "Oportunidades",
+      id: "personas",
+      label: "Personas",
       scope: "crm",
+      // Interacciones lived here as its own tab; its links now open the person.
+      aliases: ["interacciones"],
+      render: () => <ContactsPage />,
+    },
+    {
+      id: "pipeline",
+      label: "Pipeline",
+      scope: "crm",
+      aliases: ["oportunidades"],
       render: () => <OpportunitiesPage />,
     },
-    {
-      id: "interacciones",
-      label: "Interacciones",
-      scope: "crm",
-      render: () => <InteractionsPage />,
-    },
     { id: "propiedades", label: "Propiedades", render: () => <AdminPropertiesPage /> },
-    { id: "correos", label: "Correos", scope: "email", render: () => <EmailInboxPage /> },
   ].filter((t) => allow(t.scope));
 
   return (
