@@ -137,7 +137,7 @@ export function ContactDetail({ contactId, onBack, onDeleted }: ContactDetailPro
         <span className="flex size-20 items-center justify-center rounded-full bg-secondary text-2xl font-bold text-foreground">
           {initials(contact.full_name)}
         </span>
-        <h1 className="mt-3 text-[24px] font-bold leading-tight tracking-tight text-foreground">
+        <h1 className="text-[17px] font-semibold leading-tight tracking-tight text-foreground">
           {contact.full_name}
         </h1>
         <div className="mt-2">
@@ -173,7 +173,7 @@ export function ContactDetail({ contactId, onBack, onDeleted }: ContactDetailPro
       </div>
 
       {/* Detail fields */}
-      <div className="mx-5 mb-5 space-y-2.5 rounded-2xl bg-card p-4">
+      <div className="mx-5 mb-5 space-y-2.5 rounded-xl bg-card p-4">
         {contact.phone && (
           <div className="flex items-center gap-3 text-sm">
             <Phone className="size-4 shrink-0 text-muted-foreground" strokeWidth={1.8} />

@@ -177,11 +177,11 @@ export function CrmMetrics() {
       {/* KPI cards. Response-time has no backend query (NOTE), so we show the
           conversation volume + the approximate conversion instead. */}
       <div className="mb-6 grid grid-cols-2 gap-3">
-        <div className="rounded-2xl bg-foreground p-4 text-background">
+        <div className="rounded-xl bg-foreground p-4 text-background">
           <div className="text-[30px] font-bold tracking-tight">{totalContacts}</div>
           <div className="mt-1 text-[13px] text-background/60">Conversaciones activas</div>
         </div>
-        <div className="rounded-2xl bg-secondary p-4 text-foreground">
+        <div className="rounded-xl bg-secondary p-4 text-foreground">
           <div className="text-[30px] font-bold tracking-tight">
             {conversion == null ? "—" : `${conversion}%`}
           </div>
@@ -227,13 +227,13 @@ export function CrmMetrics() {
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-2xl bg-secondary p-4 text-foreground">
+            <div className="rounded-xl bg-secondary p-4 text-foreground">
               <div className="text-[30px] font-bold tracking-tight">{operation.sale}</div>
               <div className="mt-1 text-[13px] text-muted-foreground">
                 Venta · {pct(operation.sale, operation.classified)}%
               </div>
             </div>
-            <div className="rounded-2xl bg-secondary p-4 text-foreground">
+            <div className="rounded-xl bg-secondary p-4 text-foreground">
               <div className="text-[30px] font-bold tracking-tight">{operation.rent}</div>
               <div className="mt-1 text-[13px] text-muted-foreground">
                 Arriendo · {pct(operation.rent, operation.classified)}%

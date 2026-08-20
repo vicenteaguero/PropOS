@@ -36,7 +36,7 @@ export function ConversationAside({ conversation }: { conversation: ClientConver
 
       <div>
         <SectionLabel className="px-0">Estado</SectionLabel>
-        <dl className="mt-2 space-y-2.5 rounded-2xl bg-card p-4 text-sm">
+        <dl className="mt-2 space-y-2.5 rounded-xl bg-card p-4 text-sm">
           <div className="flex items-center justify-between gap-3">
             <dt className="text-muted-foreground">Ventana 24h</dt>
             <dd>
@@ -63,12 +63,12 @@ export function ConversationAside({ conversation }: { conversation: ClientConver
       {conversation.contact_id ? (
         <Link
           to={`/${role}/personas/${conversation.contact_id}`}
-          className="block rounded-2xl bg-card p-4 text-sm font-semibold text-primary transition hover:bg-secondary/60"
+          className="block rounded-xl bg-card p-4 text-sm font-semibold text-primary transition hover:bg-secondary/60"
         >
           Ver ficha del contacto
         </Link>
       ) : (
-        <p className="rounded-2xl bg-card p-4 text-sm text-muted-foreground">
+        <p className="rounded-xl bg-card p-4 text-sm text-muted-foreground">
           Sin contacto vinculado.
         </p>
       )}

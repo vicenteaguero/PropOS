@@ -33,7 +33,7 @@ function ReplyBox({ threadId }: { threadId: string }) {
           onChange={(e) => setBody(e.target.value)}
           rows={2}
           placeholder="Escribe tu respuesta…"
-          className={`max-h-40 min-h-[2.75rem] flex-1 resize-none rounded-2xl border border-border bg-secondary px-4 py-2.5 text-sm text-foreground transition placeholder:text-muted-foreground ${FOCUS_RING}`}
+          className={`max-h-40 min-h-[2.75rem] flex-1 resize-none rounded-xl border border-border bg-secondary px-4 py-2.5 text-sm text-foreground transition placeholder:text-muted-foreground ${FOCUS_RING}`}
         />
         <RoundButton
           tone="ink"
@@ -118,7 +118,7 @@ export function EmailThreadView({ threadId, onBack }: Props) {
               <div key={m.id} className={cn("flex", isOut ? "justify-end" : "justify-start")}>
                 <div
                   className={cn(
-                    "max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm",
+                    "max-w-[85%] rounded-xl px-3.5 py-2.5 text-sm",
                     isOut ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground",
                   )}
                 >

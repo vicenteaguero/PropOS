@@ -148,7 +148,7 @@ export function AdminPropertyDetailPage() {
 
         {/* Title + price */}
         <div className="px-5 pt-4 lg:col-start-1 lg:row-start-2 lg:px-0">
-          <h1 className="text-[24px] font-bold leading-tight tracking-tight text-foreground">
+          <h1 className="text-[17px] font-semibold leading-tight tracking-tight text-foreground">
             {p.title}
           </h1>
           {p.address && <p className="mt-1 text-[14px] text-muted-foreground">{p.address}</p>}
@@ -159,7 +159,7 @@ export function AdminPropertyDetailPage() {
 
         {/* Specs tile */}
         <div className="px-5 pt-4 lg:col-start-1 lg:row-start-3 lg:px-0">
-          <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-4">
             {specs.map((s) => {
               const Icon = s.icon;
               return (
@@ -180,14 +180,14 @@ export function AdminPropertyDetailPage() {
             <iframe
               title="Ubicación"
               src={`https://maps.google.com/maps?q=${encodeURIComponent(p.address)}&z=15&output=embed`}
-              className="mt-2 h-44 w-full rounded-2xl border border-border lg:h-72"
+              className="mt-2 h-44 w-full rounded-xl border border-border lg:h-72"
               loading="lazy"
               referrerPolicy="no-referrer-when-downgrade"
             />
             <div className="mt-3 grid grid-cols-2 gap-3">
               <a
                 href={wazeHref}
-                className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 transition active:scale-[0.99]"
+                className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 transition active:scale-[0.99]"
               >
                 <NavMark app="waze" size={32} />
                 <span className="text-[15px] font-semibold text-foreground">Waze</span>
@@ -196,7 +196,7 @@ export function AdminPropertyDetailPage() {
                 href={mapsHref}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 transition active:scale-[0.99]"
+                className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 transition active:scale-[0.99]"
               >
                 <NavMark app="maps" size={32} />
                 <span className="text-[15px] font-semibold text-foreground">Maps</span>
@@ -239,7 +239,7 @@ export function AdminPropertyDetailPage() {
               <Textarea
                 aria-label="Descripción de la propiedad"
                 rows={10}
-                className="rounded-2xl"
+                className="rounded-xl"
                 value={draft ?? p.description ?? ""}
                 onChange={(e) => setDraft(e.target.value)}
                 placeholder="Genera una descripción con IA o escríbela aquí…"
@@ -260,12 +260,12 @@ export function AdminPropertyDetailPage() {
 
             <TabsContent value="grants" className="mt-4">
               {grants.length === 0 && !grantsQ.isLoading && (
-                <div className="rounded-2xl border border-border bg-card px-5 py-8 text-center text-sm text-muted-foreground">
+                <div className="rounded-xl border border-border bg-card px-5 py-8 text-center text-sm text-muted-foreground">
                   Sin accesos otorgados. Usa la sección Usuarios para otorgar.
                 </div>
               )}
               {grants.length > 0 && (
-                <div className="overflow-hidden rounded-2xl border border-border bg-card">
+                <div className="overflow-hidden rounded-xl border border-border bg-card">
                   {grants.map((g, i) => (
                     <Row
                       key={g.id}

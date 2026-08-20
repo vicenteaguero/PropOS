@@ -18,7 +18,7 @@ export function AssignmentList({ documentId, assignments }: Props) {
 
   if (assignments.length === 0) {
     return (
-      <p className="rounded-2xl bg-secondary px-4 py-3 text-[13px] text-muted-foreground">
+      <p className="rounded-xl bg-secondary px-4 py-3 text-[13px] text-muted-foreground">
         Sin vínculos. Conecta este documento a contactos, propiedades o áreas internas.
       </p>
     );
@@ -44,7 +44,7 @@ export function AssignmentList({ documentId, assignments }: Props) {
         return (
           <li
             key={a.id}
-            className="flex items-center gap-2.5 rounded-2xl bg-card px-3 py-2.5 text-sm"
+            className="flex items-center gap-2.5 rounded-xl bg-card px-3 py-2.5 text-sm"
           >
             <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-secondary text-foreground">
               <Icon className="size-4" strokeWidth={1.8} />

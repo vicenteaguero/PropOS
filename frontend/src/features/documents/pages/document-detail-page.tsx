@@ -403,7 +403,7 @@ export function DocumentDetailPage() {
       )}
 
       <div className="grid gap-4 lg:grid-cols-[3fr_1fr]">
-        <div className="overflow-hidden rounded-2xl bg-secondary/40 p-2">
+        <div className="overflow-hidden rounded-xl bg-secondary/40 p-2">
           <DocumentPreview
             blob={blobState.blob}
             mimeType={currentVersion?.mime_type}
@@ -421,7 +421,7 @@ export function DocumentDetailPage() {
           </section>
           <section>
             <SectionLabel className="px-0">Información</SectionLabel>
-            <dl className="mt-3 divide-y divide-border overflow-hidden rounded-2xl bg-card">
+            <dl className="mt-3 divide-y divide-border overflow-hidden rounded-xl bg-card">
               <InfoRow label="Origen" value={doc.origin} />
               <InfoRow label="Creado" value={formatDateTime(doc.created_at)} />
               <InfoRow label="Actualizado" value={formatDateTime(doc.updated_at)} />

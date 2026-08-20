@@ -96,7 +96,7 @@ export function MessageThread({ conversation, onBack }: Props) {
             <div key={m.id} className={cn("flex", isInbound ? "justify-start" : "justify-end")}>
               <div
                 className={cn(
-                  "max-w-[78%] rounded-2xl px-3.5 py-2 text-sm",
+                  "max-w-[78%] rounded-xl px-3.5 py-2 text-sm",
                   isInbound
                     ? "bg-secondary text-foreground"
                     : isAi

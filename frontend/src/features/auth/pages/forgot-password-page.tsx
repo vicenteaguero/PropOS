@@ -39,7 +39,7 @@ export function ForgotPasswordPage() {
     <AuthShell subtitle="Restablece tu contraseña">
       {sent ? (
         <div className="flex flex-col items-center gap-5 text-center">
-          <span className="flex size-12 items-center justify-center rounded-2xl bg-secondary">
+          <span className="flex size-12 items-center justify-center rounded-xl bg-secondary">
             <MailCheck className="size-6 text-foreground" strokeWidth={1.8} />
           </span>
           <p className="text-sm text-muted-foreground">

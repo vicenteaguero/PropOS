@@ -21,7 +21,7 @@ export function ContactEmails({ contactId }: { contactId: string }) {
     return <p className="py-4 text-center text-sm text-muted-foreground">Sin correos.</p>;
   }
   return (
-    <div className="overflow-hidden rounded-2xl border border-border">
+    <div className="overflow-hidden rounded-xl border border-border">
       {data.map((t, i) => (
         <Row
           key={t.id}

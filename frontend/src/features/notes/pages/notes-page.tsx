@@ -76,7 +76,7 @@ export function NotesPage() {
   const composer = (
     <div
       ref={composerRef}
-      className={cn("rounded-2xl border border-border bg-card p-3", isDesktop ? "max-w-2xl" : "")}
+      className={cn("rounded-xl border border-border bg-card p-3", isDesktop ? "max-w-2xl" : "")}
     >
       <Textarea
         aria-label="Nueva nota"
@@ -107,7 +107,7 @@ export function NotesPage() {
     <button
       type="button"
       onClick={() => (canPropo ? setPropoOpen(true) : focusComposer())}
-      className="flex w-full items-center gap-3 rounded-2xl border border-dashed border-line-strong p-3.5 text-left transition active:scale-[0.99]"
+      className="flex w-full items-center gap-3 rounded-xl border border-dashed border-line-strong p-3.5 text-left transition active:scale-[0.99]"
     >
       <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-foreground text-background">
         <Sparkles className="size-[18px]" />
@@ -134,7 +134,7 @@ export function NotesPage() {
 
   const NoteCard = ({ note, index }: { note: Note; index: number }) => (
     <div
-      className="group mb-3 break-inside-avoid rounded-2xl border border-border bg-card p-3.5 text-left"
+      className="group mb-3 break-inside-avoid rounded-xl border border-border bg-card p-3.5 text-left"
       // Light mode only: subtle rotating pastel tint. Dark falls through to bg-card.
       style={
         theme === "light" ? { background: LIGHT_TINTS[index % LIGHT_TINTS.length] } : undefined
@@ -192,7 +192,7 @@ export function NotesPage() {
 
   return (
     <PageLayout width={isDesktop ? "app" : "md"}>
-      <PageHeader title="Notas" description="Ideas y recordatorios rápidos del negocio." />
+      <PageHeader title="Notas" />
       {content}
       {canPropo && propoOpen && (
         <AgentOverlay onClose={() => setPropoOpen(false)} initialMode="voice" />

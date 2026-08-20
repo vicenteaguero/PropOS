@@ -108,7 +108,7 @@ export function DocumentsPage() {
   );
 
   const entityBanner = (contactId || propertyId || areaId) && (
-    <div className="flex items-center gap-2 rounded-2xl bg-secondary px-4 py-2.5 text-[13px]">
+    <div className="flex items-center gap-2 rounded-xl bg-secondary px-4 py-2.5 text-[13px]">
       <Folder className="size-4 text-muted-foreground" strokeWidth={1.8} />
       <span className="text-muted-foreground">Filtrando por entidad vinculada</span>
       <Button
@@ -129,7 +129,7 @@ export function DocumentsPage() {
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4">
           {Array.from({ length: 12 }).map((_, i) => (
             <div key={i} className="space-y-3">
-              <Skeleton className="aspect-[3/4] w-full rounded-2xl" />
+              <Skeleton className="aspect-[3/4] w-full rounded-xl" />
               <Skeleton className="h-4 w-3/4" />
               <Skeleton className="h-3 w-1/2" />
             </div>
@@ -166,12 +166,9 @@ export function DocumentsPage() {
         {/* Header */}
         <div className="mb-5 flex items-start justify-between gap-3">
           <div className="space-y-1">
-            <h1 className="text-[26px] font-bold leading-tight tracking-tight text-foreground">
+            <h1 className="text-[17px] font-semibold leading-tight tracking-tight text-foreground">
               Documentos
             </h1>
-            <p className="text-[13px] text-muted-foreground">
-              Gestiona contratos, escrituras y archivos
-            </p>
           </div>
           <Button
             variant="outline"
@@ -213,12 +210,9 @@ export function DocumentsPage() {
         {/* Top bar: title + Enlaces */}
         <div className="flex items-start justify-between gap-3 border-b border-border px-8 py-5">
           <div className="space-y-1">
-            <h1 className="text-[26px] font-bold leading-tight tracking-tight text-foreground">
+            <h1 className="text-[17px] font-semibold leading-tight tracking-tight text-foreground">
               Documentos
             </h1>
-            <p className="text-[13px] text-muted-foreground">
-              Gestiona contratos, escrituras y archivos
-            </p>
           </div>
           <Button
             variant="outline"
@@ -287,7 +281,7 @@ function DocumentPreviewPane({
 
   return (
     <div className="flex h-full flex-col p-5">
-      <div className="relative flex aspect-[3/4] items-center justify-center overflow-hidden rounded-2xl bg-secondary">
+      <div className="relative flex aspect-[3/4] items-center justify-center overflow-hidden rounded-xl bg-secondary">
         {thumb ? (
           <img
             src={thumb}
@@ -312,7 +306,7 @@ function DocumentPreviewPane({
         ) : null}
       </div>
 
-      <dl className="mt-4 divide-y divide-border overflow-hidden rounded-2xl bg-card">
+      <dl className="mt-4 divide-y divide-border overflow-hidden rounded-xl bg-card">
         <PreviewRow label="Origen" value={doc.origin} />
         <PreviewRow label="Creado" value={formatDate(doc.created_at)} />
         {doc.assignments && doc.assignments.length > 0 && (

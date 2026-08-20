@@ -39,7 +39,7 @@ export function ErrorState({
       role="alert"
       className={cn(
         "flex flex-wrap items-center gap-2 border border-destructive/40 bg-destructive/10 text-destructive",
-        compact ? "rounded-xl p-3 text-[13px]" : "rounded-2xl p-4 text-sm",
+        compact ? "rounded-xl p-3 text-[13px]" : "rounded-xl p-4 text-sm",
         className,
       )}
     >

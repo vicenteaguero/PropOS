@@ -4,34 +4,29 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 /**
- * Heading scale. `page` is the canonical size for an index or list page and is
- * what most of the app already renders inline; `detail` is the smaller step
- * used when a record's own name is the heading.
+ * Heading scale.
+ *
+ * Deliberately small. A page's identity is already carried by the nav; a 26px
+ * title plus an explanatory subtitle turned every screen into a tutorial and
+ * pushed the actual content below the fold. There is no `description` slot on
+ * purpose — if a screen needs prose to be understood, fix the screen.
  */
 const SIZES = {
-  page: "text-[26px]",
-  detail: "text-[24px]",
+  page: "text-[17px]",
+  detail: "text-[17px]",
 } as const;
 
 interface PageHeaderProps {
   title: string;
-  description?: string;
   actions?: React.ReactNode;
   backTo?: string;
   size?: keyof typeof SIZES;
   className?: string;
 }
 
-export function PageHeader({
-  title,
-  description,
-  actions,
-  backTo,
-  size = "page",
-  className,
-}: PageHeaderProps) {
+export function PageHeader({ title, actions, backTo, size = "page", className }: PageHeaderProps) {
   return (
-    <div className={cn("mb-6 space-y-2", className)}>
+    <div className={cn("mb-4 space-y-1", className)}>
       {backTo && (
         <Button variant="ghost" size="sm" asChild className="-ml-2 min-h-11 px-2">
           <Link to={backTo}>
@@ -40,13 +35,12 @@ export function PageHeader({
           </Link>
         </Button>
       )}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
-          <h1 className={cn("font-bold leading-tight tracking-tight text-foreground", SIZES[size])}>
-            {title}
-          </h1>
-          {description && <p className="mt-0.5 text-[13px] text-muted-foreground">{description}</p>}
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1
+          className={cn("font-semibold leading-tight tracking-tight text-foreground", SIZES[size])}
+        >
+          {title}
+        </h1>
         {actions && <div className="flex items-center gap-2">{actions}</div>}
       </div>
     </div>

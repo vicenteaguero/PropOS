@@ -256,7 +256,7 @@ export function AgentVoice({ chat, onSwitchToChat, onClose }: Props) {
             <button
               type="button"
               onClick={onSwitchToChat}
-              className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-white/25 py-4 text-[15px] font-semibold text-white transition active:scale-[0.98]"
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-white/25 py-4 text-[15px] font-semibold text-white transition active:scale-[0.98]"
             >
               <MessageSquare className="size-[18px]" strokeWidth={2} />
               Seguir en chat
@@ -264,7 +264,7 @@ export function AgentVoice({ chat, onSwitchToChat, onClose }: Props) {
             <button
               type="button"
               onClick={onClose}
-              className="flex flex-[1.4] items-center justify-center gap-2 rounded-2xl bg-white py-4 text-[15px] font-bold text-black transition active:scale-[0.98]"
+              className="flex flex-[1.4] items-center justify-center gap-2 rounded-xl bg-white py-4 text-[15px] font-bold text-black transition active:scale-[0.98]"
             >
               <Check className="size-[18px]" strokeWidth={2.4} />
               Listo

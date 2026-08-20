@@ -109,12 +109,9 @@ export function AdminPropertiesPage() {
       {/* Header */}
       <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-3 lg:px-8 lg:pt-7">
         <div>
-          <h1 className="text-[26px] font-bold leading-tight tracking-tight text-foreground">
+          <h1 className="text-[17px] font-semibold leading-tight tracking-tight text-foreground">
             Propiedades
           </h1>
-          <p className="mt-0.5 text-[13px] text-muted-foreground">
-            {data ? `${properties.length} publicadas` : "Cartera del negocio"}
-          </p>
         </div>
         <Button
           variant="ink"
@@ -229,7 +226,7 @@ export function AdminPropertiesPage() {
                   type="button"
                   onClick={() => setSelId(p.id)}
                   className={cn(
-                    "flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition active:scale-[0.99]",
+                    "flex w-full items-center gap-3 rounded-xl border p-3 text-left transition active:scale-[0.99]",
                     p.id === sel.id ? "border-foreground" : "border-border",
                   )}
                 >
@@ -255,14 +252,14 @@ export function AdminPropertiesPage() {
                 <iframe
                   title="Mapa"
                   src={`https://maps.google.com/maps?q=${encodeURIComponent(sel.address ?? "")}&z=14&output=embed`}
-                  className="h-64 w-full rounded-2xl border border-border lg:h-[calc(100dvh-12rem)]"
+                  className="h-64 w-full rounded-xl border border-border lg:h-[calc(100dvh-12rem)]"
                   loading="lazy"
                   referrerPolicy="no-referrer-when-downgrade"
                 />
                 <button
                   type="button"
                   onClick={() => navigate(`/admin/properties/${sel.id}`)}
-                  className="mt-3 flex w-full items-center justify-between rounded-2xl border border-border bg-card px-4 py-3 text-left transition active:scale-[0.99]"
+                  className="mt-3 flex w-full items-center justify-between rounded-xl border border-border bg-card px-4 py-3 text-left transition active:scale-[0.99]"
                 >
                   <span className="min-w-0">
                     <span className="block truncate font-semibold text-foreground">

@@ -29,7 +29,7 @@ export function PhotoCard({
       type="button"
       onClick={onClick}
       className={cn(
-        "block w-full overflow-hidden rounded-2xl bg-card text-left transition active:scale-[0.99]",
+        "block w-full overflow-hidden rounded-xl bg-card text-left transition active:scale-[0.99]",
         className,
       )}
     >

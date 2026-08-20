@@ -38,7 +38,7 @@ export function DocumentsList({ documents, onOpen }: Props) {
   return (
     <div
       ref={parentRef}
-      className="h-[calc(100dvh-220px)] overflow-auto rounded-2xl border border-border bg-card"
+      className="h-[calc(100dvh-220px)] overflow-auto rounded-xl border border-border bg-card"
     >
       <div style={{ height: virtualizer.getTotalSize(), position: "relative", width: "100%" }}>
         {virtualizer.getVirtualItems().map((vrow) => {

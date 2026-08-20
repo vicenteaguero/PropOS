@@ -58,7 +58,7 @@ function Card({
     <div
       ref={setNodeRef}
       style={style}
-      className={`rounded-2xl border border-border bg-card p-3 transition-shadow ${
+      className={`rounded-xl border border-border bg-card p-3 transition-shadow ${
         isDragging ? "opacity-50 shadow-lg" : "shadow-sm"
       }`}
     >
@@ -127,7 +127,7 @@ function Column({
       <div
         ref={setNodeRef}
         className={cn(
-          "flex min-h-24 flex-1 flex-col gap-2.5 rounded-2xl border border-dashed p-2.5 transition-colors lg:min-h-0 lg:overflow-y-auto",
+          "flex min-h-24 flex-1 flex-col gap-2.5 rounded-xl border border-dashed p-2.5 transition-colors lg:min-h-0 lg:overflow-y-auto",
           isOver ? "border-primary bg-primary/5" : "border-border",
         )}
       >

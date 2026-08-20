@@ -20,17 +20,17 @@ export function AppSkeleton() {
       {/* content */}
       <div className="mx-auto w-full max-w-7xl px-5 py-7 lg:px-8">
         <Skeleton className="h-9 w-56 lg:w-72" />
-        <Skeleton className="mt-5 h-14 w-full max-w-2xl rounded-2xl" />
+        <Skeleton className="mt-5 h-14 w-full max-w-2xl rounded-xl" />
 
         <div className="mt-7 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-[68px] rounded-2xl" />
+            <Skeleton key={i} className="h-[68px] rounded-xl" />
           ))}
         </div>
 
         <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <Skeleton className="h-72 rounded-2xl lg:col-span-2" />
-          <Skeleton className="h-72 rounded-2xl" />
+          <Skeleton className="h-72 rounded-xl lg:col-span-2" />
+          <Skeleton className="h-72 rounded-xl" />
         </div>
       </div>
     </div>

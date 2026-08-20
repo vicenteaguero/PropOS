@@ -46,11 +46,7 @@ export function PendingPage() {
     return (
       <PageLayout width="app">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-          <PageHeader
-            title={`Pendientes de ${agentName}`}
-            description={`Revisa y acepta las propuestas que ${agentName} generó desde audio o chat.`}
-            className="mb-0"
-          />
+          <PageHeader title={`Pendientes de ${agentName}`} className="mb-0" />
           <Segmented
             items={TABS}
             value={tab}
@@ -77,11 +73,7 @@ export function PendingPage() {
   return (
     <PageLayout width="md" noPadding>
       <div className="px-5 pt-4 pb-5">
-        <PageHeader
-          title={`Pendientes de ${agentName}`}
-          description={`Revisa y acepta las propuestas que ${agentName} generó desde audio o chat.`}
-          className="mb-0"
-        />
+        <PageHeader title={`Pendientes de ${agentName}`} className="mb-0" />
       </div>
 
       <Segmented items={TABS} value={tab} onChange={setTab} className="mb-5" />

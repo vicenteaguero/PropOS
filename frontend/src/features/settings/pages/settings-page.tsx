@@ -94,7 +94,7 @@ function DesktopCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className={cn("rounded-2xl border border-border bg-card", className)}>
+    <section className={cn("rounded-xl border border-border bg-card", className)}>
       <h2 className="border-b border-border px-5 py-3.5 text-sm font-bold tracking-tight text-foreground">
         {title}
       </h2>
@@ -362,12 +362,7 @@ export function SettingsPage() {
   if (isDesktop) {
     return (
       <PageLayout width="md" noPadding className="pb-16 lg:max-w-5xl lg:px-8 lg:pt-7">
-        <PageHeader
-          title="Configuración"
-          description="Tu perfil, el agente IA y los documentos."
-          actions={saveButton}
-          className="mb-0"
-        />
+        <PageHeader title="Configuración" actions={saveButton} className="mb-0" />
         <div className="mt-7 grid grid-cols-2 items-start gap-6">
           {sections.map((sec) => (
             <DesktopCard
@@ -390,12 +385,9 @@ export function SettingsPage() {
     // No bottom-nav pad here — the shell's <main> already clears --app-nav-h.
     <PageLayout width="md" noPadding className="pb-6">
       <div className="px-5 pt-5 pb-1">
-        <h1 className="text-[26px] font-bold leading-tight tracking-tight text-foreground">
+        <h1 className="text-[17px] font-semibold leading-tight tracking-tight text-foreground">
           Configuración
         </h1>
-        <p className="mt-0.5 text-[13px] text-muted-foreground">
-          Tu perfil, el agente IA y los documentos.
-        </p>
       </div>
 
       {sections.map((sec) => (

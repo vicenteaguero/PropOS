@@ -100,7 +100,7 @@ function Key({ label, onClick, variant = "num", className }: KeyProps) {
       type="button"
       onClick={onClick}
       className={cn(
-        "h-14 select-none rounded-2xl text-xl font-medium transition active:scale-95",
+        "h-14 select-none rounded-xl text-xl font-medium transition active:scale-95",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         variant === "num" && "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         variant === "accent" && "bg-primary text-primary-foreground hover:bg-primary/90",
@@ -211,7 +211,7 @@ export function UfDialog({ open, onOpenChange }: Props) {
         <p className="px-5 py-6 text-sm text-destructive">No pude cargar los valores.</p>
       ) : (
         <div className="space-y-3 px-4 pb-4">
-          <div className="rounded-2xl border border-border bg-background/40 p-4">
+          <div className="rounded-xl border border-border bg-background/40 p-4">
             <p className="text-xs text-muted-foreground">
               {dateStr
                 ? new Date(dateStr).toLocaleDateString("es-CL", {
@@ -247,7 +247,7 @@ export function UfDialog({ open, onOpenChange }: Props) {
           </div>
 
           {forwardPoints.length > 0 && (
-            <div className="rounded-2xl border border-border bg-background/40 p-4">
+            <div className="rounded-xl border border-border bg-background/40 p-4">
               <div className="flex items-baseline justify-between gap-2">
                 <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
                   UF publicada
@@ -290,7 +290,7 @@ export function UfDialog({ open, onOpenChange }: Props) {
             ))}
           </div>
 
-          <div className="rounded-2xl border border-border bg-background/40 p-4">
+          <div className="rounded-xl border border-border bg-background/40 p-4">
             <div className="flex items-baseline justify-between gap-3">
               <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
                 Monto
@@ -312,7 +312,7 @@ export function UfDialog({ open, onOpenChange }: Props) {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-border bg-background/40 p-4">
+          <div className="rounded-xl border border-border bg-background/40 p-4">
             <div className="flex items-center justify-between gap-2">
               <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
                 Comisión

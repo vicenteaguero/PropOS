@@ -30,7 +30,7 @@ export function CommissionCalculator() {
   };
 
   return (
-    <Card className="rounded-2xl">
+    <Card className="rounded-xl">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-sm font-semibold">
           <Calculator className="size-4" strokeWidth={1.8} /> Calculadora de comisión

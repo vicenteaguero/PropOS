@@ -74,7 +74,7 @@ export function AdminTenantsPage() {
 
   // Desktop: a dense table that uses the full width.
   const desktopTable = (
-    <div className="overflow-hidden rounded-2xl border border-border bg-card">
+    <div className="overflow-hidden rounded-xl border border-border bg-card">
       <table className="w-full text-left text-sm">
         <thead>
           <tr className="border-b border-border text-xs text-muted-foreground">
@@ -148,12 +148,9 @@ export function AdminTenantsPage() {
       {/* Header */}
       <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-3 lg:px-8 lg:pt-7">
         <div>
-          <h1 className="text-[26px] font-bold leading-tight tracking-tight text-foreground">
+          <h1 className="text-[17px] font-semibold leading-tight tracking-tight text-foreground">
             Tenants
           </h1>
-          <p className="mt-0.5 text-[13px] text-muted-foreground">
-            {data ? `${tenants.length} tenants` : "Espacios de trabajo de la plataforma"}
-          </p>
         </div>
         <Button
           variant="ink"

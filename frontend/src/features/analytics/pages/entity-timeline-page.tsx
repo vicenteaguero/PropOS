@@ -58,12 +58,9 @@ export function EntityTimelinePage() {
   return (
     <PageLayout width="md" noPadding className="pb-10 lg:max-w-5xl lg:px-8 lg:pt-4">
       <div className="px-5 pt-5 pb-4">
-        <h1 className="text-[26px] font-bold leading-tight tracking-tight text-foreground">
+        <h1 className="text-[17px] font-semibold leading-tight tracking-tight text-foreground">
           Cronología
         </h1>
-        <p className="mt-0.5 font-mono text-[13px] text-muted-foreground">
-          {table} / {id}
-        </p>
       </div>
 
       <div className="px-5">
@@ -78,14 +75,14 @@ export function EntityTimelinePage() {
         )}
 
         {!isLoading && !isError && data?.length === 0 && (
-          <div className="rounded-2xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
+          <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
             Sin eventos registrados todavía.
           </div>
         )}
 
         <div className="space-y-2.5">
           {data?.map((e, i) => (
-            <div key={i} className="rounded-2xl border border-border bg-card p-4">
+            <div key={i} className="rounded-xl border border-border bg-card p-4">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <Pill tone={TYPE_TONE[e.event_type] ?? "neutral"}>

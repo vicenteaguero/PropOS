@@ -18,7 +18,7 @@ export function AuthShell({ subtitle, children }: AuthShellProps) {
           <img
             src="/icon.svg"
             alt="PropOS"
-            className="mb-4 size-16 rounded-2xl shadow-lg shadow-primary/10 ring-1 ring-border"
+            className="mb-4 size-16 rounded-xl shadow-lg shadow-primary/10 ring-1 ring-border"
           />
           <h1 className="text-4xl font-bold tracking-tight text-foreground">PropOS</h1>
           <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>

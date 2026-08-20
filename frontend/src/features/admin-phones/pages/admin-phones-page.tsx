@@ -123,18 +123,14 @@ export function AdminPhonesPage() {
 
   const header = (
     <div>
-      <h1 className="text-[26px] font-bold leading-tight tracking-tight text-foreground">
+      <h1 className="text-[17px] font-semibold leading-tight tracking-tight text-foreground">
         Usuarios y teléfonos
       </h1>
-      <p className="mt-1 text-[13px] text-muted-foreground">
-        Crea usuarios internos y asigna sus números E.164. Mensajes desde números asignados se
-        rutean a {agentName}; el resto va al Client Agent.
-      </p>
     </div>
   );
 
   const createUserSection = (
-    <section className="space-y-4 rounded-2xl border border-border bg-card p-5">
+    <section className="space-y-4 rounded-xl border border-border bg-card p-5">
       <SectionLabel className="px-0">Crear usuario</SectionLabel>
       <form onSubmit={onCreateUser} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
@@ -210,7 +206,7 @@ export function AdminPhonesPage() {
   );
 
   const assignPhoneSection = (
-    <section className="space-y-4 rounded-2xl border border-border bg-card p-5">
+    <section className="space-y-4 rounded-xl border border-border bg-card p-5">
       <SectionLabel className="px-0">Asignar teléfono</SectionLabel>
       <form onSubmit={onAssign} className="space-y-3">
         <div className="space-y-1.5">
@@ -257,11 +253,11 @@ export function AdminPhonesPage() {
         )}
       </div>
       {phones.length === 0 ? (
-        <p className="rounded-2xl border border-border bg-card py-8 text-center text-sm text-muted-foreground">
+        <p className="rounded-xl border border-border bg-card py-8 text-center text-sm text-muted-foreground">
           Sin teléfonos asignados
         </p>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-border bg-card">
+        <div className="overflow-hidden rounded-xl border border-border bg-card">
           {phones.map((p, i) => (
             <Row
               key={p.id}
