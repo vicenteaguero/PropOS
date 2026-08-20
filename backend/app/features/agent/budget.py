@@ -16,6 +16,7 @@ guarantee needs the counter in Postgres.
 
 from __future__ import annotations
 
+import math
 import threading
 import time
 from dataclasses import dataclass
@@ -101,7 +102,14 @@ def record_spend_cents(tenant_id: UUID, cents: float) -> None:
         if entry is None or entry.day != today:
             # No baseline yet: seed one that is already stale so the next check
             # refetches from the DB instead of trusting this single turn.
-            _spend[key] = _Spend(day=today, cents=cents, refreshed_at=0.0)
+            #
+            # -inf, not 0.0. Staleness is `now - refreshed_at >= TTL` with `now`
+            # from time.monotonic(), whose epoch is arbitrary — on Linux it is
+            # the uptime. During the first 60 seconds of a process (a fresh
+            # Cloud Run container, a CI runner) `now - 0.0` is BELOW the TTL, so
+            # the sentinel read as fresh and the budget check trusted one turn's
+            # cost instead of refetching. -inf is stale at any epoch.
+            _spend[key] = _Spend(day=today, cents=cents, refreshed_at=-math.inf)
         else:
             entry.cents += cents
 
