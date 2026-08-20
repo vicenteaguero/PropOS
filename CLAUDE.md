@@ -29,8 +29,15 @@ docs/{architecture,api,api-conventions,roles,disaster-recovery}.md
 
 ## Conventions
 
-- **Code English, UI Spanish.** Routes, models, files, comments, log messages, HTTPException `detail=` → English. Sidebar labels, page titles, button text, toasts shown to broker → Spanish. LLM prompts producing Spanish output (Client Agent) stay Spanish.
-  - `/admin/client-inbox` not `/admin/inbox-clientes`. `client-inbox-page.tsx` style.
+- **Code English, UI Spanish.** Models, files, components, comments, log messages, HTTPException
+  `detail=` → English. Sidebar labels, page titles, button text, toasts shown to broker → Spanish.
+  LLM prompts producing Spanish output (Client Agent) stay Spanish.
+  - `client-inbox-page.tsx` style for filenames; `ContactService`, `build_feed` for identifiers.
+  - **Routes are Spanish.** They are surface the broker reads and shares, so they follow the UI
+    rule, not the code rule: `/admin/clientes`, `/admin/personas/:id`, `/admin/propiedades/:id`.
+    This used to say English, and the code had already voted the other way — `documentos` and
+    `documents` both existed as routes, as did `personas` and `properties`. English paths remain as
+    `<Navigate>` redirects, listed in `frontend/src/app/legacy-routes.ts`; never delete one.
 - **Light + dark; default dark.** `<html class="dark">` is the static default (set in `index.html`); the toggle (`@core/theme/theme.ts` + `ThemeProvider`) only removes `.dark` for light. Light palette lives in `:root`, dark in `.dark` (see `src/index.css`).
 - **Tenant-driven accent.** The active workspace drives the brand accent via a hue injected on `<html>` by `ThemeController` (`@core/theme/tenant-accent.ts`); `--primary`/`--ring`/`--sidebar-primary` derive from it. The `[data-palette]` switcher (`PaletteSwitcher`) is now **dev-only**.
 - **New design kit** in `src/shared/ui/` (Pill, Chips, Segmented, Row, BottomSheet, RoundButton, WorkspacePill, brand marks) — keep shadcn's `src/components/ui/` regenerable. Mobile broker shell = floating bottom-nav + center Propo FAB (`mobile-bottom-nav.tsx`, chosen by `useShellMode`); desktop/other roles = restyled sidebar.
@@ -197,7 +204,7 @@ with the active tab in a `?tab=` query param:
 
 | Section | Route | Tabs |
 |---|---|---|
-| CRM | `/:role/crm` | Bandeja · WhatsApp · Personas · Oportunidades · Interacciones · Propiedades · Correos |
+| Clientes | `/:role/clientes` | Conversaciones · Personas · Negocios · Propiedades |
 | Agenda | `/:role/agenda` | Calendario · Tareas · Notas |
 | Finanzas | `/:role/finanzas` | Movimientos · Analítica · Costo Propo (dev admin) |
 | Documentos | `/:role/documentos` | Archivos · Enlaces |

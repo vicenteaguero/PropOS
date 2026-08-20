@@ -17,17 +17,22 @@ const OUT = process.env.SHOT_DIR ?? "/tmp/claude-501/-Users-vicenteaguero-real-s
 const BASE = "http://localhost:5199";
 const REF = "tlbkwrjzraaikdrajwqh";
 const TENANT = "dededede-0000-4000-8000-000000000001";
-const SESSION = JSON.parse(
-  readFileSync("/tmp/claude-501/-Users-vicenteaguero-real-state-PropOS/fb4a9bba-dfa9-4b5d-ae44-f79dd8ce1579/scratchpad/session.json", "utf8"),
-);
+// A REAL Supabase session, because this harness talks to the real backend.
+// Path is an env var: it used to be a hardcoded scratchpad path that died with
+// the session that created it, and every run after that failed on ENOENT.
+// Mint one with the service-role key:
+//   POST {SUPABASE_URL}/auth/v1/admin/generate_link {type:"magiclink",email}
+//   POST {SUPABASE_URL}/auth/v1/verify {type:"magiclink",token_hash:<hashed_token>}
+const SESSION_PATH = process.env.SHOT_SESSION ?? `${OUT}/../session.json`;
+const SESSION = JSON.parse(readFileSync(SESSION_PATH, "utf8"));
 
 const ROUTES = [
   ["home", "/admin"],
-  ["crm-atencion", "/admin/crm?tab=atencion"],
-  ["crm-personas", "/admin/crm?tab=personas"],
-  ["crm-persona", "/admin/personas/0c4c02d8-7a20-5b53-a220-69efe0baabcb"],
-  ["crm-pipeline", "/admin/crm?tab=pipeline"],
-  ["crm-propiedades", "/admin/crm?tab=propiedades"],
+  ["clientes-conversaciones", "/admin/clientes?tab=conversaciones"],
+  ["clientes-personas", "/admin/clientes?tab=personas"],
+  ["clientes-persona", "/admin/personas/0c4c02d8-7a20-5b53-a220-69efe0baabcb"],
+  ["clientes-negocios", "/admin/clientes?tab=negocios"],
+  ["clientes-propiedades", "/admin/clientes?tab=propiedades"],
   ["agenda", "/admin/agenda"],
   ["agenda-tareas", "/admin/agenda?tab=tareas"],
   ["notas", "/admin/agenda?tab=notas"],

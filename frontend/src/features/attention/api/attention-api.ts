@@ -33,9 +33,14 @@ export interface AttentionFeed {
 }
 
 export const attentionKeys = {
-  feed: (limit: number) => ["attention", limit] as const,
+  feed: (limit: number, kinds: AttentionKind[] | undefined) =>
+    ["attention", limit, kinds?.join(",") ?? "all"] as const,
 };
 
-export function fetchAttention(limit: number) {
-  return apiRequest<AttentionFeed>(`/v1/attention?limit=${limit}`);
+export function fetchAttention(limit: number, kinds?: AttentionKind[]) {
+  const params = new URLSearchParams({ limit: String(limit) });
+  // Repeated `kinds=` params, which is what FastAPI's `list[...] = Query()`
+  // parses. A comma-joined single value would arrive as one bogus enum member.
+  for (const kind of kinds ?? []) params.append("kinds", kind);
+  return apiRequest<AttentionFeed>(`/v1/attention?${params.toString()}`);
 }

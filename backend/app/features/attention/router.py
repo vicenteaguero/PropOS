@@ -5,7 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query
 
 from app.core.dependencies import get_tenant_id
-from app.features.attention.schemas import AttentionFeed
+from app.features.attention.schemas import AttentionFeed, AttentionKind
 from app.features.attention.service import build_feed
 
 router = APIRouter(prefix="/attention", tags=["attention"])
@@ -14,6 +14,10 @@ router = APIRouter(prefix="/attention", tags=["attention"])
 @router.get("", response_model=AttentionFeed)
 async def attention(
     limit: int = Query(default=50, ge=1, le=200),
+    kinds: list[AttentionKind] | None = Query(
+        default=None,
+        description="Restrict to these kinds. Omit for everything.",
+    ),
     tenant_id: UUID = Depends(get_tenant_id),
 ) -> AttentionFeed:
     """Everything waiting on a person, ranked by how soon it stops being fixable.
@@ -23,4 +27,4 @@ async def attention(
     per source would make rows appear and disappear from one queue with no
     explanation on screen. RLS still scopes every query to the caller's tenant.
     """
-    return await build_feed(tenant_id, limit)
+    return await build_feed(tenant_id, limit, kinds=set(kinds) if kinds else None)

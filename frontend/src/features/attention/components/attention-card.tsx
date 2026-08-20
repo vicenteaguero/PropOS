@@ -24,7 +24,7 @@ export function AttentionCard() {
   return (
     <button
       type="button"
-      onClick={() => navigate(`/${role}/crm?tab=atencion`)}
+      onClick={() => navigate(`/${role}/clientes?tab=conversaciones`)}
       className="flex w-full items-center gap-3 rounded-xl border border-border px-3.5 py-2.5 text-left transition hover:bg-secondary/50 active:scale-[0.99]"
     >
       <Inbox

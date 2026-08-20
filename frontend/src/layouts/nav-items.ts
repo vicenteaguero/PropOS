@@ -88,9 +88,9 @@ export function buildAdminGroups(agentName: string): NavGroup[] {
     {
       label: "Trabajo",
       items: [
-        { label: "CRM", path: "/admin/crm", icon: Users, scope: "crm" },
+        { label: "Clientes", path: "/admin/clientes", icon: Users, scope: "crm" },
         { label: "Agenda", path: "/admin/agenda", icon: CalendarDays, scope: "productividad" },
-        { label: "Propiedades", path: "/admin/crm?tab=propiedades", icon: Building2 },
+        { label: "Propiedades", path: "/admin/clientes?tab=propiedades", icon: Building2 },
         { label: "Documentos", path: "/admin/documentos", icon: FileText, scope: "documents" },
         { label: "Finanzas", path: "/admin/finanzas", icon: Receipt, scope: "finanzas" },
       ],
@@ -145,9 +145,9 @@ export function buildGroups(view: UserView, agentName: string, isDevAdmin: boole
           label: "Trabajo",
           items: [
             { label: "Pendientes", path: "/agent/pendientes", icon: Inbox, badge: "pending" },
-            { label: "CRM", path: "/agent/crm", icon: Users },
+            { label: "Clientes", path: "/agent/clientes", icon: Users },
             { label: "Agenda", path: "/agent/agenda", icon: CalendarDays },
-            { label: "Propiedades", path: "/agent/crm?tab=propiedades", icon: Building2 },
+            { label: "Propiedades", path: "/agent/clientes?tab=propiedades", icon: Building2 },
             { label: "Documentos", path: "/agent/documentos", icon: FileText },
             { label: "Workflows", path: "/agent/workflows", icon: ListChecks },
           ],

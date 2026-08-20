@@ -28,7 +28,7 @@ describe("navigation tree", () => {
     const admin = paths(buildGroups("admin-dev", "Propo", true));
     for (const path of [
       "/admin",
-      "/admin/crm",
+      "/admin/clientes",
       "/admin/agenda",
       "/admin/finanzas",
       "/admin/documentos",
@@ -99,7 +99,7 @@ describe("navigation tree", () => {
   it("keeps unscoped entries visible under any scope", () => {
     // Propiedades carries no `scope`, so a CRM-only admin must still reach it.
     expect(paths(filterByScope(buildGroups("admin", "Propo", false), ["crm"]))).toContain(
-      "/admin/crm?tab=propiedades",
+      "/admin/clientes?tab=propiedades",
     );
   });
 });

@@ -15,7 +15,7 @@ from __future__ import annotations
 from uuid import UUID
 
 from app.core.supabase.client import get_supabase_client
-from app.features.data_health.schemas import DataHealth, Finding, Severity
+from app.features.data_health.schemas import DataHealth, Finding, FindingEntity, Severity
 
 #: Cap on rows pulled per check. Well past any real tenant, and it keeps a
 #: pathological one from turning a health check into a full table scan.
@@ -56,9 +56,9 @@ def check_tenant(tenant_id: UUID) -> DataHealth:
 
     findings: list[Finding] = []
 
-    def add(code: str, severity: Severity, title: str, hint: str, count: int, path: str | None):
+    def add(code: str, severity: Severity, title: str, hint: str, count: int, entity: FindingEntity | None):
         if count > 0:
-            findings.append(Finding(code=code, severity=severity, title=title, hint=hint, count=count, path=path))
+            findings.append(Finding(code=code, severity=severity, title=title, hint=hint, count=count, entity=entity))
 
     owners_without_property = [
         c for c in contacts if (c.get("type") or "").upper() in {"LANDOWNER", "SELLER"} and c["id"] not in linked_people
@@ -69,7 +69,7 @@ def check_tenant(tenant_id: UUID) -> DataHealth:
         "Propietarios sin propiedad",
         "Vincúlalos a una propiedad para que aparezcan en su ficha.",
         len(owners_without_property),
-        "crm?tab=personas",
+        FindingEntity.CONTACTS,
     )
 
     add(
@@ -78,7 +78,7 @@ def check_tenant(tenant_id: UUID) -> DataHealth:
         "Personas sin teléfono ni correo",
         "Sin un canal de contacto no se les puede escribir ni llamar.",
         len([c for c in contacts if not c.get("phone") and not c.get("email")]),
-        "crm?tab=personas",
+        FindingEntity.CONTACTS,
     )
 
     published = [p for p in properties if not p.get("is_draft")]
@@ -88,7 +88,7 @@ def check_tenant(tenant_id: UUID) -> DataHealth:
         "Propiedades publicadas sin precio",
         "Una publicación sin precio no se puede cotizar ni comparar.",
         len([p for p in published if not p.get("list_price_cents")]),
-        "crm?tab=propiedades",
+        FindingEntity.PROPERTIES,
     )
     add(
         "property_without_address",
@@ -96,7 +96,7 @@ def check_tenant(tenant_id: UUID) -> DataHealth:
         "Propiedades sin dirección",
         "Sin dirección no aparecen en el mapa.",
         len([p for p in properties if not p.get("address")]),
-        "crm?tab=propiedades",
+        FindingEntity.PROPERTIES,
     )
     add(
         "property_without_photos",
@@ -104,7 +104,7 @@ def check_tenant(tenant_id: UUID) -> DataHealth:
         "Propiedades publicadas sin fotos",
         "Las publicaciones sin fotos reciben muchas menos visitas.",
         len([p for p in published if p["id"] not in with_photos]),
-        "crm?tab=propiedades",
+        FindingEntity.PROPERTIES,
     )
 
     open_opps = [o for o in opportunities if (o.get("status") or "").upper() == "OPEN"]
@@ -114,7 +114,7 @@ def check_tenant(tenant_id: UUID) -> DataHealth:
         "Negocios sin propiedad",
         "Sin propiedad no entran en el reporte por propiedad.",
         len([o for o in open_opps if not o.get("property_id")]),
-        "crm?tab=oportunidades",
+        FindingEntity.OPPORTUNITIES,
     )
     add(
         "opportunity_without_person",
@@ -122,7 +122,7 @@ def check_tenant(tenant_id: UUID) -> DataHealth:
         "Negocios sin persona",
         "Un negocio sin contraparte no se puede seguir.",
         len([o for o in open_opps if not o.get("person_id")]),
-        "crm?tab=oportunidades",
+        FindingEntity.OPPORTUNITIES,
     )
     add(
         "property_without_deal",
@@ -130,7 +130,7 @@ def check_tenant(tenant_id: UUID) -> DataHealth:
         "Propiedades publicadas sin negocio",
         "Publicadas y sin ningún interesado registrado.",
         len([p for p in published if p["id"] not in linked_properties]),
-        "crm?tab=propiedades",
+        FindingEntity.PROPERTIES,
     )
 
     # Errors first, then by size: the biggest broken thing should be the first

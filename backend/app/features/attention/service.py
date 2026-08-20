@@ -404,7 +404,19 @@ async def _gather(*calls: Callable[[], Any]) -> list[Any]:
     return list(await asyncio.gather(*(asyncio.to_thread(call) for call in calls)))
 
 
-async def build_feed(tenant_id: UUID, limit: int, *, now: dt.datetime | None = None) -> AttentionFeed:
+async def build_feed(
+    tenant_id: UUID,
+    limit: int,
+    *,
+    now: dt.datetime | None = None,
+    kinds: set[AttentionKind] | None = None,
+) -> AttentionFeed:
+    """Rank the queue, optionally narrowed to some kinds.
+
+    `counts` always reports every kind, filtered or not: the caller uses it to
+    label the filter that would widen the view, and a count that changes with
+    the filter cannot do that.
+    """
     now = now or dt.datetime.now(dt.UTC)
 
     contact_rows, property_rows = await _gather(
@@ -434,4 +446,5 @@ async def build_feed(tenant_id: UUID, limit: int, *, now: dt.datetime | None = N
         counts[item.kind.value] += 1
 
     rank(items, now)
-    return AttentionFeed(items=items[:limit], counts=counts, total=len(items))
+    shown = [item for item in items if kinds is None or item.kind in kinds]
+    return AttentionFeed(items=shown[:limit], counts=counts, total=len(shown))

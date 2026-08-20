@@ -17,6 +17,14 @@ class Severity(StrEnum):
     WARNING = "WARNING"
 
 
+class FindingEntity(StrEnum):
+    """The list a finding is fixed in."""
+
+    CONTACTS = "contacts"
+    PROPERTIES = "properties"
+    OPPORTUNITIES = "opportunities"
+
+
 class Finding(BaseModel):
     code: str
     severity: Severity
@@ -24,8 +32,10 @@ class Finding(BaseModel):
     #: One line explaining what to do about it.
     hint: str
     count: int
-    #: Where the broker fixes it. Relative to the role root, e.g. "crm?tab=personas".
-    path: str | None = None
+    #: Which list the broker fixes it in. The frontend owns the route: this used
+    #: to be a literal path string ("crm?tab=personas") shipped from the backend,
+    #: so renaming a section silently broke every "arreglar" link.
+    entity: FindingEntity | None = None
 
 
 class DataHealth(BaseModel):

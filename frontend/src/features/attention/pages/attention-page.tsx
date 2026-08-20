@@ -24,6 +24,16 @@ import {
   URGENCY_ORDER,
 } from "../components/attention-row";
 import type { AttentionItem, AttentionKind } from "../api/attention-api";
+
+/**
+ * The kinds that are a conversation with a person waiting on the other end.
+ *
+ * The cross-source queue also carries visits, tasks and stalled deals; those
+ * answer "what do I do now" and live on Inicio. A tab called Conversaciones
+ * showing a visit was a category error, and it made the filter menu offer four
+ * options that could never match anything here.
+ */
+const CONVERSATION_KINDS: AttentionKind[] = ["unanswered", "lead"];
 import { useContacts } from "@features/contacts/hooks/use-contacts";
 import { useOpportunities } from "@features/opportunities/hooks/use-opportunities";
 import { useProperties } from "@features/documents/hooks/use-entities";
@@ -46,8 +56,6 @@ export type InboxChannel = "whatsapp" | "email";
 type ChannelFilter = "todos" | InboxChannel;
 /** Conversation states, plus one entry per attention kind. */
 type StateFilter = "todos" | "open" | "closed" | "archived" | AttentionKind;
-
-const ATTENTION_KINDS: AttentionKind[] = ["unanswered", "lead", "visit", "task", "stalled"];
 
 /** One row of the inbox, whatever channel it came from. */
 interface InboxEntry {
@@ -72,7 +80,7 @@ interface InboxEntry {
 }
 
 const STATE_FILTERS: { id: StateFilter; label: string }[] = [
-  ...ATTENTION_KINDS.map((kind) => ({ id: kind as StateFilter, label: KIND_LABEL[kind] })),
+  ...CONVERSATION_KINDS.map((kind) => ({ id: kind as StateFilter, label: KIND_LABEL[kind] })),
   { id: "open", label: "Conversaciones abiertas" },
   { id: "closed", label: "Cerradas" },
   { id: "archived", label: "Archivadas" },
@@ -206,7 +214,11 @@ export function AttentionPage({ channels = ["whatsapp", "email"] }: AttentionPag
   const navigate = useNavigate();
   const { user } = useAuth();
   const role = (user?.role ?? "ADMIN").toLowerCase();
-  const attention = useAttention();
+  // Conversation kinds only. The cross-source queue (visits, tasks, stalled
+  // deals) answers "what do I do now" and lives on Inicio; this tab answers the
+  // narrower "who is waiting on me", and showing a visit here was a category
+  // error in a tab literally named Conversaciones.
+  const attention = useAttention(60, CONVERSATION_KINDS);
 
   const showWhatsApp = channels.includes("whatsapp");
   const showEmail = channels.includes("email");
@@ -278,7 +290,7 @@ export function AttentionPage({ channels = ["whatsapp", "email"] }: AttentionPag
     return out.sort((a, b) => b.time - a.time);
   }, [convos.data, emails.data, namesById, propertyByContact, showWhatsApp, showEmail]);
 
-  const kindFilter: AttentionKind | null = ATTENTION_KINDS.includes(state as AttentionKind)
+  const kindFilter: AttentionKind | null = CONVERSATION_KINDS.includes(state as AttentionKind)
     ? (state as AttentionKind)
     : null;
 
@@ -351,7 +363,7 @@ export function AttentionPage({ channels = ["whatsapp", "email"] }: AttentionPag
     if (item.thread_id) return openThread("email", item.thread_id);
     if (item.event_id) return navigate(`/${role}/agenda?tab=calendario`);
     if (item.task_id) return navigate(`/${role}/agenda?tab=tareas`);
-    if (item.opportunity_id) return navigate(`/${role}/crm?tab=pipeline`);
+    if (item.opportunity_id) return navigate(`/${role}/clientes?tab=negocios`);
     if (item.contact_id) return navigate(`/${role}/personas/${item.contact_id}`);
   };
 
@@ -421,12 +433,12 @@ export function AttentionPage({ channels = ["whatsapp", "email"] }: AttentionPag
   const list = (
     <ListShell
       fill
-      title="Atención"
+      title="Conversaciones"
       meta={
         // The queue's real size, not the page's: the API caps the list, and
         // "60 por resolver" beside a section counting 9 read as a bug.
         attentionItems.length > 0
-          ? `${attention.data?.total ?? attentionItems.length} por resolver`
+          ? `${attention.data?.total ?? attentionItems.length} sin responder`
           : shown.length > 0
             ? `${shown.length}`
             : undefined

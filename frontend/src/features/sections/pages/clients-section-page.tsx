@@ -21,17 +21,21 @@ const AdminPropertiesPage = lazy(() =>
 );
 
 /**
- * CRM in four tabs: what needs answering, who it is about, what it is worth,
- * and what we are selling.
+ * Clientes — four tabs because the business has four irreducible entities, and
+ * everything else is a relationship between them: the conversation, the person
+ * it is with, the deal it is about, and the property it is for.
  *
- * It was seven. `WhatsApp` and `Correos` were the same screen twice, split by
- * transport rather than by anything the broker cares about, so they collapsed
- * into `Bandeja` with a channel filter. `Oportunidades` and `Interacciones`
- * were lists of rows that only mean something attached to a person — a bare
- * "Llamada · 14 mar" is unreadable — so they moved inside the person's detail,
- * which is where you go looking for them anyway.
+ * It was seven tabs called CRM. `WhatsApp` and `Correos` were the same screen
+ * twice, split by transport rather than by anything a broker cares about;
+ * `Oportunidades` and `Interacciones` were lists of rows that only mean
+ * something attached to a person. What is left is the entity list.
+ *
+ * Conversaciones leads because it is where the data actually enters the system:
+ * the broker talks, and the record follows. The cross-source queue that used to
+ * open this section ("Atención") moved to Inicio, which is where "what do I do
+ * now" belongs — this tab answers the narrower "who is waiting on me".
  */
-export function CrmSectionPage() {
+export function ClientsSectionPage() {
   const { user } = useAuth();
   const scope = user?.adminScope ?? [];
   // An empty scope is full admin; otherwise the scope list is a whitelist.
@@ -48,12 +52,13 @@ export function CrmSectionPage() {
     ...(channels.length > 0
       ? [
           {
-            id: "atencion",
-            label: "Atención",
+            id: "conversaciones",
+            label: "Conversaciones",
             // Every path this tab has ever had. The inbox was `whatsapp` and
-            // `correos` before it merged, and `bandeja` before it grew the
-            // ranked queue; push notifications and bookmarks still use them.
-            aliases: ["bandeja", "whatsapp", "correos"],
+            // `correos` before it merged, `bandeja` before it grew the ranked
+            // queue, and `atencion` while it held one; push notifications and
+            // bookmarks still carry all four.
+            aliases: ["atencion", "bandeja", "whatsapp", "correos"],
             render: () => <AttentionPage channels={channels} />,
           },
         ]
@@ -67,10 +72,10 @@ export function CrmSectionPage() {
       render: () => <ContactsPage />,
     },
     {
-      id: "pipeline",
+      id: "negocios",
       label: "Negocios",
       scope: "crm",
-      aliases: ["oportunidades"],
+      aliases: ["pipeline", "oportunidades"],
       render: () => <OpportunitiesPage />,
     },
     { id: "propiedades", label: "Propiedades", render: () => <AdminPropertiesPage /> },
@@ -83,4 +88,4 @@ export function CrmSectionPage() {
   );
 }
 
-export default CrmSectionPage;
+export default ClientsSectionPage;

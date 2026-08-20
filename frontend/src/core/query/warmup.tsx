@@ -84,7 +84,7 @@ export function QueryWarmup() {
       // waits on a cold chunk download before anything can render it. These are
       // dynamic imports inside a callback, so they stay out of the entry bundle
       // and simply populate the module cache while the machine is idle.
-      void import("@features/sections/pages/crm-section-page");
+      void import("@features/sections/pages/clients-section-page");
       void import("@features/sections/pages/agenda-section-page");
     });
 

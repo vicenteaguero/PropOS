@@ -34,7 +34,7 @@ function titleIndex(): TitleEntry[] {
   for (const view of views) {
     for (const group of buildGroups(view, "Propo", true) as NavGroup[]) {
       for (const item of group.items) {
-        // A nav entry may point at a tab (`/admin/crm?tab=propiedades`); the
+        // A nav entry may point at a tab (`/admin/clientes?tab=propiedades`); the
         // title index is keyed by pathname, and the first entry for a pathname
         // wins so the section keeps its own name rather than a tab's.
         const path = item.path.split("?")[0] ?? item.path;
