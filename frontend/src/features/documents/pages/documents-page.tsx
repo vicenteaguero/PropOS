@@ -166,9 +166,6 @@ export function DocumentsPage() {
         {/* Header */}
         <div className="mb-5 flex items-start justify-between gap-3">
           <div className="space-y-1">
-            <h1 className="text-[17px] font-semibold leading-tight tracking-tight text-foreground">
-              Documentos
-            </h1>
           </div>
           <Button
             variant="outline"
@@ -210,9 +207,6 @@ export function DocumentsPage() {
         {/* Top bar: title + Enlaces */}
         <div className="flex items-start justify-between gap-3 border-b border-border px-8 py-5">
           <div className="space-y-1">
-            <h1 className="text-[17px] font-semibold leading-tight tracking-tight text-foreground">
-              Documentos
-            </h1>
           </div>
           <Button
             variant="outline"

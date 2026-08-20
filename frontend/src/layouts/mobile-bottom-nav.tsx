@@ -120,7 +120,7 @@ export function MobileBottomNav() {
       >
         <div className="mx-auto flex max-w-md items-center justify-around rounded-3xl border border-border bg-card px-2 py-2 shadow-[0_6px_26px_rgba(0,0,0,0.18)]">
           <NavTab to={base} end icon={Home} label="Inicio" />
-          {allow("crm") && <NavTab to={`${base}/bandeja`} icon={Users} label="CRM" />}
+          {allow("crm") && <NavTab to={`${base}/crm`} icon={Users} label="CRM" />}
           {canPropo && (
             <div className="flex flex-1 flex-col items-center gap-0.5">
               <button
@@ -135,7 +135,7 @@ export function MobileBottomNav() {
             </div>
           )}
           {allow("productividad") && (
-            <NavTab to={`${base}/calendario`} icon={CalendarDays} label="Agenda" />
+            <NavTab to={`${base}/agenda`} icon={CalendarDays} label="Agenda" />
           )}
           {/* Everything the sidebar can reach lives behind this tab. Without
               it the phone shell could only open whatever the four tabs and the
@@ -158,32 +158,32 @@ export function MobileBottomNav() {
         </div>
       </nav>
 
-      <BottomSheet open={moreOpen} onOpenChange={setMoreOpen} title="Todo">
-        <div className="mt-3 flex items-center gap-3.5 pb-4">
-          <div className="flex size-14 items-center justify-center rounded-full bg-secondary text-lg font-semibold text-foreground">
+      <BottomSheet open={moreOpen} onOpenChange={setMoreOpen} srOnlyTitle="Menú">
+        <div className="mt-1 flex items-center gap-3 pb-3">
+          <div className="flex size-11 items-center justify-center rounded-full bg-secondary text-[15px] font-semibold text-foreground">
             {initials(user.fullName)}
           </div>
           <div className="min-w-0">
-            <div className="truncate text-lg font-bold tracking-tight text-foreground">
+            <div className="truncate text-[15px] font-semibold tracking-tight text-foreground">
               {user.fullName}
             </div>
-            <div className="truncate text-sm capitalize text-muted-foreground">
+            <div className="truncate text-[13px] capitalize text-muted-foreground">
               {user.role.toLowerCase()}
             </div>
           </div>
         </div>
 
-        {/* The full destination tree, straight from the shared nav config —
-            the same groups the desktop sidebar renders. Two columns because a
-            24-item single-column list turns into a scroll marathon on a phone. */}
+        {/* The destination tree, straight from the shared nav config — the same
+            groups the desktop sidebar renders. The grid is auto-fill so a wide
+            phone or a tablet uses the room instead of leaving a dead column. */}
         {groups.map((group, idx) => (
-          <div key={group.label ?? `g-${idx}`} className="border-t border-border py-2.5">
+          <div key={group.label ?? `g-${idx}`} className="border-t border-border py-2">
             {group.label && (
               <div className="px-1 pb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 {group.label}
               </div>
             )}
-            <div className="grid grid-cols-2 gap-1">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-1">
               {group.items.map((item) => {
                 const Icon = item.icon;
                 const badge = item.badge === "pending" && pendingCount > 0 ? pendingCount : null;

@@ -4,7 +4,6 @@ import { PageLayout } from "@shared/components/page-layout";
 import { ChartCard, ErrorState, PageSkeleton, Pill, StatCard } from "@shared/ui";
 import { CHART_COLORS, CHART_HEIGHT } from "@shared/lib/chart-config";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { useAgentName } from "@core/branding/agent-branding";
 
 interface AgentCost {
   totals: {
@@ -38,7 +37,6 @@ const TOOLTIP_STYLE = {
 };
 
 export function AgentCostPage() {
-  const agentName = useAgentName();
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["analytics", "agent-cost"],
     queryFn: () => apiRequest<AgentCost>("/v1/analytics/agent-cost"),
@@ -71,9 +69,6 @@ export function AgentCostPage() {
     // Mobile: capped centered column (unchanged). Desktop: full-bleed dashboard.
     <PageLayout width="lg" noPadding className="pb-10 lg:max-w-none">
       <div className="px-5 pt-5 pb-4 lg:px-8 lg:pt-7">
-        <h1 className="text-[17px] font-semibold leading-tight tracking-tight text-foreground">
-          Costo {agentName}
-        </h1>
       </div>
 
       {/* Totals */}

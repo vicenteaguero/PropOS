@@ -450,7 +450,6 @@ export function CalendarPage() {
           <div className="shrink-0">
             <div className="px-5 pt-4 pb-4 lg:px-8 lg:pt-7">
               <PageHeader
-                title="Calendario"
                 className="mb-0"
                 actions={
                   <Button onClick={() => openCreate()} variant="ink" className="gap-2">

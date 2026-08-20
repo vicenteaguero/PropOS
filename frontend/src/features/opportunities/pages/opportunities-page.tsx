@@ -51,7 +51,6 @@ export function OpportunitiesPage() {
         {/* Fixed header on desktop; normal flow on mobile. */}
         <div className="shrink-0 px-4 py-6 md:px-6 md:py-8 lg:px-8 lg:pb-4 lg:pt-7">
           <PageHeader
-            title="Oportunidades"
             className="mb-0"
             actions={
               <Button

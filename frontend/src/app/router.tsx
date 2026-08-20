@@ -25,11 +25,6 @@ const AdminPhonesPage = lazy(() =>
     default: m.AdminPhonesPage,
   })),
 );
-const AdminPropertiesPage = lazy(() =>
-  import("@features/admin-properties/pages/admin-properties-page").then((m) => ({
-    default: m.AdminPropertiesPage,
-  })),
-);
 const AdminPropertyDetailPage = lazy(() =>
   import("@features/admin-properties/pages/admin-property-detail-page").then((m) => ({
     default: m.AdminPropertyDetailPage,
@@ -58,18 +53,6 @@ const AdminVisitorInvitationsPage = lazy(() =>
 const AgentChatPage = lazy(() =>
   import("@features/agent/pages/agent-chat-page").then((m) => ({ default: m.AgentChatPage })),
 );
-const AgentCostPage = lazy(() =>
-  import("@features/analytics/pages/agent-cost-page").then((m) => ({ default: m.AgentCostPage })),
-);
-const AnalyticsPage = lazy(() =>
-  import("@features/analytics/pages/analytics-page").then((m) => ({ default: m.AnalyticsPage })),
-);
-const BandejaPage = lazy(() =>
-  import("@features/bandeja/pages/bandeja-page").then((m) => ({ default: m.BandejaPage })),
-);
-const CalendarPage = lazy(() =>
-  import("@features/calendar/pages/calendar-page").then((m) => ({ default: m.CalendarPage })),
-);
 const ClientInboxPage = lazy(() =>
   import("@features/client-chat/pages/client-inbox-page").then((m) => ({
     default: m.ClientInboxPage,
@@ -79,9 +62,6 @@ const ContactDetailPage = lazy(() =>
   import("@features/contacts/pages/contact-detail-page").then((m) => ({
     default: m.ContactDetailPage,
   })),
-);
-const ContactsPage = lazy(() =>
-  import("@features/contacts/pages/contacts-page").then((m) => ({ default: m.ContactsPage })),
 );
 const DataRightsPage = lazy(() =>
   import("@features/legal/pages/data-rights-page").then((m) => ({ default: m.DataRightsPage })),
@@ -96,35 +76,13 @@ const DocumentEditorPage = lazy(() =>
     default: m.DocumentEditorPage,
   })),
 );
-const DocumentsPage = lazy(() =>
-  import("@features/documents/pages/documents-page").then((m) => ({ default: m.DocumentsPage })),
-);
-const EmailInboxPage = lazy(() =>
-  import("@features/email/pages/email-inbox-page").then((m) => ({ default: m.EmailInboxPage })),
-);
 const EntityTimelinePage = lazy(() =>
   import("@features/analytics/pages/entity-timeline-page").then((m) => ({
     default: m.EntityTimelinePage,
   })),
 );
-const FinancePage = lazy(() =>
-  import("@features/finance/pages/finance-page").then((m) => ({ default: m.FinancePage })),
-);
 const ImportPage = lazy(() =>
   import("@features/data-admin/pages/import-page").then((m) => ({ default: m.ImportPage })),
-);
-const InteractionsPage = lazy(() =>
-  import("@features/interactions/pages/interactions-page").then((m) => ({
-    default: m.InteractionsPage,
-  })),
-);
-const NotesPage = lazy(() =>
-  import("@features/notes/pages/notes-page").then((m) => ({ default: m.NotesPage })),
-);
-const OpportunitiesPage = lazy(() =>
-  import("@features/opportunities/pages/opportunities-page").then((m) => ({
-    default: m.OpportunitiesPage,
-  })),
 );
 const OwnerHomePage = lazy(() =>
   import("@features/owner/pages/owner-home-page").then((m) => ({ default: m.OwnerHomePage })),
@@ -136,11 +94,6 @@ const OwnerPropertyDetailPage = lazy(() =>
 );
 const PendingPage = lazy(() =>
   import("@features/pending/pages/pending-page").then((m) => ({ default: m.PendingPage })),
-);
-const PortalAdminPage = lazy(() =>
-  import("@features/documents/pages/portal-admin-page").then((m) => ({
-    default: m.PortalAdminPage,
-  })),
 );
 const PortalPublicPage = lazy(() =>
   import("@features/documents/pages/portal-public-page").then((m) => ({
@@ -158,9 +111,6 @@ const SharePublicPage = lazy(() =>
     default: m.SharePublicPage,
   })),
 );
-const TasksPage = lazy(() =>
-  import("@features/tasks/pages/tasks-page").then((m) => ({ default: m.TasksPage })),
-);
 const VisitorRegistrationPage = lazy(() =>
   import("@features/visitor-registration/pages/visitor-registration-page").then((m) => ({
     default: m.VisitorRegistrationPage,
@@ -168,6 +118,27 @@ const VisitorRegistrationPage = lazy(() =>
 );
 const WorkflowsPage = lazy(() =>
   import("@features/workflows/pages/workflows-page").then((m) => ({ default: m.WorkflowsPage })),
+);
+
+// Section shells. Each hosts the former sibling pages as tabs; see
+// shared/ui/section-tabs.tsx for why the tab lives in a query param.
+const CrmSectionPage = lazy(() =>
+  import("@features/sections/pages/crm-section-page").then((m) => ({ default: m.CrmSectionPage })),
+);
+const AgendaSectionPage = lazy(() =>
+  import("@features/sections/pages/agenda-section-page").then((m) => ({
+    default: m.AgendaSectionPage,
+  })),
+);
+const FinanceSectionPage = lazy(() =>
+  import("@features/sections/pages/finance-section-page").then((m) => ({
+    default: m.FinanceSectionPage,
+  })),
+);
+const DocumentsSectionPage = lazy(() =>
+  import("@features/sections/pages/documents-section-page").then((m) => ({
+    default: m.DocumentsSectionPage,
+  })),
 );
 
 const VIEW_HOME_PATHS: Record<UserView, string> = {
@@ -250,40 +221,83 @@ export function AppRouter() {
                   }
                 />
               )}
-              <Route
-                path="client-inbox"
-                element={
-                  <ProtectedRoute requiredScope="inbox">
-                    <ClientInboxPage />
-                  </ProtectedRoute>
-                }
-              />
-              {role === "ADMIN" && (
+
+              {/* ---- Sections ----
+                  Four destinations replace fifteen sibling list routes. Detail
+                  routes deliberately keep their original paths: they are what
+                  every navigate() call and every shared link already points at,
+                  and nesting them under the section would have bought nothing.
+                  The old list paths below redirect into the right tab. */}
+              {(role === "ADMIN" || role === "AGENT") && (
+                <>
+                  <Route path="crm" element={<CrmSectionPage />} />
+                  <Route path="agenda" element={<AgendaSectionPage />} />
+                  <Route
+                    path="personas/:id"
+                    element={
+                      <ProtectedRoute requiredScope="crm">
+                        <ContactDetailPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route path="properties/:id" element={<AdminPropertyDetailPage />} />
+
+                  <Route path="bandeja" element={<Navigate to="../crm?tab=bandeja" replace />} />
+                  <Route path="personas" element={<Navigate to="../crm?tab=personas" replace />} />
+                  <Route
+                    path="oportunidades"
+                    element={<Navigate to="../crm?tab=oportunidades" replace />}
+                  />
+                  <Route
+                    path="interacciones"
+                    element={<Navigate to="../crm?tab=interacciones" replace />}
+                  />
+                  <Route
+                    path="properties"
+                    element={<Navigate to="../crm?tab=propiedades" replace />}
+                  />
+                  <Route
+                    path="client-inbox"
+                    element={<Navigate to="../crm?tab=whatsapp" replace />}
+                  />
+                  <Route path="correos" element={<Navigate to="../crm?tab=correos" replace />} />
+                  <Route
+                    path="calendario"
+                    element={<Navigate to="../agenda?tab=calendario" replace />}
+                  />
+                  <Route path="tareas" element={<Navigate to="../agenda?tab=tareas" replace />} />
+                  <Route path="notas" element={<Navigate to="../agenda?tab=notas" replace />} />
+                </>
+              )}
+
+              {/* BUYER and CONTENT never had a CRM; their inbox is the only
+                  conversation surface they can reach. */}
+              {(role === "BUYER" || role === "CONTENT") && (
                 <Route
-                  path="phones"
+                  path="client-inbox"
                   element={
-                    <ProtectedRoute requiredScope="phones">
-                      <AdminPhonesPage />
+                    <ProtectedRoute requiredScope="inbox">
+                      <ClientInboxPage />
                     </ProtectedRoute>
                   }
                 />
               )}
 
               <Route
-                path="documents"
+                path="documentos"
                 element={
                   <ProtectedRoute requiredScope="documents">
-                    <DocumentsPage />
+                    <DocumentsSectionPage />
                   </ProtectedRoute>
                 }
               />
               <Route
+                path="documents"
+                element={<Navigate to="../documentos?tab=archivos" replace />}
+              />
+              <Route
                 path="documents/portals"
-                element={
-                  <ProtectedRoute requiredScope="documents">
-                    <PortalAdminPage />
-                  </ProtectedRoute>
-                }
+                element={<Navigate to="../documentos?tab=enlaces" replace />}
               />
               <Route
                 path="documents/:id"
@@ -302,88 +316,6 @@ export function AppRouter() {
                 }
               />
 
-              {(role === "ADMIN" || role === "AGENT") && (
-                <>
-                  {/* The backend already authorises AGENT on GET/POST/PATCH of
-                    properties (properties/router.py); only the frontend was
-                    keeping brokers out of their own portfolio. */}
-                  <Route path="properties" element={<AdminPropertiesPage />} />
-                  <Route path="properties/:id" element={<AdminPropertyDetailPage />} />
-                  <Route
-                    path="bandeja"
-                    element={
-                      <ProtectedRoute requiredScope="crm">
-                        <BandejaPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="personas"
-                    element={
-                      <ProtectedRoute requiredScope="crm">
-                        <ContactsPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="personas/:id"
-                    element={
-                      <ProtectedRoute requiredScope="crm">
-                        <ContactDetailPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="interacciones"
-                    element={
-                      <ProtectedRoute requiredScope="crm">
-                        <InteractionsPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="oportunidades"
-                    element={
-                      <ProtectedRoute requiredScope="crm">
-                        <OpportunitiesPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="tareas"
-                    element={
-                      <ProtectedRoute requiredScope="productividad">
-                        <TasksPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="calendario"
-                    element={
-                      <ProtectedRoute requiredScope="productividad">
-                        <CalendarPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="notas"
-                    element={
-                      <ProtectedRoute requiredScope="productividad">
-                        <NotesPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="correos"
-                    element={
-                      <ProtectedRoute requiredScope="email">
-                        <EmailInboxPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                </>
-              )}
-
               <Route
                 path="workflows"
                 element={
@@ -398,26 +330,26 @@ export function AppRouter() {
               {role === "ADMIN" && (
                 <>
                   <Route
-                    path="analytics"
-                    element={
-                      <ProtectedRoute requiredScope="analytics">
-                        <AnalyticsPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="analytics/agent-cost"
-                    element={
-                      <ProtectedRoute requiredScope="analytics">
-                        <AgentCostPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
                     path="finanzas"
                     element={
                       <ProtectedRoute requiredScope="finanzas">
-                        <FinancePage />
+                        <FinanceSectionPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="analytics"
+                    element={<Navigate to="../finanzas?tab=analitica" replace />}
+                  />
+                  <Route
+                    path="analytics/agent-cost"
+                    element={<Navigate to="../finanzas?tab=costo-propo" replace />}
+                  />
+                  <Route
+                    path="phones"
+                    element={
+                      <ProtectedRoute requiredScope="phones">
+                        <AdminPhonesPage />
                       </ProtectedRoute>
                     }
                   />

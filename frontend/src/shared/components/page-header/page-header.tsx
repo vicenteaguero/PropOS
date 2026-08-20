@@ -17,7 +17,8 @@ const SIZES = {
 } as const;
 
 interface PageHeaderProps {
-  title: string;
+  /** Optional: inside a tabbed section the tab already names the view. */
+  title?: string;
   actions?: React.ReactNode;
   backTo?: string;
   size?: keyof typeof SIZES;

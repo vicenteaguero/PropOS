@@ -20,6 +20,7 @@ export { HOVER_REVEAL } from "./hover-reveal";
 export { Chips, Chip } from "./chips";
 export { Segmented, type SegmentedItem } from "./segmented";
 export { SectionLabel } from "./section-label";
+export { SectionTabs, type SectionTab } from "./section-tabs";
 export { Row } from "./row";
 export { ErrorState } from "./error-state";
 export { PageSkeleton, type PageSkeletonVariant } from "./page-skeleton";
