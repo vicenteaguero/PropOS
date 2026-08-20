@@ -182,9 +182,10 @@ export function AppLayout() {
   // in the center FAB, so no separate AgentFAB here).
   if (shellMode === "bottom-nav") {
     return (
-      // This shell has NO header, so --app-header-h must read 0 here or every
-      // viewport-pinned primitive below subtracts 56px that doesn't exist.
-      // --app-nav-h is published by MobileBottomNav from its own measured box.
+      // Both strips are measured, not assumed: MobileTopBar publishes
+      // --app-header-h and MobileBottomNav publishes --app-nav-h, so the
+      // viewport-pinned primitives below subtract the real numbers. This shell
+      // used to pin --app-header-h to 0 because it genuinely had no header.
       <AgentOverlayProvider>
         <div className="flex min-h-dvh flex-col bg-background">
           <SkipToContent />
