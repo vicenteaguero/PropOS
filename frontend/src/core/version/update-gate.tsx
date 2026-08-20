@@ -30,7 +30,9 @@ function UpdateOverlay() {
       <div className="space-y-1.5">
         <p className="text-base font-medium text-foreground">Actualizando aplicación</p>
         <p className="text-sm text-muted-foreground">
-          Estamos cargando la última versión. Toma unos segundos.
+          Estamos cargando la última versión.
+          <br />
+          Toma unos segundos.
         </p>
       </div>
     </div>

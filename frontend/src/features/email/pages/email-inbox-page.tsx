@@ -36,7 +36,6 @@ export function EmailInboxPage() {
         <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-secondary">
           <BrandMark brand="titan" size={22} />
         </span>
-        <div className="min-w-0 flex-1"></div>
         <Button size="sm" className="shrink-0 gap-1.5" onClick={() => setComposeOpen(true)}>
           <PenSquare className="size-4" strokeWidth={1.8} /> Nuevo
         </Button>

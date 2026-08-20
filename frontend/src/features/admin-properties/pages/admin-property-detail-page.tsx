@@ -277,7 +277,7 @@ export function AdminPropertyDetailPage() {
                         </span>
                       }
                       title={`${g.user_id.slice(0, 8)}…`}
-                      sub={g.view}
+                      sub={label("role", g.view)}
                       right={
                         <div className="flex flex-wrap justify-end gap-1.5">
                           {g.capabilities.map((c) => (

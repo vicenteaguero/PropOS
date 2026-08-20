@@ -19,6 +19,8 @@ interface AuthContextValue extends AuthState {
   signOut: () => Promise<void>;
   switchTenant: (tenantId: string) => Promise<void>;
   refreshGrants: () => Promise<void>;
+  /** True while a workspace switch is in flight, so the shell can hold a loader. */
+  isSwitchingTenant: boolean;
 }
 
 const DEFAULT_AUTH_STATE: AuthContextValue = {
@@ -30,6 +32,7 @@ const DEFAULT_AUTH_STATE: AuthContextValue = {
   signOut: async () => {},
   switchTenant: async () => {},
   refreshGrants: async () => {},
+  isSwitchingTenant: false,
 };
 
 export const AuthContext = createContext<AuthContextValue>(DEFAULT_AUTH_STATE);
@@ -235,12 +238,17 @@ export function useAuthProvider(): AuthContextValue {
   const signOut = useCallback(async () => {
     logger.info("auth", "User signing out");
     setActiveTenantId(null);
+    // Business data cached for the outgoing user must not survive the sign-out.
+    queryClient.clear();
     await supabase.auth.signOut();
     setState({ user: null, memberships: [], grants: [], isLoading: false, isAuthenticated: false });
-  }, []);
+  }, [queryClient]);
+
+  const [isSwitchingTenant, setIsSwitchingTenant] = useState(false);
 
   const switchTenant = useCallback(
     async (tenantId: string) => {
+      setIsSwitchingTenant(true);
       setActiveTenantId(tenantId);
       try {
         await apiRequest("/v1/memberships/activate", {
@@ -250,10 +258,15 @@ export function useAuthProvider(): AuthContextValue {
       } catch (err) {
         logger.error("error", "switchTenant activate failed", { err: String(err) });
       }
-      // Refetch tenant branding (brand color, assistant name) for the new
-      // workspace — without this the /tenants/me cache stays stale past its
-      // staleTime and the palette/agent name lag behind the switch.
-      queryClient.invalidateQueries({ queryKey: ["tenant", "me"] });
+      // Drop EVERY cached query, not just tenant branding.
+      //
+      // Tenancy travels in the X-Tenant-Id header and no query key in the app
+      // contains the tenant id, so react-query cannot tell one workspace's rows
+      // from another's. Invalidating a single key left every mounted screen
+      // rendering the previous workspace's data until each query's own staleTime
+      // happened to lapse — which is exactly the "switching workspace doesn't
+      // reset the views" report.
+      queryClient.clear();
       const { data } = await supabase.auth.getSession();
       if (data.session?.user) {
         const memberships = await fetchMemberships();
@@ -266,6 +279,7 @@ export function useAuthProvider(): AuthContextValue {
           setState((prev) => ({ ...prev, user: profile, memberships, grants }));
         }
       }
+      setIsSwitchingTenant(false);
     },
     [queryClient],
   );
@@ -280,6 +294,7 @@ export function useAuthProvider(): AuthContextValue {
     signOut,
     switchTenant,
     refreshGrants,
+    isSwitchingTenant,
   };
 }
 

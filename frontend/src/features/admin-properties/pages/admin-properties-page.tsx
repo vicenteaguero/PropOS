@@ -108,7 +108,6 @@ export function AdminPropertiesPage() {
     <PageLayout width="md" noPadding className="pb-6 lg:max-w-none">
       {/* Header */}
       <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-3 lg:px-8 lg:pt-7">
-        <div></div>
         <Button
           variant="ink"
           size="icon-lg"
@@ -131,6 +130,9 @@ export function AdminPropertiesPage() {
           className="lg:max-w-xl"
           ariaLabel="Buscar propiedades"
           placeholder="Buscar por título o dirección"
+          // The page already debounces before it queries; SearchInput's own
+          // default 250ms on top of that meant ~500ms before a request left.
+          debounceMs={0}
         />
       </div>
 

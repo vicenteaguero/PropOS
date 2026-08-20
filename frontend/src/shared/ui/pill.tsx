@@ -23,7 +23,9 @@ export function Pill({ tone = "neutral", dot, className, children, ...props }: P
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold leading-tight",
+        // shrink-0 + nowrap: a pill is a fixed token, so it must never set the
+        // minimum width of the row it sits in nor wrap mid-label.
+        "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold leading-tight whitespace-nowrap",
         TONE[tone],
         className,
       )}

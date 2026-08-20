@@ -102,7 +102,7 @@ export function AgentDrawer({ open, onOpenChange, fullscreen = false }: Props) {
               />
             </div>
             {chat.error && <p className="px-4 text-xs text-destructive">{chat.error}</p>}
-            <div className="shrink-0 border-t border-border p-3 pb-[max(calc(var(--safe-bottom)+0.75rem),calc(var(--kb-inset)+0.75rem))]">
+            <div className="shrink-0 border-t border-border p-3 pb-composer">
               <AgentComposer
                 onSend={chat.send}
                 onAudio={chat.submitAudio}

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { label } from "@shared/lib/labels";
 import {
   addDays,
   addMonths,
@@ -644,7 +645,8 @@ export function CalendarPage() {
               )}
               {detail.status && (
                 <div className="text-sm text-muted-foreground">
-                  Estado: <span className="text-foreground">{detail.status}</span>
+                  Estado:{" "}
+                  <span className="text-foreground">{label("eventStatus", detail.status)}</span>
                 </div>
               )}
               {eventError && (

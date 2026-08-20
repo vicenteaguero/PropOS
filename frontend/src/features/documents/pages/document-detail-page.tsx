@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { label } from "@shared/lib/labels";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
@@ -279,7 +280,7 @@ export function DocumentDetailPage() {
           </h1>
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
             <Pill tone={doc.kind === "IMAGE_PDF" || doc.origin === "CAMERA" ? "accent" : "neutral"}>
-              {doc.kind}
+              {label("documentKind", doc.kind)}
             </Pill>
             {currentVersion && (
               <>

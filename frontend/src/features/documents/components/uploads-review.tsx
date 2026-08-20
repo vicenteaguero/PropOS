@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { label } from "@shared/lib/labels";
 import { toast } from "sonner";
 import { Check, FileText, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -105,7 +106,7 @@ export function UploadsReview({ portalId, defaults }: Props) {
                       : "text-warning"
                 }
               >
-                {u.status}
+                {label("uploadStatus", u.status)}
               </span>
             </div>
             {u.status === "pending_review" && (

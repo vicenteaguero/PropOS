@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { label } from "@shared/lib/labels";
 import { Loader2, Upload, Trash2 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -85,7 +86,7 @@ export function AvatarUploader({ user }: Props) {
         {user.full_name || "Sin nombre"}
       </h2>
       <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
-        <Pill tone="accent">{user.role}</Pill>
+        <Pill tone="accent">{label("role", user.role)}</Pill>
         {user.email && <span className="text-[13px] text-muted-foreground">{user.email}</span>}
       </div>
 

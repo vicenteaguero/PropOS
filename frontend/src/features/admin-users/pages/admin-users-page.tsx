@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { label } from "@shared/lib/labels";
 import { useNavigate } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -131,7 +132,11 @@ export function AdminUsersPage() {
                 className: "tabular-nums text-muted-foreground",
                 cell: (u) => u.rut ?? "—",
               },
-              { key: "rol", header: "Rol", cell: (u) => <Pill tone="neutral">{u.role}</Pill> },
+              {
+                key: "rol",
+                header: "Rol",
+                cell: (u) => <Pill tone="neutral">{label("role", u.role)}</Pill>,
+              },
               {
                 key: "vista",
                 header: "Vista",
@@ -175,7 +180,7 @@ export function AdminUsersPage() {
               </span>
             ),
             sub: u.email,
-            right: <Pill tone="neutral">{u.role}</Pill>,
+            right: <Pill tone="neutral">{label("role", u.role)}</Pill>,
           })}
         />
       )}

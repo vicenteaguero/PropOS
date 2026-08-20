@@ -250,7 +250,9 @@ export function AnalyticsPage() {
                           <td className="py-2.5 pr-4 font-medium text-foreground">
                             {r.campaign_name}
                           </td>
-                          <td className="py-2.5 pr-4 text-muted-foreground">{r.channel}</td>
+                          <td className="py-2.5 pr-4 text-muted-foreground">
+                            {label("channel", r.channel)}
+                          </td>
                           <td className="py-2.5 pr-4 text-muted-foreground">
                             {r.budget_cents != null ? formatCLP(r.budget_cents / 100) : "—"}
                           </td>
