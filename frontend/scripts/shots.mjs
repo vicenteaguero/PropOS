@@ -23,9 +23,10 @@ const SESSION = JSON.parse(
 
 const ROUTES = [
   ["home", "/admin"],
-  ["crm-bandeja", "/admin/crm?tab=bandeja"],
+  ["crm-atencion", "/admin/crm?tab=atencion"],
   ["crm-personas", "/admin/crm?tab=personas"],
-  ["crm-pipeline", "/admin/crm?tab=oportunidades"],
+  ["crm-persona", "/admin/personas/0c4c02d8-7a20-5b53-a220-69efe0baabcb"],
+  ["crm-pipeline", "/admin/crm?tab=pipeline"],
   ["crm-propiedades", "/admin/crm?tab=propiedades"],
   ["agenda", "/admin/agenda"],
   ["agenda-tareas", "/admin/agenda?tab=tareas"],
