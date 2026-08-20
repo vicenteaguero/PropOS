@@ -45,3 +45,47 @@ export interface ContactInput {
   address?: string | null;
   notes?: string | null;
 }
+
+/** Mirrors `ContactOverview` on the API. */
+export interface OverviewCounts {
+  interactions: number;
+  deals: number;
+  notes: number;
+  documents: number;
+  emails: number;
+  open_tasks: number;
+}
+
+export interface OverviewEvent {
+  id: string;
+  kind: string | null;
+  title: string | null;
+  starts_at: string;
+  location: string | null;
+  property_title: string | null;
+}
+
+export interface OverviewDeal {
+  id: string;
+  pipeline_stage: string | null;
+  property_id: string | null;
+  property_title: string | null;
+  expected_value_cents: number | null;
+  currency: string | null;
+}
+
+export interface OverviewProperty {
+  id: string;
+  title: string;
+}
+
+export interface ContactOverview {
+  last_interaction_at: string | null;
+  last_interaction_kind: string | null;
+  next_event: OverviewEvent | null;
+  deals: OverviewDeal[];
+  properties: OverviewProperty[];
+  conversation_id: string | null;
+  awaiting_reply: boolean;
+  counts: OverviewCounts;
+}

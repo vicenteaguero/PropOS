@@ -92,3 +92,51 @@ class PersonAliasResponse(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class OverviewCounts(BaseModel):
+    interactions: int = 0
+    deals: int = 0
+    notes: int = 0
+    documents: int = 0
+    emails: int = 0
+    open_tasks: int = 0
+
+
+class OverviewEvent(BaseModel):
+    id: UUID
+    kind: str | None = None
+    title: str | None = None
+    starts_at: datetime
+    location: str | None = None
+    property_title: str | None = None
+
+
+class OverviewDeal(BaseModel):
+    id: UUID
+    pipeline_stage: str | None = None
+    property_id: UUID | None = None
+    property_title: str | None = None
+    expected_value_cents: int | None = None
+    currency: str | None = None
+
+
+class OverviewProperty(BaseModel):
+    id: UUID
+    title: str
+
+
+class ContactOverview(BaseModel):
+    """Where the relationship stands, in one payload."""
+
+    last_interaction_at: datetime | None = None
+    last_interaction_kind: str | None = None
+    next_event: OverviewEvent | None = None
+    deals: list[OverviewDeal] = []
+    #: Every property this person is currently attached to, deals and bookings.
+    properties: list[OverviewProperty] = []
+    #: The live WhatsApp thread, when there is one.
+    conversation_id: UUID | None = None
+    #: The contact spoke last and nobody has answered.
+    awaiting_reply: bool = False
+    counts: OverviewCounts = OverviewCounts()

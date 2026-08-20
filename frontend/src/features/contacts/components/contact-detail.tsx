@@ -30,6 +30,7 @@ import { ContactEmails } from "@features/email/components/contact-emails";
 import { useContact, useDeleteContact, useUpdateContact } from "../hooks/use-contacts";
 import { ContactFormDialog } from "./contact-form-dialog";
 import { ContactOpportunities } from "./contact-opportunities";
+import { ContactSummary } from "./contact-summary";
 import { CONTACT_TYPE_LABELS } from "../types";
 import { CONTACT_TYPE_TONES } from "@shared/lib/tones";
 import { initials } from "@shared/utils/format";
@@ -171,6 +172,9 @@ export function ContactDetail({ contactId, onBack, onDeleted }: ContactDetailPro
           onClick={() => navigate(`/${role}/agenda`)}
         />
       </div>
+
+      {/* Where the relationship stands, before the raw fields. */}
+      <ContactSummary contactId={contact.id} role={role} />
 
       {/* Detail fields */}
       <div className="mx-[var(--page-x)] mb-5 space-y-2.5 rounded-xl bg-card p-4">
