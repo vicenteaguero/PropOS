@@ -4,6 +4,7 @@ import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import { supabase } from "@core/supabase/client";
 import { createLogger } from "@core/logging/logger";
 import { apiRequest, getActiveTenantId, setActiveTenantId } from "@shared/api/http";
+import { clearPersistedQueries } from "@core/query/persister";
 import type {
   AuthState,
   PropertyGrant,
@@ -238,8 +239,10 @@ export function useAuthProvider(): AuthContextValue {
   const signOut = useCallback(async () => {
     logger.info("auth", "User signing out");
     setActiveTenantId(null);
-    // Business data cached for the outgoing user must not survive the sign-out.
+    // Business data cached for the outgoing user must not survive the sign-out —
+    // in memory or on disk.
     queryClient.clear();
+    void clearPersistedQueries();
     await supabase.auth.signOut();
     setState({ user: null, memberships: [], grants: [], isLoading: false, isAuthenticated: false });
   }, [queryClient]);
@@ -267,6 +270,9 @@ export function useAuthProvider(): AuthContextValue {
       // happened to lapse — which is exactly the "switching workspace doesn't
       // reset the views" report.
       queryClient.clear();
+      // The persisted copy is keyed by nothing tenant-specific either, so it has
+      // to go with it or the next cold start restores the old workspace's rows.
+      void clearPersistedQueries();
       const { data } = await supabase.auth.getSession();
       if (data.session?.user) {
         const memberships = await fetchMemberships();
