@@ -34,7 +34,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageLayout } from "@shared/components/page-layout";
-import { PageHeader } from "@shared/components/page-header";
 import { ConfirmDialog } from "@shared/components/confirm-dialog/confirm-dialog";
 import {
   AppShellScroll,
@@ -449,22 +448,23 @@ export function CalendarPage() {
         <AppShellScroll>
           {/* Header + controls: fixed on desktop, normal flow on mobile. */}
           <div className="shrink-0">
-            <div className="px-5 pt-4 pb-4 lg:px-8 lg:pt-7">
-              <PageHeader
-                className="mb-0"
-                actions={
-                  <Button onClick={() => openCreate()} variant="ink" className="gap-2">
-                    <Plus className="size-4" strokeWidth={1.8} />
-                    Nuevo evento
-                  </Button>
-                }
-              />
-            </div>
-
-            <div className="flex items-center justify-between gap-3 px-5 pb-3 lg:px-8">
-              <h2 className="truncate text-xl font-bold capitalize tracking-tight text-foreground">
+            {/* One toolbar, not four rows.
+                The period, the stepper, the view switch and the create action
+                used to occupy three separate bands plus an empty PageHeader, so
+                ~300px of a laptop screen was chrome before a single hour of the
+                calendar was visible. */}
+            <div className="flex flex-wrap items-center gap-2 px-5 pt-4 pb-3 lg:px-8 lg:pt-6">
+              <h2 className="min-w-0 flex-1 truncate text-xl font-bold capitalize tracking-tight text-foreground">
                 {periodLabel}
               </h2>
+              <div className="hidden lg:block">
+                <Segmented
+                  items={VIEW_ITEMS}
+                  value={view}
+                  onChange={(v) => pickView(v as View)}
+                  className="border-b-0 px-0"
+                />
+              </div>
               <div className="flex items-center gap-1.5">
                 <RoundButton onClick={() => step(-1)} aria-label="Anterior">
                   <ChevronLeft className="size-5" strokeWidth={1.8} />
@@ -475,17 +475,16 @@ export function CalendarPage() {
                 <RoundButton onClick={() => step(1)} aria-label="Siguiente">
                   <ChevronRight className="size-5" strokeWidth={1.8} />
                 </RoundButton>
+                <Button
+                  onClick={() => openCreate()}
+                  variant="ink"
+                  size="icon"
+                  aria-label="Nuevo evento"
+                  className="ml-1 rounded-full"
+                >
+                  <Plus className="size-4" strokeWidth={1.8} />
+                </Button>
               </div>
-            </div>
-
-            {/* View toggle — desktop only (mobile stays the month grid). */}
-            <div className="hidden lg:block">
-              <Segmented
-                items={VIEW_ITEMS}
-                value={view}
-                onChange={(v) => pickView(v as View)}
-                className="px-8"
-              />
             </div>
 
             {error && (

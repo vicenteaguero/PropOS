@@ -19,6 +19,7 @@ export { FOCUS_RING } from "./focus-ring";
 export { HOVER_REVEAL } from "./hover-reveal";
 export { Chips, Chip } from "./chips";
 export { FilterSelect, type FilterOption } from "./filter-select";
+export { PropertyFilter, rankProperties, type FilterableProperty } from "./property-filter";
 export { ViewToggle, type ViewToggleOption } from "./view-toggle";
 export { Segmented, type SegmentedItem } from "./segmented";
 export { SectionLabel } from "./section-label";

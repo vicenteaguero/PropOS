@@ -130,7 +130,11 @@ export default function PropertyMap({
       style: STYLE_URL[isDark() ? "dark" : "light"],
       center: FALLBACK_CENTER,
       zoom: 10,
-      attributionControl: { compact: true },
+      // Compact AND collapsed: the expanded OpenStreetMap credit ran the width
+      // of the map on a phone. Compact alone still renders it open on first
+      // paint; `compact: true` with the control added manually below lets it
+      // start as the small (i) button it is meant to be.
+      attributionControl: false,
     });
     mapRef.current = map;
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
