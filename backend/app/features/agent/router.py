@@ -25,7 +25,12 @@ from app.features.agent.schemas import (
     ChatRequest,
     TranscribeResponse,
 )
-from app.features.agent.transcribe import TranscriptionError, transcribe_audio
+from app.features.agent.transcribe import (
+    TranscriptionError,
+    TranscriptionProviderError,
+    TranscriptionQuotaError,
+    transcribe_audio,
+)
 
 # Conversational agent is admin-only (spec: "solamente los administradores
 # tendrán acceso al agente"). The Kapso/WhatsApp inbound path drives
@@ -323,7 +328,13 @@ async def create_transcript(
                 tenant_id=tenant_id,
             )
         )
+    except TranscriptionQuotaError as exc:
+        # Retrying later genuinely works, so say so instead of looking broken.
+        raise HTTPException(status_code=429, detail=str(exc)) from exc
+    except TranscriptionProviderError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
     except TranscriptionError as exc:
+        # Nothing is configured — a deployment problem, not a runtime one.
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     # Keep the original audio: it is the primary evidence behind an amount or
