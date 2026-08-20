@@ -179,7 +179,7 @@ export function BandejaPage() {
   const error = convos.error || emails.error;
 
   const goTo = (channel: Channel) =>
-    navigate(channel === "whatsapp" ? `${base}/client-inbox` : `${base}/correos`);
+    navigate(channel === "whatsapp" ? `${base}/crm?tab=whatsapp` : `${base}/crm?tab=correos`);
 
   const loading = <PageSkeleton variant="list" count={5} />;
 
@@ -281,7 +281,6 @@ export function BandejaPage() {
   // Mobile: capped column, full-width tab bar, stacked views.
   return (
     <PageLayout width="md">
-
       <div className="mb-4">
         <Segmented items={tabs} value={activeTab} onChange={(id) => setTab(id as Tab)} />
       </div>

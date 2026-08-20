@@ -16,7 +16,7 @@ export function ContactDetailPage() {
   const { user } = useAuth();
   const role = user?.role.toLowerCase() ?? "agent";
 
-  const backToList = () => navigate(`/${role}/personas`);
+  const backToList = () => navigate(`/${role}/crm?tab=personas`);
   usePageTitle("Persona");
 
   // Deep links land here on every viewport (the list page only routes to it on
