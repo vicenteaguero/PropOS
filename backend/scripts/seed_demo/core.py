@@ -121,6 +121,10 @@ def note_id(index: int) -> str:
     return demo_uuid("note", index)
 
 
+def note_target_id(note_index: int) -> str:
+    return demo_uuid("note_target", note_index)
+
+
 def tag_id(name: str) -> str:
     return demo_uuid("tag", name)
 
@@ -891,6 +895,17 @@ def _build_opportunities(
             if closed_at < created_at:
                 closed_at = created_at + dt.timedelta(days=3)
 
+        # When the deal was last worked. Stamping every OPEN row with `now` made
+        # the whole pipeline look freshly touched, which is both false and the
+        # reason nothing could ever surface as going cold: a real book always
+        # has a tail of deals nobody has opened in weeks.
+        if status == "OPEN":
+            quiet_ceiling = _weighted(rng, ((1, 50), (10, 22), (30, 18), (75, 10)))
+            last_touch = now - dt.timedelta(days=rng.randint(0, quiet_ceiling), hours=rng.randrange(24))
+            updated_at = max(last_touch, created_at)
+        else:
+            updated_at = closed_at or now
+
         value_cents = prop.price_cents if prop else rng.randint(80_000_000, 400_000_000) * 100
         opportunity_rows.append(
             {
@@ -912,14 +927,14 @@ def _build_opportunities(
                 "source": rng.choice(("manual", "manual", "manual", "import")),
                 "created_by": author,
                 "created_at": created_at,
-                "updated_at": closed_at or now,
+                "updated_at": updated_at,
                 "closed_at": closed_at,
             }
         )
 
         # Stage history: LEAD -> ... -> current stage, monotonically increasing.
         cursor = created_at
-        span = ((closed_at or now) - created_at) / max(stage_index + 1, 1)
+        span = (updated_at - created_at) / max(stage_index + 1, 1)
         history_rows.append(
             {
                 "id": stage_history_id(index, 0),
@@ -1219,7 +1234,14 @@ def _build_events_and_tasks(
                 "completed_at": None,
                 "parent_task_id": None,
                 "owner_user": author,
-                "related": {"events": [event_row["id"]]},
+                # The person is part of what the task is about. Without it a
+                # task cannot be counted or listed on anybody's file, which is
+                # what made the CRM feel detached from its own database.
+                "related": (
+                    {"events": [event_row["id"]], "contacts": [event_row["contact_id"]]}
+                    if event_row.get("contact_id")
+                    else {"events": [event_row["id"]]}
+                ),
                 "source": "manual",
                 "created_by": author,
                 "created_at": min(now, due_at) - dt.timedelta(days=rng.randint(1, 6)),
@@ -1236,6 +1258,7 @@ def _build_events_and_tasks(
         else:
             status = _weighted(rng, (("OPEN", 70), ("IN_PROGRESS", 24), ("BLOCKED", 6)))
         prop = rng.choice(properties) if rng.random() < 0.6 else None
+        person = rng.choice(people) if rng.random() < 0.65 else None
         task_rows.append(
             {
                 "id": task_id(index),
@@ -1249,7 +1272,10 @@ def _build_events_and_tasks(
                 "completed_at": due_at + dt.timedelta(hours=rng.randint(1, 20)) if status == "DONE" else None,
                 "parent_task_id": None,
                 "owner_user": author,
-                "related": {"properties": [prop.id]} if prop else {},
+                "related": {
+                    **({"properties": [prop.id]} if prop else {}),
+                    **({"contacts": [person.id]} if person else {}),
+                },
                 "source": rng.choice(("manual", "manual", "agent")),
                 "created_by": author,
                 "created_at": due_at - dt.timedelta(days=rng.randint(1, 14)),
@@ -1315,8 +1341,21 @@ def _build_notes(
     opportunities: list[GeneratedOpportunity],
     event_rows: list[dict],
     count: int,
-) -> list[dict]:
+) -> tuple[list[dict], list[dict]]:
+    """Notes plus their `note_targets` bridge rows.
+
+    `notes.target_table` / `target_row_id` is the legacy single link kept for
+    compatibility; every surface reads the bridge table, so a seed that wrote
+    only the legacy pair produced 120 notes that appeared attached to nothing.
+    """
     rows: list[dict] = []
+    target_rows: list[dict] = []
+    kind_column = {
+        "contacts": ("CONTACT", "contact_id"),
+        "properties": ("PROPERTY", "property_id"),
+        "opportunities": ("OPPORTUNITY", "opportunity_id"),
+        "events": ("EVENT", "event_id"),
+    }
     for index in range(count):
         target = _weighted(rng, (("contacts", 40), ("properties", 25), ("opportunities", 25), ("events", 10)))
         if target == "contacts":
@@ -1341,7 +1380,25 @@ def _build_notes(
                 "updated_at": min(created_at, now),
             }
         )
-    return rows
+        target_kind, column = kind_column[target]
+        # Every column, every row, same order. `insert_many` reads its column
+        # list off the FIRST row, so a dict that carries only the one FK that
+        # applies silently misaligns every later row with a different target.
+        target_rows.append(
+            {
+                "id": note_target_id(index),
+                "tenant_id": DEMO_TENANT_ID,
+                "note_id": note_id(index),
+                "target_kind": target_kind,
+                "property_id": target_row_id if column == "property_id" else None,
+                "contact_id": target_row_id if column == "contact_id" else None,
+                "opportunity_id": target_row_id if column == "opportunity_id" else None,
+                "event_id": target_row_id if column == "event_id" else None,
+                "created_by": author,
+                "created_at": min(created_at, now),
+            }
+        )
+    return rows, target_rows
 
 
 def _build_tags_and_taggings(
@@ -1473,10 +1530,11 @@ def build_plan(
     plan.add("events", event_rows)
     plan.add("reminders", _build_reminders(rng, now, author, event_rows, task_rows, reminder_count))
 
-    plan.add(
-        "notes",
-        _build_notes(rng, now, author, people, properties, opportunities, event_rows, note_count),
+    note_rows, note_target_rows = _build_notes(
+        rng, now, author, people, properties, opportunities, event_rows, note_count
     )
+    plan.add("notes", note_rows)
+    plan.add("note_targets", note_target_rows)
 
     tag_rows, tagging_rows = _build_tags_and_taggings(rng, author, people, properties, opportunities, tagging_count)
     plan.add("tags", tag_rows)

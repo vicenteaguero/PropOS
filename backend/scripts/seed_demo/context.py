@@ -54,6 +54,9 @@ SEEDED_TABLES: tuple[str, ...] = (
     "events",
     "reminders",
     "notes",
+    # Cascades from `notes`, but the wipe list is the documented contract for
+    # what the demo owns — an unlisted table is one nobody remembers to check.
+    "note_targets",
     "tags",
     "taggings",
     "documents",
@@ -63,6 +66,9 @@ SEEDED_TABLES: tuple[str, ...] = (
     "client_conversations",
     "client_messages",
     "client_consents",
+    "email_accounts",
+    "email_threads",
+    "email_messages",
     "contacts",
 )
 
