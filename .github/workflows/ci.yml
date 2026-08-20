@@ -124,13 +124,14 @@ jobs:
         run: python scripts/check_migrations.py
 
   audit:
-    name: Dependency audit (advisory)
+    name: Dependency audit
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    # Reports, does not gate. A transitive advisory published overnight should
-    # show up in the run summary, not block an unrelated PR. Triage it, then
-    # tighten this to a real gate once the backlog is at zero.
-    continue-on-error: true
+    # A real gate now that the backlog is at zero: 35 npm advisories and 171
+    # Python ones sat behind a permanently red advisory job nobody could read a
+    # signal out of. `deploy-backend` does not depend on this job, so a
+    # third-party advisory published overnight fails the run and blocks a merge
+    # without ever standing between a fix and production.
     steps:
       - uses: actions/checkout@v4
 
@@ -140,7 +141,12 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
+      # Both ecosystems always run. npm audit used to fail the step and
+      # short-circuit the job, so the Python side went unaudited for as long as
+      # a single JS advisory was open — which was the whole time.
       - name: npm audit
+        id: npm_audit
+        continue-on-error: true
         working-directory: frontend
         run: npm audit --audit-level=high
 
@@ -154,12 +160,21 @@ jobs:
       # No venv cache here on purpose: pip-audit gets installed into this
       # environment and must not leak into the cache the backend job restores.
       - name: pip-audit
+        id: pip_audit
+        continue-on-error: true
         working-directory: backend
         run: |
           poetry config virtualenvs.in-project true
           poetry install --no-interaction
           poetry run python -m pip install --quiet pip-audit
           poetry run pip-audit --desc off
+
+      - name: Fail if either ecosystem reported an advisory
+        if: steps.npm_audit.outcome == 'failure' || steps.pip_audit.outcome == 'failure'
+        run: |
+          echo "npm audit:  ${{ steps.npm_audit.outcome }}"
+          echo "pip-audit:  ${{ steps.pip_audit.outcome }}"
+          exit 1
 
   integration:
     name: Integration (live Supabase + LLM)
