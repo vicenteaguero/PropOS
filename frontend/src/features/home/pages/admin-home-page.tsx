@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   Building2,
   CalendarDays,
+  CalendarPlus,
   CheckSquare,
   ChevronRight,
   FileText,
@@ -13,6 +14,8 @@ import {
   Receipt,
   Sparkles,
   StickyNote,
+  Upload,
+  UserPlus,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { startOfDay, endOfDay, format } from "date-fns";
@@ -36,8 +39,11 @@ import {
   WhatsAppMark,
   type PillTone,
 } from "@shared/ui";
+import { useIsDesktop } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { initials } from "@shared/utils/format";
+import { DataHealthCard } from "../components/data-health-card";
+import { timeAgo } from "@shared/utils/relative-time";
 
 interface Tile {
   to: string;
@@ -79,6 +85,8 @@ export function AdminHomePage() {
   const agentName = useAgentName();
   const navigate = useNavigate();
   const propo = useAgentOverlay();
+  // The tile grid means something different once a sidebar is on screen.
+  const isDesktop = useIsDesktop();
 
   const role = (user?.role ?? "ADMIN").toLowerCase();
   const base = `/${role}`;
@@ -137,17 +145,65 @@ export function AdminHomePage() {
   });
   const activity = activityQ.data ?? [];
 
-  const tiles: Tile[] = [
-    // CRM and Agenda are deliberately absent: both are permanent bottom-nav
-    // tabs, so repeating them here spends grid on destinations already one tap
-    // away.
+  /**
+   * Starting points, not a second navigation.
+   *
+   * On a phone these were the only way to reach half the app, so they were
+   * destinations. With a sidebar on screen, repeating "Propiedades" and
+   * "Finanzas" as tiles duplicates two clicks away — so the desktop grid offers
+   * the things a broker STARTS rather than the places they browse: create a
+   * visit, log a person, upload a document, record an expense.
+   *
+   * The query params below are read by each surface to open its create sheet,
+   * which is why they are links and not callbacks: the action survives a
+   * refresh and can be linked to.
+   */
+  const destinationTiles: Tile[] = [
     { to: `${base}/agenda?tab=tareas`, label: "Tareas", icon: CheckSquare, scope: "productividad" },
     { to: `${base}/agenda?tab=notas`, label: "Notas", icon: StickyNote, scope: "productividad" },
     { to: `${base}/crm?tab=whatsapp`, label: "WhatsApp", icon: MessageCircle, scope: "inbox" },
     { to: `${base}/documentos`, label: "Docs", icon: FileText, scope: "documents" },
-    { to: "/admin/crm?tab=propiedades", label: "Propiedades", icon: Building2, adminOnly: true },
+    { to: `${base}/crm?tab=propiedades`, label: "Propiedades", icon: Building2 },
     { to: "/admin/finanzas", label: "Finanzas", icon: Receipt, scope: "finanzas", adminOnly: true },
-  ].filter((t) => allow(t.scope) && (!t.adminOnly || isAdmin));
+  ];
+
+  const actionTiles: Tile[] = [
+    {
+      to: `${base}/agenda?tab=calendario&nuevo=1`,
+      label: "Agendar visita",
+      icon: CalendarPlus,
+      scope: "productividad",
+    },
+    {
+      to: `${base}/crm?tab=personas&nuevo=1`,
+      label: "Nueva persona",
+      icon: UserPlus,
+      scope: "crm",
+    },
+    {
+      to: `${base}/crm?tab=propiedades&nuevo=1`,
+      label: "Nueva propiedad",
+      icon: Building2,
+    },
+    { to: `${base}/documentos?nuevo=1`, label: "Subir doc", icon: Upload, scope: "documents" },
+    {
+      to: "/admin/finanzas?nuevo=1",
+      label: "Nuevo gasto",
+      icon: Receipt,
+      scope: "finanzas",
+      adminOnly: true,
+    },
+    {
+      to: `${base}/agenda?tab=notas&nuevo=1`,
+      label: "Nota rápida",
+      icon: StickyNote,
+      scope: "productividad",
+    },
+  ];
+
+  const tiles = (isDesktop ? actionTiles : destinationTiles).filter(
+    (t) => allow(t.scope) && (!t.adminOnly || isAdmin),
+  );
 
   const propoBar = canPropo && (
     <div className="flex gap-2">
@@ -400,7 +456,7 @@ export function AdminHomePage() {
                 {INTERACTION_KIND_LABELS[it.kind] ?? it.kind}
               </span>
               <span className="shrink-0 text-[11.5px] tabular-nums text-muted-foreground">
-                {it.occurred_at ? format(new Date(it.occurred_at), "d MMM", { locale: es }) : ""}
+                {timeAgo(it.occurred_at)}
               </span>
             </div>
             <div className="mt-0.5 truncate text-[12.5px] text-muted-foreground">
@@ -485,6 +541,9 @@ export function AdminHomePage() {
         {/* Below xl this is simply the rest of the single column. */}
         <aside className="flex min-w-0 flex-col gap-4">
           {pendingCard}
+          {/* Data problems belong where the day starts, not buried in settings:
+              nobody goes looking for inconsistencies they do not know exist. */}
+          {allow("crm") && <DataHealthCard />}
           {allow("crm") &&
             (quickPeople.length > 0 || contactsQ.isPending || contactsQ.isError) &&
             peopleWidget}
