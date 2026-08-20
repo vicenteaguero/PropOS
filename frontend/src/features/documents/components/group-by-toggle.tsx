@@ -1,4 +1,4 @@
-import { Chips, Chip } from "@shared/ui";
+import { FilterSelect } from "@shared/ui";
 
 export type GroupByMode = "all" | "property" | "contact";
 
@@ -7,20 +7,23 @@ interface Props {
   onChange: (mode: GroupByMode) => void;
 }
 
-const OPTIONS: Array<{ value: GroupByMode; label: string }> = [
-  { value: "all", label: "Todos" },
-  { value: "property", label: "Por propiedad" },
-  { value: "contact", label: "Por contacto" },
-];
-
+/**
+ * Grouping is one choice out of three, which is a select — not three chips.
+ *
+ * As chips it needed a whole row, and inside the 17rem document rail the third
+ * option was clipped off the edge with no way to reach it.
+ */
 export function GroupByToggle({ value, onChange }: Props) {
   return (
-    <Chips>
-      {OPTIONS.map((opt) => (
-        <Chip key={opt.value} active={value === opt.value} onClick={() => onChange(opt.value)}>
-          {opt.label}
-        </Chip>
-      ))}
-    </Chips>
+    <FilterSelect
+      label="Agrupar"
+      value={value === "all" ? null : value}
+      onChange={(v) => onChange((v ?? "all") as GroupByMode)}
+      allLabel="Sin agrupar"
+      options={[
+        { value: "property", label: "Por propiedad" },
+        { value: "contact", label: "Por contacto" },
+      ]}
+    />
   );
 }

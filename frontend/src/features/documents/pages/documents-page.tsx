@@ -25,8 +25,12 @@ const VIEW_MODE_KEY = "documents:view-mode";
 const GROUP_BY_KEY = "propos:documents-view";
 
 function loadViewMode(): ViewMode {
-  if (typeof window === "undefined") return "grid";
-  return (localStorage.getItem(VIEW_MODE_KEY) as ViewMode) || "grid";
+  // List, not grid. Contracts and mandates are text: as tiles they became a
+  // wall of identical page glyphs whose names truncated after two words
+  // ("Mandato de…", "Contrato de…"), with the file SIZE as the most prominent
+  // thing on the card. A row shows the whole name and what it belongs to.
+  if (typeof window === "undefined") return "list";
+  return (localStorage.getItem(VIEW_MODE_KEY) as ViewMode) || "list";
 }
 
 function loadGroupBy(): GroupByMode {
@@ -190,27 +194,19 @@ export function DocumentsPage() {
   return (
     <PageLayout width="app" noPadding>
       <div className="flex h-[calc(100dvh-var(--app-header-h,3.5rem)-var(--app-nav-h,0px)-var(--section-tabs-h,0px))] flex-col overflow-hidden">
-        <div className="grid min-h-0 flex-1 grid-cols-[17rem_minmax(0,1fr)_22rem] overflow-hidden">
-          {/* Filter rail */}
-          <aside className="min-h-0 space-y-5 overflow-y-auto border-r border-border p-5">
-            <NewDocumentActions />
-            {searchField}
-            <div className="space-y-2">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Agrupar
-              </p>
-              <GroupByToggle value={groupBy} onChange={setGroupByPersist} />
-            </div>
-            <div className="flex items-center justify-between">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Vista
-              </p>
-              <ViewModeToggle value={viewMode} onChange={setViewModePersist} />
-            </div>
-            {entityBanner}
-          </aside>
+        {/* One header row, then list and preview.
+            The 17rem filter rail it replaces spent a whole column on four
+            controls, clipped the search field, and pushed the third grouping
+            chip off its own edge. */}
+        <div className="flex flex-wrap items-center gap-2 border-b border-border px-6 py-3">
+          <div className="min-w-[12rem] flex-1">{searchField}</div>
+          <GroupByToggle value={groupBy} onChange={setGroupByPersist} />
+          <ViewModeToggle value={viewMode} onChange={setViewModePersist} />
+          <NewDocumentActions />
+        </div>
+        {entityBanner && <div className="px-6 pt-3">{entityBanner}</div>}
 
-          {/* Grid / list pane */}
+        <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_22rem] overflow-hidden">
           <section className="min-h-0 overflow-y-auto p-6">{contentBody}</section>
 
           {/* Preview pane */}

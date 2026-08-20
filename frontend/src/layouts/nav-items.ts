@@ -7,8 +7,8 @@ import {
   ListChecks,
   Phone,
   Receipt,
-  Settings,
   Shield,
+  Settings,
   Sparkles,
   Upload,
   UserPlus,
@@ -95,6 +95,9 @@ export function buildAdminGroups(agentName: string): NavGroup[] {
         { label: "Finanzas", path: "/admin/finanzas", icon: Receipt, scope: "finanzas" },
       ],
     },
+    // Stays in the tree so the title index, the mobile sheet and the desktop
+    // rail all agree it exists. AppSidebar filters it out of the scrolling list
+    // and renders it in the footer instead, beside sign-out.
     { items: [{ label: "Configuración", path: SETTINGS_PATH, icon: Settings }] },
   ];
 }
