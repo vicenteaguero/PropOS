@@ -60,7 +60,7 @@ async def contact_overview(
     tenant_id: UUID = Depends(get_tenant_id),
 ) -> ContactOverview:
     """Deals, next booking, last contact and link counts in one round trip."""
-    return build_overview(tenant_id, contact_id)
+    return await build_overview(tenant_id, contact_id)
 
 
 @router.post("", response_model=ContactResponse, status_code=201)

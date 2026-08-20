@@ -23,4 +23,4 @@ async def attention(
     per source would make rows appear and disappear from one queue with no
     explanation on screen. RLS still scopes every query to the caller's tenant.
     """
-    return build_feed(tenant_id, limit)
+    return await build_feed(tenant_id, limit)
