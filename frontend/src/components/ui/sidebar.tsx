@@ -15,9 +15,21 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state";
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
-const SIDEBAR_WIDTH = "16rem";
+// DEVIATION FROM STOCK SHADCN (rail proportions).
+// Stock's 16rem expanded / 3rem collapsed pair was replaced by content-derived
+// numbers. SIDEBAR_WIDTH here is only the FALLBACK: app-layout measures the
+// longest label the current role can see and overrides --sidebar-width with a
+// value clamped to 11rem–15rem (see layouts/sidebar-width-probe.tsx). It must
+// stay a plain length — the collapse animation interpolates it, and neither
+// `max-content` nor `fit-content` can be interpolated or nested in `clamp()`.
+// 14rem is the midpoint of that range, so a first paint before the probe
+// reports is never far off.
+const SIDEBAR_WIDTH = "14rem";
 const SIDEBAR_WIDTH_MOBILE = "50vw";
-const SIDEBAR_WIDTH_ICON = "4.5rem";
+// DEVIATION: 3.5rem, not stock's 3rem and not the 4.5rem this file carried.
+// 4.5rem left 27px of dead space on each side of a 22px icon; 3.5rem gives it
+// 17px, which reads as a rail rather than as a collapsed panel.
+const SIDEBAR_WIDTH_ICON = "3.5rem";
 const SIDEBAR_KEYBOARD_SHORTCUT = "b";
 
 // DEVIATION FROM STOCK SHADCN (collapse animation fix).

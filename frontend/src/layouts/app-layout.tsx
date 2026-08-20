@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
 import { Check, Loader2, LogOut, Moon, Sun } from "lucide-react";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
@@ -13,6 +13,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { AppSidebar } from "@layouts/app-sidebar";
 import { MobileBottomNav } from "@layouts/mobile-bottom-nav";
+import { MobileTopBar, HEADER_CONTROL, HEADER_CONTROL_SQUARE } from "@layouts/app-topbar";
+import { SidebarWidthProbe } from "@layouts/sidebar-width-probe";
+import { useNavGroups } from "@layouts/use-nav-groups";
 import { CommandBar } from "@shared/components/command-bar/command-bar";
 import {
   CommandPalette,
@@ -29,6 +32,7 @@ import { useUfDailyRefresh } from "@features/uf/hooks/use-uf";
 import { UfButton } from "@features/uf/components/uf-button";
 import { WorkspacePill } from "@shared/ui";
 import { initials } from "@shared/utils/format";
+import { cn } from "@/lib/utils";
 
 /** Top-bar workspace selector (always visible). Dropdown when >1 membership. */
 function HeaderWorkspaceSwitcher() {
@@ -38,12 +42,17 @@ function HeaderWorkspaceSwitcher() {
   const label = current?.tenantName ?? current?.tenantSlug ?? "Workspace";
 
   if (memberships.length <= 1) {
-    return <WorkspacePill label={label} className="cursor-default active:scale-100" />;
+    return (
+      <WorkspacePill
+        label={label}
+        className={cn(HEADER_CONTROL, "cursor-default py-0 active:scale-100")}
+      />
+    );
   }
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <WorkspacePill label={label} />
+        <WorkspacePill label={label} className={cn(HEADER_CONTROL, "py-0")} />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="min-w-[240px]">
         {memberships.map((m) => {
@@ -79,7 +88,10 @@ function HeaderThemeToggle() {
       type="button"
       onClick={toggle}
       aria-label={isDark ? "Cambiar a claro" : "Cambiar a oscuro"}
-      className="flex size-11 items-center justify-center rounded-full text-foreground transition hover:bg-secondary active:scale-90"
+      className={cn(
+        "flex items-center justify-center rounded-full text-foreground transition hover:bg-secondary active:scale-90",
+        HEADER_CONTROL_SQUARE,
+      )}
     >
       {isDark ? <Moon className="size-[18px]" /> : <Sun className="size-[18px]" />}
     </button>
@@ -132,6 +144,16 @@ export function AppLayout() {
   const shellMode = useShellMode();
   useUfDailyRefresh();
 
+  const { groups } = useNavGroups();
+  const navLabels = groups.flatMap((g) => g.items.map((i) => i.label));
+  const [navWidth, setNavWidth] = useState<number | null>(null);
+  // Guarded so a measurement that agrees with the current state cannot start a
+  // render loop through the probe's layout effect.
+  const setNavWidthIfChanged = useCallback(
+    (px: number) => setNavWidth((prev) => (prev === px ? prev : px)),
+    [],
+  );
+
   // Sidebar auto-collapses to the icon rail on narrow desktops and expands on
   // wide ones, with HYSTERESIS: collapse below 1180px, expand above 1300px, and
   // leave the current state untouched in the 1180–1300 dead-band. The gap stops
@@ -164,22 +186,25 @@ export function AppLayout() {
       // viewport-pinned primitive below subtracts 56px that doesn't exist.
       // --app-nav-h is published by MobileBottomNav from its own measured box.
       <AgentOverlayProvider>
-        <div className="flex min-h-dvh flex-col bg-background [--app-header-h:0px]">
+        <div className="flex min-h-dvh flex-col bg-background">
           <SkipToContent />
+          {/* The shell's own sticky chrome. It publishes its measured height to
+              --app-header-h, so the token is honest in this shell instead of
+              being pinned to 0 as it was when the shell had no header. */}
+          <MobileTopBar />
           {/* tabIndex -1 so PageMetaProvider can move focus here on navigation
             without putting the region itself in the tab sequence.
 
-            The insets are why this element needs padding at all. This shell has
-            no header of its own, so under viewport-fit=cover every page's own
-            title row rendered straight beneath the notch, the Dynamic Island or
-            an Android punch-hole — the overlays had inset handling, the main
-            scroll container never did. Left/right matter in landscape, where the
-            cutout moves to the side. All four resolve to 0 on a laptop or
+            The top inset now belongs to MobileTopBar, which sits above this
+            element and carries --safe-top itself — putting it here as well
+            would double the clearance under a Dynamic Island. Left/right still
+            matter in landscape, where the cutout moves to the side, and the
+            bottom clears the floating nav. All resolve to 0 on a laptop or
             tablet, so those layouts are unchanged. */}
           <main
             id="main-content"
             tabIndex={-1}
-            className="flex-1 outline-none pt-[var(--safe-top)] pr-[var(--safe-right)] pb-[var(--app-nav-h,0px)] pl-[var(--safe-left)]"
+            className="flex-1 outline-none pr-[var(--safe-right)] pb-[var(--app-nav-h,0px)] pl-[var(--safe-left)]"
           >
             <Outlet />
           </main>
@@ -197,8 +222,19 @@ export function AppLayout() {
     // beside the nav rail, and the sidebar rendered straight under it. Both are
     // 0 on a laptop or tablet, so those layouts are untouched.
     <AgentOverlayProvider>
-      <SidebarProvider open={sidebarOpen} onOpenChange={setSidebarOpen}>
+      {/* --sidebar-width is derived from the longest label the current role can
+          actually see, not from a constant. `style` is spread after the
+          defaults inside SidebarProvider, so this wins; until the probe reports,
+          the component default applies. */}
+      <SidebarProvider
+        open={sidebarOpen}
+        onOpenChange={setSidebarOpen}
+        style={
+          navWidth ? ({ "--sidebar-width": `${navWidth}px` } as React.CSSProperties) : undefined
+        }
+      >
         <SkipToContent />
+        <SidebarWidthProbe labels={navLabels} onMeasure={setNavWidthIfChanged} />
         <AppSidebar />
         {/* Bound the shell to the viewport so the inner <main> is the scroll
           container — keeps the header pinned (a window-level scroll trapped the
@@ -210,7 +246,9 @@ export function AppLayout() {
             <div className="flex flex-1 items-center justify-center px-2">
               <CommandBar />
             </div>
-            <UfButton />
+            <div className="flex items-center [&>button]:h-9 [@media(pointer:coarse)]:[&>button]:h-11">
+              <UfButton />
+            </div>
             <HeaderThemeToggle />
             <div className="block">
               <DropdownMenu>

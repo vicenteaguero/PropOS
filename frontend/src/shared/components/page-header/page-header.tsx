@@ -1,7 +1,5 @@
-import { Link } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { BackButton } from "./back-button";
 
 /**
  * Heading scale.
@@ -20,6 +18,10 @@ interface PageHeaderProps {
   /** Optional: inside a tabbed section the tab already names the view. */
   title?: string;
   actions?: React.ReactNode;
+  /**
+   * Renders the shared back control. The value is the COLD-OPEN fallback, not
+   * an unconditional destination — see BackButton.
+   */
   backTo?: string;
   size?: keyof typeof SIZES;
   className?: string;
@@ -27,23 +29,20 @@ interface PageHeaderProps {
 
 export function PageHeader({ title, actions, backTo, size = "page", className }: PageHeaderProps) {
   return (
-    <div className={cn("mb-4 space-y-1", className)}>
-      {backTo && (
-        <Button variant="ghost" size="sm" asChild className="-ml-2 min-h-11 px-2">
-          <Link to={backTo}>
-            <ArrowLeft className="size-4" />
-            Volver
-          </Link>
-        </Button>
-      )}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1
-          className={cn("font-semibold leading-tight tracking-tight text-foreground", SIZES[size])}
-        >
-          {title}
-        </h1>
-        {actions && <div className="flex items-center gap-2">{actions}</div>}
-      </div>
+    // The back control sits ON the title line, not above it: a stacked "Volver"
+    // row cost a whole line of vertical rhythm on a phone and put the title
+    // further from the top of the screen than the shell header already is.
+    <div className={cn("mb-4 flex flex-wrap items-center gap-x-2 gap-y-3", className)}>
+      {backTo && <BackButton fallbackTo={backTo} />}
+      <h1
+        className={cn(
+          "min-w-0 flex-1 truncate font-semibold leading-tight tracking-tight text-foreground",
+          SIZES[size],
+        )}
+      >
+        {title}
+      </h1>
+      {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
     </div>
   );
 }

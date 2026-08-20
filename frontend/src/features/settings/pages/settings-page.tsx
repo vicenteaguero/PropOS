@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, FileText, Loader2, Palette, Shield, Sparkles } from "lucide-react";
+import { Check, ChevronRight, FileText, Loader2, Palette, Shield, Sparkles } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +15,7 @@ import {
   Segmented,
   TOUCH_TARGET_COARSE,
   TOUCH_TARGET_HIT_AREA,
+  TOUCH_TARGET_ROW,
 } from "@shared/ui";
 import { useIsDesktop } from "@/hooks/use-mobile";
 import { toast } from "sonner";
@@ -25,6 +27,9 @@ import { settingsApi } from "../api/settings-api";
 import { AvatarUploader } from "../components/avatar-uploader";
 import { NotificationsCard } from "../components/notifications-card";
 import { usePageTitle } from "@app/page-meta";
+import { useAuth } from "@shared/hooks/use-auth";
+import { useAgentName } from "@core/branding/agent-branding";
+import { buildSettingsShortcuts, filterByDev, filterByScope } from "@layouts/nav-items";
 
 const PAPER_OPTIONS = [
   { value: "A4", label: "A4", detail: "210×297 mm" },
@@ -102,6 +107,56 @@ function DesktopCard({
       </h2>
       <div className="p-5">{children}</div>
     </section>
+  );
+}
+
+/**
+ * The destinations that used to be permanent nav entries.
+ *
+ * Importar, Visitantes, Teléfonos, Usuarios, Workflows, Costo and Tenants are
+ * monthly-at-most tasks; as six top-level nav items they carried the same
+ * weight as CRM and made the tree something to memorise rather than read. They
+ * live here now, filtered by the same scope and dev rules the nav applied, so a
+ * restricted admin still cannot see what they cannot open.
+ */
+function AdminShortcuts() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const agentName = useAgentName();
+  const items = filterByDev(
+    filterByScope([{ items: buildSettingsShortcuts(agentName) }], user?.adminScope ?? []),
+    !!user?.isDevAdmin,
+  ).flatMap((g) => g.items);
+
+  if (items.length === 0) return null;
+
+  return (
+    <div className="grid grid-cols-[repeat(auto-fill,minmax(190px,1fr))] gap-1">
+      {items.map((item) => (
+        <button
+          key={item.path}
+          type="button"
+          onClick={() => navigate(item.path)}
+          className={cn(
+            "flex items-center gap-3 rounded-xl px-2 py-2.5 text-left transition hover:bg-secondary active:scale-[0.98]",
+            TOUCH_TARGET_ROW,
+          )}
+        >
+          <RowIcon>
+            <item.icon className="size-[18px]" strokeWidth={1.8} />
+          </RowIcon>
+          <span className="min-w-0 flex-1 truncate text-[15px] font-medium text-foreground">
+            {item.label}
+          </span>
+          {item.devOnly && (
+            <span className="rounded bg-warning/20 px-1 text-[11px] font-bold uppercase tracking-wide text-warning">
+              dev
+            </span>
+          )}
+          <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -251,6 +306,11 @@ export function SettingsPage() {
   // grid vs a single-column list), so the SHELL branches — the content does not.
   const sections: { key: string; title: string; body: React.ReactNode }[] = [
     {
+      key: "administracion",
+      title: "Administración",
+      body: <AdminShortcuts />,
+    },
+    {
       key: "perfil",
       title: "Perfil",
       body: meQ.data ? (
@@ -370,7 +430,12 @@ export function SettingsPage() {
             <DesktopCard
               key={sec.key}
               title={sec.title}
-              className={sec.key === "notificaciones" ? "overflow-hidden" : undefined}
+              className={cn(
+                sec.key === "notificaciones" && "overflow-hidden",
+                // The destination grid is the reason to open this page; give it
+                // the full width so its rows are not two per line at 190px.
+                sec.key === "administracion" && "col-span-2",
+              )}
             >
               <div className={sec.key === "notificaciones" ? "-mx-5 -my-5" : undefined}>
                 {sec.body}

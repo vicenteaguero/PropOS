@@ -7,6 +7,7 @@ import {
   ListChecks,
   Phone,
   Receipt,
+  Settings,
   Shield,
   Sparkles,
   Upload,
@@ -57,10 +58,18 @@ export function filterByDev(groups: NavGroup[], isDevAdmin: boolean): NavGroup[]
     .filter((g) => g.items.length > 0);
 }
 
+/** The one route that hosts everything a broker touches about once a month. */
+export const SETTINGS_PATH = "/admin/settings";
+
 export function buildAdminGroups(agentName: string): NavGroup[] {
-  // Four groups, not seven. Every destination that used to be its own list page
-  // is now a tab inside one of the four sections, so the tree stopped being a
-  // map you had to memorise. Entries pointing at a tab carry the query param.
+  // Three groups plus Configuración, not four with a five-item admin block.
+  //
+  // Importar, Visitantes, Teléfonos, Usuarios, Tenants and Workflows were six
+  // permanent nav entries for tasks nobody performs weekly, and they sat at the
+  // same visual weight as CRM. They now live as sections INSIDE Configuración
+  // (features/settings), which in turn stopped being hardcoded per shell and
+  // became a real entry here. Every route is unchanged — this is a change of
+  // prominence, not of URLs, so nothing bookmarked breaks.
   return [
     { items: [{ label: "Inicio", path: "/admin", icon: Home, end: true }] },
     {
@@ -74,13 +83,6 @@ export function buildAdminGroups(agentName: string): NavGroup[] {
           badge: "pending",
           scope: "pendientes",
         },
-        {
-          label: "Costo",
-          path: "/admin/finanzas?tab=costo-propo",
-          icon: Receipt,
-          scope: "analytics",
-          devOnly: true,
-        },
       ],
     },
     {
@@ -91,19 +93,32 @@ export function buildAdminGroups(agentName: string): NavGroup[] {
         { label: "Propiedades", path: "/admin/crm?tab=propiedades", icon: Building2 },
         { label: "Documentos", path: "/admin/documentos", icon: FileText, scope: "documents" },
         { label: "Finanzas", path: "/admin/finanzas", icon: Receipt, scope: "finanzas" },
-        { label: "Workflows", path: "/admin/workflows", icon: ListChecks, scope: "workflows" },
       ],
     },
+    { items: [{ label: "Configuración", path: SETTINGS_PATH, icon: Settings }] },
+  ];
+}
+
+/**
+ * The destinations Configuración now owns, in the order the page lists them.
+ * Exported as data so the settings page and any future surface cannot drift
+ * from each other the way the two shells' hardcoded copies did.
+ */
+export function buildSettingsShortcuts(agentName: string): NavItem[] {
+  return [
+    { label: "Usuarios", path: "/admin/users", icon: Users },
+    { label: "Visitantes", path: "/admin/visitantes", icon: UserPlus },
+    { label: "Teléfonos", path: "/admin/phones", icon: Phone, scope: "phones" },
+    { label: "Importar datos", path: "/admin/datos/importar", icon: Upload, scope: "datos" },
+    { label: "Workflows", path: "/admin/workflows", icon: ListChecks, scope: "workflows" },
     {
-      label: "Administración",
-      items: [
-        { label: "Usuarios", path: "/admin/users", icon: Users },
-        { label: "Visitantes", path: "/admin/visitantes", icon: UserPlus },
-        { label: "Teléfonos", path: "/admin/phones", icon: Phone, scope: "phones" },
-        { label: "Importar", path: "/admin/datos/importar", icon: Upload, scope: "datos" },
-        { label: "Tenants", path: "/admin/tenants", icon: Shield, devOnly: true },
-      ],
+      label: `Costo ${agentName}`,
+      path: "/admin/finanzas?tab=costo-propo",
+      icon: Receipt,
+      scope: "analytics",
+      devOnly: true,
     },
+    { label: "Tenants", path: "/admin/tenants", icon: Shield, devOnly: true },
   ];
 }
 

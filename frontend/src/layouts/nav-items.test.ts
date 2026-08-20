@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { buildGroups, filterByScope, type NavGroup } from "./nav-items";
+import {
+  buildGroups,
+  buildSettingsShortcuts,
+  filterByDev,
+  filterByScope,
+  SETTINGS_PATH,
+  type NavGroup,
+} from "./nav-items";
 
 const VIEWS = ["admin", "admin-dev", "agent", "owner", "buyer", "content"] as const;
 
@@ -27,8 +34,32 @@ describe("navigation tree", () => {
       "/admin/documentos",
       // The queue that was unreachable on mobile is the canary for this fix.
       "/admin/pendientes",
+      // Configuración used to be hardcoded in each shell's chrome, so neither
+      // shell could tell it existed. It is a real entry now.
+      SETTINGS_PATH,
     ]) {
       expect(admin).toContain(path);
+    }
+  });
+
+  /**
+   * The once-a-month destinations moved behind Configuración. Demoting them is
+   * only acceptable while they stay REACHABLE, so assert both halves: gone from
+   * the tree, present in the settings shortcuts.
+   */
+  it("keeps every demoted destination reachable through Configuración", () => {
+    const admin = paths(buildGroups("admin-dev", "Propo", true));
+    const shortcuts = buildSettingsShortcuts("Propo").map((i) => i.path);
+    for (const path of [
+      "/admin/users",
+      "/admin/visitantes",
+      "/admin/phones",
+      "/admin/datos/importar",
+      "/admin/workflows",
+      "/admin/tenants",
+    ]) {
+      expect(admin, path).not.toContain(path);
+      expect(shortcuts, path).toContain(path);
     }
   });
 
@@ -46,8 +77,12 @@ describe("navigation tree", () => {
   });
 
   it("hides dev-only entries from non-dev admins", () => {
-    expect(paths(buildGroups("admin", "Propo", false))).not.toContain("/admin/tenants");
-    expect(paths(buildGroups("admin-dev", "Propo", true))).toContain("/admin/tenants");
+    const forDev = (isDev: boolean) =>
+      filterByDev([{ items: buildSettingsShortcuts("Propo") }], isDev).flatMap((g) =>
+        g.items.map((i) => i.path),
+      );
+    expect(forDev(false)).not.toContain("/admin/tenants");
+    expect(forDev(true)).toContain("/admin/tenants");
   });
 
   it("treats an empty admin scope as full access, not zero access", () => {
