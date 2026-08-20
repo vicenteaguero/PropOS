@@ -5,6 +5,8 @@ export interface TenantSettings {
   ai_assistant_name: string;
   default_paper_size: string;
   brand_color?: string | null;
+  /** 0-12: surface tint strength. See --tint in index.css. */
+  brand_tint?: number | null;
 }
 
 export interface TenantResponse {
