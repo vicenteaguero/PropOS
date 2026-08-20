@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useOpenOnParam } from "@shared/hooks/use-open-on-param";
 import { useSearchParams } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,7 @@ export function ContactsPage() {
   // question nobody has.
   const [propertyId, setPropertyId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  useOpenOnParam("nuevo", () => setDialogOpen(true));
 
   // Selection lives in the URL, not in state. Below md the master-detail swaps
   // the list out for the detail, so a phone user's Back gesture has to land on

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useOpenOnParam } from "@shared/hooks/use-open-on-param";
 import { label } from "@shared/lib/labels";
 import {
   addDays,
@@ -371,6 +372,8 @@ export function CalendarPage() {
     setForm({ ...EMPTY_EVENT_FORM, startsAt: day ? format(at, "yyyy-MM-dd'T'HH:mm") : "" });
     setOpen(true);
   };
+
+  useOpenOnParam("nuevo", () => openCreate());
 
   /** Shared guard for both forms: title + start required, end after start. */
   const validate = (f: EventFormState): boolean => {

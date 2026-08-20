@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useOpenOnParam } from "@shared/hooks/use-open-on-param";
 import { useNavigate } from "react-router-dom";
 import { Bath, BedDouble, Maximize, Plus, LayoutGrid, Map as MapIcon } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -84,6 +85,7 @@ export function AdminPropertiesPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
+  useOpenOnParam("nuevo", () => setDialogOpen(true));
   const [view, setView] = useState<"lista" | "mapa">("lista");
   const [search, setSearch] = useState("");
   // Debounced so typing doesn't fire a request per keystroke; the query key
