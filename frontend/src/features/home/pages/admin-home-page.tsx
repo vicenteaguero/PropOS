@@ -378,7 +378,10 @@ export function AdminHomePage() {
 
           {allow("crm") && (hasRecent || contactsQ.isPending || contactsQ.isError) && (
             <section className="flex flex-col gap-2">
-              <SectionLabel action="Ver todas" onAction={() => navigate(`${base}/crm?tab=personas`)}>
+              <SectionLabel
+                action="Ver todas"
+                onAction={() => navigate(`${base}/crm?tab=personas`)}
+              >
                 Personas
               </SectionLabel>
               {recentList}

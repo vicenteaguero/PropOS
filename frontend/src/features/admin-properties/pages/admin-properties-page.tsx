@@ -108,8 +108,7 @@ export function AdminPropertiesPage() {
     <PageLayout width="md" noPadding className="pb-6 lg:max-w-none">
       {/* Header */}
       <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-3 lg:px-8 lg:pt-7">
-        <div>
-        </div>
+        <div></div>
         <Button
           variant="ink"
           size="icon-lg"
