@@ -394,10 +394,7 @@ export function AdminHomePage() {
       </SectionLabel>
       <div className="overflow-hidden rounded-xl border border-border">
         {activity.slice(0, 5).map((it) => (
-          <div
-            key={it.id}
-            className={cn("border-b border-border py-2.5 last:border-b-0", CARD_X)}
-          >
+          <div key={it.id} className={cn("border-b border-border py-2.5 last:border-b-0", CARD_X)}>
             <div className="flex items-baseline justify-between gap-2">
               <span className="truncate text-[13px] font-semibold text-foreground">
                 {INTERACTION_KIND_LABELS[it.kind] ?? it.kind}
