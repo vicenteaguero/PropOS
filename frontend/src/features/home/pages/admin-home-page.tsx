@@ -143,11 +143,11 @@ export function AdminHomePage() {
     // CRM and Agenda are deliberately absent: both are permanent bottom-nav
     // tabs, so repeating them here spends grid on destinations already one tap
     // away.
-    { to: `${base}/tareas`, label: "Tareas", icon: CheckSquare, scope: "productividad" },
-    { to: `${base}/notas`, label: "Notas", icon: StickyNote, scope: "productividad" },
-    { to: `${base}/client-inbox`, label: "WhatsApp", icon: MessageCircle, scope: "inbox" },
-    { to: `${base}/documents`, label: "Docs", icon: FileText, scope: "documents" },
-    { to: "/admin/properties", label: "Propiedades", icon: Building2, adminOnly: true },
+    { to: `${base}/agenda?tab=tareas`, label: "Tareas", icon: CheckSquare, scope: "productividad" },
+    { to: `${base}/agenda?tab=notas`, label: "Notas", icon: StickyNote, scope: "productividad" },
+    { to: `${base}/crm?tab=whatsapp`, label: "WhatsApp", icon: MessageCircle, scope: "inbox" },
+    { to: `${base}/documentos`, label: "Docs", icon: FileText, scope: "documents" },
+    { to: "/admin/crm?tab=propiedades", label: "Propiedades", icon: Building2, adminOnly: true },
     { to: "/admin/finanzas", label: "Finanzas", icon: Receipt, scope: "finanzas", adminOnly: true },
   ].filter((t) => allow(t.scope) && (!t.adminOnly || isAdmin));
 
@@ -183,7 +183,7 @@ export function AdminHomePage() {
   const agendaWidget = (
     <button
       type="button"
-      onClick={() => navigate(`${base}/calendario`)}
+      onClick={() => navigate(`${base}/agenda`)}
       className="flex w-full items-center gap-3 rounded-xl bg-foreground px-3.5 py-3 text-left text-background transition active:scale-[0.99]"
     >
       {nextItem ? (
@@ -369,7 +369,7 @@ export function AdminHomePage() {
         <div className="grid gap-4 lg:grid-cols-2">
           {todayItems.length > 0 || todayFeed.isPending || todayFeed.isError ? (
             <section className="flex flex-col gap-2">
-              <SectionLabel action="Ver agenda" onAction={() => navigate(`${base}/calendario`)}>
+              <SectionLabel action="Ver agenda" onAction={() => navigate(`${base}/agenda`)}>
                 Hoy
               </SectionLabel>
               {todayList}
@@ -378,7 +378,7 @@ export function AdminHomePage() {
 
           {allow("crm") && (hasRecent || contactsQ.isPending || contactsQ.isError) && (
             <section className="flex flex-col gap-2">
-              <SectionLabel action="Ver todas" onAction={() => navigate(`${base}/personas`)}>
+              <SectionLabel action="Ver todas" onAction={() => navigate(`${base}/crm?tab=personas`)}>
                 Personas
               </SectionLabel>
               {recentList}

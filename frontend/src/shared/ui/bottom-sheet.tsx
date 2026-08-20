@@ -40,9 +40,9 @@ export function BottomSheet({
       >
         <div className="mx-auto mb-3 h-1.5 w-10 shrink-0 rounded-full bg-line-strong" />
         {title ? (
-          <SheetTitle className="text-xl font-bold tracking-tight">{title}</SheetTitle>
+          <SheetTitle className="text-[15px] font-semibold tracking-tight">{title}</SheetTitle>
         ) : (
-          <SheetTitle className="sr-only">{srOnlyTitle ?? "Detalle"}</SheetTitle>
+          <SheetTitle className="sr-only">{srOnlyTitle ?? "Menú"}</SheetTitle>
         )}
         {description && <SheetDescription className="mt-1">{description}</SheetDescription>}
         {children}

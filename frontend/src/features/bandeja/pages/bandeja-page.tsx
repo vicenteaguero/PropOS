@@ -7,7 +7,6 @@ import { useContacts } from "@features/contacts/hooks/use-contacts";
 import { CONTACT_TYPE_LABELS, type ContactType } from "@features/contacts/types";
 import type { UserProfile } from "@shared/types/auth";
 import { PageLayout } from "@shared/components/page-layout";
-import { PageHeader } from "@shared/components/page-header";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
 import {
   Row,
@@ -264,7 +263,6 @@ export function BandejaPage() {
     return (
       <PageLayout width="app">
         <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
-          <PageHeader title="CRM" className="mb-0" />
           <Segmented
             items={tabs}
             value={activeTab}
@@ -283,7 +281,6 @@ export function BandejaPage() {
   // Mobile: capped column, full-width tab bar, stacked views.
   return (
     <PageLayout width="md">
-      <PageHeader title="CRM" />
 
       <div className="mb-4">
         <Segmented items={tabs} value={activeTab} onChange={(id) => setTab(id as Tab)} />

@@ -114,9 +114,6 @@ export function AnalyticsPage() {
     <PageLayout width="lg" noPadding className="pb-10 lg:max-w-none">
       <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-4 lg:px-8 lg:pt-7">
         <div>
-          <h1 className="text-[17px] font-semibold leading-tight tracking-tight text-foreground">
-            Analítica
-          </h1>
         </div>
         <RoundButton
           tone="muted"

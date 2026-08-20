@@ -2,7 +2,6 @@ import { useRef, useState } from "react";
 import { Loader2, Mic, Plus, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { PageLayout } from "@shared/components/page-layout";
-import { PageHeader } from "@shared/components/page-header";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
 import { ErrorState, HOVER_REVEAL, PageSkeleton, Pill } from "@shared/ui";
 import { useAuth } from "@shared/hooks/use-auth";
@@ -192,7 +191,6 @@ export function NotesPage() {
 
   return (
     <PageLayout width={isDesktop ? "app" : "md"}>
-      <PageHeader title="Notas" />
       {content}
     </PageLayout>
   );

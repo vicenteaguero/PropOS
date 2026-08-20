@@ -29,7 +29,6 @@ export function PortalAdminPage() {
     // Desktop fills the app surface; mobile keeps the capped reading column.
     <PageLayout width={isDesktop ? "app" : "lg"}>
       <PageHeader
-        title="Enlaces de subida anónima"
         actions={
           <>
             <Button variant="outline" size="sm" onClick={() => navigate(-1)}>

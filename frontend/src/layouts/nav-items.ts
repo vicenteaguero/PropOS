@@ -1,22 +1,14 @@
 import {
-  BarChart3,
   Building2,
   CalendarDays,
-  CheckSquare,
   FileText,
-  Folder,
   Home,
   Inbox,
   ListChecks,
-  Mail,
-  MessageCircle,
-  MessageSquare,
   Phone,
   Receipt,
   Shield,
   Sparkles,
-  StickyNote,
-  Target,
   Upload,
   UserPlus,
   Users,
@@ -66,6 +58,9 @@ export function filterByDev(groups: NavGroup[], isDevAdmin: boolean): NavGroup[]
 }
 
 export function buildAdminGroups(agentName: string): NavGroup[] {
+  // Four groups, not seven. Every destination that used to be its own list page
+  // is now a tab inside one of the four sections, so the tree stopped being a
+  // map you had to memorise. Entries pointing at a tab carry the query param.
   return [
     { items: [{ label: "Inicio", path: "/admin", icon: Home, end: true }] },
     {
@@ -81,7 +76,7 @@ export function buildAdminGroups(agentName: string): NavGroup[] {
         },
         {
           label: "Costo",
-          path: "/admin/analytics/agent-cost",
+          path: "/admin/finanzas?tab=costo-propo",
           icon: Receipt,
           scope: "analytics",
           devOnly: true,
@@ -89,44 +84,14 @@ export function buildAdminGroups(agentName: string): NavGroup[] {
       ],
     },
     {
-      label: "Comunicación",
+      label: "Trabajo",
       items: [
-        { label: "Inbox WA", path: "/admin/client-inbox", icon: MessageCircle, scope: "inbox" },
-        { label: "Correos", path: "/admin/correos", icon: Mail, scope: "email" },
-        { label: "Teléfonos", path: "/admin/phones", icon: Phone, scope: "phones" },
-      ],
-    },
-    {
-      label: "CRM",
-      items: [
-        { label: "Bandeja", path: "/admin/bandeja", icon: Inbox, scope: "crm" },
-        { label: "Personas", path: "/admin/personas", icon: Users, scope: "crm" },
-        { label: "Interacciones", path: "/admin/interacciones", icon: MessageSquare, scope: "crm" },
-        { label: "Oportunidades", path: "/admin/oportunidades", icon: Target, scope: "crm" },
-        { label: "Propiedades", path: "/admin/properties", icon: Building2 },
-        { label: "Documentos", path: "/admin/documents", icon: FileText, scope: "documents" },
-        { label: "Enlaces", path: "/admin/documents/portals", icon: Folder, scope: "documents" },
-      ],
-    },
-    {
-      label: "Productividad",
-      items: [
-        { label: "Tareas", path: "/admin/tareas", icon: CheckSquare, scope: "productividad" },
-        {
-          label: "Calendario",
-          path: "/admin/calendario",
-          icon: CalendarDays,
-          scope: "productividad",
-        },
-        { label: "Notas", path: "/admin/notas", icon: StickyNote, scope: "productividad" },
-      ],
-    },
-    {
-      label: "Operación",
-      items: [
-        { label: "Workflows", path: "/admin/workflows", icon: ListChecks, scope: "workflows" },
+        { label: "CRM", path: "/admin/crm", icon: Users, scope: "crm" },
+        { label: "Agenda", path: "/admin/agenda", icon: CalendarDays, scope: "productividad" },
+        { label: "Propiedades", path: "/admin/crm?tab=propiedades", icon: Building2 },
+        { label: "Documentos", path: "/admin/documentos", icon: FileText, scope: "documents" },
         { label: "Finanzas", path: "/admin/finanzas", icon: Receipt, scope: "finanzas" },
-        { label: "Analítica", path: "/admin/analytics", icon: BarChart3, scope: "analytics" },
+        { label: "Workflows", path: "/admin/workflows", icon: ListChecks, scope: "workflows" },
       ],
     },
     {
@@ -134,12 +99,10 @@ export function buildAdminGroups(agentName: string): NavGroup[] {
       items: [
         { label: "Usuarios", path: "/admin/users", icon: Users },
         { label: "Visitantes", path: "/admin/visitantes", icon: UserPlus },
+        { label: "Teléfonos", path: "/admin/phones", icon: Phone, scope: "phones" },
         { label: "Importar", path: "/admin/datos/importar", icon: Upload, scope: "datos" },
+        { label: "Tenants", path: "/admin/tenants", icon: Shield, devOnly: true },
       ],
-    },
-    {
-      label: "Sistema",
-      items: [{ label: "Tenants", path: "/admin/tenants", icon: Shield, devOnly: true }],
     },
   ];
 }
@@ -164,31 +127,11 @@ export function buildGroups(view: UserView, agentName: string, isDevAdmin: boole
           label: "Trabajo",
           items: [
             { label: "Pendientes", path: "/agent/pendientes", icon: Inbox, badge: "pending" },
-            { label: "Tareas", path: "/agent/tareas", icon: CheckSquare },
-            { label: "Calendario", path: "/agent/calendario", icon: CalendarDays },
-            { label: "Notas", path: "/agent/notas", icon: StickyNote },
+            { label: "CRM", path: "/agent/crm", icon: Users },
+            { label: "Agenda", path: "/agent/agenda", icon: CalendarDays },
+            { label: "Propiedades", path: "/agent/crm?tab=propiedades", icon: Building2 },
+            { label: "Documentos", path: "/agent/documentos", icon: FileText },
             { label: "Workflows", path: "/agent/workflows", icon: ListChecks },
-          ],
-        },
-        {
-          label: "CRM",
-          items: [
-            { label: "Bandeja", path: "/agent/bandeja", icon: Inbox },
-            { label: "Personas", path: "/agent/personas", icon: Users },
-            { label: "Interacciones", path: "/agent/interacciones", icon: MessageSquare },
-            { label: "Oportunidades", path: "/agent/oportunidades", icon: Target },
-            // Backend authorizes AGENT on /properties (properties/router.py),
-            // so the role gets the same CRM entry ADMIN has.
-            { label: "Propiedades", path: "/agent/properties", icon: Building2 },
-            { label: "Inbox WA", path: "/agent/client-inbox", icon: MessageCircle },
-            { label: "Correos", path: "/agent/correos", icon: Mail },
-          ],
-        },
-        {
-          label: "Datos",
-          items: [
-            { label: "Documentos", path: "/agent/documents", icon: FileText },
-            { label: "Enlaces", path: "/agent/documents/portals", icon: Folder },
           ],
         },
       ];
@@ -199,7 +142,7 @@ export function buildGroups(view: UserView, agentName: string, isDevAdmin: boole
         {
           items: [
             { label: "Inicio", path: "/buyer", icon: Home, end: true },
-            { label: "Documentos", path: "/buyer/documents", icon: FileText },
+            { label: "Documentos", path: "/buyer/documentos", icon: FileText },
           ],
         },
       ];

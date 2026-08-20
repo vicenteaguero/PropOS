@@ -63,9 +63,6 @@ export function ClientInboxPage() {
         <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-secondary">
           <BrandMark brand="whatsapp" size={22} />
         </span>
-        <h1 className="text-[17px] font-semibold leading-tight tracking-tight text-foreground">
-          WhatsApp
-        </h1>
       </div>
 
       <div className="space-y-3 px-5 pb-3">

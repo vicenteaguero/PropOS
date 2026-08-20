@@ -486,7 +486,6 @@ export function TasksPage() {
     <PageLayout width="app" noPadding className="max-w-4xl lg:max-w-none">
       <div className="px-5 pt-4 pb-5 lg:px-8 lg:pt-7">
         <PageHeader
-          title="Tareas"
           className="mb-0"
           actions={
             <Button onClick={() => setOpen(true)} variant="ink" className="gap-2">

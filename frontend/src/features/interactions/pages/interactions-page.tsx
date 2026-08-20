@@ -1,5 +1,4 @@
 import { PageLayout } from "@shared/components/page-layout";
-import { PageHeader } from "@shared/components/page-header";
 import { useIsDesktop } from "@/hooks/use-mobile";
 import { InteractionsList } from "../components/interactions-list";
 
@@ -10,7 +9,6 @@ export function InteractionsPage() {
   // whole width. Mobile: capped reading column (unchanged).
   return (
     <PageLayout width={isDesktop ? "app" : "lg"}>
-      <PageHeader title="Interacciones" />
       <InteractionsList />
     </PageLayout>
   );
