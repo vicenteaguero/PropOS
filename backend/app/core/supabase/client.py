@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -46,6 +47,33 @@ def build_client(headers: dict[str, str] | None = None, *, schema: str | None = 
     """
     options = ClientOptions(schema=schema or _schema(), headers=dict(headers or {}))
     return create_client(settings.supabase_url, settings.supabase_service_role_key, options=options)
+
+
+_thread_local = threading.local()
+
+
+def get_thread_client() -> Client:
+    """A service-role client this thread alone uses.
+
+    The shared client wraps one synchronous httpx session over a single HTTP/2
+    connection, and httpx's sync transport does not guard that connection's
+    state machine against use from several threads at once. Fanning reads out
+    with `asyncio.to_thread` over the shared client therefore corrupted the
+    stream and the server hung up mid-response — `httpcore.RemoteProtocolError:
+    Server disconnected`, in production, on the first request to
+    `/v1/attention`. One client per worker thread keeps every connection to a
+    single user, and because the executor reuses its threads the construction
+    cost is paid once per thread rather than once per call.
+
+    Read paths only. This deliberately ignores the context-scoped client, so a
+    caller that needs request-scoped PostgREST headers (agent audit
+    attribution) must not fan its writes out through here.
+    """
+    client = getattr(_thread_local, "client", None)
+    if client is None:
+        client = build_client()
+        _thread_local.client = client
+    return client
 
 
 @contextmanager

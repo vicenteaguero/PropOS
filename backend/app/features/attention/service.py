@@ -19,7 +19,7 @@ from collections.abc import Callable
 from typing import Any
 from uuid import UUID
 
-from app.core.supabase.client import get_supabase_client
+from app.core.supabase.client import get_thread_client
 from app.features.attention.schemas import AttentionFeed, AttentionItem, AttentionKind, Urgency
 
 #: Per-source scan ceiling. Past any real tenant's open work, and it keeps one
@@ -50,7 +50,9 @@ _URGENCY_RANK = {Urgency.NOW: 0, Urgency.TODAY: 1, Urgency.SOON: 2}
 
 
 def _client():
-    return get_supabase_client()
+    # Thread-local: every reader below runs inside `asyncio.to_thread`, and the
+    # shared client's HTTP/2 connection cannot be used by two threads at once.
+    return get_thread_client()
 
 
 def _lookup(table: str, tenant_id: UUID, select: str):
