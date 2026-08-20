@@ -65,7 +65,7 @@ export function CrmSectionPage() {
     },
     {
       id: "pipeline",
-      label: "Pipeline",
+      label: "Negocios",
       scope: "crm",
       aliases: ["oportunidades"],
       render: () => <OpportunitiesPage />,

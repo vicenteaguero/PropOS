@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useProperties } from "@features/documents/hooks/use-entities";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AppShellScroll, ListCapNotice, ListShell } from "@shared/ui";
@@ -32,6 +33,8 @@ export function OpportunitiesPage() {
   const [editing, setEditing] = useState<Opportunity | undefined>();
   const [search, setSearch] = useState("");
 
+  const properties = useProperties();
+
   const nameMap = useMemo(() => {
     const m = new Map<string, string>();
     for (const c of contacts ?? []) m.set(c.id, c.full_name);
@@ -41,16 +44,27 @@ export function OpportunitiesPage() {
   const nameFor = (personId: string | null) =>
     personId ? (nameMap.get(personId) ?? "Sin contacto") : "Sin contacto";
 
+  const propertyMap = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const p of properties.data ?? []) if (p.title) m.set(p.id, p.title);
+    return m;
+  }, [properties.data]);
+
+  const propertyFor = (propertyId: string | null) =>
+    propertyId ? (propertyMap.get(propertyId) ?? null) : null;
+
   // Filtering the board rather than a list: with 100+ open deals, finding one
   // by eye means scanning six columns. The lanes stay, they just get shorter.
   const shown = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return data ?? [];
     return (data ?? []).filter((o) =>
-      `${nameFor(o.person_id)} ${o.notes ?? ""}`.toLowerCase().includes(q),
+      `${nameFor(o.person_id)} ${propertyFor(o.property_id) ?? ""} ${o.notes ?? ""}`
+        .toLowerCase()
+        .includes(q),
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps -- nameFor is derived from nameMap
-  }, [data, search, nameMap]);
+  }, [data, search, nameMap, propertyMap]);
 
   const move = (id: string, stage: string) =>
     update.mutate({ id, body: { pipeline_stage: stage } });
@@ -73,18 +87,17 @@ export function OpportunitiesPage() {
       <ListShell
         fill
         className="min-h-0 flex-1"
-        title="Pipeline"
-        meta={shown.length > 0 ? `${shown.length} abiertas` : undefined}
+        title="Negocios"
+        meta={shown.length > 0 ? `${shown.length} abiertos` : undefined}
         search={{
           value: search,
           onChange: setSearch,
-          placeholder: "Buscar por persona o nota",
+          placeholder: "Buscar por persona, propiedad o nota",
           ariaLabel: "Buscar oportunidades",
         }}
         action={
-          <Button size="sm" className="gap-1.5" onClick={openNew}>
+          <Button size="icon" aria-label="Nuevo negocio" className="rounded-full" onClick={openNew}>
             <Plus className="size-4" strokeWidth={1.8} />
-            Nueva
           </Button>
         }
         skeleton="board"
@@ -94,7 +107,7 @@ export function OpportunitiesPage() {
         errorMessage="No se pudo cargar el pipeline."
         onRetry={() => refetch()}
         isEmpty={shown.length === 0}
-        emptyTitle={search ? "Sin coincidencias" : "Sin oportunidades abiertas"}
+        emptyTitle={search ? "Sin coincidencias" : "Sin negocios abiertos"}
         emptyAction={search ? undefined : { label: "Nueva oportunidad", onClick: openNew }}
         footer={<ListCapNotice resource="opportunities" count={data?.length} className="mx-0" />}
       >
@@ -104,6 +117,7 @@ export function OpportunitiesPage() {
           <OpportunityKanban
             opportunities={shown}
             nameFor={nameFor}
+            propertyFor={propertyFor}
             onMove={move}
             onWon={won}
             onLost={lost}
