@@ -155,7 +155,7 @@ export function AgentOverlay({ onClose, initialMode = "chat" }: Props) {
                       key={s}
                       type="button"
                       onClick={() => chat.send(s)}
-                      className="flex items-center gap-2.5 rounded-2xl border border-white/12 bg-white/[0.03] px-4 py-3 text-left text-[13.5px] text-white transition active:scale-[0.99]"
+                      className="flex items-center gap-2.5 rounded-xl border border-white/12 bg-white/[0.03] px-4 py-3 text-left text-[13.5px] text-white transition active:scale-[0.99]"
                     >
                       <Sparkles className="size-4 shrink-0 text-white/60" />
                       <span className="flex-1">{s}</span>

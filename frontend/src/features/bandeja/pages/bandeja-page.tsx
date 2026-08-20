@@ -248,7 +248,7 @@ export function BandejaPage() {
       {error && errorBox}
       {!isLoading && !error && shown.length === 0 && empty}
       {!isLoading && !error && shown.length > 0 && wide && (
-        <div className="overflow-hidden rounded-2xl border border-border bg-card xl:grid xl:grid-cols-2">
+        <div className="overflow-hidden rounded-xl border border-border bg-card xl:grid xl:grid-cols-2">
           {shown.map((it, i) => rowFor(it, i < shown.length - 1))}
         </div>
       )}
@@ -264,11 +264,7 @@ export function BandejaPage() {
     return (
       <PageLayout width="app">
         <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
-          <PageHeader
-            title="CRM"
-            description="Conversaciones, pipeline y métricas en un solo lugar."
-            className="mb-0"
-          />
+          <PageHeader title="CRM" className="mb-0" />
           <Segmented
             items={tabs}
             value={activeTab}
@@ -287,7 +283,7 @@ export function BandejaPage() {
   // Mobile: capped column, full-width tab bar, stacked views.
   return (
     <PageLayout width="md">
-      <PageHeader title="CRM" description="Conversaciones, pipeline y métricas en un solo lugar." />
+      <PageHeader title="CRM" />
 
       <div className="mb-4">
         <Segmented items={tabs} value={activeTab} onChange={(id) => setTab(id as Tab)} />

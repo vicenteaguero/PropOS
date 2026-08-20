@@ -102,7 +102,7 @@ export function CrmPipeline() {
                 return (
                   <div
                     key={opp.id}
-                    className="w-[200px] shrink-0 rounded-2xl border border-border bg-card p-3"
+                    className="w-[200px] shrink-0 rounded-xl border border-border bg-card p-3"
                   >
                     <div className="truncate text-[14.5px] font-semibold text-foreground">
                       {name}

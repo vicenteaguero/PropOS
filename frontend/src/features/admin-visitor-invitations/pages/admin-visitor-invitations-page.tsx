@@ -124,12 +124,9 @@ export function AdminVisitorInvitationsPage() {
       {/* Header */}
       <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-3 lg:px-8 lg:pt-7">
         <div>
-          <h1 className="text-[26px] font-bold leading-tight tracking-tight text-foreground">
+          <h1 className="text-[17px] font-semibold leading-tight tracking-tight text-foreground">
             Visitantes
           </h1>
-          <p className="mt-0.5 text-[13px] text-muted-foreground">
-            {data ? `${data.length} invitaciones` : "Invitaciones de acceso"}
-          </p>
         </div>
         <Button
           variant="ink"
@@ -185,7 +182,7 @@ export function AdminVisitorInvitationsPage() {
       {/* Desktop: dense table using the full width. */}
       {!isLoading && !error && data && data.length > 0 && isDesktop && (
         <div className="px-8">
-          <div className="overflow-hidden rounded-2xl border border-border bg-card">
+          <div className="overflow-hidden rounded-xl border border-border bg-card">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border text-left text-[12px] font-medium text-muted-foreground">

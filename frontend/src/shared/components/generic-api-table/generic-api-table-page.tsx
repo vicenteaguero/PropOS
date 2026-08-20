@@ -13,7 +13,6 @@ export interface ColumnDef {
 
 interface Props {
   title: string;
-  description?: string;
   endpoint: string; // e.g. "/v1/transactions"
   columns: ColumnDef[];
 }
@@ -22,7 +21,7 @@ interface Props {
  * Throwaway list view used while per-entity pages are unbuilt.
  * Useful so the router has something to render per nav item.
  */
-export function GenericApiTablePage({ title, description, endpoint, columns }: Props) {
+export function GenericApiTablePage({ title, endpoint, columns }: Props) {
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["generic-list", endpoint],
     queryFn: () => apiRequest<Record<string, unknown>[]>(endpoint),
@@ -30,7 +29,7 @@ export function GenericApiTablePage({ title, description, endpoint, columns }: P
 
   return (
     <PageLayout width="lg">
-      <PageHeader title={title} description={description} />
+      <PageHeader title={title} />
       <div className="space-y-4">
         {isLoading && (
           <div className="flex justify-center py-8">

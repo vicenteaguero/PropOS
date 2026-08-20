@@ -114,12 +114,9 @@ export function AnalyticsPage() {
     <PageLayout width="lg" noPadding className="pb-10 lg:max-w-none">
       <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-4 lg:px-8 lg:pt-7">
         <div>
-          <h1 className="text-[26px] font-bold leading-tight tracking-tight text-foreground lg:text-[30px]">
+          <h1 className="text-[17px] font-semibold leading-tight tracking-tight text-foreground">
             Analítica
           </h1>
-          <p className="mt-0.5 text-[13px] text-muted-foreground">
-            Métricas internas. Refresca las vistas si cambian datos recientes.
-          </p>
         </div>
         <RoundButton
           tone="muted"

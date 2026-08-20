@@ -451,7 +451,6 @@ export function CalendarPage() {
             <div className="px-5 pt-4 pb-4 lg:px-8 lg:pt-7">
               <PageHeader
                 title="Calendario"
-                description="Visitas, vencimientos y pagos del equipo."
                 className="mb-0"
                 actions={
                   <Button onClick={() => openCreate()} variant="ink" className="gap-2">
@@ -544,7 +543,7 @@ export function CalendarPage() {
                     onCreate={openCreate}
                   />
                 </div>
-                <div className="flex min-h-0 w-80 shrink-0 flex-col overflow-y-auto rounded-2xl border border-border">
+                <div className="flex min-h-0 w-80 shrink-0 flex-col overflow-y-auto rounded-xl border border-border">
                   <SectionLabel className="mb-1 mt-3 capitalize">
                     {format(selected, "EEEE d 'de' MMMM", { locale: es })}
                   </SectionLabel>
@@ -797,7 +796,7 @@ function PropoCard({ onOpen }: { onOpen: () => void }) {
     <button
       type="button"
       onClick={onOpen}
-      className="flex w-full items-center gap-3 rounded-2xl border border-dashed border-line-strong bg-transparent p-3.5 text-left transition active:scale-[0.99]"
+      className="flex w-full items-center gap-3 rounded-xl border border-dashed border-line-strong bg-transparent p-3.5 text-left transition active:scale-[0.99]"
     >
       <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-foreground text-background">
         <Sparkles className="size-[18px]" />
@@ -960,7 +959,7 @@ function TimeGrid({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col px-8 pb-6 pt-2">
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border">
         {/* Day header row */}
         <div className="flex border-b border-border">
           <div className="w-14 shrink-0" />
@@ -1161,7 +1160,7 @@ function WeekStrip({
             className={cn(
               // Seven columns leave 42px per cell on a 360px phone, so the box
               // cannot grow without overflowing — widen the hit area instead.
-              "flex flex-1 flex-col items-center gap-1 rounded-2xl py-2 transition active:scale-[0.97]",
+              "flex flex-1 flex-col items-center gap-1 rounded-xl py-2 transition active:scale-[0.97]",
               TOUCH_TARGET_HIT_AREA,
               isSelected ? "bg-foreground" : "hover:bg-secondary",
             )}

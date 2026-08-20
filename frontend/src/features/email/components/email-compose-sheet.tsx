@@ -120,7 +120,7 @@ export function EmailComposeSheet({ open, onOpenChange, onSent }: Props) {
             onChange={(e) => setBody(e.target.value)}
             rows={7}
             placeholder="Escribe tu mensaje…"
-            className={`w-full resize-none rounded-2xl border border-border bg-secondary px-4 py-3 text-sm text-foreground transition placeholder:text-muted-foreground ${FOCUS_RING}`}
+            className={`w-full resize-none rounded-xl border border-border bg-secondary px-4 py-3 text-sm text-foreground transition placeholder:text-muted-foreground ${FOCUS_RING}`}
           />
         </div>
 

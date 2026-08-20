@@ -74,7 +74,7 @@ function ServiceTile({ tile, onClick }: { tile: Tile; onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="flex h-[88px] flex-col items-start justify-between rounded-2xl bg-secondary p-3 text-left transition active:scale-[0.97] lg:h-auto lg:flex-row lg:items-center lg:gap-3 lg:p-3.5 lg:hover:bg-muted"
+      className="flex h-[88px] flex-col items-start justify-between rounded-xl bg-secondary p-3 text-left transition active:scale-[0.97] lg:h-auto lg:flex-row lg:items-center lg:gap-3 lg:p-3.5 lg:hover:bg-muted"
     >
       <span className="flex size-9 items-center justify-center rounded-xl bg-background shadow-sm">
         <Icon className="size-[19px] text-foreground" strokeWidth={1.9} />
@@ -106,7 +106,7 @@ function PipelineStat({
   pending: boolean;
 }) {
   return (
-    <div className="flex-1 rounded-2xl bg-secondary px-3.5 py-3">
+    <div className="flex-1 rounded-xl bg-secondary px-3.5 py-3">
       <div className="text-2xl font-bold tracking-tight text-foreground">
         {pending ? "…" : value}
       </div>
@@ -118,7 +118,7 @@ function PipelineStat({
 /** Desktop KPI card — single-line: icon · value · label. */
 function Kpi({ label, value, icon: Icon }: { label: string; value: string; icon: LucideIcon }) {
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3.5">
+    <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3.5">
       <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-secondary">
         <Icon className="size-[18px] text-foreground" strokeWidth={1.8} />
       </span>
@@ -208,7 +208,7 @@ export function AdminHomePage() {
           setPropoMode("chat");
           setPropoOpen(true);
         }}
-        className="flex min-w-0 flex-1 items-center gap-3 rounded-2xl bg-secondary px-4 py-3.5 text-left transition hover:bg-muted active:scale-[0.99]"
+        className="flex min-w-0 flex-1 items-center gap-3 rounded-xl bg-secondary px-4 py-3.5 text-left transition hover:bg-muted active:scale-[0.99]"
       >
         <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-foreground text-background">
           <Sparkles className="size-4" />
@@ -224,7 +224,7 @@ export function AdminHomePage() {
           setPropoMode("voice");
           setPropoOpen(true);
         }}
-        className="flex w-12 shrink-0 items-center justify-center rounded-2xl bg-foreground text-background transition active:scale-95"
+        className="flex w-12 shrink-0 items-center justify-center rounded-xl bg-foreground text-background transition active:scale-95"
       >
         <Mic className="size-[21px]" strokeWidth={1.9} />
       </button>
@@ -237,7 +237,7 @@ export function AdminHomePage() {
   // previous version rendered only when `nextEvent` existed, which is why a new
   // account met a wall of tiles and three zeros instead of a way in.
   const anchorCard = hasToday ? (
-    <div className="overflow-hidden rounded-3xl bg-foreground text-background">
+    <div className="overflow-hidden rounded-xl bg-foreground text-background">
       <div className="flex items-center justify-between gap-3 px-4 pt-3.5 pb-3">
         <span className="text-[12.5px] font-bold uppercase tracking-wide opacity-60">Tu día</span>
         <span className="text-[12.5px] font-semibold opacity-80">
@@ -272,7 +272,7 @@ export function AdminHomePage() {
       )}
     </div>
   ) : (
-    <div className="overflow-hidden rounded-3xl bg-foreground text-background">
+    <div className="overflow-hidden rounded-xl bg-foreground text-background">
       <div className="px-4 pt-4 pb-3">
         <span className="text-[12.5px] font-bold uppercase tracking-wide opacity-60">
           Empieza por aquí
@@ -384,7 +384,7 @@ export function AdminHomePage() {
             <SectionLabel action="Ver calendario" onAction={() => navigate(`${base}/calendario`)}>
               Tu día · {format(today, "EEEE d 'de' MMMM", { locale: es })}
             </SectionLabel>
-            <div className="mt-2 rounded-2xl border border-border">
+            <div className="mt-2 rounded-xl border border-border">
               {todayFeed.isError ? (
                 <div className="p-4">
                   <ErrorState
@@ -441,7 +441,7 @@ export function AdminHomePage() {
               <SectionLabel action="Ver todas" onAction={() => navigate(`${base}/personas`)}>
                 Personas recientes
               </SectionLabel>
-              <div className="mt-2 rounded-2xl border border-border">{recentList}</div>
+              <div className="mt-2 rounded-xl border border-border">{recentList}</div>
             </div>
           )}
         </section>
@@ -505,7 +505,7 @@ export function AdminHomePage() {
             key={t.to}
             type="button"
             onClick={() => navigate(t.to)}
-            className="flex h-[88px] flex-col items-start justify-between rounded-2xl bg-secondary p-3 text-left transition active:scale-[0.97]"
+            className="flex h-[88px] flex-col items-start justify-between rounded-xl bg-secondary p-3 text-left transition active:scale-[0.97]"
           >
             <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-background shadow-sm">
               <t.icon className="size-[19px] text-foreground" strokeWidth={1.9} />
@@ -580,7 +580,7 @@ export function AdminHomePage() {
                   setWsOpen(false);
                 }}
                 className={cn(
-                  "mb-2 flex w-full items-center gap-3 rounded-2xl border p-3.5 text-left transition active:scale-[0.99]",
+                  "mb-2 flex w-full items-center gap-3 rounded-xl border p-3.5 text-left transition active:scale-[0.99]",
                   active ? "border-foreground" : "border-border",
                 )}
               >

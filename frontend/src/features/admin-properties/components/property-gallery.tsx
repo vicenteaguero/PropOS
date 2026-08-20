@@ -19,7 +19,7 @@ interface PropertyGalleryProps {
   className?: string;
 }
 
-const HERO_CLASS = "relative h-52 w-full overflow-hidden rounded-2xl lg:h-72";
+const HERO_CLASS = "relative h-52 w-full overflow-hidden rounded-xl lg:h-72";
 
 /**
  * Property photo gallery: hero + thumbnail grid + lightbox, with upload and

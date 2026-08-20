@@ -46,7 +46,7 @@ export function ProposalDisambiguationPicker({ field, candidates, selected, onPi
               onClick={() => onPick(c.id)}
               aria-pressed={isSelected}
               className={cn(
-                "flex w-full items-center gap-3 rounded-2xl border px-3 py-2.5 text-left transition",
+                "flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition",
                 isSelected
                   ? "border-foreground bg-secondary"
                   : "border-border hover:bg-secondary/50 active:scale-[0.99]",

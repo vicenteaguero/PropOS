@@ -71,12 +71,9 @@ export function AgentCostPage() {
     // Mobile: capped centered column (unchanged). Desktop: full-bleed dashboard.
     <PageLayout width="lg" noPadding className="pb-10 lg:max-w-none">
       <div className="px-5 pt-5 pb-4 lg:px-8 lg:pt-7">
-        <h1 className="text-[26px] font-bold leading-tight tracking-tight text-foreground lg:text-[30px]">
+        <h1 className="text-[17px] font-semibold leading-tight tracking-tight text-foreground">
           Costo {agentName}
         </h1>
-        <p className="mt-0.5 text-[13px] text-muted-foreground">
-          Tokens y USD acumulados (últimos 30 días).
-        </p>
       </div>
 
       {/* Totals */}

@@ -53,7 +53,7 @@ export function ContactOpportunities({ personId }: { personId: string }) {
         <p className="py-6 text-center text-sm text-muted-foreground">Sin oportunidades.</p>
       )}
       {!isLoading && !error && data && data.length > 0 && (
-        <div className="mt-2 overflow-hidden rounded-2xl bg-card">
+        <div className="mt-2 overflow-hidden rounded-xl bg-card">
           {data.map((o, i) => (
             <Row
               key={o.id}

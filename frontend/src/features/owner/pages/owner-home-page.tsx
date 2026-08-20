@@ -79,19 +79,14 @@ export function OwnerHomePage() {
       <div className="mx-auto w-full max-w-xl pb-6 lg:max-w-6xl">
         {/* Header */}
         <div className="px-5 pt-5 pb-3 lg:px-8 lg:pt-7">
-          <h1 className="text-[26px] font-bold leading-tight tracking-tight text-foreground lg:text-[30px]">
+          <h1 className="text-[17px] font-semibold leading-tight tracking-tight text-foreground">
             Mis propiedades
           </h1>
-          <p className="mt-0.5 text-[13px] text-muted-foreground">
-            {grants.length > 0
-              ? "Las propiedades a las que tu administrador te dio acceso."
-              : "Aquí verás las propiedades que tu administrador comparta contigo."}
-          </p>
         </div>
 
         {grants.length === 0 ? (
           <div className="px-5 pt-6 lg:px-8">
-            <div className="flex flex-col items-center rounded-2xl border border-border bg-card px-6 py-12 text-center">
+            <div className="flex flex-col items-center rounded-xl border border-border bg-card px-6 py-12 text-center">
               <span className="mb-4 grid size-14 place-items-center rounded-full bg-secondary text-muted-foreground">
                 <Building2 className="size-7" strokeWidth={1.6} />
               </span>

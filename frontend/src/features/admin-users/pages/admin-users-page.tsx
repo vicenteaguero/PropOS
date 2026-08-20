@@ -55,12 +55,9 @@ export function AdminUsersPage() {
       {/* Header */}
       <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-3 lg:px-8 lg:pt-7">
         <div>
-          <h1 className="text-[26px] font-bold leading-tight tracking-tight text-foreground">
+          <h1 className="text-[17px] font-semibold leading-tight tracking-tight text-foreground">
             Usuarios
           </h1>
-          <p className="mt-0.5 text-[13px] text-muted-foreground">
-            {data ? `${users.length} usuarios` : "Usuarios de la plataforma"}
-          </p>
         </div>
         {/* Mobile: round + button. Desktop: labeled button. */}
         <Button
@@ -150,7 +147,7 @@ function UsersTable({
   onOpen: (id: string) => void;
 }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-card">
+    <div className="overflow-hidden rounded-xl border border-border bg-card">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-border text-left text-[12px] font-medium text-muted-foreground">

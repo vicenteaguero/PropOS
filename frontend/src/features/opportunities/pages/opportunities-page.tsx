@@ -52,7 +52,6 @@ export function OpportunitiesPage() {
         <div className="shrink-0 px-4 py-6 md:px-6 md:py-8 lg:px-8 lg:pb-4 lg:pt-7">
           <PageHeader
             title="Oportunidades"
-            description="Pipeline de ventas y arriendos. Arrastra las tarjetas para cambiar de etapa."
             className="mb-0"
             actions={
               <Button
@@ -78,7 +77,6 @@ export function OpportunitiesPage() {
           {!isLoading && !error && (data?.length ?? 0) === 0 && (
             <EmptyState
               title="Sin oportunidades abiertas"
-              description="Crea una oportunidad para empezar a hacer seguimiento del pipeline."
               actionLabel="Nueva oportunidad"
               onAction={() => {
                 setEditing(undefined);

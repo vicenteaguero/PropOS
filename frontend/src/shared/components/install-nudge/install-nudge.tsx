@@ -42,7 +42,7 @@ export function InstallNudge() {
     // the safe-area pad, and is 0 in the sidebar shell where the nudge simply
     // rests on the bottom edge. Same z as the nav so neither can bury the other.
     <div className="fixed inset-x-0 bottom-[max(var(--app-nav-h,0px),var(--safe-bottom))] z-50 mx-auto w-full max-w-md p-3">
-      <div className="rounded-2xl border border-border bg-card p-4 shadow-2xl">
+      <div className="rounded-xl border border-border bg-card p-4 shadow-2xl">
         <div className="flex items-start gap-3">
           <img
             src="/icon.svg"

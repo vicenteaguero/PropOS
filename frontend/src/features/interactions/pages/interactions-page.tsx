@@ -10,10 +10,7 @@ export function InteractionsPage() {
   // whole width. Mobile: capped reading column (unchanged).
   return (
     <PageLayout width={isDesktop ? "app" : "lg"}>
-      <PageHeader
-        title="Interacciones"
-        description="Historial de visitas, llamadas, reuniones y mensajes con los stakeholders."
-      />
+      <PageHeader title="Interacciones" />
       <InteractionsList />
     </PageLayout>
   );

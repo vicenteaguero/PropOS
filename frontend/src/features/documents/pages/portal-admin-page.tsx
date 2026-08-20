@@ -30,7 +30,6 @@ export function PortalAdminPage() {
     <PageLayout width={isDesktop ? "app" : "lg"}>
       <PageHeader
         title="Enlaces de subida anónima"
-        description="Crea enlaces públicos para recibir documentos desde fuera del equipo."
         actions={
           <>
             <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
@@ -58,7 +57,6 @@ export function PortalAdminPage() {
       {!isLoading && !error && portals && portals.length === 0 && (
         <EmptyState
           title="Sin enlaces"
-          description="Crea un enlace para recibir documentos desde fuera del equipo."
           actionLabel="Crear enlace"
           onAction={() => setCreateOpen(true)}
         />

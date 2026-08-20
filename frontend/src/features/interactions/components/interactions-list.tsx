@@ -137,7 +137,7 @@ export function InteractionsList({ personId, propertyId }: Props) {
   // with discrete columns (type · summary · detail · date · delete) instead of
   // the stacked mobile card list.
   const desktopTable = (
-    <div className="overflow-hidden rounded-2xl border border-border bg-card">
+    <div className="overflow-hidden rounded-xl border border-border bg-card">
       <table className="w-full text-left text-sm">
         <thead>
           <tr className="border-b border-border text-xs font-medium text-muted-foreground">
@@ -191,7 +191,7 @@ export function InteractionsList({ personId, propertyId }: Props) {
 
   // Mobile: stacked card list (unchanged).
   const mobileList = (
-    <div className="overflow-hidden rounded-2xl border border-border bg-card">
+    <div className="overflow-hidden rounded-xl border border-border bg-card">
       {filtered.map((it, i) => (
         <Row
           key={it.id}

@@ -290,7 +290,7 @@ export function FinancePage() {
       )}
 
       {!isLoading && !error && filtered.length > 0 && isDesktop && (
-        <div className="overflow-hidden rounded-2xl border border-border bg-card">
+        <div className="overflow-hidden rounded-xl border border-border bg-card">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border text-left text-[12px] font-medium text-muted-foreground">
@@ -398,12 +398,9 @@ export function FinancePage() {
       {/* Header */}
       <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-3 lg:px-8 lg:pt-7">
         <div>
-          <h1 className="text-[26px] font-bold leading-tight tracking-tight text-foreground">
+          <h1 className="text-[17px] font-semibold leading-tight tracking-tight text-foreground">
             Finanzas
           </h1>
-          <p className="mt-0.5 text-[13px] text-muted-foreground">
-            Comisiones, gastos y pagos por cobrar
-          </p>
         </div>
         <Button
           variant="ink"
@@ -418,7 +415,7 @@ export function FinancePage() {
 
       {/* Mobile: ink summary card (unchanged). Desktop: KPI card row. */}
       <div className="px-5 pb-4 lg:hidden">
-        <div className="rounded-2xl bg-foreground p-5 text-background">
+        <div className="rounded-xl bg-foreground p-5 text-background">
           <p className="text-[13px] font-medium text-background/60">Ingresos del mes</p>
           <p className="mt-1 text-[34px] font-bold leading-none tracking-tight">
             {formatClp(summary?.income_cents ?? 0)}
@@ -443,14 +440,14 @@ export function FinancePage() {
       </div>
 
       <div className="hidden px-8 pb-5 lg:grid lg:grid-cols-4 lg:gap-4">
-        <div className="rounded-2xl bg-foreground p-5 text-background">
+        <div className="rounded-xl bg-foreground p-5 text-background">
           <p className="text-[13px] font-medium text-background/60">Ingresos del mes</p>
           <p className="mt-1.5 text-[28px] font-bold leading-none tracking-tight tabular-nums">
             {formatClp(summary?.income_cents ?? 0)}
           </p>
         </div>
         {secondaryKpis.map((s) => (
-          <div key={s.label} className="rounded-2xl border border-border bg-card p-5">
+          <div key={s.label} className="rounded-xl border border-border bg-card p-5">
             <p className="text-[13px] font-medium text-muted-foreground">{s.label}</p>
             <p
               className={`mt-1.5 text-[28px] font-bold leading-none tracking-tight tabular-nums ${

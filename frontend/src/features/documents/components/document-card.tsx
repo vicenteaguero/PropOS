@@ -35,7 +35,7 @@ export function DocumentCard({ doc, onOpen }: Props) {
     <button
       type="button"
       onClick={() => onOpen(doc)}
-      className="group flex flex-col overflow-hidden rounded-2xl bg-card text-left transition active:scale-[0.98]"
+      className="group flex flex-col overflow-hidden rounded-xl bg-card text-left transition active:scale-[0.98]"
     >
       <div className="relative flex aspect-[3/4] items-center justify-center overflow-hidden bg-secondary">
         {showThumb ? (

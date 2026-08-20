@@ -181,7 +181,7 @@ export function VisitorRegistrationPage() {
         </p>
 
         {showLoginPath ? (
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-xl border border-border bg-card p-5">
             <p className="mb-4 text-[15px]">
               Ya tienes una cuenta. Para vincular esta propiedad a tu perfil, ingresa con tu
               contraseña.
@@ -193,12 +193,12 @@ export function VisitorRegistrationPage() {
         ) : (
           <div className="space-y-5">
             {invitation.existing_in_this_tenant && (
-              <div className="rounded-2xl border border-primary/30 bg-primary/10 p-4 text-[15px]">
+              <div className="rounded-xl border border-primary/30 bg-primary/10 p-4 text-[15px]">
                 Hola de nuevo. Confirma tus datos para esta nueva propiedad.
               </div>
             )}
 
-            <div className="space-y-5 rounded-2xl border border-border bg-card p-5">
+            <div className="space-y-5 rounded-xl border border-border bg-card p-5">
               <Field label="Email">
                 <Input value={invitation.email} readOnly className="bg-muted" />
               </Field>
@@ -274,7 +274,7 @@ export function VisitorRegistrationPage() {
 
             <FieldGroup
               label="Cédula de identidad (frente y reverso)"
-              className="rounded-2xl border border-border bg-card p-5"
+              className="rounded-xl border border-border bg-card p-5"
             >
               {idUploaded ? (
                 <div className="flex items-center gap-2 text-[15px] font-medium text-success">
@@ -292,7 +292,7 @@ export function VisitorRegistrationPage() {
               )}
             </FieldGroup>
 
-            <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="rounded-xl border border-border bg-card p-5">
               <ConsentCheckbox
                 purposes={["operacional", "registro_visitante"]}
                 onChange={setConsent}

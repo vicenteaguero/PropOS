@@ -94,12 +94,9 @@ export function ImportPage() {
     <PageLayout width="md" noPadding className="pb-6 lg:max-w-4xl lg:px-8 lg:pt-7">
       {/* Header */}
       <div className="px-5 pt-5 pb-3 lg:px-0 lg:pt-0">
-        <h1 className="text-[26px] font-bold leading-tight tracking-tight text-foreground">
+        <h1 className="text-[17px] font-semibold leading-tight tracking-tight text-foreground">
           Importar datos
         </h1>
-        <p className="mt-0.5 text-[13px] text-muted-foreground">
-          Carga datos históricos desde un CSV y revisa antes de confirmar.
-        </p>
       </div>
 
       {/* Entity picker */}
@@ -116,7 +113,7 @@ export function ImportPage() {
       <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-6">
         {/* Upload card */}
         <div className="px-5 lg:px-0">
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-xl border border-border bg-card p-5">
             {/* The clear control is a sibling of the label, not a child: a
                 <label> may not contain interactive content, and nested inside
                 it every click on "quitar" also reopened the file picker. */}
@@ -178,7 +175,7 @@ export function ImportPage() {
         {/* Preview — second column on desktop, stacked below on mobile. */}
         {preview ? (
           <div className="mt-4 px-5 lg:mt-0 lg:px-0">
-            <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="rounded-xl border border-border bg-card p-5">
               <div className="flex flex-wrap items-center gap-2">
                 <Pill tone="success">{preview.valid_rows} válidos</Pill>
                 {preview.invalid_rows > 0 && (
@@ -221,7 +218,7 @@ export function ImportPage() {
           </div>
         ) : (
           // Desktop placeholder keeps the two-column grid balanced before preview.
-          <div className="hidden lg:flex lg:min-h-[12rem] lg:items-center lg:justify-center lg:rounded-2xl lg:border lg:border-dashed lg:border-border lg:p-6 lg:text-center lg:text-sm lg:text-muted-foreground">
+          <div className="hidden lg:flex lg:min-h-[12rem] lg:items-center lg:justify-center lg:rounded-xl lg:border lg:border-dashed lg:border-border lg:p-6 lg:text-center lg:text-sm lg:text-muted-foreground">
             Previsualiza un CSV para ver el resultado aquí.
           </div>
         )}
@@ -245,13 +242,13 @@ export function ImportPage() {
         )}
 
         {!jobs.isLoading && !jobs.error && history.length === 0 && (
-          <p className="rounded-2xl border border-dashed border-border p-5 text-center text-[13px] text-muted-foreground">
+          <p className="rounded-xl border border-dashed border-border p-5 text-center text-[13px] text-muted-foreground">
             Todavía no importaste ningún archivo.
           </p>
         )}
 
         {!jobs.isLoading && !jobs.error && history.length > 0 && (
-          <div className="overflow-hidden rounded-2xl border border-border bg-card">
+          <div className="overflow-hidden rounded-xl border border-border bg-card">
             {history.map((job, i) => (
               <Row
                 key={job.id}

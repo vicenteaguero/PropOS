@@ -487,7 +487,6 @@ export function TasksPage() {
       <div className="px-5 pt-4 pb-5 lg:px-8 lg:pt-7">
         <PageHeader
           title="Tareas"
-          description="Pendientes, recordatorios y metas del equipo."
           className="mb-0"
           actions={
             <Button onClick={() => setOpen(true)} variant="ink" className="gap-2">
@@ -509,7 +508,6 @@ export function TasksPage() {
       {!isLoading && !error && (data?.length ?? 0) === 0 && (
         <EmptyState
           title="Sin tareas abiertas"
-          description="Crea una tarea o pídesela a la IA por chat."
           actionLabel="Nueva tarea"
           onAction={() => setOpen(true)}
         />

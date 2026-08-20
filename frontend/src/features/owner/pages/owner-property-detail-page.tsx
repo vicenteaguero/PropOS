@@ -141,7 +141,7 @@ export function OwnerPropertyDetailPage() {
 
         {/* Gallery placeholder */}
         <div className="px-5">
-          <div className="relative h-52 w-full overflow-hidden rounded-2xl bg-gradient-to-br from-secondary to-muted text-foreground">
+          <div className="relative h-52 w-full overflow-hidden rounded-xl bg-gradient-to-br from-secondary to-muted text-foreground">
             <div
               className="absolute inset-0 opacity-[0.04]"
               style={{
@@ -154,7 +154,7 @@ export function OwnerPropertyDetailPage() {
 
         {/* Title + address */}
         <div className="px-5 pt-4">
-          <h1 className="text-[24px] font-bold leading-tight tracking-tight text-foreground">
+          <h1 className="text-[17px] font-semibold leading-tight tracking-tight text-foreground">
             {grant.propertyTitle ?? "Propiedad"}
           </h1>
           {grant.propertyAddress && (
@@ -184,12 +184,12 @@ export function OwnerPropertyDetailPage() {
                 />
               )}
               {!docsQ.isLoading && !docsQ.isError && docs.length === 0 && (
-                <div className="rounded-2xl border border-border bg-card px-5 py-8 text-center text-sm text-muted-foreground">
+                <div className="rounded-xl border border-border bg-card px-5 py-8 text-center text-sm text-muted-foreground">
                   No hay documentos compartidos contigo todavía.
                 </div>
               )}
               {!docsQ.isError && docs.length > 0 && (
-                <div className="overflow-hidden rounded-2xl border border-border bg-card">
+                <div className="overflow-hidden rounded-xl border border-border bg-card">
                   {docs.map((doc, i) => {
                     const docCanDownload =
                       canDownload && audienceHas(doc.audience_caps, "owner", "download");
@@ -267,7 +267,7 @@ export function OwnerPropertyDetailPage() {
                 />
               )}
               {!visitsQ.isLoading && !visitsQ.isError && visits.length === 0 && (
-                <div className="rounded-2xl border border-border bg-card px-5 py-8 text-center text-sm text-muted-foreground">
+                <div className="rounded-xl border border-border bg-card px-5 py-8 text-center text-sm text-muted-foreground">
                   Sin visitas compartidas todavía.
                 </div>
               )}
@@ -277,7 +277,7 @@ export function OwnerPropertyDetailPage() {
                     canSeeVisitors &&
                     audienceHas(v.audience_caps, "owner", "view_visitor_identity");
                   return (
-                    <div key={v.id} className="rounded-2xl border border-border bg-card p-4">
+                    <div key={v.id} className="rounded-xl border border-border bg-card p-4">
                       <div className="flex items-center gap-2 text-[15px] font-semibold text-foreground">
                         <Calendar className="size-4 text-muted-foreground" strokeWidth={1.8} />
                         {formatDateTime(v.occurred_at)}
@@ -294,7 +294,7 @@ export function OwnerPropertyDetailPage() {
             </TabsContent>
 
             <TabsContent value="detail" className="mt-4 space-y-3">
-              <div className="rounded-2xl border border-border bg-card px-5 py-4">
+              <div className="rounded-xl border border-border bg-card px-5 py-4">
                 <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                   Dirección
                 </div>
@@ -302,7 +302,7 @@ export function OwnerPropertyDetailPage() {
                   {grant.propertyAddress ?? "—"}
                 </div>
               </div>
-              <div className="rounded-2xl border border-border bg-card px-5 py-4">
+              <div className="rounded-xl border border-border bg-card px-5 py-4">
                 <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                   Tu acceso incluye
                 </div>

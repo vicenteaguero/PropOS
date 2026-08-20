@@ -46,7 +46,6 @@ export function WorkflowsPage() {
       <div className="px-5 pt-4 pb-5 lg:px-8 lg:pt-7">
         <PageHeader
           title="Workflows / Checklists"
-          description="Procesos reutilizables (closing de venta, onboarding propietario, etc)."
           className="mb-0"
           actions={
             <Button onClick={() => setOpen(true)} variant="ink" className="gap-2">
@@ -66,7 +65,6 @@ export function WorkflowsPage() {
       {!list.isLoading && !list.isError && (list.data?.length ?? 0) === 0 && (
         <EmptyState
           title="Sin workflows"
-          description="Crea un proceso reutilizable para tu equipo."
           actionLabel="Nuevo workflow"
           onAction={() => setOpen(true)}
         />
@@ -169,7 +167,7 @@ function WorkflowCard({ workflow }: { workflow: Workflow }) {
   const complete = workflow.state === "COMPLETED";
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-card">
+    <div className="overflow-hidden rounded-xl border border-border bg-card">
       <div className="flex items-center justify-between gap-3 px-4 py-3">
         <h3 className="truncate text-base font-semibold text-foreground">{workflow.name}</h3>
         <Pill tone={complete ? "success" : "neutral"}>

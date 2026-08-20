@@ -60,7 +60,7 @@ export function PropertyFormDialog({ open, onOpenChange, property, onSubmit, pen
       open={open}
       onOpenChange={onOpenChange}
       title={property ? "Editar propiedad" : "Nueva propiedad"}
-      desktopClassName="max-w-lg rounded-2xl"
+      desktopClassName="max-w-lg rounded-xl"
     >
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5 sm:col-span-2">

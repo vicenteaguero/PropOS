@@ -118,7 +118,7 @@ export function AdminUserDetailPage() {
 
         <TabsContent value="profile" className="mt-4">
           {/* Mobile: stacked rows. Desktop: 2-up grid of fact cells. */}
-          <dl className="rounded-2xl border border-border bg-card p-5 text-sm lg:grid lg:grid-cols-2 lg:gap-x-10 lg:gap-y-1 lg:p-6">
+          <dl className="rounded-xl border border-border bg-card p-5 text-sm lg:grid lg:grid-cols-2 lg:gap-x-10 lg:gap-y-1 lg:p-6">
             {[
               { label: "RUT", value: data.rut ?? "—" },
               { label: "Rol activo", value: data.role },
@@ -140,14 +140,14 @@ export function AdminUserDetailPage() {
 
         <TabsContent value="memberships" className="mt-4 space-y-3">
           {data.memberships.length === 0 && (
-            <div className="rounded-2xl border border-border bg-card py-6 text-center text-sm text-muted-foreground">
+            <div className="rounded-xl border border-border bg-card py-6 text-center text-sm text-muted-foreground">
               No tiene memberships.
             </div>
           )}
           {data.memberships.map((m) => {
             const tName = m.tenants?.name ?? m.tenant_name ?? m.tenant_id;
             return (
-              <div key={m.tenant_id} className="rounded-2xl border border-border bg-card p-5">
+              <div key={m.tenant_id} className="rounded-xl border border-border bg-card p-5">
                 <div className="mb-3 flex items-center gap-2">
                   <span className="text-base font-semibold text-foreground">{tName}</span>
                   {m.is_dev_admin && <Pill tone="warning">DEV</Pill>}
@@ -217,7 +217,7 @@ export function AdminUserDetailPage() {
           {data.user_emails.map((e) => (
             <div
               key={e.id}
-              className="flex items-center justify-between gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-sm"
+              className="flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-4 py-3 text-sm"
             >
               <div className="flex min-w-0 items-center gap-2.5">
                 <Mail className="size-4 shrink-0 text-muted-foreground" strokeWidth={1.8} />
@@ -235,12 +235,12 @@ export function AdminUserDetailPage() {
           className="mt-4 space-y-2 lg:grid lg:grid-cols-2 lg:gap-2 lg:space-y-0"
         >
           {data.grants.length === 0 && (
-            <div className="rounded-2xl border border-border bg-card py-6 text-center text-sm text-muted-foreground lg:col-span-2">
+            <div className="rounded-xl border border-border bg-card py-6 text-center text-sm text-muted-foreground lg:col-span-2">
               Sin accesos.
             </div>
           )}
           {data.grants.map((g) => (
-            <div key={g.id} className="rounded-2xl border border-border bg-card p-4 text-sm">
+            <div key={g.id} className="rounded-xl border border-border bg-card p-4 text-sm">
               <div className="font-semibold text-foreground">
                 {g.properties?.title ?? g.property_id}
               </div>
@@ -381,7 +381,7 @@ export function AdminUserDetailPage() {
               </div>
             </section>
 
-            <section className="space-y-3 rounded-2xl border border-destructive/40 bg-destructive/5 p-5 lg:col-span-2">
+            <section className="space-y-3 rounded-xl border border-destructive/40 bg-destructive/5 p-5 lg:col-span-2">
               <h3 className="flex items-center gap-1.5 text-sm font-semibold text-destructive">
                 <ShieldAlert className="size-4" strokeWidth={1.8} /> Eliminar usuario
               </h3>

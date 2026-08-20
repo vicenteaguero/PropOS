@@ -24,7 +24,7 @@ export function StatCard({
   return (
     <div
       className={cn(
-        "rounded-2xl p-4",
+        "rounded-xl p-4",
         isInk ? "bg-foreground text-background" : "bg-secondary text-foreground",
         className,
       )}
@@ -60,7 +60,7 @@ export function ChartCard({
   className?: string;
 }) {
   return (
-    <div className={cn("rounded-2xl border border-border bg-card p-4", className)}>
+    <div className={cn("rounded-xl border border-border bg-card p-4", className)}>
       <h2 className="mb-3 text-[15px] font-bold tracking-tight text-foreground">{title}</h2>
       {children}
     </div>
