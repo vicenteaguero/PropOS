@@ -43,6 +43,7 @@ import { useIsDesktop } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { initials } from "@shared/utils/format";
 import { DataHealthCard } from "../components/data-health-card";
+import { AttentionCard } from "@features/attention/components/attention-card";
 import { timeAgo } from "@shared/utils/relative-time";
 
 interface Tile {
@@ -544,6 +545,8 @@ export function AdminHomePage() {
         {/* Below xl this is simply the rest of the single column. */}
         <aside className="flex min-w-0 flex-col gap-4">
           {pendingCard}
+          {/* What is waiting on a person, before what is wrong with the data. */}
+          {allow("crm") && <AttentionCard />}
           {/* Data problems belong where the day starts, not buried in settings:
               nobody goes looking for inconsistencies they do not know exist. */}
           {allow("crm") && <DataHealthCard />}
