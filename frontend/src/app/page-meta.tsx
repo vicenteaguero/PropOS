@@ -12,6 +12,21 @@ interface TitleEntry {
   end: boolean;
 }
 
+/**
+ * Detail routes the nav deliberately does not list.
+ *
+ * Since the list pages became tabs, `/admin/personas` is a redirect rather than
+ * a nav entry — but `/admin/personas/:id` is still a real page and still needs
+ * a tab title. These fill that gap for each role that owns the routes.
+ */
+const DETAIL_TITLES: ReadonlyArray<readonly [string, string]> = [
+  ["personas", "Personas"],
+  ["properties", "Propiedades"],
+  ["documents", "Documentos"],
+  ["users", "Usuarios"],
+  ["timeline", "Actividad"],
+];
+
 /** Every path the nav tree knows about, longest first so /a/b beats /a. */
 function titleIndex(): TitleEntry[] {
   const views: UserView[] = ["admin", "admin-dev", "agent", "owner", "buyer", "content"];
@@ -19,8 +34,20 @@ function titleIndex(): TitleEntry[] {
   for (const view of views) {
     for (const group of buildGroups(view, "Propo", true) as NavGroup[]) {
       for (const item of group.items) {
-        seen.set(item.path, { path: item.path, label: item.label, end: !!item.end });
+        // A nav entry may point at a tab (`/admin/crm?tab=propiedades`); the
+        // title index is keyed by pathname, and the first entry for a pathname
+        // wins so the section keeps its own name rather than a tab's.
+        const path = item.path.split("?")[0] ?? item.path;
+        if (!seen.has(path)) {
+          seen.set(path, { path, label: item.label, end: !!item.end });
+        }
       }
+    }
+  }
+  for (const role of ["admin", "agent"]) {
+    for (const [segment, label] of DETAIL_TITLES) {
+      const path = `/${role}/${segment}`;
+      if (!seen.has(path)) seen.set(path, { path, label, end: false });
     }
   }
   return [...seen.values()].sort((a, b) => b.path.length - a.path.length);

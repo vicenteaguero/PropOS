@@ -13,16 +13,23 @@ function paths(groups: NavGroup[]): string[] {
  * What these tests protect is the property that made parity possible: the tree
  * is data, every entry is reachable, and nothing is hardcoded per shell.
  *
- * Before the extraction the phone could only reach the four bottom-nav tabs
- * plus eight home tiles — 9 of 24 admin destinations, with the Pendientes
- * proposal queue among the 13 that were URL-only.
+ * The tree is deliberately SMALL now — the former list routes are tabs inside
+ * four sections — so these assert reachability and filtering, not item count.
  */
 describe("navigation tree", () => {
-  it("exposes every admin destination as data", () => {
+  it("exposes every admin section as data", () => {
     const admin = paths(buildGroups("admin-dev", "Propo", true));
-    expect(admin.length).toBeGreaterThanOrEqual(24);
-    // The queue that was unreachable on mobile is the canary for this whole fix.
-    expect(admin).toContain("/admin/pendientes");
+    for (const path of [
+      "/admin",
+      "/admin/crm",
+      "/admin/agenda",
+      "/admin/finanzas",
+      "/admin/documentos",
+      // The queue that was unreachable on mobile is the canary for this fix.
+      "/admin/pendientes",
+    ]) {
+      expect(admin).toContain(path);
+    }
   });
 
   it("builds a non-empty tree for every view", () => {
@@ -51,13 +58,13 @@ describe("navigation tree", () => {
   it("drops groups whose every item is out of scope", () => {
     const scoped = filterByScope(buildGroups("admin", "Propo", false), ["crm"]);
     expect(scoped.every((g) => g.items.length > 0)).toBe(true);
-    expect(paths(scoped)).not.toContain("/admin/correos");
+    expect(paths(scoped)).not.toContain("/admin/finanzas");
   });
 
   it("keeps unscoped entries visible under any scope", () => {
     // Propiedades carries no `scope`, so a CRM-only admin must still reach it.
     expect(paths(filterByScope(buildGroups("admin", "Propo", false), ["crm"]))).toContain(
-      "/admin/properties",
+      "/admin/crm?tab=propiedades",
     );
   });
 });

@@ -3,12 +3,15 @@ import { titleForPath } from "./page-meta";
 
 describe("titleForPath", () => {
   it("names a listed route", () => {
-    expect(titleForPath("/admin/personas")).toBe("Personas");
+    expect(titleForPath("/admin/crm")).toBe("CRM");
     expect(titleForPath("/admin/pendientes")).toBe("Pendientes");
   });
 
-  it("lets a detail route inherit its list's name", () => {
+  it("names a detail route the nav no longer lists", () => {
+    // The list pages became tabs, so /admin/personas is only a redirect — but
+    // /admin/personas/:id is still a page and still needs a tab title.
     expect(titleForPath("/admin/personas/abc-123")).toBe("Personas");
+    expect(titleForPath("/admin/properties/abc-123")).toBe("Propiedades");
   });
 
   it("matches the role root exactly, never as a prefix", () => {
@@ -20,8 +23,14 @@ describe("titleForPath", () => {
   });
 
   it("prefers the longest matching entry", () => {
-    expect(titleForPath("/admin/documents")).toBe("Documentos");
-    expect(titleForPath("/admin/documents/portals")).toBe("Enlaces");
+    expect(titleForPath("/admin/documentos")).toBe("Documentos");
+    expect(titleForPath("/admin/datos/importar")).toBe("Importar");
+  });
+
+  it("keeps a section's own name when an entry points at one of its tabs", () => {
+    // /admin/crm?tab=propiedades shares a pathname with the CRM entry; the
+    // section wins so the tab does not rename the whole page.
+    expect(titleForPath("/admin/crm")).toBe("CRM");
   });
 
   it("returns null for routes the nav tree does not own", () => {
