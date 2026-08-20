@@ -52,6 +52,14 @@ class _Builder:
         self._rows = [r for r in self._rows if needle in str(r.get(col, "")).lower()]
         return self
 
+    def like(self, col, pattern):
+        # Case-sensitive by contract, but the `*_search` columns it is used
+        # against are already folded to lowercase by the generated expression.
+        self._log.setdefault("like", []).append((col, pattern))
+        needle = pattern.strip("%")
+        self._rows = [r for r in self._rows if needle in str(r.get(col, ""))]
+        return self
+
     def or_(self, clause):
         self._log.setdefault("or_", []).append(clause)
         return self
@@ -132,6 +140,26 @@ def test_missing_label_falls_back_instead_of_raising():
     with patch("app.features.search.service.get_supabase_client", return_value=_client(tables)):
         hit = search_entities(TENANT, EntityKind.PROPERTY)[0]
     assert hit.label == "Sin título"
+
+
+def test_query_is_folded_to_match_the_generated_columns():
+    """ "nunoa" has to find "Ñuñoa" — half of Chilean place names carry accents.
+
+    The `*_search` columns are `immutable_unaccent(col)`, so the needle must be
+    folded the same way. Against the raw column the search silently returned
+    nothing, which reads as "the record does not exist" rather than as a bug.
+    """
+    log: dict = {}
+    tables = {"places": [{"id": str(uuid4()), "name": "Ñuñoa", "name_search": "nunoa"}]}
+    with patch(
+        "app.features.search.service.get_supabase_client",
+        return_value=_client(tables, log),
+    ):
+        for typed in ("nunoa", "Ñuñoa", "ÑUÑOA"):
+            hits = search_entities(TENANT, EntityKind.PLACE, q=typed)
+            assert [h.label for h in hits] == ["Ñuñoa"], typed
+    # It must filter on the folded column, never on the display one.
+    assert all(col == "name_search" for col, _ in log["like"])
 
 
 def test_kind_enum_matches_the_note_targets_migration():

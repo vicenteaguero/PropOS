@@ -12,6 +12,7 @@ Every query is tenant-scoped and skips soft-deleted rows.
 
 from __future__ import annotations
 
+import unicodedata
 from typing import Any
 from uuid import UUID
 
@@ -22,6 +23,18 @@ from app.features.search.schemas import EntityHit, EntityKind
 # funnel, not a browsable list, and a long menu is slower to use than typing one
 # more letter.
 DEFAULT_LIMIT = 20
+
+
+def _fold(q: str) -> str:
+    """Lowercase and strip accents, mirroring `public.immutable_unaccent`.
+
+    The `*_search` generated columns hold folded text, so the needle has to be
+    folded the same way or "Rocío" typed WITH the accent would stop matching.
+    Chilean names, comunas and street names are full of accents; searching the
+    raw column found nothing and read as "this record does not exist".
+    """
+    decomposed = unicodedata.normalize("NFKD", q)
+    return "".join(c for c in decomposed if not unicodedata.combining(c)).lower()
 
 
 def _rows(table: str, tenant_id: UUID, select: str, limit: int) -> Any:
@@ -38,7 +51,8 @@ def _rows(table: str, tenant_id: UUID, select: str, limit: int) -> Any:
 def _search_properties(tenant_id: UUID, q: str | None, limit: int) -> list[EntityHit]:
     builder = _rows("properties", tenant_id, "id,title,address", limit).order("created_at", desc=True)
     if q:
-        builder = builder.or_(f"title.ilike.%{q}%,address.ilike.%{q}%")
+        needle = _fold(q)
+        builder = builder.or_(f"title_search.like.%{needle}%,address_search.like.%{needle}%")
     return [
         EntityHit(kind=EntityKind.PROPERTY, id=r["id"], label=r.get("title") or "Sin título", sub=r.get("address"))
         for r in builder.execute().data
@@ -48,7 +62,10 @@ def _search_properties(tenant_id: UUID, q: str | None, limit: int) -> list[Entit
 def _search_contacts(tenant_id: UUID, q: str | None, limit: int) -> list[EntityHit]:
     builder = _rows("contacts", tenant_id, "id,full_name,email,phone", limit).order("created_at", desc=True)
     if q:
-        builder = builder.or_(f"full_name.ilike.%{q}%,email.ilike.%{q}%,phone.ilike.%{q}%")
+        needle = _fold(q)
+        # email/phone stay `ilike`: neither carries accents, so folding them
+        # would only cost another generated column for nothing.
+        builder = builder.or_(f"full_name_search.like.%{needle}%,email.ilike.%{q}%,phone.ilike.%{q}%")
     return [
         EntityHit(
             kind=EntityKind.CONTACT,
@@ -63,7 +80,7 @@ def _search_contacts(tenant_id: UUID, q: str | None, limit: int) -> list[EntityH
 def _search_events(tenant_id: UUID, q: str | None, limit: int) -> list[EntityHit]:
     builder = _rows("events", tenant_id, "id,title,starts_at", limit).order("starts_at", desc=True)
     if q:
-        builder = builder.ilike("title", f"%{q}%")
+        builder = builder.like("title_search", f"%{_fold(q)}%")
     return [
         EntityHit(
             kind=EntityKind.EVENT,
@@ -78,7 +95,7 @@ def _search_events(tenant_id: UUID, q: str | None, limit: int) -> list[EntityHit
 def _search_projects(tenant_id: UUID, q: str | None, limit: int) -> list[EntityHit]:
     builder = _rows("projects", tenant_id, "id,name", limit).order("name")
     if q:
-        builder = builder.ilike("name", f"%{q}%")
+        builder = builder.like("name_search", f"%{_fold(q)}%")
     return [
         EntityHit(kind=EntityKind.PROJECT, id=r["id"], label=r.get("name") or "Sin nombre")
         for r in builder.execute().data
@@ -88,7 +105,7 @@ def _search_projects(tenant_id: UUID, q: str | None, limit: int) -> list[EntityH
 def _search_places(tenant_id: UUID, q: str | None, limit: int) -> list[EntityHit]:
     builder = _rows("places", tenant_id, "id,name", limit).order("name")
     if q:
-        builder = builder.ilike("name", f"%{q}%")
+        builder = builder.like("name_search", f"%{_fold(q)}%")
     return [
         EntityHit(kind=EntityKind.PLACE, id=r["id"], label=r.get("name") or "Sin nombre")
         for r in builder.execute().data
@@ -106,8 +123,9 @@ def _search_opportunities(tenant_id: UUID, q: str | None, limit: int) -> list[En
     builder = builder.order("created_at", desc=True)
 
     if q:
-        people_rows = _rows("contacts", tenant_id, "id,full_name", 50).ilike("full_name", f"%{q}%")
-        prop_rows = _rows("properties", tenant_id, "id,title", 50).ilike("title", f"%{q}%")
+        needle = _fold(q)
+        people_rows = _rows("contacts", tenant_id, "id,full_name", 50).like("full_name_search", f"%{needle}%")
+        prop_rows = _rows("properties", tenant_id, "id,title", 50).like("title_search", f"%{needle}%")
         people = {r["id"]: r.get("full_name") for r in people_rows.execute().data}
         props = {r["id"]: r.get("title") for r in prop_rows.execute().data}
         if not people and not props:
