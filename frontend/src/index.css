@@ -97,6 +97,11 @@
    * the platform resizes the layout viewport itself. */
   --kb-inset: 0px;
 
+  /* Height of a section's tab bar, published by SectionTabs while one is
+   * mounted. Every surface that pins itself to the viewport subtracts it, or a
+   * kanban/time-grid inside a tab overflows by exactly one tab bar. */
+  --section-tabs-h: 0px;
+
   /* Device safe areas, named once.
    *
    * Two reasons this is a token rather than `env()` at each call site. First,

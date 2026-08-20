@@ -189,7 +189,7 @@ export function DocumentsPage() {
   // ---- Desktop (lg+): master-detail — filter rail · grid · preview pane. ----
   return (
     <PageLayout width="app" noPadding>
-      <div className="flex h-[calc(100dvh-var(--app-header-h,3.5rem)-var(--app-nav-h,0px))] flex-col overflow-hidden">
+      <div className="flex h-[calc(100dvh-var(--app-header-h,3.5rem)-var(--app-nav-h,0px)-var(--section-tabs-h,0px))] flex-col overflow-hidden">
         <div className="grid min-h-0 flex-1 grid-cols-[17rem_minmax(0,1fr)_22rem] overflow-hidden">
           {/* Filter rail */}
           <aside className="min-h-0 space-y-5 overflow-y-auto border-r border-border p-5">

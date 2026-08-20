@@ -172,7 +172,7 @@ export function AgentChatPage() {
   const sessions = sessionsQuery.data as SessionSummary[] | undefined;
 
   return (
-    <div className="flex h-[calc(100dvh-var(--app-header-h)-var(--app-nav-h,0px))]">
+    <div className="flex h-[calc(100dvh-var(--app-header-h)-var(--app-nav-h,0px)-var(--section-tabs-h,0px))]">
       {/* The page's own name. Visually redundant next to the header's Propo
           branding, but the document needs one h1 before the rail's h2 or the
           heading outline starts at level 2. */}

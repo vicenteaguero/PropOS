@@ -39,7 +39,7 @@ export function MasterDetail({
         // has a header and no bottom nav, the mobile shell the reverse. Getting
         // this wrong cost 56px of phantom header on mobile AND hid the pane's
         // bottom edge (a chat composer, typically) behind the floating nav.
-        "h-[calc(100dvh-var(--app-header-h,3.5rem)-var(--app-nav-h,0px))] w-full overflow-hidden",
+        "h-[calc(100dvh-var(--app-header-h,3.5rem)-var(--app-nav-h,0px)-var(--section-tabs-h,0px))] w-full overflow-hidden",
         "md:grid md:[grid-template-columns:var(--list-w)_minmax(0,1fr)]",
         aside && "2xl:[grid-template-columns:var(--list-w)_minmax(0,1fr)_var(--aside-w)]",
         className,
