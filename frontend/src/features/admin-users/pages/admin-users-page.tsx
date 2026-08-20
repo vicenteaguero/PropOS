@@ -4,7 +4,7 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageLayout } from "@shared/components/page-layout";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
-import { ErrorState, PageSkeleton, Pill, Row } from "@shared/ui";
+import { ErrorState, PageSkeleton, Pill, ResponsiveTable, type ResponsiveColumn } from "@shared/ui";
 import { useIsDesktop } from "@/hooks/use-mobile";
 import {
   useAdminUsersList,
@@ -95,38 +95,89 @@ export function AdminUsersPage() {
       {errorBlock}
       {emptyBlock}
 
-      {/* Mobile: tappable rows (unchanged). */}
-      {!isLoading && !error && users.length > 0 && !isDesktop && (
-        <div className="lg:hidden">
-          {users.map((u, i) => (
-            <Row
-              key={u.id}
-              onClick={() => openUser(u.id)}
-              divider={i < users.length - 1}
-              left={
-                <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-secondary text-sm font-semibold text-foreground">
-                  {initials(u.full_name || u.email)}
-                </span>
-              }
-              title={
-                <span className="flex items-center gap-2">
-                  <span className="truncate">{u.full_name || "(sin nombre)"}</span>
-                  {u.is_dev_admin && <Pill tone="warning">DEV</Pill>}
-                  {!u.is_active && <Pill tone="destructive">Deshabilitado</Pill>}
-                </span>
-              }
-              sub={u.email}
-              right={<Pill tone="neutral">{u.role}</Pill>}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Desktop: dense table using the full width. */}
-      {!isLoading && !error && users.length > 0 && isDesktop && (
-        <div className="px-8">
-          <UsersTable users={users} onOpen={openUser} />
-        </div>
+      {!isLoading && !error && users.length > 0 && (
+        <ResponsiveTable
+          className="lg:mx-8"
+          rows={users}
+          rowKey={(u) => u.id}
+          onRowClick={(u) => openUser(u.id)}
+          columns={
+            [
+              {
+                key: "usuario",
+                header: "Usuario",
+                cell: (u) => (
+                  <div className="flex items-center gap-3">
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-secondary text-[13px] font-semibold text-foreground">
+                      {initials(u.full_name || u.email)}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="flex items-center gap-2">
+                        <span className="truncate font-medium text-foreground">
+                          {u.full_name || "(sin nombre)"}
+                        </span>
+                        {u.is_dev_admin && <Pill tone="warning">DEV</Pill>}
+                      </span>
+                      <span className="block truncate text-[12px] text-muted-foreground">
+                        {u.email}
+                      </span>
+                    </span>
+                  </div>
+                ),
+              },
+              {
+                key: "rut",
+                header: "RUT",
+                className: "tabular-nums text-muted-foreground",
+                cell: (u) => u.rut ?? "—",
+              },
+              { key: "rol", header: "Rol", cell: (u) => <Pill tone="neutral">{u.role}</Pill> },
+              {
+                key: "vista",
+                header: "Vista",
+                className: "text-muted-foreground",
+                cell: (u) => u.view,
+              },
+              {
+                key: "estado",
+                header: "Estado",
+                cell: (u) =>
+                  u.is_active ? (
+                    <span className="text-[13px] text-muted-foreground">Activo</span>
+                  ) : (
+                    <Pill tone="destructive">Deshabilitado</Pill>
+                  ),
+              },
+              {
+                key: "creado",
+                header: "Creado",
+                className: "tabular-nums text-muted-foreground",
+                cell: (u) =>
+                  new Date(u.created_at).toLocaleDateString("es-CL", {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                  }),
+              },
+            ] as ResponsiveColumn<AdminUserListItem>[]
+          }
+          mobileRow={(u: AdminUserListItem) => ({
+            left: (
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-secondary text-sm font-semibold text-foreground">
+                {initials(u.full_name || u.email)}
+              </span>
+            ),
+            title: (
+              <span className="flex items-center gap-2">
+                <span className="truncate">{u.full_name || "(sin nombre)"}</span>
+                {u.is_dev_admin && <Pill tone="warning">DEV</Pill>}
+                {!u.is_active && <Pill tone="destructive">Deshabilitado</Pill>}
+              </span>
+            ),
+            sub: u.email,
+            right: <Pill tone="neutral">{u.role}</Pill>,
+          })}
+        />
       )}
 
       <InviteUserDrawer
@@ -135,81 +186,6 @@ export function AdminUsersPage() {
         currentTenantId={user?.tenantId}
       />
     </PageLayout>
-  );
-}
-
-/** Desktop-only dense user table. Rows navigate to the detail page on click. */
-function UsersTable({
-  users,
-  onOpen,
-}: {
-  users: AdminUserListItem[];
-  onOpen: (id: string) => void;
-}) {
-  return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-border text-left text-[12px] font-medium text-muted-foreground">
-            <th className="py-2.5 pl-4 pr-3 font-medium">Usuario</th>
-            <th className="px-3 py-2.5 font-medium">RUT</th>
-            <th className="px-3 py-2.5 font-medium">Rol</th>
-            <th className="px-3 py-2.5 font-medium">Vista</th>
-            <th className="px-3 py-2.5 font-medium">Estado</th>
-            <th className="px-3 py-2.5 font-medium">Creado</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map((u, i) => (
-            <tr
-              key={u.id}
-              onClick={() => onOpen(u.id)}
-              className={`cursor-pointer align-middle transition hover:bg-secondary/40 ${
-                i < users.length - 1 ? "border-b border-border" : ""
-              }`}
-            >
-              <td className="py-2.5 pl-4 pr-3">
-                <div className="flex items-center gap-3">
-                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-secondary text-[13px] font-semibold text-foreground">
-                    {initials(u.full_name || u.email)}
-                  </span>
-                  <span className="min-w-0">
-                    <span className="flex items-center gap-2">
-                      <span className="truncate font-medium text-foreground">
-                        {u.full_name || "(sin nombre)"}
-                      </span>
-                      {u.is_dev_admin && <Pill tone="warning">DEV</Pill>}
-                    </span>
-                    <span className="block truncate text-[12px] text-muted-foreground">
-                      {u.email}
-                    </span>
-                  </span>
-                </div>
-              </td>
-              <td className="px-3 py-2.5 tabular-nums text-muted-foreground">{u.rut ?? "—"}</td>
-              <td className="px-3 py-2.5">
-                <Pill tone="neutral">{u.role}</Pill>
-              </td>
-              <td className="px-3 py-2.5 text-muted-foreground">{u.view}</td>
-              <td className="px-3 py-2.5">
-                {u.is_active ? (
-                  <span className="text-[13px] text-muted-foreground">Activo</span>
-                ) : (
-                  <Pill tone="destructive">Deshabilitado</Pill>
-                )}
-              </td>
-              <td className="px-3 py-2.5 tabular-nums text-muted-foreground">
-                {new Date(u.created_at).toLocaleDateString("es-CL", {
-                  day: "2-digit",
-                  month: "short",
-                  year: "numeric",
-                })}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
   );
 }
 
