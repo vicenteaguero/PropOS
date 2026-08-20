@@ -1,6 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, Moon, Settings, Sparkles, Sun, Check } from "lucide-react";
+import {
+  Briefcase,
+  Building2,
+  LogOut,
+  Moon,
+  Settings,
+  Sparkles,
+  Sun,
+  User,
+  Check,
+} from "lucide-react";
 import {
   Command,
   CommandEmpty,
@@ -16,6 +26,8 @@ import { useThemeMode } from "@core/theme/theme-provider";
 import { useAgentName } from "@core/branding/agent-branding";
 import { useNavGroups } from "@layouts/use-nav-groups";
 import { useAgentOverlay } from "@features/agent/components/agent-overlay-host";
+import { useEntitySearch, type EntityHit, type EntityKind } from "@shared/api/entity-search";
+import { useDebounced } from "@shared/hooks/use-debounced";
 
 /**
  * Returns true when focus is somewhere the user is typing prose, so a bare
@@ -73,6 +85,31 @@ export function CommandPalette({
   const agentName = useAgentName();
   const { groups, isAdminView } = useNavGroups();
   const propo = useAgentOverlay();
+  const [query, setQuery] = useState("");
+  // Two characters is where a name search stops matching half the database.
+  const term = useDebounced(query.trim(), 200);
+  const searching = term.length >= 2;
+
+  const roleRoot = `/${(user?.role ?? "ADMIN").toLowerCase()}`;
+  const people = useEntitySearch("CONTACT", term, searching);
+  const properties = useEntitySearch("PROPERTY", term, searching);
+  const deals = useEntitySearch("OPPORTUNITY", term, searching);
+
+  const records: { hit: EntityHit; to: string }[] = useMemo(() => {
+    if (!searching) return [];
+    const path: Record<EntityKind, (id: string) => string> = {
+      CONTACT: (id) => `${roleRoot}/personas/${id}`,
+      PROPERTY: (id) => `${roleRoot}/properties/${id}`,
+      // A deal has no page of its own; the board is where it is worked.
+      OPPORTUNITY: () => `${roleRoot}/crm?tab=pipeline`,
+      EVENT: () => `${roleRoot}/agenda`,
+      PROJECT: () => `${roleRoot}/crm?tab=propiedades`,
+      PLACE: () => `${roleRoot}/crm?tab=propiedades`,
+    };
+    return [...(people.data ?? []), ...(properties.data ?? []), ...(deals.data ?? [])]
+      .slice(0, 12)
+      .map((hit) => ({ hit, to: path[hit.kind](hit.id) }));
+  }, [searching, people.data, properties.data, deals.data, roleRoot]);
 
   const canPropo = useMemo(() => {
     if (!isAdminView) return false;
@@ -99,9 +136,44 @@ export function CommandPalette({
         >
           <DialogTitle className="sr-only">Buscar y navegar</DialogTitle>
           <Command loop>
-            <CommandInput placeholder="Ir a una página, cambiar de workspace, ejecutar una acción…" />
+            <CommandInput
+              value={query}
+              onValueChange={setQuery}
+              placeholder="Buscar una persona, una propiedad, una página…"
+            />
             <CommandList className="max-h-[60dvh]">
               <CommandEmpty>Sin resultados.</CommandEmpty>
+
+              {records.length > 0 && (
+                <CommandGroup heading="Registros">
+                  {records.map(({ hit, to }) => {
+                    const Icon =
+                      hit.kind === "CONTACT"
+                        ? User
+                        : hit.kind === "PROPERTY"
+                          ? Building2
+                          : Briefcase;
+                    return (
+                      <CommandItem
+                        key={`${hit.kind}-${hit.id}`}
+                        // cmdk scores against `value`; the server already
+                        // decided these match, so the term itself is included
+                        // to keep them from being filtered back out.
+                        value={`${hit.label} ${hit.sub ?? ""} ${term}`}
+                        onSelect={() => run(() => navigate(to))}
+                      >
+                        <Icon className="size-4" />
+                        <span className="truncate">{hit.label}</span>
+                        {hit.sub && (
+                          <span className="ml-auto truncate text-xs text-muted-foreground">
+                            {hit.sub}
+                          </span>
+                        )}
+                      </CommandItem>
+                    );
+                  })}
+                </CommandGroup>
+              )}
 
               {canPropo && (
                 <CommandGroup heading={agentName}>
