@@ -13,7 +13,10 @@ urgency, and returns them in the order a person should work them.
 
 from __future__ import annotations
 
+import asyncio
 import datetime as dt
+from collections.abc import Callable
+from typing import Any
 from uuid import UUID
 
 from app.core.supabase.client import get_supabase_client
@@ -387,24 +390,42 @@ def rank(items: list[AttentionItem], now: dt.datetime) -> None:
     items.sort(key=sort_key)
 
 
-def build_feed(tenant_id: UUID, limit: int, *, now: dt.datetime | None = None) -> AttentionFeed:
+async def _gather(*calls: Callable[[], Any]) -> list[Any]:
+    """Run blocking PostgREST calls at the same time, off the event loop.
+
+    The Supabase client is synchronous, so a handler that awaits nothing still
+    blocks the whole worker for as long as every round trip it makes — and this
+    one reads seven tables. Run end to end that is seven network latencies
+    stacked up before the first row reaches the broker; in three waves it is
+    three, and unrelated requests keep getting served in between.
+    """
+    return list(await asyncio.gather(*(asyncio.to_thread(call) for call in calls)))
+
+
+async def build_feed(tenant_id: UUID, limit: int, *, now: dt.datetime | None = None) -> AttentionFeed:
     now = now or dt.datetime.now(dt.UTC)
 
-    names = {
-        row["id"]: row["full_name"] for row in _lookup("contacts", tenant_id, "id,full_name") if row.get("full_name")
-    }
-    props = {row["id"]: row["title"] for row in _lookup("properties", tenant_id, "id,title") if row.get("title")}
+    contact_rows, property_rows = await _gather(
+        lambda: _lookup("contacts", tenant_id, "id,full_name"),
+        lambda: _lookup("properties", tenant_id, "id,title"),
+    )
+    names = {row["id"]: row["full_name"] for row in contact_rows if row.get("full_name")}
+    props = {row["id"]: row["title"] for row in property_rows if row.get("title")}
 
-    visits = list(_visits(tenant_id, now, names, props))
+    unanswered, emails, visits, stalled = await _gather(
+        lambda: list(_unanswered(tenant_id, now, names, props)),
+        lambda: list(_email_waiting(tenant_id, now, names)),
+        lambda: list(_visits(tenant_id, now, names, props)),
+        lambda: list(_stalled(tenant_id, now, names, props)),
+    )
+
+    # Tasks come last because they are deduplicated against the visits already
+    # listed: the seeded "Preparar: Visita — …" task and the visit itself are
+    # the same appointment.
     listed_events = {item.event_id for item in visits if item.event_id}
+    (tasks,) = await _gather(lambda: list(_tasks(tenant_id, now, listed_events, props)))
 
-    items: list[AttentionItem] = [
-        *_unanswered(tenant_id, now, names, props),
-        *_email_waiting(tenant_id, now, names),
-        *visits,
-        *_tasks(tenant_id, now, listed_events, props),
-        *_stalled(tenant_id, now, names, props),
-    ]
+    items: list[AttentionItem] = [*unanswered, *emails, *visits, *tasks, *stalled]
 
     counts: dict[str, int] = {kind.value: 0 for kind in AttentionKind}
     for item in items:
