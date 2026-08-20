@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bath, BedDouble, Maximize, Plus } from "lucide-react";
+import { Bath, BedDouble, Maximize, Plus, LayoutGrid, Map as MapIcon } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { PageLayout } from "@shared/components/page-layout";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
-import { ListCapNotice, ListShell, PhotoCard, Pill, Segmented } from "@shared/ui";
+import { ListCapNotice, ListShell, PhotoCard, Pill, ViewToggle } from "@shared/ui";
 import { toast } from "sonner";
 import { propertiesApi, type Property, type PropertyInput } from "../api/properties-api";
 import { PropertyFormDialog } from "../components/property-form-dialog";
@@ -50,12 +50,12 @@ function PropertyCard({ property, onClick }: { property: Property; onClick: () =
         </>
       }
     >
-      <div className="px-4 py-3">
-        <div className="truncate text-base font-semibold leading-tight text-foreground">
+      <div className="px-3 py-2.5">
+        <div className="line-clamp-2 text-[13.5px] font-semibold leading-tight text-foreground">
           {property.title}
         </div>
         {property.address && (
-          <div className="mt-0.5 truncate text-[13px] text-muted-foreground">
+          <div className="mt-0.5 truncate text-[12px] text-muted-foreground">
             {property.address}
           </div>
         )}
@@ -142,13 +142,16 @@ export function AdminPropertiesPage() {
         }
         filters={
           properties.length > 0 && !isLoading && !error ? (
-            <Segmented
-              items={[
-                { id: "lista", label: "Lista" },
-                { id: "mapa", label: "Mapa" },
-              ]}
+            // Same properties, another way of looking at them — a setting, not
+            // a destination. As a tab bar it was a third row of tabs stacked
+            // under the section tabs and the page title.
+            <ViewToggle
               value={view}
-              onChange={(id) => setView(id as "lista" | "mapa")}
+              onChange={setView}
+              options={[
+                { value: "lista", label: "Lista", icon: <LayoutGrid className="size-4" /> },
+                { value: "mapa", label: "Mapa", icon: <MapIcon className="size-4" /> },
+              ]}
             />
           ) : undefined
         }
@@ -186,7 +189,10 @@ export function AdminPropertiesPage() {
         }
       >
         {view === "lista" ? (
-          <div className="grid grid-cols-1 gap-3 px-[var(--page-x)] lg:grid-cols-2 lg:gap-4 xl:grid-cols-3 2xl:grid-cols-4">
+          // Two columns from 360px up. One card per screen meant scrolling
+          // through 40 properties one at a time; the point of the list is to
+          // FIND one, and a cover plus a price is legible at half width.
+          <div className="grid grid-cols-2 gap-2 px-[var(--page-x)] min-[900px]:grid-cols-3 lg:gap-4 xl:grid-cols-4 2xl:grid-cols-5">
             {properties.map((p) => (
               <PropertyCard
                 key={p.id}

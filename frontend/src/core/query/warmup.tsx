@@ -1,6 +1,14 @@
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { endOfDay, startOfDay } from "date-fns";
+import {
+  addDays,
+  endOfDay,
+  endOfMonth,
+  endOfWeek,
+  startOfDay,
+  startOfMonth,
+  startOfWeek,
+} from "date-fns";
 import { useAuth } from "@shared/hooks/use-auth";
 import { apiRequest } from "@shared/api/http";
 import { contactsApi } from "@features/contacts/api/contacts-api";
@@ -45,6 +53,28 @@ export function QueryWarmup() {
         queryKey: ["calendar", "feed", from, to],
         queryFn: () => calendarApi.feed(from, to),
       });
+      // The calendar does not open on "today" — desktop opens on the week and
+      // the phone on the month grid, each asking for its own range. Warming
+      // only today therefore warmed a key nobody reads, and the agenda still
+      // fetched from cold on arrival: the several-second wait on the surface a
+      // broker opens first every morning.
+      //
+      // The ranges below mirror calendar-page's own arithmetic EXACTLY,
+      // `addDays(end, 1)` included — a key that differs by one day is a cache
+      // miss, and the prefetch silently does nothing.
+      const warmRange = (start: Date, end: Date) => {
+        const from = start.toISOString();
+        const to = addDays(end, 1).toISOString();
+        void queryClient.prefetchQuery({
+          queryKey: ["calendar", "feed", from, to],
+          queryFn: () => calendarApi.feed(from, to),
+        });
+      };
+      warmRange(startOfWeek(today, { weekStartsOn: 1 }), endOfWeek(today, { weekStartsOn: 1 }));
+      warmRange(
+        startOfWeek(startOfMonth(today), { weekStartsOn: 1 }),
+        endOfWeek(endOfMonth(today), { weekStartsOn: 1 }),
+      );
       void queryClient.prefetchQuery({
         queryKey: ["analytics", "pending-count"],
         queryFn: () => apiRequest("/v1/analytics/pending-count"),

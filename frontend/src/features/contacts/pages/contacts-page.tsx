@@ -2,7 +2,17 @@ import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Chip, Chips, ListCapNotice, ListShell, MasterDetail, Pill, Row } from "@shared/ui";
+import {
+  FilterSelect,
+  ListCapNotice,
+  ListShell,
+  MasterDetail,
+  Pill,
+  PropertyFilter,
+  Row,
+} from "@shared/ui";
+import { useProperties } from "@features/documents/hooks/use-entities";
+import { useOpportunities } from "@features/opportunities/hooks/use-opportunities";
 import { toast } from "sonner";
 import { useContacts, useCreateContact } from "../hooks/use-contacts";
 import { ContactFormDialog } from "../components/contact-form-dialog";
@@ -28,6 +38,10 @@ import { initials } from "@shared/utils/format";
 export function ContactsPage() {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<ContactType | "ALL">("ALL");
+  // "Everyone involved in THIS property" is the question a broker actually
+  // asks; before this the only filter was the contact's type, which answers a
+  // question nobody has.
+  const [propertyId, setPropertyId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
   // Selection lives in the URL, not in state. Below md the master-detail swaps
@@ -49,11 +63,27 @@ export function ContactsPage() {
 
   const { data, isLoading, error, refetch } = useContacts({ q: search || undefined, limit: 300 });
   const create = useCreateContact();
+  const properties = useProperties();
+  const opportunities = useOpportunities({ limit: 500 });
+
+  /** People who have a deal on the selected property. */
+  const peopleOnProperty = useMemo(() => {
+    if (!propertyId) return null;
+    const ids = new Set<string>();
+    for (const o of opportunities.data ?? []) {
+      if (o.property_id === propertyId && o.person_id) ids.add(o.person_id);
+    }
+    return ids;
+  }, [opportunities.data, propertyId]);
 
   const filtered = useMemo(() => {
     if (!data) return [];
-    return typeFilter === "ALL" ? data : data.filter((c) => c.type === typeFilter);
-  }, [data, typeFilter]);
+    return data.filter((c) => {
+      if (typeFilter !== "ALL" && c.type !== typeFilter) return false;
+      if (peopleOnProperty && !peopleOnProperty.has(c.id)) return false;
+      return true;
+    });
+  }, [data, typeFilter, peopleOnProperty]);
 
   const list = (
     <ListShell
@@ -67,29 +97,42 @@ export function ContactsPage() {
         ariaLabel: "Buscar personas",
       }}
       action={
-        <Button size="sm" className="gap-1.5" onClick={() => setDialogOpen(true)}>
+        <Button
+          size="icon"
+          aria-label="Nueva persona"
+          className="rounded-full"
+          onClick={() => setDialogOpen(true)}
+        >
           <Plus className="size-4" strokeWidth={1.8} />
-          Nueva
         </Button>
       }
       filters={
-        <Chips>
-          <Chip active={typeFilter === "ALL"} onClick={() => setTypeFilter("ALL")}>
-            Todas
-          </Chip>
-          {CONTACT_TYPES.map((t) => (
-            <Chip key={t} active={typeFilter === t} onClick={() => setTypeFilter(t)}>
-              {CONTACT_TYPE_LABELS[t]}
-            </Chip>
-          ))}
-        </Chips>
+        // Two selects instead of eleven chips. As a chip row the type filter
+        // scrolled sideways past the edge of a phone and there was no room to
+        // add the property filter at all.
+        <div className="flex flex-wrap items-center gap-2">
+          <PropertyFilter
+            properties={properties.data ?? []}
+            value={propertyId}
+            onChange={setPropertyId}
+          />
+          <FilterSelect
+            label="Tipo"
+            value={typeFilter === "ALL" ? null : typeFilter}
+            onChange={(v) => setTypeFilter((v ?? "ALL") as ContactType | "ALL")}
+            allLabel="Todos los tipos"
+            options={CONTACT_TYPES.map((t) => ({ value: t, label: CONTACT_TYPE_LABELS[t] ?? t }))}
+          />
+        </div>
       }
       isLoading={isLoading}
       error={error}
       errorMessage="No se pudieron cargar los contactos."
       onRetry={() => refetch()}
       isEmpty={filtered.length === 0}
-      emptyTitle={search || typeFilter !== "ALL" ? "Sin coincidencias" : "Sin contactos"}
+      emptyTitle={
+        search || typeFilter !== "ALL" || propertyId ? "Sin coincidencias" : "Sin contactos"
+      }
       emptyAction={{ label: "Nuevo contacto", onClick: () => setDialogOpen(true) }}
       footer={<ListCapNotice resource="contacts" count={data?.length} />}
     >

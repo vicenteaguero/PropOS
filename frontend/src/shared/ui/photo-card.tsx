@@ -43,7 +43,10 @@ export function PhotoCard({
         className,
       )}
     >
-      <div className="relative h-40 w-full bg-gradient-to-br from-secondary to-muted text-foreground">
+      {/* 4:3 rather than a fixed 160px: at half width on a phone a fixed height
+          is nearly square and wastes the row; a ratio keeps the crop honest at
+          every column count. */}
+      <div className="relative aspect-[4/3] w-full bg-gradient-to-br from-secondary to-muted text-foreground">
         {showImage ? (
           <img
             src={src}
