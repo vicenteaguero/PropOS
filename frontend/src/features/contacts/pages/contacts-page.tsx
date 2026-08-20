@@ -18,7 +18,6 @@ import { toast } from "sonner";
 import { useContacts, useCreateContact } from "../hooks/use-contacts";
 import { ContactFormDialog } from "../components/contact-form-dialog";
 import { ContactDetail } from "../components/contact-detail";
-import { ContactAside } from "../components/contact-aside";
 import { CONTACT_TYPE_LABELS, CONTACT_TYPES, type ContactType } from "../types";
 import { CONTACT_TYPE_TONES } from "@shared/lib/tones";
 import { initials } from "@shared/utils/format";
@@ -175,7 +174,6 @@ export function ContactsPage() {
             </div>
           )
         }
-        aside={selectedId ? <ContactAside contactId={selectedId} /> : undefined}
       />
       <ContactFormDialog
         open={dialogOpen}
