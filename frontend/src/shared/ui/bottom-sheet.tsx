@@ -45,7 +45,10 @@ export function BottomSheet({
           type="button"
           aria-label="Cerrar"
           onClick={() => onOpenChange(false)}
-          className="mx-auto mb-3 flex h-6 w-16 shrink-0 items-center justify-center"
+          // 44px tall, not 24: the visible handle stays a thin bar but the hit
+          // area has to clear the touch floor, or the only obvious way out of
+          // the sheet is a target too small to hit reliably.
+          className="mx-auto -mt-1 mb-1 flex h-11 w-16 shrink-0 items-center justify-center"
         >
           <span className="h-1.5 w-10 rounded-full bg-line-strong" />
         </button>
