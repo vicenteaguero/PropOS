@@ -2,7 +2,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import { PageLayout } from "@shared/components/page-layout";
 import { useAuth } from "@shared/hooks/use-auth";
 import { ContactDetail } from "../components/contact-detail";
-import { ContactAside } from "../components/contact-aside";
 import { usePageTitle } from "@app/page-meta";
 
 /**
@@ -20,18 +19,16 @@ export function ContactDetailPage() {
   usePageTitle("Persona");
 
   // Deep links land here on every viewport (the list page only routes to it on
-  // phones). On a wide screen a lone 896px column wasted most of the display,
-  // so pair the detail with the same context rail the master-detail renders.
+  // phones).
+  //
+  // There used to be a 20rem context rail beside this column. It listed the
+  // contact's deals, which the summary block now carries, and then their
+  // interactions, which the tabs below already show — a full-width table
+  // squeezed into a rail, with its columns cut off at the edge. Nothing was
+  // left for it to add that the page did not already say.
   return (
-    <PageLayout width="md" noPadding className="xl:max-w-none xl:px-8 xl:py-7">
-      <div className="xl:grid xl:[grid-template-columns:minmax(0,1fr)_20rem] xl:gap-8">
-        <ContactDetail contactId={id ?? ""} onBack={backToList} onDeleted={backToList} />
-        {id && (
-          <aside className="hidden xl:block">
-            <ContactAside contactId={id} />
-          </aside>
-        )}
-      </div>
+    <PageLayout width="md">
+      <ContactDetail contactId={id ?? ""} onBack={backToList} onDeleted={backToList} />
     </PageLayout>
   );
 }
