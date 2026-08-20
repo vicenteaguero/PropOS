@@ -41,6 +41,19 @@ export function useDismissOnBack(open: boolean, onDismiss: () => void): void {
   // Deferring lets the re-run cancel it; a real unmount lets it through.
   const pendingPopRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // The URL our entry was pushed for. The cleanup pop is only correct while we
+  // are still ON that URL: if the overlay closed *because* something inside it
+  // navigated away, our entry is no longer on top and popping would undo that
+  // navigation instead. That is exactly what happened to every item in the "Más"
+  // sheet — tapping Propiedades navigated and was silently sent back one tick
+  // later, so the whole sheet looked dead.
+  const ownedUrlRef = useRef<string | null>(null);
+
+  // Updated on every render, so the deferred cleanup can tell "closed in place"
+  // from "closed because we navigated".
+  const liveUrlRef = useRef("");
+  liveUrlRef.current = `${location.pathname}${location.search}`;
+
   useEffect(() => {
     if (!open) return;
 
@@ -49,9 +62,11 @@ export function useDismissOnBack(open: boolean, onDismiss: () => void): void {
       pendingPopRef.current = null;
       ownsEntryRef.current = true;
     } else {
-      navigate(`${location.pathname}${location.search}`, {
+      const url = `${location.pathname}${location.search}`;
+      navigate(url, {
         state: { ...((location.state as Record<string, unknown> | null) ?? {}), __overlay: marker },
       });
+      ownedUrlRef.current = url;
       ownsEntryRef.current = true;
     }
 
@@ -64,6 +79,14 @@ export function useDismissOnBack(open: boolean, onDismiss: () => void): void {
       pendingPopRef.current = setTimeout(() => {
         pendingPopRef.current = null;
         ownsEntryRef.current = false;
+        // Compare against the LIVE url, not the one this closure captured at open
+        // time. `useLocation` re-renders the host on every navigation, so the ref
+        // is current even though the effect's own `location` is a render behind.
+        if (liveUrlRef.current !== ownedUrlRef.current) {
+          ownedUrlRef.current = null;
+          return;
+        }
+        ownedUrlRef.current = null;
         navigate(-1);
       }, 0);
     };

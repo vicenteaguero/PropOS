@@ -38,7 +38,17 @@ export function BottomSheet({
           className,
         )}
       >
-        <div className="mx-auto mb-3 h-1.5 w-10 shrink-0 rounded-full bg-line-strong" />
+        {/* A real button, not decoration. The grab handle looked draggable and
+            was not, the X was suppressed, and the backdrop is a sliver at
+            max-h-92dvh — so the sheet had no reliable way out on a phone. */}
+        <button
+          type="button"
+          aria-label="Cerrar"
+          onClick={() => onOpenChange(false)}
+          className="mx-auto mb-3 flex h-6 w-16 shrink-0 items-center justify-center"
+        >
+          <span className="h-1.5 w-10 rounded-full bg-line-strong" />
+        </button>
         {title ? (
           <SheetTitle className="text-[15px] font-semibold tracking-tight">{title}</SheetTitle>
         ) : (

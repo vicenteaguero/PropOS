@@ -1,4 +1,5 @@
 import { useParams } from "react-router-dom";
+import { label } from "@shared/lib/labels";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@shared/api/http";
 import { PageLayout } from "@shared/components/page-layout";
@@ -97,7 +98,7 @@ export function EntityTimelinePage() {
                 </span>
               </div>
               <p className="mt-2 text-xs text-muted-foreground">
-                Origen: {e.source}
+                Origen: {label("source", e.source)}
                 {e.actor ? ` · Autor: ${e.actor.slice(0, 8)}…` : ""}
               </p>
               {Object.keys(e.payload).length > 0 && (

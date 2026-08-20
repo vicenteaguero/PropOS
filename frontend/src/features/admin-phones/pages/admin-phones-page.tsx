@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { label } from "@shared/lib/labels";
 import { Loader2, Phone, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -220,7 +221,7 @@ export function AdminPhonesPage() {
             <option value="">Selecciona usuario...</option>
             {users.map((u) => (
               <option key={u.id} value={u.id}>
-                {u.full_name ?? "(sin nombre)"} — {u.email ?? "—"} ({u.role})
+                {u.full_name ?? "(sin nombre)"} — {u.email ?? "—"} ({label("role", u.role)})
               </option>
             ))}
           </select>

@@ -15,7 +15,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { useAuth } from "@shared/hooks/use-auth";
 import { useThemeMode } from "@core/theme/theme-provider";
-import { hueForTenant } from "@core/theme/tenant-accent";
+import { tenantSwatch } from "@core/theme/tenant-accent";
 import { useAgentOverlay } from "@features/agent/components/agent-overlay-host";
 import { BottomSheet, Pill } from "@shared/ui";
 import { useNavGroups, usePendingCount } from "@layouts/use-nav-groups";
@@ -107,9 +107,12 @@ export function MobileBottomNav() {
     .map((g) => ({ ...g, items: g.items.filter((i) => !tabPaths.has(i.path)) }))
     .filter((g) => g.items.length > 0);
 
+  // `replace` because the sheet already pushed a duplicate history entry for the
+  // current URL (see useDismissOnBack). Replacing it keeps Back meaning "the page
+  // I came from" instead of costing two presses to leave.
   const go = (path: string) => {
+    navigate(path, { replace: true });
     setMoreOpen(false);
-    navigate(path);
   };
 
   return (
@@ -236,7 +239,7 @@ export function MobileBottomNav() {
                 >
                   <span
                     className="size-3 shrink-0 rounded-full"
-                    style={{ background: `hsl(${hueForTenant(m.tenantId)} 42% 60%)` }}
+                    style={{ background: tenantSwatch(m.tenantId) }}
                   />
                   <span className="min-w-0 flex-1 truncate text-[15px] font-medium text-foreground">
                     {m.tenantName ?? m.tenantSlug ?? m.tenantId}

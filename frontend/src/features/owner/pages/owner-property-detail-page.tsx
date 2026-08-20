@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { label } from "@shared/lib/labels";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { ArrowLeft, Calendar, Download, Eye, FileText, Loader2, Lock } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -203,7 +204,7 @@ export function OwnerPropertyDetailPage() {
                           </span>
                         }
                         title={doc.display_name}
-                        sub={`${doc.kind} · ${formatDate(doc.created_at)}`}
+                        sub={`${label("documentKind", doc.kind)} · ${formatDate(doc.created_at)}`}
                         right={
                           <div className="flex shrink-0 items-center gap-1.5">
                             <Button

@@ -31,7 +31,15 @@ export type LabelKind =
   | "txDirection"
   | "txStatus"
   | "txCategory"
-  | "listingKind";
+  | "listingKind"
+  | "eventStatus"
+  | "eventKind"
+  | "propertyStatus"
+  | "documentKind"
+  | "uploadStatus"
+  | "interactionKind"
+  | "channel"
+  | "source";
 
 /** `tasks-api.ts` → `TaskStatus`. */
 export const TASK_STATUS_LABELS: Record<string, string> = {
@@ -152,6 +160,86 @@ export const LISTING_KIND_LABELS: Record<string, string> = {
   LEASE: "Leasing",
 };
 
+/** `events/schemas.py` → `EventStatus`. This is the "Estado: SCHEDULED" leak. */
+export const EVENT_STATUS_LABELS: Record<string, string> = {
+  SCHEDULED: "Agendado",
+  DONE: "Realizado",
+  CANCELLED: "Cancelado",
+};
+
+/** `events/schemas.py` → `EventKind`. */
+export const EVENT_KIND_LABELS: Record<string, string> = {
+  VISIT: "Visita",
+  MEETING: "Reunión",
+  CALL: "Llamada",
+  SIGNING: "Firma",
+  TODO: "Pendiente",
+  OTHER: "Otro",
+};
+
+/** `properties/schemas.py` → `PropertyStatus`. */
+export const PROPERTY_STATUS_LABELS: Record<string, string> = {
+  AVAILABLE: "Disponible",
+  RESERVED: "Reservada",
+  SOLD: "Vendida",
+  INACTIVE: "Inactiva",
+};
+
+/** `documents/types.ts` → document kinds. */
+export const DOCUMENT_KIND_LABELS: Record<string, string> = {
+  MANDATE: "Mandato",
+  CONTRACT: "Contrato",
+  PROMISE: "Promesa",
+  DEED: "Escritura",
+  APPRAISAL: "Tasación",
+  ID: "Identificación",
+  INVOICE: "Factura",
+  RECEIPT: "Boleta",
+  PLAN: "Plano",
+  REGULATION: "Reglamento",
+  OTHER: "Otro",
+};
+
+/** Anonymous-upload review states. */
+export const UPLOAD_STATUS_LABELS: Record<string, string> = {
+  PENDING: "Pendiente",
+  ACCEPTED: "Aceptado",
+  REJECTED: "Rechazado",
+};
+
+/** `interactions` kinds — previously duplicated in features/interactions/types.ts. */
+export const INTERACTION_KIND_LABELS_SHARED: Record<string, string> = {
+  VISIT: "Visita",
+  CALL: "Llamada",
+  MEETING: "Reunión",
+  MESSAGE: "Mensaje",
+  EMAIL: "Correo",
+  WHATSAPP: "WhatsApp",
+  NOTE: "Nota",
+  OTHER: "Otro",
+};
+
+/** Communication channels used across analytics and the inbox. */
+export const CHANNEL_LABELS: Record<string, string> = {
+  whatsapp: "WhatsApp",
+  email: "Correo",
+  phone: "Teléfono",
+  web: "Web",
+  manual: "Manual",
+};
+
+/** Where a row came from. `agent` is the assistant, `import` a bulk load. */
+export const SOURCE_LABELS: Record<string, string> = {
+  manual: "Manual",
+  agent: "Asistente",
+  anita: "Asistente",
+  import: "Importación",
+  whatsapp: "WhatsApp",
+  email: "Correo",
+  webhook: "Webhook",
+  system: "Sistema",
+};
+
 const LABEL_MAPS: Record<LabelKind, Record<string, string>> = {
   taskStatus: TASK_STATUS_LABELS,
   pipelineStage: PIPELINE_STAGE_LABELS,
@@ -165,6 +253,14 @@ const LABEL_MAPS: Record<LabelKind, Record<string, string>> = {
   txStatus: TX_STATUS_LABELS,
   txCategory: TX_CATEGORY_LABELS,
   listingKind: LISTING_KIND_LABELS,
+  eventStatus: EVENT_STATUS_LABELS,
+  eventKind: EVENT_KIND_LABELS,
+  propertyStatus: PROPERTY_STATUS_LABELS,
+  documentKind: DOCUMENT_KIND_LABELS,
+  uploadStatus: UPLOAD_STATUS_LABELS,
+  interactionKind: INTERACTION_KIND_LABELS_SHARED,
+  channel: CHANNEL_LABELS,
+  source: SOURCE_LABELS,
 };
 
 /** Placeholder for null/empty values, matching the em-dash used elsewhere. */
@@ -177,7 +273,16 @@ const EMPTY = "—";
 export function label(kind: LabelKind, value: string | null | undefined): string {
   if (value === null || value === undefined || value === "") return EMPTY;
   const map = LABEL_MAPS[kind];
-  return map[value] ?? map[value.toUpperCase()] ?? map[value.toLowerCase()] ?? value;
+  const hit = map[value] ?? map[value.toUpperCase()] ?? map[value.toLowerCase()];
+  if (hit !== undefined) return hit;
+  // Falling through means an English enum value reaches a Spanish UI, silently.
+  // That is how "Estado: SCHEDULED" survived to production; make it loud in dev.
+  if (import.meta.env.DEV) {
+    console.warn(
+      `[labels] no ${kind} translation for "${value}" — add one in shared/lib/labels.ts`,
+    );
+  }
+  return value;
 }
 
 /**

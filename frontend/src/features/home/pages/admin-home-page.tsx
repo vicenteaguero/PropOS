@@ -20,7 +20,7 @@ import { startOfDay, endOfDay, format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useAuth } from "@shared/hooks/use-auth";
 import { useAgentName } from "@core/branding/agent-branding";
-import { hueForTenant } from "@core/theme/tenant-accent";
+import { tenantSwatch } from "@core/theme/tenant-accent";
 import { useContacts } from "@features/contacts/hooks/use-contacts";
 import { useOpportunities } from "@features/opportunities/hooks/use-opportunities";
 import { useCalendarFeed } from "@features/calendar/hooks/use-calendar";
@@ -246,7 +246,11 @@ export function AdminHomePage() {
               </span>
             }
             title={c.full_name}
-            sub={[c.phone, c.email].filter(Boolean).join(" · ") || "Sin contacto"}
+            sub={
+              <span className="block truncate">
+                {[c.phone, c.email].filter(Boolean).join(" · ") || "Sin contacto"}
+              </span>
+            }
           />
         ))
       )}
@@ -368,7 +372,7 @@ export function AdminHomePage() {
             Same markup either way — only the grid changes. */}
         <div className="grid gap-4 lg:grid-cols-2">
           {todayItems.length > 0 || todayFeed.isPending || todayFeed.isError ? (
-            <section className="flex flex-col gap-2">
+            <section className="flex min-w-0 flex-col gap-2">
               <SectionLabel action="Ver agenda" onAction={() => navigate(`${base}/agenda`)}>
                 Hoy
               </SectionLabel>
@@ -377,7 +381,7 @@ export function AdminHomePage() {
           ) : null}
 
           {allow("crm") && (hasRecent || contactsQ.isPending || contactsQ.isError) && (
-            <section className="flex flex-col gap-2">
+            <section className="flex min-w-0 flex-col gap-2">
               <SectionLabel
                 action="Ver todas"
                 onAction={() => navigate(`${base}/crm?tab=personas`)}
@@ -409,7 +413,7 @@ export function AdminHomePage() {
               >
                 <span
                   className="flex size-9 shrink-0 items-center justify-center rounded-full"
-                  style={{ background: `hsl(${hueForTenant(m.tenantId)} 42% 55%)` }}
+                  style={{ background: tenantSwatch(m.tenantId) }}
                 >
                   <Building2 className="size-4 text-white" strokeWidth={1.9} />
                 </span>

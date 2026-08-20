@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
-import { Check, LogOut, Moon, Sun } from "lucide-react";
+import { Check, Loader2, LogOut, Moon, Sun } from "lucide-react";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -21,7 +21,7 @@ import {
 import { useAuth } from "@shared/hooks/use-auth";
 import { useShellMode } from "@shared/hooks/use-shell-mode";
 import { useThemeMode } from "@core/theme/theme-provider";
-import { hueForTenant } from "@core/theme/tenant-accent";
+import { tenantSwatch } from "@core/theme/tenant-accent";
 import { AgentFAB } from "@features/agent/components/agent-fab";
 import { AgentOverlayProvider } from "@features/agent/components/agent-overlay-host";
 import { InstallNudge } from "@shared/components/install-nudge/install-nudge";
@@ -58,11 +58,7 @@ function HeaderWorkspaceSwitcher() {
             >
               <span
                 className="size-2.5 shrink-0 rounded-full"
-                style={{
-                  background: active
-                    ? "var(--accent-brand)"
-                    : `hsl(${hueForTenant(m.tenantId)} 55% 55%)`,
-                }}
+                style={{ background: tenantSwatch(m.tenantId) }}
               />
               <span className="flex-1 truncate">{m.tenantName ?? m.tenantSlug ?? m.tenantId}</span>
               {active && <Check className="size-3.5 shrink-0" />}
@@ -102,6 +98,26 @@ function SkipToContent() {
     >
       Saltar al contenido
     </a>
+  );
+}
+
+/**
+ * Held while a workspace switch is in flight. The switch clears the whole query
+ * cache, so without this the app flashes every screen's empty state on the way
+ * to the new tenant's data.
+ */
+function TenantSwitchGate() {
+  const { isSwitchingTenant } = useAuth();
+  if (!isSwitchingTenant) return null;
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="fixed inset-0 z-[90] flex flex-col items-center justify-center gap-3 bg-background/80 backdrop-blur-sm"
+    >
+      <Loader2 className="size-6 animate-spin text-primary" strokeWidth={1.8} />
+      <p className="text-sm text-muted-foreground">Cambiando de espacio de trabajo…</p>
+    </div>
   );
 }
 
@@ -167,6 +183,7 @@ export function AppLayout() {
           >
             <Outlet />
           </main>
+          <TenantSwitchGate />
           <MobileBottomNav />
           <MobileCommandPalette />
           <InstallNudge />
@@ -244,6 +261,7 @@ export function AppLayout() {
               return <AgentFAB />;
             })()}
           </div>
+          <TenantSwitchGate />
           <InstallNudge />
         </SidebarInset>
       </SidebarProvider>

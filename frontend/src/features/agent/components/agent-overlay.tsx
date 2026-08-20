@@ -67,7 +67,7 @@ export function AgentOverlay({ onClose, initialMode = "chat" }: Props) {
     chat.pendingAudio.length === 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end md:bg-black/40">
+    <div className="fixed inset-0 z-50 flex justify-end md:bg-overlay/50 md:backdrop-blur-md">
       <button
         type="button"
         aria-label="Cerrar"
@@ -179,7 +179,7 @@ export function AgentOverlay({ onClose, initialMode = "chat" }: Props) {
             {/* Both insets, never summed: while the keyboard is up it covers the
                 home indicator, so --safe-bottom must not be added on top of it.
                 max() is correct here precisely because only one is ever live. */}
-            <div className="shrink-0 border-t border-white/10 p-3 pb-[max(calc(var(--safe-bottom)+0.75rem),calc(var(--kb-inset)+0.75rem))]">
+            <div className="shrink-0 border-t border-white/10 p-3 pb-composer">
               <AgentComposer
                 onSend={chat.send}
                 onAudio={chat.submitAudio}

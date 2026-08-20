@@ -3,6 +3,7 @@ import { ArrowLeft, Bot, Check, Loader2, Send, UserCog } from "lucide-react";
 import { BrandMark, Pill, RoundButton, FOCUS_RING } from "@shared/ui";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useKeyboardInset } from "@shared/hooks/use-keyboard-inset";
 import { useConversationMessages, useSendMessage, useTakeover } from "../hooks/use-client-chat";
 import type { ClientConversation } from "../types";
 
@@ -13,6 +14,8 @@ interface Props {
 }
 
 export function MessageThread({ conversation, onBack }: Props) {
+  // Keeps the composer on the keyboard instead of behind it.
+  useKeyboardInset();
   const { data: messages = [], isLoading } = useConversationMessages(conversation.id);
   const send = useSendMessage(conversation.id);
   const takeover = useTakeover(conversation.id);
@@ -132,7 +135,7 @@ export function MessageThread({ conversation, onBack }: Props) {
       </div>
 
       {/* Composer */}
-      <div className="border-t border-border px-4 py-3 pb-[calc(var(--safe-bottom)+0.75rem)]">
+      <div className="pb-composer border-t border-border px-4 py-3">
         {!inWindow && (
           <div className="mb-2 rounded-xl border border-destructive/40 bg-destructive/10 p-2.5 text-xs text-destructive">
             Fuera de la ventana de 24h — sólo plantillas aprobadas hasta nueva respuesta del

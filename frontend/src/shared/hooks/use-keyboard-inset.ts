@@ -19,11 +19,25 @@ export function useKeyboardInset() {
     const vv = window.visualViewport;
     if (!vv) return;
     const root = document.documentElement;
+    // The tallest layout viewport we have seen. `interactive-widget=resizes-content`
+    // (index.html) makes the LAYOUT viewport shrink when the keyboard opens, so on
+    // those platforms `innerHeight - vv.height` is ~0 and the keyboard is
+    // invisible to the formula below. Comparing against the tallest height we
+    // have observed catches that case.
+    let restHeight = window.innerHeight;
+
     const update = () => {
+      restHeight = Math.max(restHeight, window.innerHeight);
       // Rounded because iOS reports fractional values mid-animation and a
       // sub-pixel churn on a custom property repaints the whole subtree.
       const covered = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+      const shrunk = Math.max(0, restHeight - window.innerHeight);
       root.style.setProperty("--kb-inset", `${covered}px`);
+      // A boolean, because the height alone cannot tell the two platforms apart:
+      // one reports the covered strip, the other has already removed it. Without
+      // it the composer kept its home-indicator padding while sitting ON the
+      // keyboard — ~46px of dead air.
+      root.style.setProperty("--kb-open", covered > 80 || shrunk > 80 ? "1" : "0");
     };
     update();
     vv.addEventListener("resize", update);
@@ -32,6 +46,7 @@ export function useKeyboardInset() {
       vv.removeEventListener("resize", update);
       vv.removeEventListener("scroll", update);
       root.style.removeProperty("--kb-inset");
+      root.style.removeProperty("--kb-open");
     };
   }, []);
 }

@@ -96,6 +96,7 @@
    * visualViewport by useKeyboardInset; 0 whenever the keyboard is closed or
    * the platform resizes the layout viewport itself. */
   --kb-inset: 0px;
+  --kb-open: 0;
 
   /* Height of a section's tab bar, published by SectionTabs while one is
    * mounted. Every surface that pins itself to the viewport subtracts it, or a
@@ -614,4 +615,18 @@
   :root {
     --page-x: 1.5rem;
   }
+}
+
+/* Bottom padding for anything that sits directly above the on-screen keyboard.
+ *
+ * The two insets are mutually exclusive and must never be summed: with the
+ * keyboard up it covers the home indicator, so adding --safe-bottom on top of
+ * --kb-inset floated the composer ~46px above the keys. --kb-open is 0 or 1, so
+ * this reads as "one branch or the other" without needing a media query that
+ * cannot see a custom property. */
+.pb-composer {
+  padding-bottom: calc(
+    (1 - var(--kb-open)) * (var(--safe-bottom) + 0.75rem) + var(--kb-open) *
+      (var(--kb-inset) + 0.5rem)
+  );
 }

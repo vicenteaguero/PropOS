@@ -13,6 +13,7 @@
 /** Curated, harmonious hues (avoids muddy/ambiguous ones). Index picked by hash. */
 const HUES = [347, 152, 220, 270, 25, 190, 330, 45, 95, 300];
 const DEFAULT_HUE = 347; // ≈ rosa-antiguo
+const HEX_RE = /^#?[0-9a-fA-F]{6}$/;
 
 function hash(seed: string): number {
   let h = 0;
@@ -26,6 +27,20 @@ export function hueForTenant(seed: string | null | undefined): number {
   return HUES[hash(seed) % HUES.length] ?? DEFAULT_HUE;
 }
 
+/**
+ * The one true swatch for a workspace, used by every switcher.
+ *
+ * Each surface used to build its own `hsl(...)` from `hueForTenant` with its own
+ * lightness and saturation — 42%/55% on home, 42%/60% in the "Más" sheet,
+ * 55%/55% in the desktop header — while the pill's dot used `--accent-brand`
+ * (45% light / 70% dark). So one workspace showed up in four different colours,
+ * and a tenant with an explicit brand_color got the hashed hue anyway.
+ */
+export function tenantSwatch(seed: string | null | undefined, color?: string | null): string {
+  if (color && HEX_RE.test(color)) return color.startsWith("#") ? color : `#${color}`;
+  return `hsl(${hueForTenant(seed)} 42% 52%)`;
+}
+
 /** Pick a readable foreground (ink or white) for a hex background. */
 function readableForeground(hex: string): string {
   const h = hex.replace("#", "");
@@ -36,8 +51,6 @@ function readableForeground(hex: string): string {
   const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
   return lum > 0.6 ? "#1C1816" : "#FFFFFF";
 }
-
-const HEX_RE = /^#?[0-9a-fA-F]{6}$/;
 
 interface AccentInput {
   seed?: string | null;
