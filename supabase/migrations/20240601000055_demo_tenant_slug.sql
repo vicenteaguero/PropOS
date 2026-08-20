@@ -1,0 +1,11 @@
+-- Adds the `propos-demo` slug so the demo workspace can exist.
+--
+-- `tenants.slug` is an enum, not free text, so the demo tenant that the
+-- seed script (backend/scripts/seed_demo) creates cannot be inserted until
+-- the label exists. Kept as a migration rather than an ALTER TYPE inside the
+-- seed for two reasons: enum labels are permanent — the seed's wipe removes
+-- rows, never types — and ALTER TYPE ... ADD VALUE cannot be used in the same
+-- transaction that inserts a row using it.
+--
+-- Additive and idempotent; safe on an environment that already has it.
+ALTER TYPE public.tenant_slug ADD VALUE IF NOT EXISTS 'propos-demo';
