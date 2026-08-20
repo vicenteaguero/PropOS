@@ -18,7 +18,7 @@ const buttonVariants = cva(
         ghost: "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
         link: "text-primary underline-offset-4 hover:underline",
         // Uber-style full-width "ink" button (black on light / white on dark)
-        ink: "bg-foreground text-background hover:bg-foreground/90 active:scale-[0.985]",
+        ink: "bg-ink text-ink-foreground hover:bg-foreground/90 active:scale-[0.985]",
       },
       // Every size carries a coarse-pointer floor of 44px, the WCAG 2.5.5 /
       // Apple HIG minimum. It is gated on `pointer: coarse` so a mouse-driven

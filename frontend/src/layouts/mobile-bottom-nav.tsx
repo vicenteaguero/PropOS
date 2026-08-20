@@ -149,7 +149,7 @@ export function MobileBottomNav() {
                 type="button"
                 onClick={() => propo.open()}
                 aria-label="Abrir Propo"
-                className="-mt-7 flex size-[52px] items-center justify-center rounded-full bg-foreground text-background shadow-lg transition active:scale-90"
+                className="-mt-7 flex size-[52px] items-center justify-center rounded-full bg-ink text-ink-foreground shadow-lg transition active:scale-90"
               >
                 <Sparkles className="size-6" />
               </button>

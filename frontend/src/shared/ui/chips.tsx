@@ -34,7 +34,7 @@ export function Chip({ active, count, className, children, type = "button", ...p
         "shrink-0 whitespace-nowrap rounded-full border px-3.5 py-2 text-[13px] font-semibold transition",
         TOUCH_TARGET_ROW_COARSE,
         active
-          ? "border-foreground bg-foreground text-background"
+          ? "border-foreground bg-ink text-ink-foreground"
           : "border-line-strong text-foreground hover:bg-secondary",
         className,
       )}

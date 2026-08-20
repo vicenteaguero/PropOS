@@ -380,7 +380,14 @@ export function BandejaPage({ channels = ["whatsapp", "email"] }: BandejaPagePro
             }
             // The mark, bare. A tinted circle behind a brand glyph adds a
             // second shape to parse per row and says nothing the glyph doesn't.
-            left={<BrandMark brand={e.channel === "whatsapp" ? "whatsapp" : "email"} size={22} />}
+            left={
+              <BrandMark
+                mono
+                brand={e.channel === "whatsapp" ? "whatsapp" : "email"}
+                size={20}
+                className="text-muted-foreground"
+              />
+            }
             title={e.title}
             sub={<span className="block truncate">{e.property ?? "Sin propiedad vinculada"}</span>}
             right={

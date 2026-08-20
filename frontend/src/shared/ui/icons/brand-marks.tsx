@@ -74,7 +74,47 @@ export function TitanMark({ size = 20, radius, className }: MarkProps) {
 export type ChannelBrand = "whatsapp" | "email" | "titan";
 
 /** Channel mark: whatsapp → WhatsApp, email/titan → Titan. */
-export function BrandMark({ brand, ...props }: MarkProps & { brand: ChannelBrand }) {
+/**
+ * Monochrome channel glyph — no tile, no brand colour, inherits currentColor.
+ *
+ * Full brand colour is for CHOOSING a channel (the inbox filter, a "write on
+ * WhatsApp" action). Scanning a list is the opposite situation: nearly every
+ * thread is WhatsApp, so the tile made the least informative element the most
+ * saturated thing on screen — a green stripe down the left edge competing with
+ * the state pill, which is the one thing in the row that should carry colour.
+ */
+function MonoChannelMark({ brand, size = 20, className }: MarkProps & { brand: ChannelBrand }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.7}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
+      {brand === "whatsapp" ? (
+        <path d="M21 11.5a8.4 8.4 0 0 1-12.4 7.4L3.5 20.5l1.6-5A8.4 8.4 0 1 1 21 11.5Z" />
+      ) : (
+        <>
+          <rect x="2.5" y="4.5" width="19" height="15" rx="2.5" />
+          <path d="m3.5 6.5 8.5 6 8.5-6" />
+        </>
+      )}
+    </svg>
+  );
+}
+
+export function BrandMark({
+  brand,
+  mono,
+  ...props
+}: MarkProps & { brand: ChannelBrand; mono?: boolean }) {
+  if (mono) return <MonoChannelMark brand={brand} {...props} />;
   return brand === "whatsapp" ? <WhatsAppMark {...props} /> : <TitanMark {...props} />;
 }
 

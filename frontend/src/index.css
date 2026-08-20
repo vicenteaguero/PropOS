@@ -12,12 +12,30 @@
   --color-gris-acero: #9e9e9e;
   --color-rosa-suave: #f0d8da;
 
-  /* Geist — default UI font (self-hosted via @fontsource-variable, imported in main.tsx) */
+  /* Three faces, three jobs. All self-hosted via @fontsource-variable (imported
+   * in main.tsx) so an installed PWA on a Chilean mobile network never waits on
+   * a font CDN.
+   *
+   * DISPLAY — Archivo. A grotesque from Omnibus-Type (Buenos Aires) drawn for
+   * civic printing and signage: the same lineage as the forms, plates and
+   * notarial paperwork this trade actually runs on. Used only at >=17px and
+   * only for titles and figures; at body sizes it is indistinguishable from any
+   * other grotesque and would just be weight in the bundle.
+   *
+   * BODY — Geist. Neutral on purpose. It sets prose, labels and controls, and
+   * renders Spanish diacritics cleanly.
+   *
+   * INSTRUMENT — Geist Mono. Reserved for things that are identifiers or
+   * quantities: folios, property codes, amounts, UF, dates in tables. Never
+   * prose. Its tabular figures are what makes a column of amounts scannable. */
+  --font-display: "Archivo Variable", "Geist Variable", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "Geist Variable", ui-sans-serif, -apple-system, system-ui, sans-serif;
   --font-mono: "Geist Mono Variable", ui-monospace, SFMono-Regular, monospace;
 }
 
 @theme inline {
+  /* Exposes `font-display` as a Tailwind utility alongside font-sans/font-mono. */
+  --font-display: var(--font-display);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -25,6 +43,8 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
+  --color-ink: var(--ink);
+  --color-ink-foreground: var(--ink-foreground);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -134,55 +154,80 @@
   --accent-hue: 347;
   --accent-sat: 42%;
   --accent-brand: hsl(var(--accent-hue) var(--accent-sat) 45%);
-  --accent-brand-foreground: #ffffff;
+  --accent-brand-foreground: #fbfaf8;
 
-  /* Neutral base. 0% here is only the DEFAULT: ThemeController writes --tint
+  /* Neutral base — NOT achromatic.
+   *
+   * Every grey here is pulled slightly cool (blue-green) and the page ground
+   * slightly warm, so the two sit against each other and any tenant hue reads
+   * as a deliberate accent rather than as the only colour on screen. Pure
+   * #ffffff / #0a0a0a / #ececec is what every shadcn app ships with and is the
+   * single biggest reason this looked templated.
+   *
+   * 0% here is only the DEFAULT: ThemeController writes --tint
    * inline from the workspace's brand_tint setting, and every surface token
    * below mixes against it, so one number tints the whole app toward the brand.
    * The hand-written [data-tenant="…"] blocks further down predate this and are
    * kept for the two workspaces that already had curated palettes. */
   --tint: 0%;
-  --background: color-mix(in srgb, var(--accent-brand) var(--tint), #ffffff);
-  --foreground: color-mix(in srgb, var(--accent-brand) var(--tint), #0a0a0a);
-  --card: color-mix(in srgb, var(--accent-brand) var(--tint), #ffffff);
+  --background: color-mix(in srgb, var(--accent-brand) var(--tint), #fbfaf8);
+  --foreground: color-mix(in srgb, var(--accent-brand) var(--tint), #12151a);
+  --card: color-mix(in srgb, var(--accent-brand) var(--tint), #fbfaf8);
   --card-foreground: var(--foreground);
-  --popover: color-mix(in srgb, var(--accent-brand) var(--tint), #ffffff);
+  --popover: color-mix(in srgb, var(--accent-brand) var(--tint), #fbfaf8);
   --popover-foreground: var(--foreground);
   --primary: var(--accent-brand);
   --primary-foreground: var(--accent-brand-foreground);
-  --secondary: color-mix(in srgb, var(--accent-brand) var(--tint), #f3f3f3);
+  --secondary: color-mix(in srgb, var(--accent-brand) var(--tint), #f1efeb);
   --secondary-foreground: var(--foreground);
-  --muted: color-mix(in srgb, var(--accent-brand) var(--tint), #f6f6f6);
-  --muted-foreground: color-mix(in srgb, var(--accent-brand) var(--tint), #6e6e73);
-  --faint: color-mix(in srgb, var(--accent-brand) var(--tint), #a0a0a6);
-  --accent: color-mix(in srgb, var(--accent-brand) var(--tint), #f1f1f2);
+  --muted: color-mix(in srgb, var(--accent-brand) var(--tint), #f5f3ef);
+  --muted-foreground: color-mix(in srgb, var(--accent-brand) var(--tint), #5f646e);
+  /* 3.8:1 on paper. The old value sat at 2.5:1 — under even the large-text
+   * floor — and this token carries timestamps and record metadata a broker
+   * reads on a phone in daylight. Still a clear step below --muted-foreground
+   * (5.7:1), so the hierarchy survives. */
+  --faint: color-mix(in srgb, var(--accent-brand) var(--tint), #7b8189);
+  --accent: color-mix(in srgb, var(--accent-brand) var(--tint), #efede9);
   --accent-foreground: var(--foreground);
-  --destructive: #d5402b;
-  --destructive-foreground: #ffffff;
-  --success: #0e7c5a;
-  --success-foreground: #ffffff;
-  --warning: #b0560f;
-  --warning-foreground: #ffffff;
-  --overlay: #000000;
-  --modal: color-mix(in srgb, var(--accent-brand) var(--tint), #ffffff);
+  --destructive: #a93e2f;
+  --destructive-foreground: #fbfaf8;
+  --success: #1d6b4c;
+  --success-foreground: #fbfaf8;
+  --warning: #8a5a12;
+  --warning-foreground: #fbfaf8;
+  --overlay: #12151a;
+
+  /* INK — the one bold surface.
+   *
+   * The page's strongest element (today's agenda, the Propo bar, the mic) used
+   * `bg-foreground text-background`, a naive inversion. That works on paper and
+   * collapses in the dark theme, which is the default: "darker than the
+   * background" is impossible when the background is already near-black, and a
+   * white block that size glares. So ink is declared per theme instead of
+   * derived: graphite on paper, and in the dark a deep panel carrying the
+   * workspace's own accent — which is a better use of the tenant colour than
+   * tinting a headcount. */
+  --ink: #12151a;
+  --ink-foreground: #fbfaf8;
+  --modal: color-mix(in srgb, var(--accent-brand) var(--tint), #fbfaf8);
   --modal-foreground: var(--foreground);
   --modal-border: rgba(0, 0, 0, 0.08);
-  --border: color-mix(in srgb, var(--accent-brand) var(--tint), #ececec);
-  --line-strong: color-mix(in srgb, var(--accent-brand) var(--tint), #e2e2e2);
-  --input: color-mix(in srgb, var(--accent-brand) var(--tint), #ececec);
+  --border: color-mix(in srgb, var(--accent-brand) var(--tint), #e4e1db);
+  --line-strong: color-mix(in srgb, var(--accent-brand) var(--tint), #d8d5ce);
+  --input: color-mix(in srgb, var(--accent-brand) var(--tint), #e4e1db);
   --ring: var(--accent-brand);
   --chart-1: var(--accent-brand);
   --chart-2: #f0d8da;
   --chart-3: #9e9e9e;
-  --chart-4: #0a0a0a;
-  --chart-5: #e2e2e2;
-  --sidebar: color-mix(in srgb, var(--accent-brand) var(--tint), #fafafa);
+  --chart-4: #12151a;
+  --chart-5: #d8d5ce;
+  --sidebar: color-mix(in srgb, var(--accent-brand) var(--tint), #f7f5f1);
   --sidebar-foreground: var(--foreground);
   --sidebar-primary: var(--accent-brand);
   --sidebar-primary-foreground: var(--accent-brand-foreground);
   --sidebar-accent: color-mix(in srgb, var(--accent-brand) 12%, transparent);
   --sidebar-accent-foreground: var(--foreground);
-  --sidebar-border: color-mix(in srgb, var(--accent-brand) var(--tint), #ececec);
+  --sidebar-border: color-mix(in srgb, var(--accent-brand) var(--tint), #e4e1db);
   --sidebar-ring: var(--accent-brand);
 }
 
@@ -194,51 +239,54 @@
   --accent-hue: 347;
   --accent-sat: 42%;
   --accent-brand: hsl(var(--accent-hue) var(--accent-sat) 70%);
-  --accent-brand-foreground: #0a0a0a;
+  --accent-brand-foreground: #0a0c10;
 
   --tint: 0%;
-  --background: color-mix(in srgb, var(--accent-brand) var(--tint), #000000);
+  --background: color-mix(in srgb, var(--accent-brand) var(--tint), #0c0e12);
   --foreground: color-mix(in srgb, var(--accent-brand) var(--tint), #ffffff);
-  --card: color-mix(in srgb, var(--accent-brand) var(--tint), #141416);
+  --card: color-mix(in srgb, var(--accent-brand) var(--tint), #15181e);
   --card-foreground: var(--foreground);
-  --popover: color-mix(in srgb, var(--accent-brand) var(--tint), #141416);
+  --popover: color-mix(in srgb, var(--accent-brand) var(--tint), #15181e);
   --popover-foreground: var(--foreground);
   --primary: var(--accent-brand);
   --primary-foreground: var(--accent-brand-foreground);
-  --secondary: color-mix(in srgb, var(--accent-brand) var(--tint), #1b1b1e);
+  --secondary: color-mix(in srgb, var(--accent-brand) var(--tint), #1b1f26);
   --secondary-foreground: var(--foreground);
-  --muted: color-mix(in srgb, var(--accent-brand) var(--tint), #232327);
+  --muted: color-mix(in srgb, var(--accent-brand) var(--tint), #232830);
   --muted-foreground: color-mix(in srgb, var(--accent-brand) var(--tint), rgba(235, 235, 245, 0.6));
-  --faint: color-mix(in srgb, var(--accent-brand) var(--tint), rgba(235, 235, 245, 0.34));
+  /* Same correction on carbon: 0.34 alpha composited to ~2.8:1. */
+  --faint: color-mix(in srgb, var(--accent-brand) var(--tint), rgba(235, 235, 245, 0.52));
   /* neutral surface accent (hover/active bg) — tints toward the brand per tenant */
-  --accent: color-mix(in srgb, var(--accent-brand) var(--tint), #1b1b1e);
+  --accent: color-mix(in srgb, var(--accent-brand) var(--tint), #1b1f26);
   --accent-foreground: var(--foreground);
-  --destructive: #ef4444;
+  --destructive: #e0705e;
   --destructive-foreground: #ffffff;
-  --success: #34d399;
+  --success: #4bae84;
   --success-foreground: #08130c;
-  --warning: #eab308;
+  --warning: #d9a441;
   --warning-foreground: #1a1206;
-  --overlay: #000000;
-  --modal: color-mix(in srgb, var(--accent-brand) var(--tint), #1b1b1e);
+  --overlay: #05070a;
+  --ink: color-mix(in srgb, var(--accent-brand) 20%, #171b23);
+  --ink-foreground: #f7f5f1;
+  --modal: color-mix(in srgb, var(--accent-brand) var(--tint), #1b1f26);
   --modal-foreground: var(--foreground);
   --modal-border: color-mix(in srgb, var(--accent-brand) 20%, transparent);
-  --border: color-mix(in srgb, var(--accent-brand) var(--tint), #262629);
-  --line-strong: color-mix(in srgb, var(--accent-brand) var(--tint), #2e2e32);
-  --input: color-mix(in srgb, var(--accent-brand) var(--tint), #262629);
+  --border: color-mix(in srgb, var(--accent-brand) var(--tint), #272c34);
+  --line-strong: color-mix(in srgb, var(--accent-brand) var(--tint), #333944);
+  --input: color-mix(in srgb, var(--accent-brand) var(--tint), #272c34);
   --ring: var(--accent-brand);
   --chart-1: var(--accent-brand);
   --chart-2: #ffffff;
   --chart-3: rgba(235, 235, 245, 0.55);
-  --chart-4: #8e8e93;
-  --chart-5: #232327;
-  --sidebar: color-mix(in srgb, var(--accent-brand) var(--tint), #0a0a0a);
+  --chart-4: #8a919e;
+  --chart-5: #232830;
+  --sidebar: color-mix(in srgb, var(--accent-brand) var(--tint), #0a0c10);
   --sidebar-foreground: var(--foreground);
   --sidebar-primary: var(--accent-brand);
   --sidebar-primary-foreground: var(--accent-brand-foreground);
   --sidebar-accent: color-mix(in srgb, var(--accent-brand) 12%, transparent);
   --sidebar-accent-foreground: var(--foreground);
-  --sidebar-border: color-mix(in srgb, var(--accent-brand) var(--tint), #262629);
+  --sidebar-border: color-mix(in srgb, var(--accent-brand) var(--tint), #272c34);
   --sidebar-ring: var(--accent-brand);
 }
 
@@ -643,4 +691,31 @@
   100% {
     transform: translateX(400%);
   }
+}
+
+/* Display face on the things that are titles or figures, and nowhere else.
+ *
+ * Applied by element rather than by utility so a heading is set correctly
+ * wherever it appears, including inside components this codebase does not own
+ * (shadcn dialogs, sheets). Body copy, labels and controls stay on Geist: at
+ * 13-15px the two grotesques are indistinguishable and switching would only
+ * cost a second font load per view.
+ *
+ * The negative tracking is part of the choice — Archivo is drawn wide for
+ * signage, and at title sizes on a screen it needs to be pulled in to stop
+ * headings reading as a banner. */
+h1,
+h2,
+h3,
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+  font-feature-settings: "ss01";
+}
+
+/* Figures are instruments: they line up in columns and get compared, so they
+ * are always tabular and never proportional. */
+.tabular-nums,
+[class*="tabular-nums"] {
+  font-variant-numeric: tabular-nums;
 }

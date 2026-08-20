@@ -55,7 +55,7 @@ for (const [vname, width, height] of VIEWS) {
     ([ref, session, tenant]) => {
       localStorage.setItem(`sb-${ref}-auth-token`, JSON.stringify(session));
       localStorage.setItem("propos.active_tenant_id", tenant);
-      localStorage.setItem("propos:theme", "light");
+      localStorage.setItem("propos:theme", process.env.SHOT_THEME ?? "dark");
       localStorage.setItem("propos:install-nudge-dismissed", "1");
     },
     [REF, SESSION, TENANT],
@@ -64,7 +64,7 @@ for (const [vname, width, height] of VIEWS) {
   for (const [name, path] of ROUTES) {
     if (filter && !name.includes(filter)) continue;
     await page.goto(BASE + path, { waitUntil: "networkidle" }).catch(() => {});
-    await page.waitForTimeout(1800);
+    await page.waitForTimeout(Number(process.env.SHOT_WAIT ?? 1800));
     await page.screenshot({ path: join(OUT, `${vname}-${name}.png`) });
     process.stdout.write(`${vname}-${name} `);
   }

@@ -353,15 +353,15 @@ export function FinancePage() {
     <PageLayout width="md" noPadding className="pb-6 lg:max-w-none">
       {/* Mobile: ink summary card (unchanged). Desktop: KPI card row. */}
       <div className="px-5 pb-4 lg:hidden">
-        <div className="rounded-xl bg-foreground p-5 text-background">
-          <p className="text-[13px] font-medium text-background/60">Ingresos del mes</p>
+        <div className="rounded-xl bg-ink p-5 text-ink-foreground">
+          <p className="text-[13px] font-medium text-ink-foreground/60">Ingresos del mes</p>
           <p className="mt-1 text-[34px] font-bold leading-none tracking-tight">
             {formatClp(summary?.income_cents ?? 0)}
           </p>
           <div className="mt-5 grid grid-cols-3 gap-3">
             {secondaryKpis.map((s) => (
               <div key={s.label}>
-                <p className="text-[11px] font-medium text-background/60">{s.label}</p>
+                <p className="text-[11px] font-medium text-ink-foreground/60">{s.label}</p>
                 <p className="mt-0.5 text-[15px] font-semibold tabular-nums">
                   {formatClp(s.value)}
                 </p>
@@ -378,8 +378,8 @@ export function FinancePage() {
       </div>
 
       <div className="hidden px-8 pb-5 lg:grid lg:grid-cols-4 lg:gap-4">
-        <div className="rounded-xl bg-foreground p-5 text-background">
-          <p className="text-[13px] font-medium text-background/60">Ingresos del mes</p>
+        <div className="rounded-xl bg-ink p-5 text-ink-foreground">
+          <p className="text-[13px] font-medium text-ink-foreground/60">Ingresos del mes</p>
           <p className="mt-1.5 text-[28px] font-bold leading-none tracking-tight tabular-nums">
             {formatClp(summary?.income_cents ?? 0)}
           </p>
