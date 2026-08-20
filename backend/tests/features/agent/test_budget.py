@@ -83,6 +83,23 @@ def test_recording_without_a_baseline_forces_a_refetch(db):
     assert db.calls == 1
 
 
+def test_stale_sentinel_survives_a_freshly_booted_process(db, monkeypatch):
+    """The seeded baseline must be stale even when the monotonic clock is tiny.
+
+    time.monotonic()'s epoch is arbitrary — on Linux it is the uptime — so for
+    the first minute of a process (a cold Cloud Run container, a CI runner) a
+    `refreshed_at=0.0` sentinel was NEWER than the TTL and read as fresh. The
+    budget check then trusted one turn's cost instead of refetching, and this
+    suite only caught it on a runner that happened to boot seconds earlier.
+    """
+    monkeypatch.setattr("app.features.agent.budget.time.monotonic", lambda: 5.0)
+    db.cents = 60.0
+    record_spend_cents(TENANT, 1.0)
+    with pytest.raises(BudgetExceededError):
+        check_daily_budget(TENANT)
+    assert db.calls == 1
+
+
 def test_cache_is_per_tenant(db):
     db.cents = 60.0
     other = uuid4()
