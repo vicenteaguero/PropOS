@@ -1,5 +1,5 @@
-import { NavLink } from "react-router-dom";
-import { LogOut } from "lucide-react";
+import { NavLink, useLocation } from "react-router-dom";
+import { LogOut, Settings } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@shared/hooks/use-auth";
-import { type NavItem } from "@layouts/nav-items";
+import { SETTINGS_PATH, type NavItem } from "@layouts/nav-items";
 import { useNavGroups, usePendingCount } from "@layouts/use-nav-groups";
 
 // Collapsed geometry is expressed only in animatable properties, on the same
@@ -75,8 +75,14 @@ function NavItemRow({
 
 export function AppSidebar() {
   const { signOut, user } = useAuth();
+  const { pathname } = useLocation();
   const { setOpenMobile, isMobile } = useSidebar();
-  const { groups } = useNavGroups();
+  const { groups: allGroups } = useNavGroups();
+  // Configuración is rendered in the footer, next to sign-out, so it must not
+  // also appear in the scrolling destination list above.
+  const groups = allGroups
+    .map((g) => ({ ...g, items: g.items.filter((i) => i.path !== SETTINGS_PATH) }))
+    .filter((g) => g.items.length > 0);
   const pendingCount = usePendingCount();
 
   if (!user) return null;
@@ -143,12 +149,24 @@ export function AppSidebar() {
         ))}
       </SidebarContent>
 
-      {/* Configuración is no longer hardcoded here — it is a real entry in the
-          shared tree above, so the mobile sheet and this rail cannot disagree
-          about whether it exists. Only sign-out, which is not a destination,
-          stays outside the tree. */}
+      {/* Settings and sign-out are not destinations you browse to — they are
+          where you go when you are done. Both live at the bottom of the rail,
+          in that order, which is where every desktop app puts them. */}
       <SidebarFooter className="gap-0.5 border-t border-sidebar-border px-2 py-2">
         <SidebarMenu className="gap-0.5">
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              isActive={pathname.startsWith(SETTINGS_PATH)}
+              tooltip="Configuración"
+              className={ITEM_CLASS}
+            >
+              <NavLink to={SETTINGS_PATH} onClick={onNavigate}>
+                <Settings />
+                <span className="flex-1 truncate">Configuración</span>
+              </NavLink>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton
               onClick={() => {

@@ -431,6 +431,14 @@ export function AdminHomePage() {
             </p>
           </div>
 
+          {/* Propo first: asking is the fastest way in, and it is the one control
+
+              that answers any question. The agenda below is what is already
+
+              scheduled. */}
+
+          {propoBar}
+
           {todayFeed.isError ? (
             <ErrorState
               compact
@@ -441,8 +449,6 @@ export function AdminHomePage() {
           ) : (
             agendaWidget
           )}
-
-          {propoBar}
 
           {/* auto-fill instead of a fixed column count: three tiles on a phone,
               as many as fit on a tablet or a wide window, with no breakpoint to

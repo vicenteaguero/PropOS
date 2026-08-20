@@ -1,7 +1,6 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useRef } from "react";
 import { FileText, FileType2, FileImage, FileQuestion, WifiOff } from "lucide-react";
-import { formatBytes } from "@shared/lib/format";
 import type { DocumentItem } from "../types";
 import { DocumentKindPill } from "./document-kind-pill";
 import { formatDate } from "@shared/utils/format";
@@ -46,10 +45,12 @@ export function DocumentsList({ documents, onOpen }: Props) {
           if (!doc) return null;
           const Icon = iconFor(doc.kind);
           const v = doc.current_version;
+          // No byte size: nobody has ever needed to know a mandate weighs 1.2 KB,
+          // and on a tile it was the loudest thing on the card.
+          const links = doc.assignments?.length ?? 0;
           const sub = [
             v ? `v${v.version_number}` : null,
-            formatBytes(v?.size_bytes),
-            `${doc.assignments?.length ?? 0} vínculos`,
+            links > 0 ? `${links} ${links === 1 ? "vínculo" : "vínculos"}` : null,
             formatDate(doc.updated_at),
           ]
             .filter(Boolean)
@@ -62,9 +63,9 @@ export function DocumentsList({ documents, onOpen }: Props) {
               className="absolute left-0 right-0 flex items-center gap-3 border-b border-border px-4 text-left transition last:border-b-0 hover:bg-secondary/50 active:scale-[0.99]"
               style={{ top: vrow.start, height: vrow.size }}
             >
-              <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-secondary text-foreground">
-                <Icon className="size-5" strokeWidth={1.8} />
-              </span>
+              {/* Bare glyph — a tinted square behind it is a second shape to
+                  parse on every row and carries no information. */}
+              <Icon className="size-5 shrink-0 text-muted-foreground" strokeWidth={1.6} />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5 truncate text-[15px] font-semibold leading-tight text-foreground">
                   {doc.pin_offline && <WifiOff className="size-3.5 shrink-0 text-primary" />}

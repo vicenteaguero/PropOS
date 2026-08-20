@@ -348,20 +348,6 @@ export function FinancePage() {
 
   return (
     <PageLayout width="md" noPadding className="pb-6 lg:max-w-none">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-3 lg:px-8 lg:pt-7">
-        <div></div>
-        <Button
-          variant="ink"
-          size="icon-lg"
-          className="rounded-full"
-          aria-label="Nueva transacción"
-          onClick={openCreate}
-        >
-          <Plus className="size-5" strokeWidth={1.8} />
-        </Button>
-      </div>
-
       {/* Mobile: ink summary card (unchanged). Desktop: KPI card row. */}
       <div className="px-5 pb-4 lg:hidden">
         <div className="rounded-xl bg-foreground p-5 text-background">
@@ -417,14 +403,26 @@ export function FinancePage() {
           Mobile: stacked (calculator, then filter + list) — unchanged. */}
       <div className="lg:grid lg:grid-cols-[1fr_20rem] lg:items-start lg:gap-6 lg:px-8">
         <div className="min-w-0">
-          {/* Kind filter */}
-          <Chips className="px-5 pb-4 lg:px-0">
-            {KIND_FILTERS.map((f) => (
-              <Chip key={f.id} active={kind === f.id} onClick={() => setKind(f.id)}>
-                {f.label}
-              </Chip>
-            ))}
-          </Chips>
+          {/* Filter and the primary action share one row. The "+" used to sit
+              alone above the KPIs, costing a whole band of empty header before
+              any content. */}
+          <div className="flex items-center gap-2 px-5 pb-4 lg:px-0">
+            <Chips className="min-w-0 flex-1">
+              {KIND_FILTERS.map((f) => (
+                <Chip key={f.id} active={kind === f.id} onClick={() => setKind(f.id)}>
+                  {f.label}
+                </Chip>
+              ))}
+            </Chips>
+            <Button
+              size="icon"
+              className="shrink-0 rounded-full"
+              aria-label="Nueva transacción"
+              onClick={openCreate}
+            >
+              <Plus className="size-4" strokeWidth={1.8} />
+            </Button>
+          </div>
           {transactionsBlock}
         </div>
 
