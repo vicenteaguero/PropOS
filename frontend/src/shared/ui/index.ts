@@ -22,6 +22,7 @@ export { Segmented, type SegmentedItem } from "./segmented";
 export { SectionLabel } from "./section-label";
 export { SectionTabs, type SectionTab } from "./section-tabs";
 export { Row } from "./row";
+export { ResponsiveTable, type ResponsiveColumn, type ResponsiveRowSpec } from "./responsive-table";
 export { ErrorState } from "./error-state";
 export { PageSkeleton, type PageSkeletonVariant } from "./page-skeleton";
 export { AudioPlayer } from "./audio-player";

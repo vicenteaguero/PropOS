@@ -23,9 +23,9 @@ import {
   PageSkeleton,
   Pill,
   ResponsiveSheet,
-  Row,
+  ResponsiveTable,
+  type ResponsiveColumn,
 } from "@shared/ui";
-import { useIsDesktop } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import {
   useCompleteTransaction,
@@ -115,7 +115,6 @@ function matchesKind(t: Transaction, kind: KindFilter): boolean {
 }
 
 export function FinancePage() {
-  const isDesktop = useIsDesktop();
   const { data: summary } = useFinanceSummary();
   const { data: txs, isLoading, error, refetch } = useTransactions();
   const create = useCreateTransaction();
@@ -202,6 +201,61 @@ export function FinancePage() {
     { label: "Por pagar", value: summary?.payable_cents ?? 0, tone: "muted" as const },
   ];
 
+  // Cells shared by both presentations. Declaring them once is the whole point
+  // of the primitive below: a status pill that only got a `vencido` flag in the
+  // table and not in the phone list is exactly the drift this prevents.
+  const dateLabel = (t: Transaction) => {
+    const occurred = t.occurred_at ?? t.due_at;
+    return occurred
+      ? new Date(occurred).toLocaleDateString("es-CL", { day: "2-digit", month: "short" })
+      : null;
+  };
+  const isOverdue = (t: Transaction) =>
+    t.status === "PENDING" && !!t.due_at && new Date(t.due_at) < new Date();
+  const statusCell = (t: Transaction) => (
+    <span className="flex items-center gap-2">
+      <Pill tone={tone(TX_STATUS_TONES, t.status) ?? "neutral"}>
+        {label("txStatus", t.status) ?? t.status}
+      </Pill>
+      {isOverdue(t) && <span className="text-[12px] font-medium text-destructive">vencido</span>}
+    </span>
+  );
+  const amountCell = (t: Transaction) => (
+    <span
+      className={`text-[15px] font-bold tabular-nums ${
+        t.direction === "IN" ? "text-success" : "text-destructive"
+      }`}
+    >
+      {t.direction === "IN" ? "+" : "−"}
+      {formatClp(t.amount_cents)}
+    </span>
+  );
+  const rowActions = (t: Transaction) => (
+    <span className="flex items-center justify-end gap-1">
+      {t.status === "PENDING" && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-8 text-success"
+          title="Marcar pagado"
+          onClick={() => complete.mutate(t.id)}
+        >
+          <Check className="size-4" strokeWidth={2} />
+        </Button>
+      )}
+      <Button
+        variant="ghost"
+        size="icon"
+        className="size-8 text-muted-foreground"
+        title="Editar"
+        aria-label="Editar transacción"
+        onClick={() => openEdit(t)}
+      >
+        <Pencil className="size-4" strokeWidth={1.8} />
+      </Button>
+    </span>
+  );
+
   const transactionsBlock = (
     <>
       {isLoading && <PageSkeleton variant="list" count={5} />}
@@ -216,179 +270,78 @@ export function FinancePage() {
         <p className="py-8 text-center text-sm text-muted-foreground">Sin transacciones.</p>
       )}
 
-      {/* Mobile: Row list. Desktop: denser table. */}
-      {!isLoading && !error && filtered.length > 0 && !isDesktop && (
-        <div>
-          {filtered.map((t, i) => {
-            const Icon = txIcon(t);
-            const status = {
-              label: label("txStatus", t.status),
-              tone: tone(TX_STATUS_TONES, t.status),
-            };
-            const occurred = t.occurred_at ?? t.due_at;
-            const dateLabel = occurred
-              ? new Date(occurred).toLocaleDateString("es-CL", { day: "2-digit", month: "short" })
-              : null;
-            const overdue = t.status === "PENDING" && t.due_at && new Date(t.due_at) < new Date();
-            return (
-              <Row
-                key={t.id}
-                divider={i < filtered.length - 1}
-                left={
-                  <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-secondary text-foreground">
-                    <Icon className="size-[18px]" strokeWidth={1.8} />
-                  </span>
-                }
-                title={t.description || categoryLabel(t.category)}
-                sub={
-                  <span className="flex items-center gap-2">
-                    <Pill tone={status?.tone ?? "neutral"}>{status?.label ?? t.status}</Pill>
-                    <span className="truncate">
-                      {txCode(t.id)}
-                      {dateLabel ? ` · ${dateLabel}` : ""}
-                    </span>
-                    {overdue && <span className="font-medium text-destructive">vencido</span>}
-                  </span>
-                }
-                right={
-                  <div className="flex shrink-0 items-center gap-1.5">
-                    <span
-                      className={`text-[15px] font-bold tabular-nums ${
-                        t.direction === "IN" ? "text-success" : "text-destructive"
-                      }`}
-                    >
-                      {t.direction === "IN" ? "+" : "−"}
-                      {formatClp(t.amount_cents)}
-                    </span>
-                    {t.status === "PENDING" && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="size-8 text-success"
-                        title="Marcar pagado"
-                        onClick={() => complete.mutate(t.id)}
-                      >
-                        <Check className="size-4" strokeWidth={2} />
-                      </Button>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-8 text-muted-foreground"
-                      title="Editar"
-                      aria-label="Editar transacción"
-                      onClick={() => openEdit(t)}
-                    >
-                      <Pencil className="size-4" strokeWidth={1.8} />
-                    </Button>
-                  </div>
-                }
-              />
-            );
-          })}
-        </div>
-      )}
-
-      {!isLoading && !error && filtered.length > 0 && isDesktop && (
-        <div className="overflow-hidden rounded-xl border border-border bg-card">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-[12px] font-medium text-muted-foreground">
-                <th className="py-2.5 pl-4 pr-3 font-medium">Concepto</th>
-                <th className="px-3 py-2.5 font-medium">Categoría</th>
-                <th className="px-3 py-2.5 font-medium">Estado</th>
-                <th className="px-3 py-2.5 font-medium">Fecha</th>
-                <th className="px-3 py-2.5 text-right font-medium">Monto</th>
-                <th className="py-2.5 pl-3 pr-4" />
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((t, i) => {
-                const Icon = txIcon(t);
-                const status = {
-                  label: label("txStatus", t.status),
-                  tone: tone(TX_STATUS_TONES, t.status),
-                };
-                const occurred = t.occurred_at ?? t.due_at;
-                const dateLabel = occurred
-                  ? new Date(occurred).toLocaleDateString("es-CL", {
-                      day: "2-digit",
-                      month: "short",
-                    })
-                  : "—";
-                const overdue =
-                  t.status === "PENDING" && t.due_at && new Date(t.due_at) < new Date();
-                return (
-                  <tr
-                    key={t.id}
-                    className={`align-middle ${i < filtered.length - 1 ? "border-b border-border" : ""} transition hover:bg-secondary/40`}
-                  >
-                    <td className="py-2.5 pl-4 pr-3">
-                      <div className="flex items-center gap-3">
-                        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-secondary text-foreground">
-                          <Icon className="size-4" strokeWidth={1.8} />
-                        </span>
-                        <span className="min-w-0">
-                          <span className="block truncate font-medium text-foreground">
-                            {t.description || categoryLabel(t.category)}
-                          </span>
-                          <span className="block font-mono text-[11px] text-muted-foreground">
-                            {txCode(t.id)}
-                          </span>
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-3 py-2.5 text-muted-foreground">
-                      {categoryLabel(t.category)}
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <span className="flex items-center gap-2">
-                        <Pill tone={status?.tone ?? "neutral"}>{status?.label ?? t.status}</Pill>
-                        {overdue && (
-                          <span className="text-[12px] font-medium text-destructive">vencido</span>
-                        )}
+      {!isLoading && !error && filtered.length > 0 && (
+        <ResponsiveTable
+          rows={filtered}
+          rowKey={(t) => t.id}
+          columns={
+            [
+              {
+                key: "concepto",
+                header: "Concepto",
+                cell: (t) => {
+                  const Icon = txIcon(t);
+                  return (
+                    <div className="flex items-center gap-3">
+                      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-secondary text-foreground">
+                        <Icon className="size-4" strokeWidth={1.8} />
                       </span>
-                    </td>
-                    <td className="px-3 py-2.5 tabular-nums text-muted-foreground">{dateLabel}</td>
-                    <td
-                      className={`px-3 py-2.5 text-right text-[15px] font-bold tabular-nums ${
-                        t.direction === "IN" ? "text-success" : "text-destructive"
-                      }`}
-                    >
-                      {t.direction === "IN" ? "+" : "−"}
-                      {formatClp(t.amount_cents)}
-                    </td>
-                    <td className="py-2.5 pl-3 pr-4">
-                      <div className="flex items-center justify-end gap-1">
-                        {t.status === "PENDING" && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="size-8 text-success"
-                            title="Marcar pagado"
-                            onClick={() => complete.mutate(t.id)}
-                          >
-                            <Check className="size-4" strokeWidth={2} />
-                          </Button>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-8 text-muted-foreground"
-                          title="Editar"
-                          aria-label="Editar transacción"
-                          onClick={() => openEdit(t)}
-                        >
-                          <Pencil className="size-4" strokeWidth={1.8} />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                      <span className="min-w-0">
+                        <span className="block truncate font-medium text-foreground">
+                          {t.description || categoryLabel(t.category)}
+                        </span>
+                        <span className="block font-mono text-[11px] text-muted-foreground">
+                          {txCode(t.id)}
+                        </span>
+                      </span>
+                    </div>
+                  );
+                },
+              },
+              {
+                key: "categoria",
+                header: "Categoría",
+                className: "text-muted-foreground",
+                cell: (t) => categoryLabel(t.category),
+              },
+              { key: "estado", header: "Estado", cell: (t) => statusCell(t) },
+              {
+                key: "fecha",
+                header: "Fecha",
+                className: "tabular-nums text-muted-foreground",
+                cell: (t) => dateLabel(t) ?? "—",
+              },
+              { key: "monto", header: "Monto", align: "right", cell: (t) => amountCell(t) },
+              { key: "acciones", header: "", align: "right", cell: (t) => rowActions(t) },
+            ] as ResponsiveColumn<Transaction>[]
+          }
+          mobileRow={(t: Transaction) => {
+            const Icon = txIcon(t);
+            return {
+              left: (
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-secondary text-foreground">
+                  <Icon className="size-[18px]" strokeWidth={1.8} />
+                </span>
+              ),
+              title: t.description || categoryLabel(t.category),
+              sub: (
+                <span className="flex items-center gap-2">
+                  {statusCell(t)}
+                  <span className="truncate">
+                    {txCode(t.id)}
+                    {dateLabel(t) ? ` · ${dateLabel(t)}` : ""}
+                  </span>
+                </span>
+              ),
+              right: (
+                <div className="flex shrink-0 items-center gap-1.5">
+                  {amountCell(t)}
+                  {rowActions(t)}
+                </div>
+              ),
+            };
+          }}
+        />
       )}
     </>
   );
@@ -397,8 +350,7 @@ export function FinancePage() {
     <PageLayout width="md" noPadding className="pb-6 lg:max-w-none">
       {/* Header */}
       <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-3 lg:px-8 lg:pt-7">
-        <div>
-        </div>
+        <div></div>
         <Button
           variant="ink"
           size="icon-lg"
