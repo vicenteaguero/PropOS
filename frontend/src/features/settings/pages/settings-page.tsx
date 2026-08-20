@@ -1,7 +1,16 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, ChevronRight, FileText, Loader2, Palette, Shield, Sparkles } from "lucide-react";
+import {
+  Blend,
+  Check,
+  ChevronRight,
+  FileText,
+  Loader2,
+  Palette,
+  Shield,
+  Sparkles,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -177,12 +186,19 @@ export function SettingsPage() {
   const [paperSize, setPaperSize] = useState("A4");
   const [paperOpen, setPaperOpen] = useState(false);
   const [brandColor, setBrandColor] = useState<string | null>(null);
+  // How much of the brand bleeds into every surface. index.css writes each
+  // surface token as `color-mix(… var(--accent-brand) var(--tint), <neutral>)`,
+  // so this single number tints backgrounds, cards, borders and the sidebar
+  // together. It shipped hard-coded at 0%, which is why the palette machinery
+  // existed but the app looked grey whatever brand colour was picked.
+  const [brandTint, setBrandTint] = useState(0);
 
   useEffect(() => {
     if (tenantQ.data) {
       setAgentName(tenantQ.data.settings.ai_assistant_name);
       setPaperSize(tenantQ.data.settings.default_paper_size);
       setBrandColor(tenantQ.data.settings.brand_color ?? null);
+      setBrandTint(tenantQ.data.settings.brand_tint ?? 0);
     }
   }, [tenantQ.data]);
 
@@ -192,6 +208,7 @@ export function SettingsPage() {
         ai_assistant_name: agentName.trim() || "Anita",
         default_paper_size: paperSize,
         brand_color: brandColor ?? "",
+        brand_tint: brandTint,
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["settings", "tenant"] });
@@ -237,6 +254,26 @@ export function SettingsPage() {
       aria-label="Nombre del agente"
       className={`h-9 w-28 rounded-lg border border-border bg-secondary px-3 text-right text-[15px] font-semibold text-foreground placeholder:font-normal placeholder:text-muted-foreground ${FOCUS_RING}`}
     />
+  );
+
+  /** 0 keeps the neutrals neutral; past ~10% the greys visibly take the brand on. */
+  const brandTintPicker = (
+    <div className="flex gap-1 rounded-full bg-muted p-1">
+      {[0, 3, 6, 9].map((t) => (
+        <button
+          key={t}
+          type="button"
+          onClick={() => setBrandTint(t)}
+          className={cn(
+            "min-w-14 rounded-full py-1.5 text-xs font-semibold transition",
+            TOUCH_TARGET_HIT_AREA,
+            brandTint === t ? "bg-primary text-primary-foreground" : "text-muted-foreground",
+          )}
+        >
+          {t === 0 ? "Ninguno" : `${t}%`}
+        </button>
+      ))}
+    </div>
   );
 
   const brandSwatches = (
@@ -347,6 +384,12 @@ export function SettingsPage() {
             sub="Acento de la interfaz para este workspace."
           />
           <div className="mt-4">{brandSwatches}</div>
+          <SettingLine
+            icon={Blend}
+            title="Intensidad del tinte"
+            sub="Cuánto del color de marca tiñe fondos, tarjetas y bordes."
+          />
+          <div className="mt-3">{brandTintPicker}</div>
         </>
       ),
     },
