@@ -129,6 +129,28 @@ const MEMBERSHIPS = [
 function apiFixture(path) {
   if (path.includes("/memberships/me")) return MEMBERSHIPS;
   if (path.includes("/grants/me")) return [];
+  if (path.includes("/attention"))
+    return {
+      items: Array.from({ length: 6 }, (_, i) => ({
+        id: `unanswered:a${i}`,
+        kind: ["unanswered", "visit", "task", "lead", "stalled", "unanswered"][i],
+        urgency: ["now", "now", "today", "today", "soon", "soon"][i],
+        title: ["Ana Pérez", "Bruno Soto", "Carla Díaz", "Diego Rojas"][i % 4],
+        subtitle: "Departamento 2D/2B en venta en Ñuñoa",
+        reason: "Sin responder hace 3 h",
+        at: "2026-08-18T12:00:00Z",
+        deadline: "2026-08-19T12:00:00Z",
+        contact_id: `c${i}`,
+        property_id: null,
+        conversation_id: i % 2 === 0 ? `conv${i}` : null,
+        thread_id: null,
+        event_id: null,
+        task_id: null,
+        opportunity_id: null,
+      })),
+      counts: { unanswered: 2, lead: 1, visit: 1, task: 1, stalled: 1 },
+      total: 6,
+    };
   if (path.includes("/analytics/pending-count")) return { pending_count: 7 };
   if (path.includes("/uf/today"))
     return {
@@ -200,6 +222,7 @@ const VIEWPORTS = [
 
 const ROUTES = [
   { path: "/admin", name: "home" },
+  { path: "/admin/crm?tab=atencion", name: "crm-attention" },
   { path: "/admin/personas", name: "contacts" },
   { path: "/admin/properties", name: "properties" },
   { path: "/admin/settings", name: "settings" },
