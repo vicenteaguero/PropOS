@@ -36,14 +36,15 @@ def _shared_client() -> Client:
     )
 
 
-def build_client(headers: dict[str, str] | None = None) -> Client:
+def build_client(headers: dict[str, str] | None = None, *, schema: str | None = None) -> Client:
     """A fresh service-role client, isolated from the shared one.
 
-    Use when the caller needs its own PostgREST headers for the duration of an
-    operation. Costs one client construction, so it is for writes that need
-    attribution, not for the read path.
+    Use when the caller needs its own PostgREST headers, or a different schema,
+    for the duration of an operation. Costs one client construction, so it is
+    for writes that need attribution and for the dev schema switch — not for the
+    hot read path.
     """
-    options = ClientOptions(schema=_schema(), headers=dict(headers or {}))
+    options = ClientOptions(schema=schema or _schema(), headers=dict(headers or {}))
     return create_client(settings.supabase_url, settings.supabase_service_role_key, options=options)
 
 

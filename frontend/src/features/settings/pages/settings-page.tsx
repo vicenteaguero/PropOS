@@ -11,12 +11,14 @@ import {
   ResponsiveSheet,
   Row,
   SectionLabel,
+  Segmented,
   TOUCH_TARGET_COARSE,
   TOUCH_TARGET_HIT_AREA,
 } from "@shared/ui";
 import { useIsDesktop } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { getDevSchema, setDevSchema } from "@shared/api/http";
 import { PageLayout } from "@shared/components/page-layout";
 import { PageHeader } from "@shared/components/page-header";
 import { settingsApi } from "../api/settings-api";
@@ -397,9 +399,41 @@ export function SettingsPage() {
         </div>
       ))}
 
+      {import.meta.env.DEV && (
+        <div className="mt-7 px-5">
+          <SectionLabel className="mb-2">Desarrollo</SectionLabel>
+          <DevSchemaSwitch />
+        </div>
+      )}
+
       <div className="mt-8 px-5">{saveButton}</div>
       {paperSheet}
     </PageLayout>
+  );
+}
+
+/**
+ * Flips the schema the API talks to for this browser. Dev builds only, and the
+ * backend only honours the header when APP_ENV=development — see
+ * app/core/middleware/dev_schema.py. `propos_test` has no RLS and no profiles,
+ * so most screens will look empty there; that is the mirror behaving correctly,
+ * not a bug.
+ */
+function DevSchemaSwitch() {
+  const current = getDevSchema() ?? "public";
+  return (
+    <Segmented
+      className="px-0"
+      items={[
+        { id: "public", label: "public" },
+        { id: "propos_test", label: "propos_test" },
+      ]}
+      value={current}
+      onChange={(id) => {
+        setDevSchema(id === "public" ? null : id);
+        window.location.reload();
+      }}
+    />
   );
 }
 

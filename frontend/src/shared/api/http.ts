@@ -3,6 +3,33 @@ import { supabase } from "@core/supabase/client";
 
 const API_BASE = `${ENV.API_URL}/api`;
 const ACTIVE_TENANT_KEY = "propos.active_tenant_id";
+const DEV_SCHEMA_KEY = "propos.dev_db_schema";
+
+/**
+ * Dev-only Postgres schema override.
+ *
+ * The backend reads `X-Db-Schema` and swaps its Supabase client for the
+ * request; the middleware that honours it is only installed when APP_ENV is
+ * development, so the header is inert against staging or production. Stored in
+ * localStorage rather than React state so a reload keeps the choice.
+ */
+export function getDevSchema(): string | null {
+  if (!import.meta.env.DEV) return null;
+  try {
+    return localStorage.getItem(DEV_SCHEMA_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setDevSchema(schema: string | null): void {
+  try {
+    if (schema && schema !== "public") localStorage.setItem(DEV_SCHEMA_KEY, schema);
+    else localStorage.removeItem(DEV_SCHEMA_KEY);
+  } catch {
+    /* ignore (private browsing etc.) */
+  }
+}
 
 export function getActiveTenantId(): string | null {
   try {
@@ -31,6 +58,8 @@ async function authHeaders(): Promise<Record<string, string>> {
   if (token) headers.Authorization = `Bearer ${token}`;
   const tenant = getActiveTenantId();
   if (tenant) headers["X-Tenant-Id"] = tenant;
+  const schema = getDevSchema();
+  if (schema) headers["X-Db-Schema"] = schema;
   return headers;
 }
 
