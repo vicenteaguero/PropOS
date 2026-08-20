@@ -19,9 +19,22 @@ import { tenantSwatch } from "@core/theme/tenant-accent";
 import { useAgentOverlay } from "@features/agent/components/agent-overlay-host";
 import { BottomSheet, Pill } from "@shared/ui";
 import { useNavGroups, usePendingCount } from "@layouts/use-nav-groups";
+import { SETTINGS_PATH } from "@layouts/nav-items";
 import { cn } from "@/lib/utils";
 import type { UserView } from "@shared/types/auth";
 import { initials } from "@shared/utils/format";
+
+/**
+ * "Juan Ignacio Pérez Salas" -> "Juan Pérez". The sheet header is 200px wide on
+ * a phone, so a full Chilean legal name (two given names, two surnames) either
+ * truncated mid-word or pushed the controls beside it off the row.
+ */
+function shortName(full: string): string {
+  const parts = full.trim().split(/\s+/).filter(Boolean);
+  if (parts.length <= 2) return full.trim();
+  // Two given names is the common case, so the surname is the third token.
+  return `${parts[0]} ${parts[parts.length >= 4 ? 2 : 1]}`;
+}
 
 function NavTab({
   to,
@@ -99,12 +112,21 @@ export function MobileBottomNav() {
   // Propo (agent pipeline) is backend ADMIN-only.
   const canPropo = isAdminView && allow("agent");
 
-  // The sheet lists what the tab bar cannot reach. Repeating Inicio, CRM and
-  // Agenda there would spend the top of the sheet on the three destinations the
-  // user already has permanently under their thumb.
-  const tabPaths = new Set([base, `${base}/crm`, `${base}/agenda`]);
+  // The sheet lists what the chrome around it cannot already reach. Repeating
+  // Inicio, CRM and Agenda would spend the top of the sheet on destinations the
+  // user has permanently under their thumb; Propo is the centre FAB, two
+  // centimetres below the sheet's own edge; and Configuración is the gear in
+  // this sheet's header. A twelve-button grid where a third of the buttons are
+  // duplicates is what made every entry look equally (un)important.
+  const chromePaths = new Set([
+    base,
+    `${base}/crm`,
+    `${base}/agenda`,
+    `${base}/agent`,
+    SETTINGS_PATH,
+  ]);
   const sheetGroups = groups
-    .map((g) => ({ ...g, items: g.items.filter((i) => !tabPaths.has(i.path)) }))
+    .map((g) => ({ ...g, items: g.items.filter((i) => !chromePaths.has(i.path)) }))
     .filter((g) => g.items.length > 0);
 
   // `replace` because the sheet already pushed a duplicate history entry for the
@@ -170,17 +192,44 @@ export function MobileBottomNav() {
       </nav>
 
       <BottomSheet open={moreOpen} onOpenChange={setMoreOpen} srOnlyTitle="Menú">
+        {/* Identity on the left, the two controls that are not destinations on
+            the right. Theme and Configuración used to sit in the destination
+            list further down, where a colour toggle read as a place to go. */}
         <div className="mt-1 flex items-center gap-3 pb-3">
-          <div className="flex size-11 items-center justify-center rounded-full bg-secondary text-[15px] font-semibold text-foreground">
+          <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-secondary text-[15px] font-semibold text-foreground">
             {initials(user.fullName)}
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <div className="truncate text-[15px] font-semibold tracking-tight text-foreground">
-              {user.fullName}
+              {shortName(user.fullName)}
             </div>
             <div className="truncate text-[13px] capitalize text-muted-foreground">
               {user.role.toLowerCase()}
             </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-1">
+            {isAdminView && (
+              <button
+                type="button"
+                onClick={() => go(SETTINGS_PATH)}
+                aria-label="Configuración"
+                className="flex size-11 items-center justify-center rounded-full text-foreground transition active:scale-90 active:bg-secondary"
+              >
+                <Settings className="size-[20px]" strokeWidth={1.9} />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={toggle}
+              aria-label={theme === "dark" ? "Cambiar a claro" : "Cambiar a oscuro"}
+              className="flex size-11 items-center justify-center rounded-full text-foreground transition active:scale-90 active:bg-secondary"
+            >
+              {theme === "dark" ? (
+                <Moon className="size-[20px]" strokeWidth={1.9} />
+              ) : (
+                <Sun className="size-[20px]" strokeWidth={1.9} />
+              )}
+            </button>
           </div>
         </div>
 
@@ -250,21 +299,6 @@ export function MobileBottomNav() {
             })}
           </div>
         )}
-
-        <div className="border-t border-border py-1">
-          <SheetItem
-            icon={theme === "dark" ? Moon : Sun}
-            label={theme === "dark" ? "Modo oscuro" : "Modo claro"}
-            onClick={toggle}
-          />
-          {isAdminView && (
-            <SheetItem
-              icon={Settings}
-              label="Configuración"
-              onClick={() => go("/admin/settings")}
-            />
-          )}
-        </div>
 
         <div className="border-t border-border pt-1">
           <SheetItem

@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { LogOut, Settings } from "lucide-react";
+import { LogOut } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -16,7 +16,6 @@ import {
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@shared/hooks/use-auth";
-import type { UserView } from "@shared/types/auth";
 import { type NavItem } from "@layouts/nav-items";
 import { useNavGroups, usePendingCount } from "@layouts/use-nav-groups";
 
@@ -31,7 +30,9 @@ const ITEM_CLASS = cn(
   "h-8 px-2 text-[13px] [&>svg]:size-[18px] [&>span]:max-w-[12.5rem]",
   "[&>svg]:transition-[width,height] [&>svg]:duration-300 [&>svg]:ease-in-out",
   "group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:justify-center",
-  "group-data-[collapsible=icon]:[&>svg]:size-5",
+  // 22px on a 56px rail (see SIDEBAR_WIDTH_ICON): the icon is the only thing
+  // left once the label is gone, so it carries the row on its own.
+  "group-data-[collapsible=icon]:[&>svg]:size-[22px]",
   // max-width, not width/display: the label is a flex item whose computed width
   // is `auto`, and `auto` cannot be interpolated. 12.5rem is just above the
   // label's natural width at 16rem, so the shrink starts immediately.
@@ -80,13 +81,10 @@ export function AppSidebar() {
 
   if (!user) return null;
 
-  const view: UserView = (user.view as UserView | undefined) ?? "agent";
   const isDevAdmin = !!user.isDevAdmin;
   const onNavigate = () => {
     if (isMobile) setOpenMobile(false);
   };
-
-  const isAdminView = view === "admin" || view === "admin-dev";
 
   return (
     <Sidebar collapsible="icon">
@@ -145,24 +143,12 @@ export function AppSidebar() {
         ))}
       </SidebarContent>
 
+      {/* Configuración is no longer hardcoded here — it is a real entry in the
+          shared tree above, so the mobile sheet and this rail cannot disagree
+          about whether it exists. Only sign-out, which is not a destination,
+          stays outside the tree. */}
       <SidebarFooter className="gap-0.5 border-t border-sidebar-border px-2 py-2">
         <SidebarMenu className="gap-0.5">
-          {isAdminView && (
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip="Configuración" className={ITEM_CLASS}>
-                <NavLink
-                  to="/admin/settings"
-                  onClick={onNavigate}
-                  className={({ isActive }) =>
-                    isActive ? "bg-sidebar-accent text-sidebar-primary" : ""
-                  }
-                >
-                  <Settings />
-                  <span className="flex-1 truncate">Configuración</span>
-                </NavLink>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          )}
           <SidebarMenuItem>
             <SidebarMenuButton
               onClick={() => {

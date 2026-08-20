@@ -18,13 +18,19 @@ describe("titleForPath", () => {
     // `end: true` on the root. Without honouring it, every unlisted route under
     // /admin inherited "Inicio" — /admin/settings came out titled "Inicio".
     expect(titleForPath("/admin")).toBe("Inicio");
-    expect(titleForPath("/admin/settings")).toBeNull();
     expect(titleForPath("/admin/ruta-que-no-existe")).toBeNull();
+  });
+
+  it("names Configuración, which is now a real nav destination", () => {
+    // It used to be hard-coded in two shells and absent from the tree; the
+    // admin section (usuarios, teléfonos, importar, tenants…) now lives behind
+    // it, so it has to carry a title of its own.
+    expect(titleForPath("/admin/settings")).toBe("Configuración");
   });
 
   it("prefers the longest matching entry", () => {
     expect(titleForPath("/admin/documentos")).toBe("Documentos");
-    expect(titleForPath("/admin/datos/importar")).toBe("Importar");
+    expect(titleForPath("/admin/crm")).toBe("CRM");
   });
 
   it("keeps a section's own name when an entry points at one of its tabs", () => {
