@@ -1211,6 +1211,226 @@ def _seed_client_messaging(
 
 
 # ---------------------------------------------------------------------------
+# 4b. Email — portal leads and client threads
+# ---------------------------------------------------------------------------
+
+#: Portals a Chilean brokerage actually receives leads from.
+PORTALS = ("Portal Inmobiliario", "Yapo", "TocToc", "Mercado Libre")
+
+#: Inbound lead, exactly as the portals format them: a notification addressed to
+#: the broker with the interested party's details quoted underneath.
+LEAD_TEMPLATE = """Tienes un nuevo interesado en tu publicación.
+
+Propiedad: {title}
+Comuna: {comuna}
+Publicado en: {portal}
+
+Datos del interesado
+Nombre: {name}
+Email: {email}
+Teléfono: {phone}
+
+Mensaje: {message}
+"""
+
+LEAD_MESSAGES = (
+    "Hola, me interesa la propiedad. ¿Sigue disponible?",
+    "Buenas tardes, quisiera coordinar una visita esta semana.",
+    "¿Aceptan crédito hipotecario? Estoy preaprobado en el banco.",
+    "¿Cuánto son los gastos comunes y las contribuciones?",
+    "Me gustaría saber si el precio es conversable.",
+    "¿Se puede visitar el fin de semana?",
+)
+
+#: Ordinary threads: the mail a brokerage exchanges once someone is already a client.
+EMAIL_THREADS = (
+    (
+        "Documentos para la promesa — {title}",
+        "Hola {name}, adjunto el borrador de la promesa de compraventa. "
+        "Revísalo con calma y me dices si hay algo que ajustar.",
+        "Gracias, lo reviso hoy y te confirmo. Una consulta: ¿la fecha de entrega queda como la conversamos?",
+    ),
+    (
+        "Tasación — {title}",
+        "Estimado {name}, ya tengo la tasación de la propiedad. "
+        "El informe llega mañana y te lo reenvío apenas lo reciba.",
+        "Perfecto, quedo atento. ¿La tasación considera el estacionamiento?",
+    ),
+    (
+        "Oferta recibida por {title}",
+        "Hola {name}, recibimos una oferta por la propiedad. Te llamo para comentarte los términos.",
+        "Buenísimo. ¿Me puedes adelantar el monto por acá?",
+    ),
+    (
+        "Certificado de dominio vigente — {title}",
+        "Hola {name}, solicité el certificado de dominio vigente en el Conservador. "
+        "Sale entre dos y tres días hábiles.",
+        None,
+    ),
+    (
+        "Gastos comunes al día — {title}",
+        "Estimado {name}, la administración confirmó que los gastos comunes están al día. Adjunto el comprobante.",
+        None,
+    ),
+)
+
+
+def _slug_email(name: str) -> str:
+    """Fallback local part for a contact with no address on file."""
+    import unicodedata
+
+    folded = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode()
+    return "".join(ch if ch.isalnum() else "." for ch in folded.lower()).strip(".")[:32] or "cliente"
+
+
+def _seed_email(
+    conn: Any,
+    state: SeedContext,
+    rng: random.Random,
+    properties: list[dict[str, Any]],
+    contacts: list[dict[str, Any]],
+    now: datetime,
+) -> None:
+    """Portal leads and client correspondence for the Correos tab.
+
+    The mailbox row is written INACTIVE on purpose. The IMAP poller only ever
+    logs into the address in `EMAIL_IMAP_USER`, and an active demo account with
+    no mailbox behind it would be one config change away from a login loop
+    against an address that does not exist.
+    """
+    if not properties or not contacts:
+        return
+
+    account_id = _uid("email_account", "demo")
+    broker_email = "contacto@propos-demo.cl"
+    insert_many(
+        conn,
+        "email_accounts",
+        [
+            {
+                "id": account_id,
+                "tenant_id": DEMO_TENANT_ID,
+                "label": "Casilla demo",
+                "email_address": broker_email,
+                "username": broker_email,
+                "folder": "INBOX",
+                "is_active": False,
+                "created_at": now - timedelta(days=400),
+                "updated_at": now,
+            }
+        ],
+    )
+
+    threads: list[dict[str, Any]] = []
+    messages: list[dict[str, Any]] = []
+
+    for index in range(60):
+        contact = contacts[(index * 7) % len(contacts)]
+        prop = properties[(index * 13) % len(properties)]
+        name = contact["full_name"] or "Cliente"
+        first_name = name.split(" ")[0]
+        contact_email = contact.get("email") or f"{_slug_email(name)}@example.cl"
+        thread_id = _uid("email_thread", index, contact["id"], prop["id"])
+        is_lead = index % 5 < 2
+
+        # A fifth of the threads land in the last two days so the inbox has
+        # traffic whose timestamps read as "hoy" and "ayer".
+        recent = index % 5 == 0
+        started = now - timedelta(
+            hours=rng.randint(1, 40) if recent else rng.randint(48, 24 * 120),
+            minutes=rng.randrange(60),
+        )
+
+        if is_lead:
+            portal = PORTALS[index % len(PORTALS)]
+            subject = f"Nuevo interesado en {prop['title']}"
+            body = LEAD_TEMPLATE.format(
+                title=prop["title"],
+                comuna=prop.get("comuna") or "Santiago",
+                portal=portal,
+                name=name,
+                email=contact_email,
+                phone=contact.get("phone") or "+56 9 1234 5678",
+                message=rng.choice(LEAD_MESSAGES),
+            )
+            turns: list[tuple[str, str, str]] = [("IN", subject, body)]
+            # Two out of three leads have been worked; the rest are the pile
+            # the Atención queue is there to surface.
+            if index % 3 != 0:
+                turns.append(
+                    (
+                        "OUT",
+                        f"Re: {subject}",
+                        f"Hola {first_name}, gracias por escribir. La propiedad sigue disponible. "
+                        "¿Te acomoda coordinar una visita esta semana?",
+                    )
+                )
+        else:
+            portal = None
+            subject_tpl, outbound, inbound = EMAIL_THREADS[index % len(EMAIL_THREADS)]
+            subject = subject_tpl.format(title=prop["title"])
+            turns = [("OUT", subject, outbound.format(name=first_name))]
+            if inbound:
+                turns.append(("IN", f"Re: {subject}", inbound))
+
+        cursor = started
+        for turn_index, (direction, msg_subject, body) in enumerate(turns):
+            cursor += timedelta(hours=rng.randint(1, 30), minutes=rng.randrange(60))
+            inbound_turn = direction == "IN"
+            messages.append(
+                {
+                    "id": _uid("email_message", thread_id, turn_index),
+                    "tenant_id": DEMO_TENANT_ID,
+                    "account_id": account_id,
+                    "thread_id": thread_id,
+                    "direction": direction,
+                    "message_id": f"<demo-{thread_id[:12]}-{turn_index:02d}@propos-demo.cl>",
+                    "from_email": contact_email if inbound_turn else broker_email,
+                    "from_name": name if inbound_turn else "Corredora PropOS",
+                    "to_emails": [broker_email] if inbound_turn else [contact_email],
+                    "subject": msg_subject,
+                    "body_text": body,
+                    "snippet": " ".join(body.split())[:180],
+                    "sent_at": cursor,
+                    "folder": "INBOX",
+                    "is_lead_email": is_lead and inbound_turn,
+                    "portal": portal if inbound_turn else None,
+                    "contact_id": contact["id"],
+                    "created_at": cursor,
+                }
+            )
+
+        threads.append(
+            {
+                "id": thread_id,
+                "tenant_id": DEMO_TENANT_ID,
+                "account_id": account_id,
+                "subject": turns[0][1],
+                "root_message_id": f"<demo-{thread_id[:12]}-00@propos-demo.cl>",
+                "counterpart_email": contact_email,
+                "counterpart_name": name,
+                "contact_id": contact["id"],
+                "first_message_at": started,
+                "last_message_at": cursor,
+                "message_count": len(turns),
+                "is_lead": is_lead,
+                "portal": portal,
+                # Archived threads are the ones that finished; everything else
+                # stays open, including the leads nobody has answered.
+                "status": "ARCHIVED" if (not is_lead and index % 6 == 0) else "OPEN",
+                "created_at": started,
+                "updated_at": cursor,
+            }
+        )
+
+    insert_many(conn, "email_threads", threads)
+    insert_many(conn, "email_messages", messages)
+    state.record("email_accounts", 1)
+    state.record("email_threads", len(threads))
+    state.record("email_messages", len(messages))
+
+
+# ---------------------------------------------------------------------------
 # 5. UF series
 # ---------------------------------------------------------------------------
 UF_MONTHS_BACK = 18
@@ -1336,5 +1556,6 @@ def seed_media(conn: Any, state: SeedContext, rng_seed: int = 20260819) -> SeedC
     _seed_documents(conn, state, rng, properties, contacts, now)
     _seed_transactions(conn, state, rng, properties, now)
     _seed_client_messaging(conn, state, rng, properties, contacts, now)
+    _seed_email(conn, state, rng, properties, contacts, now)
     _seed_uf_daily(conn, state, rng, now.date())
     return state
