@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Bell, Building2, Check } from "lucide-react";
 import { useAuth } from "@shared/hooks/use-auth";
@@ -7,6 +7,7 @@ import { apiRequest } from "@shared/api/http";
 import { tenantSwatch } from "@core/theme/tenant-accent";
 import { UfButton } from "@features/uf/components/uf-button";
 import { BottomSheet, WorkspacePill } from "@shared/ui";
+import { titleForPath } from "@app/page-meta";
 import type { UserView } from "@shared/types/auth";
 import { cn } from "@/lib/utils";
 
@@ -70,6 +71,7 @@ function usePendingBadge(enabled: boolean): number {
 export function MobileTopBar() {
   const { user, memberships, switchTenant } = useAuth();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const [wsOpen, setWsOpen] = useState(false);
   const barRef = useRef<HTMLElement>(null);
   usePublishHeaderHeight(barRef);
@@ -86,6 +88,9 @@ export function MobileTopBar() {
   const base = `/${user.role.toLowerCase()}`;
   const tenantName =
     memberships.find((m) => m.tenantId === user.tenantId)?.tenantName ?? "Workspace";
+  // Home is the role root exactly — every deeper route names itself instead.
+  const isHome = pathname === base;
+  const pageTitle = titleForPath(pathname) ?? "";
 
   return (
     <>
@@ -93,19 +98,32 @@ export function MobileTopBar() {
         ref={barRef}
         className="sticky top-0 z-40 bg-background/85 pt-[var(--safe-top)] backdrop-blur-md"
       >
+        {/* Workspace, UF and notifications are HOME chrome, not app chrome.
+            Carrying them on every screen spent the top of a phone on three
+            controls a broker touches once a day, above a section tab bar and a
+            page header — so a list started a third of the way down. Everywhere
+            else the bar collapses to the page's own title, set by PageMeta. */}
         <div className="flex items-center justify-between gap-2 px-[var(--page-x)] py-2">
-          <WorkspacePill
-            label={tenantName}
-            onClick={() => setWsOpen(true)}
-            className={cn(HEADER_CONTROL, "py-0")}
-          />
+          {isHome ? (
+            <WorkspacePill
+              label={tenantName}
+              onClick={() => setWsOpen(true)}
+              className={cn(HEADER_CONTROL, "py-0")}
+            />
+          ) : (
+            <span className="truncate text-[15px] font-semibold tracking-tight text-foreground">
+              {pageTitle}
+            </span>
+          )}
           <div className="flex items-center gap-1.5">
             {/* UfButton belongs to the UF feature; sizing it from the outside
                 keeps this row's single height rule without reaching into it. */}
-            <div className="flex items-center [&>button]:h-9 [@media(pointer:coarse)]:[&>button]:h-11">
-              <UfButton />
-            </div>
-            {canPendientes && (
+            {isHome && (
+              <div className="flex items-center [&>button]:h-9 [@media(pointer:coarse)]:[&>button]:h-11">
+                <UfButton />
+              </div>
+            )}
+            {isHome && canPendientes && (
               <button
                 type="button"
                 aria-label={pendingCount > 0 ? `Pendientes (${pendingCount})` : "Pendientes"}

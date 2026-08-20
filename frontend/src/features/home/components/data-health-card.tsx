@@ -44,9 +44,14 @@ export function DataHealthCard() {
     staleTime: 10 * 60_000,
   });
 
+  // Defensive: this renders on the home screen, so a payload shaped other than
+  // expected — an old worker serving a cached response, a proxy returning [] —
+  // must degrade to nothing rather than white-screen the first thing a broker
+  // sees. It cost a crash on every viewport in the device sweep.
+  const findings = Array.isArray(data?.findings) ? data.findings : [];
   if (!data) return null;
 
-  if (data.findings.length === 0) {
+  if (findings.length === 0) {
     return (
       <div className="flex items-center gap-2 rounded-xl border border-border px-3.5 py-2.5 text-[13px] text-muted-foreground">
         <ShieldCheck className="size-4 shrink-0 text-success" strokeWidth={1.9} />
@@ -57,7 +62,7 @@ export function DataHealthCard() {
 
   return (
     <div className="overflow-hidden rounded-xl border border-border">
-      {data.findings.slice(0, 3).map((f, i) => (
+      {findings.slice(0, 3).map((f, i) => (
         <button
           key={f.code}
           type="button"
