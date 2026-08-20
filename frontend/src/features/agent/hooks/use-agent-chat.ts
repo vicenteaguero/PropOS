@@ -35,6 +35,20 @@ const INITIAL: AgentChatState = {
  * arrives we kick off a normal `send`. The audio bubble stays in the
  * UI with a collapsible "Ver transcripción" affordance.
  */
+/**
+ * A raw `API 503: {"detail":"groq whisper failed: …"}` in a bubble tells a broker
+ * nothing. The backend now separates quota (429) from a provider fault (502)
+ * from "nothing is configured" (503), so each gets an answer the reader can act
+ * on — wait, retry, or call support.
+ */
+function transcriptionMessage(err: unknown): string {
+  const raw = err instanceof Error ? err.message : "";
+  if (raw.includes("API 429")) return "Demasiadas transcripciones seguidas. Espera un momento.";
+  if (raw.includes("API 502")) return "El servicio de transcripción falló. Intenta de nuevo.";
+  if (raw.includes("API 503")) return "La transcripción no está disponible ahora mismo.";
+  return "No pude transcribir el audio.";
+}
+
 export function useAgentChat(sessionId: string | undefined) {
   const [state, setState] = useState<AgentChatState>(INITIAL);
   const abortRef = useRef<AbortController | null>(null);
@@ -138,7 +152,7 @@ export function useAgentChat(sessionId: string | undefined) {
           await send(result.text.trim(), { silent: true });
         }
       } catch (err) {
-        const msg = err instanceof Error ? err.message : "transcripción falló";
+        const msg = transcriptionMessage(err);
         setState((s) => ({
           ...s,
           pendingAudio: s.pendingAudio.map((a) =>

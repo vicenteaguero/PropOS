@@ -8,6 +8,7 @@ Browser-side: Web Speech API result is just persisted (no provider call).
 from __future__ import annotations
 
 import logging
+import time
 from typing import IO
 from uuid import UUID
 
@@ -17,7 +18,25 @@ logger = logging.getLogger("AGENT_TRANSCRIBE")
 
 
 class TranscriptionError(Exception):
-    pass
+    """Base for anything that stops a transcription.
+
+    Subclassed so the router can pick an honest status code. Every failure used
+    to collapse into one 503 — a revoked key, a rate limit, a cold-start timeout
+    and "no provider configured" were indistinguishable both to the client and
+    to whoever was reading the logs.
+    """
+
+
+class TranscriptionUnavailableError(TranscriptionError):
+    """No provider is configured. A deployment problem, not a runtime one. → 503"""
+
+
+class TranscriptionQuotaError(TranscriptionError):
+    """The provider's rate limit or daily budget is spent. Retrying later works. → 429"""
+
+
+class TranscriptionProviderError(TranscriptionError):
+    """The provider rejected the call or timed out. Not the client's fault. → 502"""
 
 
 def transcribe_audio(
@@ -37,7 +56,7 @@ def transcribe_audio(
     """
     provider = settings.agent_transcribe_provider
     if vocab is None:
-        vocab = build_whisper_vocab(tenant_id)
+        vocab = _cached_whisper_vocab(tenant_id)
 
     try:
         if provider == "groq" and settings.groq_api_key:
@@ -54,7 +73,7 @@ def transcribe_audio(
     if provider != "groq" and settings.groq_api_key:
         return _transcribe_groq(file, filename, vocab=vocab)
 
-    raise TranscriptionError("No transcription provider available. Set GROQ_API_KEY or OPENAI_API_KEY.")
+    raise TranscriptionUnavailableError("no transcription provider configured; set GROQ_API_KEY or OPENAI_API_KEY")
 
 
 # Static, generic Whisper vocab — Chilean real-estate terminology + comunas.
@@ -71,6 +90,25 @@ _WHISPER_VOCAB_STATIC = (
     "comprador, vendedor, notaría, escritura, hipoteca. "
     "Personas frecuentes del equipo: Jaime Agüero, Vicente Agüero, Ana Carreño."
 )
+
+
+# Tenant vocab cache. Building it costs FOUR sequential Supabase round-trips,
+# and it was rebuilt on every single transcription — on a cold Cloud Run
+# instance that ate a large slice of the 30s client timeout before the audio
+# had even been uploaded. Names change slowly; ten minutes is plenty.
+_VOCAB_TTL_SECONDS = 600
+_vocab_cache: dict[str, tuple[float, str]] = {}
+
+
+def _cached_whisper_vocab(tenant_id: UUID) -> str:
+    key = str(tenant_id)
+    hit = _vocab_cache.get(key)
+    now = time.monotonic()
+    if hit is not None and now - hit[0] < _VOCAB_TTL_SECONDS:
+        return hit[1]
+    vocab = build_whisper_vocab(tenant_id)
+    _vocab_cache[key] = (now, vocab)
+    return vocab
 
 
 def build_whisper_vocab(tenant_id: UUID | None = None) -> str:
@@ -156,11 +194,11 @@ def build_whisper_vocab(tenant_id: UUID | None = None) -> str:
 
 def _transcribe_groq(file: IO[bytes], filename: str, vocab: str | None = None) -> dict:
     if not settings.groq_api_key:
-        raise TranscriptionError("GROQ_API_KEY not set")
+        raise TranscriptionUnavailableError("GROQ_API_KEY not set")
     try:
         from openai import OpenAI
     except ImportError as exc:
-        raise TranscriptionError("openai package not installed") from exc
+        raise TranscriptionUnavailableError("openai package not installed") from exc
 
     from app.features.agent.rate_limiter import QuotaExhaustedError, get_rate_limiter
 
@@ -169,7 +207,7 @@ def _transcribe_groq(file: IO[bytes], filename: str, vocab: str | None = None) -
     except QuotaExhaustedError as exc:
         # Surfaces as 503 through the router instead of parking the request
         # until the daily Whisper window rolls over.
-        raise TranscriptionError(str(exc)) from exc
+        raise TranscriptionQuotaError(str(exc)) from exc
 
     client = OpenAI(
         api_key=settings.groq_api_key,
@@ -186,7 +224,7 @@ def _transcribe_groq(file: IO[bytes], filename: str, vocab: str | None = None) -
             prompt=vocab or _WHISPER_VOCAB_STATIC,
         )
     except Exception as exc:
-        raise TranscriptionError(f"groq whisper failed: {exc}") from exc
+        raise TranscriptionProviderError(f"groq whisper failed: {exc}") from exc
     return {
         "text": response.text,
         "language": getattr(response, "language", "es"),
@@ -198,11 +236,11 @@ def _transcribe_groq(file: IO[bytes], filename: str, vocab: str | None = None) -
 
 def _transcribe_openai(file: IO[bytes], filename: str) -> dict:
     if not settings.openai_api_key:
-        raise TranscriptionError("OPENAI_API_KEY not set")
+        raise TranscriptionUnavailableError("OPENAI_API_KEY not set")
     try:
         from openai import OpenAI
     except ImportError as exc:
-        raise TranscriptionError("openai package not installed") from exc
+        raise TranscriptionUnavailableError("openai package not installed") from exc
 
     client = OpenAI(api_key=settings.openai_api_key, timeout=30.0, max_retries=1)
     try:
@@ -213,7 +251,7 @@ def _transcribe_openai(file: IO[bytes], filename: str) -> dict:
             response_format="verbose_json",
         )
     except Exception as exc:
-        raise TranscriptionError(f"openai whisper failed: {exc}") from exc
+        raise TranscriptionProviderError(f"openai whisper failed: {exc}") from exc
     return {
         "text": response.text,
         "language": getattr(response, "language", "es"),
