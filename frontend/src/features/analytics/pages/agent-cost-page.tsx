@@ -48,7 +48,7 @@ export function AgentCostPage() {
     return (
       <PageLayout width="lg" noPadding className="lg:max-w-none">
         <div className="px-5 pt-6 lg:px-8">
-          <PageSkeleton variant="detail" />
+          <PageSkeleton variant="kpi-grid" />
         </div>
       </PageLayout>
     );

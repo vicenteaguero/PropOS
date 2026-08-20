@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useAgentSession, useAgentMessages } from "../hooks/use-agent-session";
 import { useAgentChat } from "../hooks/use-agent-chat";
 import { agentApi } from "../api/agent-api";
+import { useKeyboardInset } from "@shared/hooks/use-keyboard-inset";
 import { AgentComposer } from "./agent-composer";
 import { AgentMessageList } from "./agent-message-list";
 import { Sparkles, Loader2, PlusCircle } from "lucide-react";
@@ -18,6 +19,7 @@ interface Props {
 }
 
 export function AgentDrawer({ open, onOpenChange, fullscreen = false }: Props) {
+  useKeyboardInset();
   const sessionQuery = useAgentSession();
   const sessionId = sessionQuery.data?.id;
   const messagesQuery = useAgentMessages(sessionId);
@@ -100,7 +102,7 @@ export function AgentDrawer({ open, onOpenChange, fullscreen = false }: Props) {
               />
             </div>
             {chat.error && <p className="px-4 text-xs text-destructive">{chat.error}</p>}
-            <div className="p-4 border-t border-border shrink-0">
+            <div className="shrink-0 border-t border-border p-3 pb-[max(calc(var(--safe-bottom)+0.75rem),calc(var(--kb-inset)+0.75rem))]">
               <AgentComposer
                 onSend={chat.send}
                 onAudio={chat.submitAudio}

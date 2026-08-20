@@ -14,13 +14,29 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { cn } from "@/lib/utils";
 import { useAuth } from "@shared/hooks/use-auth";
 import type { UserView } from "@shared/types/auth";
 import { type NavItem } from "@layouts/nav-items";
 import { useNavGroups, usePendingCount } from "@layouts/use-nav-groups";
 
-const ITEM_CLASS =
-  "h-8 !px-2 text-[13px] [&>svg]:size-[18px] group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:[&>svg]:size-5 group-data-[collapsible=icon]:[&>span]:hidden";
+// Collapsed geometry is expressed only in animatable properties, on the same
+// 300ms ease-in-out curve as the rail width (see SIDEBAR_TRANSITION in
+// components/ui/sidebar.tsx). No `!important` — it would win over the very
+// padding `transition-[width,height,padding]` is there to animate — and no
+// `hidden`, which snaps at t=0 and used to make the rows jump on collapse.
+// The button stays `w-full`, so its width tracks the rail continuously instead
+// of running a second, competing transition.
+const ITEM_CLASS = cn(
+  "h-8 px-2 text-[13px] [&>svg]:size-[18px] [&>span]:max-w-[12.5rem]",
+  "[&>svg]:transition-[width,height] [&>svg]:duration-300 [&>svg]:ease-in-out",
+  "group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:justify-center",
+  "group-data-[collapsible=icon]:[&>svg]:size-5",
+  // max-width, not width/display: the label is a flex item whose computed width
+  // is `auto`, and `auto` cannot be interpolated. 12.5rem is just above the
+  // label's natural width at 16rem, so the shrink starts immediately.
+  "group-data-[collapsible=icon]:[&>span]:max-w-0",
+);
 
 function NavItemRow({
   item,
@@ -74,13 +90,23 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader className="flex-row items-center gap-2.5 px-2.5 py-2.5 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
+      {/* Grid, not flex: `grid-template-columns` interpolates, so the title
+          column can shrink to nothing on the shared curve. A flex child cannot
+          animate away — its width is `auto` and `display:none` snaps. */}
+      <SidebarHeader
+        className={cn(
+          "grid grid-cols-[auto_1fr] items-center gap-2.5 px-2.5 py-2.5",
+          "transition-[grid-template-columns,gap,padding] duration-300 ease-in-out",
+          "group-data-[collapsible=icon]:grid-cols-[auto_0fr] group-data-[collapsible=icon]:gap-0",
+          "group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0",
+        )}
+      >
         <img
           src="/icon.svg"
           alt="PropOS"
           className="size-8 shrink-0 rounded-lg ring-2 ring-primary/20 shadow-md shadow-primary/10"
         />
-        <div className="flex min-w-0 flex-1 items-center gap-1.5 text-left group-data-[collapsible=icon]:hidden">
+        <div className="flex min-w-0 items-center gap-1.5 overflow-hidden text-left transition-opacity duration-300 ease-in-out group-data-[collapsible=icon]:opacity-0">
           <span className="truncate text-[15px] font-bold tracking-tight">PropOS</span>
           {isDevAdmin && (
             <span className="rounded bg-warning/20 px-1.5 py-0 text-[11px] font-bold uppercase tracking-wide text-warning">
@@ -94,10 +120,12 @@ export function AppSidebar() {
         {groups.map((group, idx) => (
           <SidebarGroup
             key={group.label ?? `group-${idx}`}
-            className="px-2 py-1 group-data-[collapsible=icon]:px-1.5 group-data-[collapsible=icon]:py-0.5"
+            className="px-2 py-1 transition-[padding] duration-300 ease-in-out group-data-[collapsible=icon]:px-1.5 group-data-[collapsible=icon]:py-0.5"
           >
             {group.label && (
-              <SidebarGroupLabel className="h-6 px-2 text-[11px] uppercase tracking-wider group-data-[collapsible=icon]:hidden group-data-[state=collapsed]:hidden">
+              // No `hidden`: SidebarGroupLabel collapses its own height on the
+              // shared curve, which is what stops the rows below from snapping.
+              <SidebarGroupLabel className="h-6 px-2 text-[11px] uppercase tracking-wider">
                 {group.label}
               </SidebarGroupLabel>
             )}

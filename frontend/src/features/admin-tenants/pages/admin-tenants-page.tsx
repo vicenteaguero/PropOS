@@ -163,7 +163,7 @@ export function AdminTenantsPage() {
         </Button>
       </div>
 
-      {isLoading && <PageSkeleton variant="table" />}
+      {isLoading && <PageSkeleton variant={isDesktop ? "table" : "list"} />}
       {error && (
         <ErrorState message="No se pudieron cargar los tenants." onRetry={() => refetch()} />
       )}

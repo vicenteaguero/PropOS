@@ -70,7 +70,7 @@ export function OpportunitiesPage() {
 
         {/* Board region: fills remaining height on desktop, internal column scroll. */}
         <div className="px-4 md:px-6 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:px-8 lg:pb-6">
-          {isLoading && <PageSkeleton variant="cards" />}
+          {isLoading && <PageSkeleton variant="board" />}
           {error && (
             <ErrorState message="No se pudo cargar el pipeline." onRetry={() => refetch()} />
           )}

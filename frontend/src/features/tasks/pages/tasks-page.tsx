@@ -99,7 +99,7 @@ function BucketSection({
 }) {
   return (
     <section>
-      <SectionLabel className="mb-2">{bucket}</SectionLabel>
+      <SectionLabel className="mb-2 px-5 lg:px-0">{bucket}</SectionLabel>
       <div className="overflow-hidden">
         {tasks.map((t, i) => {
           const due = t.due_at ? dueLabel(t.due_at) : null;

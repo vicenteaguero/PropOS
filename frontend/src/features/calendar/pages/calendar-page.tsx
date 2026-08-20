@@ -55,7 +55,7 @@ import { useIsDesktop } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useAuth } from "@shared/hooks/use-auth";
-import { AgentOverlay } from "@features/agent/components/agent-overlay";
+import { useAgentOverlay } from "@features/agent/components/agent-overlay-host";
 import {
   useCalendarFeed,
   useCreateEvent,
@@ -200,7 +200,7 @@ export function CalendarPage() {
   const [detail, setDetail] = useState<CalendarItem | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const [propoOpen, setPropoOpen] = useState(false);
+  const propo = useAgentOverlay();
 
   // Propo (agent pipeline) is backend ADMIN-only — mirror the Home gate.
   const role = (user?.role ?? "ADMIN").toLowerCase();
@@ -512,7 +512,7 @@ export function CalendarPage() {
               isLoading={isLoading}
               onOpen={setDetail}
               canPropo={canPropo}
-              onOpenPropo={() => setPropoOpen(true)}
+              onOpenPropo={() => propo.open("voice")}
             />
           </div>
 
@@ -520,7 +520,7 @@ export function CalendarPage() {
           <div className="hidden min-h-0 flex-1 lg:flex lg:flex-col">
             {canPropo && (
               <div className="px-8 pb-1 pt-2">
-                <PropoCard onOpen={() => setPropoOpen(true)} />
+                <PropoCard onOpen={() => propo.open("voice")} />
               </div>
             )}
 
@@ -544,7 +544,7 @@ export function CalendarPage() {
                   />
                 </div>
                 <div className="flex min-h-0 w-80 shrink-0 flex-col overflow-y-auto rounded-xl border border-border">
-                  <SectionLabel className="mb-1 mt-3 capitalize">
+                  <SectionLabel className="mb-1 mt-3 px-4 capitalize">
                     {format(selected, "EEEE d 'de' MMMM", { locale: es })}
                   </SectionLabel>
                   <DayAgenda items={selectedItems} onOpen={setDetail} />
@@ -698,10 +698,6 @@ export function CalendarPage() {
           onConfirm={confirmDelete}
         />
       </PageLayout>
-
-      {canPropo && propoOpen && (
-        <AgentOverlay onClose={() => setPropoOpen(false)} initialMode="voice" />
-      )}
     </>
   );
 }

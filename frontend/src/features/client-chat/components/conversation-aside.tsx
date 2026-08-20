@@ -35,7 +35,7 @@ export function ConversationAside({ conversation }: { conversation: ClientConver
       </div>
 
       <div>
-        <SectionLabel className="px-0">Estado</SectionLabel>
+        <SectionLabel>Estado</SectionLabel>
         <dl className="mt-2 space-y-2.5 rounded-xl bg-card p-4 text-sm">
           <div className="flex items-center justify-between gap-3">
             <dt className="text-muted-foreground">Ventana 24h</dt>

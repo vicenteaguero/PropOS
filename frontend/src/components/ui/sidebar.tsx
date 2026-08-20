@@ -20,6 +20,17 @@ const SIDEBAR_WIDTH_MOBILE = "50vw";
 const SIDEBAR_WIDTH_ICON = "4.5rem";
 const SIDEBAR_KEYBOARD_SHORTCUT = "b";
 
+// DEVIATION FROM STOCK SHADCN (collapse animation fix).
+// Stock spreads four different timings across pieces that move together during
+// one gesture: 300ms on the rail width, 200ms ease-linear on the group label,
+// and Tailwind's implicit 150ms default on the menu button and the rail. The
+// result is that collapse never mirrors expand. Everything keyed on
+// `data-collapsible` / `data-state` must use this single token, and must animate
+// a real property — never `display: none`, which snaps at t=0 and produces the
+// bounce this token exists to remove.
+const SIDEBAR_TRANSITION_MS = 300;
+const SIDEBAR_TRANSITION = "duration-300 ease-in-out";
+
 type SidebarContextProps = {
   state: "expanded" | "collapsed";
   open: boolean;
@@ -28,6 +39,8 @@ type SidebarContextProps = {
   setOpenMobile: (open: boolean) => void;
   isMobile: boolean;
   toggleSidebar: () => void;
+  // DEVIATION: false while the collapse/expand animation is in flight. Not in stock.
+  settled: boolean;
 };
 
 const SidebarContext = React.createContext<SidebarContextProps | null>(null);
@@ -99,6 +112,24 @@ function SidebarProvider({
   // This makes it easier to style the sidebar with Tailwind classes.
   const state = open ? "expanded" : "collapsed";
 
+  // DEVIATION: gate anything that must not appear mid-gesture (tooltips) on the
+  // animation having finished, rather than on the raw state — `state` flips at
+  // t=0 while the rail is still 16rem wide. Starts settled so the first paint is
+  // not artificially delayed. Under prefers-reduced-motion the durations are
+  // zeroed globally but this timer still runs; the only effect is that tooltips
+  // become available 300ms later, never that anything stays hidden.
+  const [settled, setSettled] = React.useState(true);
+  const hasMounted = React.useRef(false);
+  React.useEffect(() => {
+    if (!hasMounted.current) {
+      hasMounted.current = true;
+      return;
+    }
+    setSettled(false);
+    const timer = window.setTimeout(() => setSettled(true), SIDEBAR_TRANSITION_MS);
+    return () => window.clearTimeout(timer);
+  }, [state]);
+
   const contextValue = React.useMemo<SidebarContextProps>(
     () => ({
       state,
@@ -108,8 +139,9 @@ function SidebarProvider({
       openMobile,
       setOpenMobile,
       toggleSidebar,
+      settled,
     }),
-    [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar],
+    [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar, settled],
   );
 
   return (
@@ -203,7 +235,8 @@ function Sidebar({
       <div
         data-slot="sidebar-gap"
         className={cn(
-          "relative bg-transparent transition-[width] duration-300 ease-in-out",
+          "relative bg-transparent transition-[width]",
+          SIDEBAR_TRANSITION,
           "w-(--sidebar-width-icon) group-data-[state=expanded]:w-(--sidebar-width)",
           "group-data-[side=right]:rotate-180",
         )}
@@ -211,7 +244,8 @@ function Sidebar({
       <div
         data-slot="sidebar-container"
         className={cn(
-          "fixed inset-y-0 z-40 hidden h-svh overflow-hidden transition-[width] duration-300 ease-in-out md:flex",
+          "fixed inset-y-0 z-40 hidden h-svh overflow-hidden transition-[width] md:flex",
+          SIDEBAR_TRANSITION,
           "w-(--sidebar-width-icon) group-data-[state=expanded]:w-(--sidebar-width)",
           // Landscape puts the notch beside the rail; both insets are 0 on a
           // laptop, so this is inert there.
@@ -226,7 +260,15 @@ function Sidebar({
         <div
           data-sidebar="sidebar"
           data-slot="sidebar-inner"
-          className="flex h-full w-full flex-col select-none overflow-hidden pb-[var(--safe-bottom)] bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:shadow-sm [&_span]:transition-opacity [&_span]:duration-300 group-data-[state=collapsed]:[&_span]:opacity-0"
+          className={cn(
+            "flex h-full w-full flex-col select-none overflow-hidden pb-[var(--safe-bottom)] bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:shadow-sm",
+            // DEVIATION: labels fade AND give up their horizontal space on the
+            // shared curve. `max-width` (not `width`) because these spans are
+            // flex items whose computed width is `auto` — `auto` is not
+            // interpolatable, so a width rule would snap instead of animate.
+            "[&_span]:transition-[opacity,max-width] [&_span]:duration-300 [&_span]:ease-in-out",
+            "group-data-[state=collapsed]:[&_span]:opacity-0",
+          )}
         >
           {children}
         </div>
@@ -269,7 +311,12 @@ function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
       onClick={toggleSidebar}
       title="Toggle Sidebar"
       className={cn(
-        "absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 transition-all ease-linear group-data-[side=left]:-right-4 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] hover:after:bg-sidebar-border sm:flex",
+        // DEVIATION: `transition-all` (with Tailwind's implicit 150ms) made the
+        // rail slide on its own clock and animated every unrelated property.
+        // Only its position moves with the gesture; the hover tint is left
+        // instant so the affordance still feels responsive.
+        "absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 transition-[right,left,translate] group-data-[side=left]:-right-4 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] hover:after:bg-sidebar-border sm:flex",
+        SIDEBAR_TRANSITION,
         "in-data-[side=left]:cursor-w-resize in-data-[side=right]:cursor-e-resize",
         "[[data-side=left][data-state=collapsed]_&]:cursor-e-resize [[data-side=right][data-state=collapsed]_&]:cursor-w-resize",
         "group-data-[collapsible=offcanvas]:translate-x-0 group-data-[collapsible=offcanvas]:after:left-full hover:group-data-[collapsible=offcanvas]:bg-sidebar",
@@ -368,7 +415,10 @@ function SidebarContent({ className, ...props }: React.ComponentProps<"div">) {
       data-slot="sidebar-content"
       data-sidebar="content"
       className={cn(
-        "flex min-h-0 flex-1 flex-col gap-2 overflow-auto group-data-[collapsible=icon]:overflow-hidden",
+        // DEVIATION: stock flips `overflow-auto` -> `overflow-hidden` at t=0,
+        // so a vertical scrollbar could vanish instantly mid-gesture and shift
+        // the whole rail sideways. Split the axes instead — never changes.
+        "flex min-h-0 flex-1 flex-col gap-2 overflow-x-hidden overflow-y-auto",
         className,
       )}
       {...props}
@@ -393,14 +443,24 @@ function SidebarGroupLabel({
   ...props
 }: React.ComponentProps<"div"> & { asChild?: boolean }) {
   const Comp = asChild ? Slot.Root : "div";
+  const { state, isMobile } = useSidebar();
+  const collapsed = state === "collapsed" && !isMobile;
 
   return (
     <Comp
       data-slot="sidebar-group-label"
       data-sidebar="group-label"
+      // DEVIATION: labels are decorative once the rail is icon-width; keep them
+      // out of the a11y tree there instead of relying on `display: none`.
+      aria-hidden={collapsed || undefined}
       className={cn(
-        "flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium text-sidebar-foreground/70 ring-sidebar-ring outline-hidden transition-[margin,opacity] duration-200 ease-linear focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
-        "group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0",
+        "flex h-8 shrink-0 items-center overflow-hidden rounded-md px-2 text-xs font-medium text-sidebar-foreground/70 ring-sidebar-ring outline-hidden transition-[height,margin,padding,opacity] focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
+        SIDEBAR_TRANSITION,
+        // DEVIATION: stock yanks the label out with `-mt-8` (which assumes the
+        // stock h-8 and is wrong for any override) on a 200ms ease-linear clock.
+        // Collapsing its own height on the shared curve is what keeps the rows
+        // below from snapping upward at t=0 — that reflow was the "bounce".
+        "group-data-[collapsible=icon]:h-0 group-data-[collapsible=icon]:py-0 group-data-[collapsible=icon]:opacity-0",
         className,
       )}
       {...props}
@@ -465,7 +525,9 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<"li">) {
 }
 
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md pl-4 pr-2 py-2 text-left text-sm ring-sidebar-ring outline-hidden transition-[width,height,padding] group-has-data-[sidebar=menu-action]/menu-item:pr-8 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground [&>span:last-child]:truncate [&>svg]:size-6 [&>svg]:shrink-0",
+  // DEVIATION: stock omits a duration here, so this fell back to Tailwind's
+  // 150ms default and finished at half the rail's 300ms.
+  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md pl-4 pr-2 py-2 text-left text-sm ring-sidebar-ring outline-hidden transition-[width,height,padding,gap] duration-300 ease-in-out group-has-data-[sidebar=menu-action]/menu-item:pr-8 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground [&>span:last-child]:truncate [&>svg]:size-6 [&>svg]:shrink-0",
   {
     variants: {
       variant: {
@@ -500,7 +562,7 @@ function SidebarMenuButton({
   tooltip?: string | React.ComponentProps<typeof TooltipContent>;
 } & VariantProps<typeof sidebarMenuButtonVariants>) {
   const Comp = asChild ? Slot.Root : "button";
-  const { isMobile, state } = useSidebar();
+  const { isMobile, state, settled } = useSidebar();
 
   const button = (
     <Comp
@@ -519,7 +581,9 @@ function SidebarMenuButton({
 
   // Only wrap in Tooltip when sidebar is collapsed on desktop —
   // otherwise the tooltip can ghost / stay mounted while expanded.
-  if (state !== "collapsed" || isMobile) {
+  // DEVIATION: also wait for `settled`. `state` flips at t=0, so gating on it
+  // alone let a tooltip pop up beside a rail that was still 16rem wide.
+  if (state !== "collapsed" || isMobile || !settled) {
     return button;
   }
 
@@ -580,7 +644,10 @@ function SidebarMenuBadge({ className, ...props }: React.ComponentProps<"div">) 
         "peer-data-[size=sm]/menu-button:top-1",
         "peer-data-[size=default]/menu-button:top-1.5",
         "peer-data-[size=lg]/menu-button:top-2.5",
-        "group-data-[collapsible=icon]:hidden",
+        // DEVIATION: fade instead of `display: none` so it leaves on the same
+        // curve as the rail. It is already pointer-events-none.
+        "transition-opacity group-data-[collapsible=icon]:opacity-0",
+        SIDEBAR_TRANSITION,
         className,
       )}
       {...props}

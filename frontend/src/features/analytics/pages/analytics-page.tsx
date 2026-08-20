@@ -388,7 +388,7 @@ function ChartBody({
 }
 
 function ChartLoading() {
-  return <PageSkeleton variant="cards" />;
+  return <PageSkeleton variant="chart" />;
 }
 
 function ChartEmpty({ children }: { children: React.ReactNode }) {

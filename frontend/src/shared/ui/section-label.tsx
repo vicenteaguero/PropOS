@@ -9,11 +9,17 @@ interface SectionLabelProps {
   className?: string;
 }
 
-/** Section heading with an optional trailing text action. */
+/**
+ * Section heading with an optional trailing text action.
+ *
+ * Carries NO horizontal padding: the page container owns the gutter (--page-x).
+ * Baking `px-5` in here forced every sibling on a page to repeat the same
+ * number by hand, which is how the home screen's paddings drifted apart.
+ */
 export function SectionLabel({ children, action, onAction, className }: SectionLabelProps) {
   return (
-    <div className={cn("flex items-baseline justify-between gap-3 px-5", className)}>
-      <h2 className="text-xl font-bold tracking-tight text-foreground">{children}</h2>
+    <div className={cn("flex items-baseline justify-between gap-3", className)}>
+      <h2 className="text-[15px] font-semibold tracking-tight text-foreground">{children}</h2>
       {action && (
         <button
           type="button"

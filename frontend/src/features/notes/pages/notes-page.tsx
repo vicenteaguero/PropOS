@@ -8,7 +8,7 @@ import { ErrorState, HOVER_REVEAL, PageSkeleton, Pill } from "@shared/ui";
 import { useAuth } from "@shared/hooks/use-auth";
 import { useAgentName } from "@core/branding/agent-branding";
 import { useThemeMode } from "@core/theme/theme-provider";
-import { AgentOverlay } from "@features/agent/components/agent-overlay";
+import { useAgentOverlay } from "@features/agent/components/agent-overlay-host";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useIsDesktop } from "@/hooks/use-mobile";
@@ -49,7 +49,7 @@ export function NotesPage() {
   const create = useCreateNote();
   const del = useDeleteNote();
   const [body, setBody] = useState("");
-  const [propoOpen, setPropoOpen] = useState(false);
+  const propo = useAgentOverlay();
   // Wrapper ref — shadcn's Textarea doesn't forward a ref, so we focus the
   // textarea via the wrapping element instead.
   const composerRef = useRef<HTMLDivElement>(null);
@@ -106,7 +106,7 @@ export function NotesPage() {
   const propoCard = (
     <button
       type="button"
-      onClick={() => (canPropo ? setPropoOpen(true) : focusComposer())}
+      onClick={() => (canPropo ? propo.open("voice") : focusComposer())}
       className="flex w-full items-center gap-3 rounded-xl border border-dashed border-line-strong p-3.5 text-left transition active:scale-[0.99]"
     >
       <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-foreground text-background">
@@ -124,7 +124,7 @@ export function NotesPage() {
     </button>
   );
 
-  const loading = <PageSkeleton variant="cards" />;
+  const loading = <PageSkeleton variant="masonry" />;
 
   const errorBox = (
     <ErrorState message="No se pudieron cargar las notas." onRetry={() => refetch()} />
@@ -194,9 +194,6 @@ export function NotesPage() {
     <PageLayout width={isDesktop ? "app" : "md"}>
       <PageHeader title="Notas" />
       {content}
-      {canPropo && propoOpen && (
-        <AgentOverlay onClose={() => setPropoOpen(false)} initialMode="voice" />
-      )}
     </PageLayout>
   );
 }

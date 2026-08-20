@@ -23,6 +23,7 @@ export { SectionLabel } from "./section-label";
 export { Row } from "./row";
 export { ErrorState } from "./error-state";
 export { PageSkeleton, type PageSkeletonVariant } from "./page-skeleton";
+export { AudioPlayer } from "./audio-player";
 export { BottomSheet } from "./bottom-sheet";
 export { ResponsiveSheet } from "./responsive-sheet";
 export { SheetActions } from "./sheet-actions";

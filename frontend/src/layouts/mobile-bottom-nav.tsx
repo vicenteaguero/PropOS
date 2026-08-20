@@ -16,7 +16,7 @@ import type { LucideIcon } from "lucide-react";
 import { useAuth } from "@shared/hooks/use-auth";
 import { useThemeMode } from "@core/theme/theme-provider";
 import { hueForTenant } from "@core/theme/tenant-accent";
-import { AgentOverlay } from "@features/agent/components/agent-overlay";
+import { useAgentOverlay } from "@features/agent/components/agent-overlay-host";
 import { BottomSheet, Pill } from "@shared/ui";
 import { useNavGroups, usePendingCount } from "@layouts/use-nav-groups";
 import { cn } from "@/lib/utils";
@@ -82,8 +82,8 @@ export function MobileBottomNav() {
   const { user, memberships, switchTenant, signOut } = useAuth();
   const { theme, toggle } = useThemeMode();
   const navigate = useNavigate();
-  const [propoOpen, setPropoOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const propo = useAgentOverlay();
   const { groups } = useNavGroups();
   const pendingCount = usePendingCount();
   const navRef = useRef<HTMLElement>(null);
@@ -108,10 +108,15 @@ export function MobileBottomNav() {
     <>
       {/* z-50 so transient bottom-anchored chrome (the iOS install nudge) can
           never bury the only navigation this shell has. */}
+      {/* Propo covers the screen, so the nav must not sit on top of it. Kept
+          mounted and merely invisible: unmounting would drop --app-nav-h to 0
+          and reflow every page behind the overlay, then reflow it back on
+          close. `invisible` keeps the box measured and the value stable. */}
       <nav
         ref={navRef}
         aria-label="Navegación principal"
-        className="fixed inset-x-0 bottom-0 z-50 pt-1.5 pb-[calc(var(--safe-bottom)+0.75rem)] pl-[calc(var(--safe-left)+0.875rem)] pr-[calc(var(--safe-right)+0.875rem)]"
+        aria-hidden={propo.isOpen}
+        className={`fixed inset-x-0 bottom-0 z-50 pt-1.5 ${propo.isOpen ? "invisible" : ""} pb-[calc(var(--safe-bottom)+0.75rem)] pl-[calc(var(--safe-left)+0.875rem)] pr-[calc(var(--safe-right)+0.875rem)]`}
       >
         <div className="mx-auto flex max-w-md items-center justify-around rounded-3xl border border-border bg-card px-2 py-2 shadow-[0_6px_26px_rgba(0,0,0,0.18)]">
           <NavTab to={base} end icon={Home} label="Inicio" />
@@ -120,7 +125,7 @@ export function MobileBottomNav() {
             <div className="flex flex-1 flex-col items-center gap-0.5">
               <button
                 type="button"
-                onClick={() => setPropoOpen(true)}
+                onClick={() => propo.open()}
                 aria-label="Abrir Propo"
                 className="-mt-7 flex size-[52px] items-center justify-center rounded-full bg-foreground text-background shadow-lg transition active:scale-90"
               >
@@ -152,8 +157,6 @@ export function MobileBottomNav() {
           </button>
         </div>
       </nav>
-
-      {canPropo && propoOpen && <AgentOverlay onClose={() => setPropoOpen(false)} />}
 
       <BottomSheet open={moreOpen} onOpenChange={setMoreOpen} title="Todo">
         <div className="mt-3 flex items-center gap-3.5 pb-4">

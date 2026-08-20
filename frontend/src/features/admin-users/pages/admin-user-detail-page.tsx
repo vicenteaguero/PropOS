@@ -264,7 +264,7 @@ export function AdminUserDetailPage() {
             className="mt-4 space-y-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-6 lg:space-y-0"
           >
             <section className="space-y-3 lg:col-span-2">
-              <SectionLabel className="px-0">Acciones de email</SectionLabel>
+              <SectionLabel>Acciones de email</SectionLabel>
               <div className="flex flex-wrap gap-2">
                 <Button
                   size="sm"
@@ -315,7 +315,7 @@ export function AdminUserDetailPage() {
             </section>
 
             <section className="space-y-3">
-              <SectionLabel className="px-0">Setear contraseña directamente</SectionLabel>
+              <SectionLabel>Setear contraseña directamente</SectionLabel>
               <div className="flex items-end gap-2">
                 <div className="flex-1 space-y-1.5">
                   <Label htmlFor="new-pwd" className="text-xs text-muted-foreground">
@@ -347,7 +347,7 @@ export function AdminUserDetailPage() {
             </section>
 
             <section className="space-y-3">
-              <SectionLabel className="px-0">Estado de la cuenta</SectionLabel>
+              <SectionLabel>Estado de la cuenta</SectionLabel>
               <div className="flex flex-wrap gap-2">
                 {data.is_active ? (
                   <Button

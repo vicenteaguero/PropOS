@@ -29,7 +29,7 @@ export function AdminUsersPage() {
   const openUser = (id: string) => navigate(`/admin/users/${id}`);
 
   // Shared states (loading / error / empty) — identical on both layouts.
-  const loadingBlock = isLoading && <PageSkeleton variant="table" />;
+  const loadingBlock = isLoading && <PageSkeleton variant={isDesktop ? "table" : "list"} />;
 
   const errorBlock = error && (
     <ErrorState

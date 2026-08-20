@@ -9,7 +9,7 @@ export function ContactAside({ contactId }: { contactId: string }) {
   return (
     <div className="space-y-6 p-5">
       <div>
-        <SectionLabel className="px-0">Contexto</SectionLabel>
+        <SectionLabel>Contexto</SectionLabel>
         <p className="mt-1 text-[13px] text-muted-foreground">
           Pipeline y oportunidades de esta persona.
         </p>
