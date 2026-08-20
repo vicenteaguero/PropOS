@@ -6,7 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageLayout } from "@shared/components/page-layout";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
-import { ErrorState, PageSkeleton, Pill, ResponsiveSheet, Row } from "@shared/ui";
+import {
+  ErrorState,
+  PageSkeleton,
+  Pill,
+  ResponsiveSheet,
+  ResponsiveTable,
+  type ResponsiveColumn,
+} from "@shared/ui";
 import { useIsDesktop } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import { apiRequest } from "@shared/api/http";
@@ -73,74 +80,67 @@ export function AdminTenantsPage() {
   );
 
   // Desktop: a dense table that uses the full width.
-  const desktopTable = (
-    <div className="overflow-hidden rounded-xl border border-border bg-card">
-      <table className="w-full text-left text-sm">
-        <thead>
-          <tr className="border-b border-border text-xs text-muted-foreground">
-            <th className="px-4 py-3 font-medium">Tenant</th>
-            <th className="px-4 py-3 font-medium">Slug</th>
-            <th className="px-4 py-3 font-medium whitespace-nowrap">Miembros</th>
-            <th className="px-4 py-3 font-medium whitespace-nowrap">Propiedades</th>
-            <th className="px-4 py-3 font-medium">Estado</th>
-            <th className="w-px px-4 py-3" />
-          </tr>
-        </thead>
-        <tbody>
-          {tenants.map((t) => (
-            <tr key={t.id} className="border-b border-border last:border-0 hover:bg-secondary/40">
-              <td className="px-4 py-3">
-                <span className="flex items-center gap-2.5 font-medium text-foreground">
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-secondary">
-                    <Building2 className="size-4" strokeWidth={1.8} />
-                  </span>
-                  <span className="truncate">{t.name}</span>
+  const table = (
+    <ResponsiveTable
+      rows={tenants}
+      rowKey={(t) => t.id}
+      columns={
+        [
+          {
+            key: "tenant",
+            header: "Tenant",
+            cell: (t) => (
+              <span className="flex items-center gap-2.5 font-medium text-foreground">
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-secondary">
+                  <Building2 className="size-4" strokeWidth={1.8} />
                 </span>
-              </td>
-              <td className="px-4 py-3">
-                <Pill tone="neutral">{t.slug}</Pill>
-              </td>
-              <td className="px-4 py-3 tabular-nums text-muted-foreground">{t.member_count}</td>
-              <td className="px-4 py-3 tabular-nums text-muted-foreground">{t.property_count}</td>
-              <td className="px-4 py-3">
-                {t.is_active ? (
-                  <Pill tone="success">Activo</Pill>
-                ) : (
-                  <Pill tone="destructive">Inactivo</Pill>
-                )}
-              </td>
-              <td className="px-4 py-3 text-right">{toggleBtn(t)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-
-  // Mobile: stacked Row list (unchanged).
-  const mobileList = (
-    <div>
-      {tenants.map((t, i) => (
-        <Row
-          key={t.id}
-          divider={i < tenants.length - 1}
-          left={
-            <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-secondary text-foreground">
-              <Building2 className="size-[18px]" strokeWidth={1.8} />
-            </span>
-          }
-          title={
-            <span className="flex items-center gap-2">
-              <span className="truncate">{t.name}</span>
-              <Pill tone="neutral">{t.slug}</Pill>
-              {!t.is_active && <Pill tone="destructive">Inactivo</Pill>}
-            </span>
-          }
-          sub={`${t.member_count} miembros · ${t.property_count} propiedades`}
-          right={toggleBtn(t)}
-        />
-      ))}
-    </div>
+                <span className="truncate">{t.name}</span>
+              </span>
+            ),
+          },
+          { key: "slug", header: "Slug", cell: (t) => <Pill tone="neutral">{t.slug}</Pill> },
+          {
+            key: "miembros",
+            header: "Miembros",
+            className: "tabular-nums text-muted-foreground",
+            cell: (t) => t.member_count,
+          },
+          {
+            key: "propiedades",
+            header: "Propiedades",
+            className: "tabular-nums text-muted-foreground",
+            cell: (t) => t.property_count,
+          },
+          {
+            key: "estado",
+            header: "Estado",
+            cell: (t) =>
+              t.is_active ? (
+                <Pill tone="success">Activo</Pill>
+              ) : (
+                <Pill tone="destructive">Inactivo</Pill>
+              ),
+          },
+          { key: "acciones", header: "", align: "right", cell: (t) => toggleBtn(t) },
+        ] as ResponsiveColumn<AdminTenant>[]
+      }
+      mobileRow={(t: AdminTenant) => ({
+        left: (
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-secondary text-foreground">
+            <Building2 className="size-[18px]" strokeWidth={1.8} />
+          </span>
+        ),
+        title: (
+          <span className="flex items-center gap-2">
+            <span className="truncate">{t.name}</span>
+            <Pill tone="neutral">{t.slug}</Pill>
+            {!t.is_active && <Pill tone="destructive">Inactivo</Pill>}
+          </span>
+        ),
+        sub: `${t.member_count} miembros · ${t.property_count} propiedades`,
+        right: toggleBtn(t),
+      })}
+    />
   );
 
   return (
@@ -179,9 +179,7 @@ export function AdminTenantsPage() {
         </div>
       )}
 
-      {!isLoading && !error && tenants.length > 0 && (
-        <div className="lg:px-8">{isDesktop ? desktopTable : mobileList}</div>
-      )}
+      {!isLoading && !error && tenants.length > 0 && <div className="lg:px-8">{table}</div>}
 
       <ResponsiveSheet open={createOpen} onOpenChange={setCreateOpen} title="Nuevo tenant">
         <form onSubmit={handleCreate} className="mt-4 space-y-3">
