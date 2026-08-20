@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { useOpenOnParam } from "@shared/hooks/use-open-on-param";
 import { Link as LinkIcon, Loader2, Mic, Plus, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { PageLayout } from "@shared/components/page-layout";
@@ -78,6 +79,8 @@ export function NotesPage() {
   // New-note flow: bring focus to the composer (also the PropoCard fallback when
   // the agent pipeline isn't available to this user).
   const focusComposer = () => composerRef.current?.querySelector("textarea")?.focus();
+
+  useOpenOnParam("nuevo", focusComposer);
 
   const notes = data ?? [];
 

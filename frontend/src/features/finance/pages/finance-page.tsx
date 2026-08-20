@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useOpenOnParam } from "@shared/hooks/use-open-on-param";
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -132,6 +133,8 @@ export function FinancePage() {
     setForm(EMPTY_TX_FORM);
     setOpen(true);
   };
+
+  useOpenOnParam("nuevo", openCreate);
 
   const openEdit = (t: Transaction) => {
     setForm({
