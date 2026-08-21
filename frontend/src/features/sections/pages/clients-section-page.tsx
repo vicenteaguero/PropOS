@@ -48,6 +48,9 @@ export function ClientsSectionPage() {
     ...(allow("email") ? (["email"] as const) : []),
   ];
 
+  // Two headline tabs, not four. See SectionTab.secondary: Personas and
+  // Propiedades are catalogues reached from the two views a broker actually
+  // opens the section for, and each of those views carries a button to its own.
   const tabs: SectionTab[] = [
     ...(channels.length > 0
       ? [
@@ -67,6 +70,7 @@ export function ClientsSectionPage() {
       id: "personas",
       label: "Personas",
       scope: "crm",
+      secondary: true,
       // Interacciones lived here as its own tab; its links now open the person.
       aliases: ["interacciones"],
       render: () => <ContactsPage />,
@@ -78,7 +82,12 @@ export function ClientsSectionPage() {
       aliases: ["pipeline", "oportunidades"],
       render: () => <OpportunitiesPage />,
     },
-    { id: "propiedades", label: "Propiedades", render: () => <AdminPropertiesPage /> },
+    {
+      id: "propiedades",
+      label: "Propiedades",
+      secondary: true,
+      render: () => <AdminPropertiesPage />,
+    },
   ].filter((t) => allow(t.scope));
 
   return (

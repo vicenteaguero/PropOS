@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Bell, Building2, Check, Search } from "lucide-react";
+import { ArrowLeft, Bell, Building2, Check, Search } from "lucide-react";
 import { useAuth } from "@shared/hooks/use-auth";
 import { apiRequest } from "@shared/api/http";
 import { tenantSwatch } from "@core/theme/tenant-accent";
@@ -12,6 +12,7 @@ import {
   useCommandPaletteHotkey,
 } from "@shared/components/command-palette/command-palette";
 import { titleForPath } from "@app/page-meta";
+import { useTopbarSlotHost, useTopbarSlotOccupied } from "@layouts/topbar-slot";
 import type { UserView } from "@shared/types/auth";
 import { cn } from "@/lib/utils";
 
@@ -72,10 +73,28 @@ function usePendingBadge(enabled: boolean): number {
  * and the pendientes count never scroll away — before this the row lived inside
  * the home page, which meant every other screen lost both.
  */
+/**
+ * Section roots: the destinations the bottom nav and the "Más" sheet can reach
+ * directly. Everything deeper than one of these was arrived at by tapping
+ * something, so it gets a back control — which is how a phone app is expected to
+ * behave and how this one did not: several screens (Pendientes among them, the
+ * one a push notification opens) had no way out but the OS gesture.
+ */
+const SECTION_ROOTS = ["", "clientes", "agenda", "finanzas", "documentos", "settings"];
+
+function isSectionRoot(pathname: string, base: string): boolean {
+  if (pathname === base) return true;
+  const rest = pathname.startsWith(`${base}/`) ? pathname.slice(base.length + 1) : null;
+  return rest !== null && SECTION_ROOTS.includes(rest);
+}
+
 export function MobileTopBar() {
   const { user, memberships, switchTenant } = useAuth();
   const navigate = useNavigate();
-  const { pathname } = useLocation();
+  const location = useLocation();
+  const { pathname } = location;
+  const setTabsHost = useTopbarSlotHost();
+  const tabsInBar = useTopbarSlotOccupied();
   const [wsOpen, setWsOpen] = useState(false);
   // The palette lives here rather than beside the shell so that the one visible
   // trigger and the surface it opens share state. On a phone ⌘K and `/` are not
@@ -101,6 +120,11 @@ export function MobileTopBar() {
   // Home is the role root exactly — every deeper route names itself instead.
   const isHome = pathname === base;
   const pageTitle = titleForPath(pathname) ?? "";
+  const canGoBack = !isSectionRoot(pathname, base);
+  // `location.key === "default"` is React Router's marker for the first entry of
+  // the session: a cold-opened deep link has nothing to pop, so back means "up".
+  const goBack = () =>
+    location.key === "default" ? navigate(base, { replace: true }) : navigate(-1);
 
   return (
     <>
@@ -113,19 +137,41 @@ export function MobileTopBar() {
             controls a broker touches once a day, above a section tab bar and a
             page header — so a list started a third of the way down. Everywhere
             else the bar collapses to the page's own title, set by PageMeta. */}
-        <div className="flex items-center justify-between gap-2 px-[var(--page-x)] py-2">
-          {isHome ? (
+        <div className="flex items-center gap-1.5 px-[var(--page-x)] py-2">
+          {canGoBack && (
+            <button
+              type="button"
+              aria-label="Volver"
+              onClick={goBack}
+              className={cn(
+                "-ml-2 flex shrink-0 items-center justify-center rounded-full text-foreground transition active:scale-90 active:bg-secondary",
+                HEADER_CONTROL_SQUARE,
+              )}
+            >
+              <ArrowLeft className="size-5" strokeWidth={1.9} />
+            </button>
+          )}
+          {isHome && (
             <WorkspacePill
               label={tenantName}
               onClick={() => setWsOpen(true)}
               className={cn(HEADER_CONTROL, "py-0")}
             />
-          ) : (
-            <span className="truncate text-[15px] font-semibold tracking-tight text-foreground">
+          )}
+          {/* A section's tabs land here through a portal, and when they do they
+              ARE the title: the tab names the view, while the container's name
+              ("Clientes" over "Conversaciones") adds nothing a second row of
+              chrome is worth. The title paints only when the slot is empty. */}
+          <div
+            ref={setTabsHost}
+            className={cn("min-w-0 items-center", tabsInBar ? "flex flex-1" : "hidden")}
+          />
+          {!isHome && !tabsInBar && (
+            <span className="min-w-0 flex-1 truncate text-[15px] font-semibold tracking-tight text-foreground">
               {pageTitle}
             </span>
           )}
-          <div className="flex items-center gap-1.5">
+          <div className="ml-auto flex shrink-0 items-center gap-1.5">
             {/* Deliberately NOT gated on `isHome`, unlike everything beside it.
                 Workspace, UF and the bell are home chrome; search is the one
                 control whose whole value is being reachable from wherever the
