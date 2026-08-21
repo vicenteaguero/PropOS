@@ -39,6 +39,10 @@ export function ContactChannels({ contactId }: { contactId: string }) {
 
   if (isLoading || !data) return null;
 
+  // "Principal" only means something when there is an alternative. On a person
+  // with one number it is a badge that distinguishes nothing.
+  const showPrimary = { phone: data.phones.length > 1, email: data.emails.length > 1 };
+
   const submit = () => {
     const value = draft.trim();
     if (!value) return;
@@ -56,7 +60,7 @@ export function ContactChannels({ contactId }: { contactId: string }) {
   };
 
   return (
-    <div className="mx-[var(--page-x)] mb-5 space-y-1 rounded-xl bg-card p-4">
+    <div className="space-y-1">
       {data.phones.map((phone) => (
         <div key={phone.id} className="group flex items-center gap-3 text-sm">
           <Phone className="size-4 shrink-0 text-muted-foreground" strokeWidth={1.8} />
@@ -64,7 +68,7 @@ export function ContactChannels({ contactId }: { contactId: string }) {
             {phone.e164}
           </a>
           {phone.label && <span className="text-[12px] text-faint">{phone.label}</span>}
-          {phone.is_primary && (
+          {phone.is_primary && showPrimary.phone && (
             <Pill tone="neutral">
               <Star className="size-3" strokeWidth={2.2} />
               Principal
@@ -91,7 +95,7 @@ export function ContactChannels({ contactId }: { contactId: string }) {
           >
             {email.address}
           </a>
-          {email.is_primary && (
+          {email.is_primary && showPrimary.email && (
             <Pill tone="neutral">
               <Star className="size-3" strokeWidth={2.2} />
               Principal

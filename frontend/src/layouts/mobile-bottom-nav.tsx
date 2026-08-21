@@ -102,14 +102,14 @@ export function MobileBottomNav() {
   const canPropo = isAdminView && allow("agent");
 
   // The sheet lists what the chrome around it cannot already reach. Repeating
-  // Inicio, CRM and Agenda would spend the top of the sheet on destinations the
+  // Inicio, Clientes and Agenda would spend the top of the sheet on destinations the
   // user has permanently under their thumb; Propo is the centre FAB, two
   // centimetres below the sheet's own edge; and Configuración is the gear in
   // this sheet's header. A twelve-button grid where a third of the buttons are
   // duplicates is what made every entry look equally (un)important.
   const chromePaths = new Set([
     base,
-    `${base}/crm`,
+    `${base}/clientes`,
     `${base}/agenda`,
     `${base}/agent`,
     SETTINGS_PATH,
@@ -142,7 +142,7 @@ export function MobileBottomNav() {
       >
         <div className="mx-auto flex max-w-md items-center justify-around rounded-3xl border border-border bg-card px-2 py-2 shadow-[0_6px_26px_rgba(0,0,0,0.18)]">
           <NavTab to={base} end icon={Home} label="Inicio" />
-          {allow("crm") && <NavTab to={`${base}/crm`} icon={Users} label="CRM" />}
+          {allow("crm") && <NavTab to={`${base}/clientes`} icon={Users} label="Clientes" />}
           {canPropo && (
             <div className="flex flex-1 flex-col items-center gap-0.5">
               <button
