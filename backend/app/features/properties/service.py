@@ -57,7 +57,9 @@ class PropertyService:
         # photo endpoint: that was one request and ~6 sign calls per card.
         covers = await PropertyPhotoService.covers_for_properties([UUID(r["id"]) for r in rows], tenant_id)
         for row in rows:
-            row["cover_url"] = covers.get(row["id"])
+            cover = covers.get(row["id"]) or {}
+            row["cover_url"] = cover.get("card")
+            row["cover_thumb_url"] = cover.get("thumb")
         return rows
 
     @staticmethod

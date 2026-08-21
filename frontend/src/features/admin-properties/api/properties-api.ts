@@ -20,6 +20,8 @@ export interface Property {
   lng: number | null;
   /** Signed `card` derivative of the first photo, or null when there are none. */
   cover_url: string | null;
+  /** 400px derivative of the same cover, for the grid's srcSet. */
+  cover_thumb_url: string | null;
   /**
    * Where each fact came from. A missing key means nobody recorded it.
    *

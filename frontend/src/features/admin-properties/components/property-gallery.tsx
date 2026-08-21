@@ -128,6 +128,11 @@ export function PropertyGallery({ propertyId, overlay, className }: PropertyGall
               alt={hero.title ?? "Foto principal"}
               className="size-full object-cover"
               decoding="async"
+              srcSet={
+                hero.thumb_url && hero.card_url
+                  ? `${hero.thumb_url} 400w, ${hero.card_url} 800w`
+                  : undefined
+              }
               sizes="(min-width: 1024px) 50vw, 100vw"
             />
             {overlay && (
