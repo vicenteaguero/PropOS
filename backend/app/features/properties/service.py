@@ -6,6 +6,7 @@ from uuid import UUID
 
 from app.core.logging.logger import get_logger
 from app.core.supabase.client import get_supabase_client
+from app.features.properties.publish import assert_publishable
 from app.features.properties.photos import PropertyPhotoService
 
 PROPERTIES_TABLE = "properties"
@@ -86,6 +87,24 @@ class PropertyService:
     async def update_property(property_id: UUID, payload, tenant_id: UUID) -> dict:
         client = get_supabase_client()
         data = _serialize(payload.model_dump(exclude_unset=True))
+
+        # Publishing is the one transition with consequences outside the app:
+        # a listing that leaves draft can be syndicated and seen. Check it
+        # against the row AS IT WILL BE, so setting the price and publishing in
+        # the same request is allowed.
+        if data.get("is_draft") is False:
+            current = (
+                client.table(PROPERTIES_TABLE)
+                .select("*")
+                .eq("id", str(property_id))
+                .eq("tenant_id", str(tenant_id))
+                .single()
+                .execute()
+                .data
+            ) or {}
+            if current.get("is_draft"):
+                assert_publishable(client, tenant_id, property_id, {**current, **data})
+
         response = (
             client.table(PROPERTIES_TABLE)
             .update(data)

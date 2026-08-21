@@ -16,6 +16,7 @@ from app.features.properties.photos import (
     PropertyNotFoundError,
     PropertyPhotoService,
 )
+from app.features.properties.publish import NotPublishableError
 from app.features.properties.schemas import (
     BuildingContext,
     PriceHistoryEntry,
@@ -82,7 +83,14 @@ async def update_property(
     payload: PropertyUpdate,
     tenant_id: UUID = Depends(get_tenant_id),
 ) -> dict:
-    return await PropertyService.update_property(property_id, payload, tenant_id)
+    try:
+        return await PropertyService.update_property(property_id, payload, tenant_id)
+    except NotPublishableError as exc:
+        # 409, not 400: the request is well formed, the record is not ready.
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"No se puede publicar. {' '.join(exc.reasons)}",
+        ) from exc
 
 
 @router.delete("/{property_id}", status_code=204, dependencies=[Depends(require_dev_admin)])
