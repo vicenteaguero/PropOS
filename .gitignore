@@ -256,6 +256,10 @@ backend/notebooks/
 # Local MCP config: machine-specific paths + local tokens (see .mcp.json.example)
 .mcp.json
 
-# Playwright viewport-check output (screenshots + probe json)
+# Playwright viewport-check output (screenshots + probe json). Both spellings:
+# the checks resolve their output dir relative to the cwd they were run from,
+# so a run started at the repo root drops them here instead.
 frontend/viewport-shots/
 frontend/device-shots/
+viewport-shots/
+device-shots/
