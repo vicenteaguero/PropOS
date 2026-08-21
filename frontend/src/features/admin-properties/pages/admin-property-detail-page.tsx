@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useAuth } from "@shared/hooks/use-auth";
 import {
@@ -26,6 +26,7 @@ import { PriceHistory } from "../components/price-history";
 import { PropertyLocationMap } from "../components/property-location-map";
 import { usePageTitle } from "@app/page-meta";
 import { useShellMode } from "@shared/hooks/use-shell-mode";
+import { useAutoResize } from "@shared/hooks/use-auto-resize";
 import { formatClp } from "@shared/utils/currency";
 import { provenanceOf } from "../api/properties-api";
 import { PROVENANCE_TITLE, ProvenanceMark } from "../components/provenance-mark";
@@ -57,6 +58,12 @@ export function AdminPropertyDetailPage() {
   const propQ = useProperty(id);
   usePageTitle(propQ.data?.title);
   const shellOwnsBack = useShellMode() === "bottom-nav";
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
+  // Derived up here, above the early returns: useAutoResize is a hook, and the
+  // page bails out to a skeleton and an error state before the body renders.
+  const descriptionText = draft ?? propQ.data?.description ?? "";
+  const isDirty = draft != null && draft !== (propQ.data?.description ?? "");
+  useAutoResize(descriptionRef, descriptionText);
   const grantsQ = usePropertyGrants(id);
   const update = useMutation({
     mutationFn: (body: Partial<PropertyInput>) => propertiesApi.update(id as string, body),
@@ -289,25 +296,35 @@ export function AdminPropertyDetailPage() {
                 )}
               </div>
               <Textarea
+                ref={descriptionRef}
                 aria-label="Descripción de la propiedad"
-                rows={10}
-                className="rounded-xl"
-                value={draft ?? p.description ?? ""}
+                rows={4}
+                className="resize-none rounded-xl"
+                value={descriptionText}
                 onChange={(e) => setDraft(e.target.value)}
                 placeholder="Genera una descripción con IA o escríbela aquí…"
               />
-              <div className="flex justify-end">
-                <Button
-                  variant="secondary"
-                  disabled={update.isPending || draft == null}
-                  onClick={async () => {
-                    await update.mutateAsync({ description: draft });
-                    toast.success("Descripción guardada");
-                  }}
-                >
-                  Guardar descripción
-                </Button>
-              </div>
+              {/* Save appears only once there is something to save, and it is
+                  the primary action when it does. It used to be a permanent
+                  secondary button pinned to the right, greyed out on every
+                  visit — chrome that spent a row saying "nothing to do". */}
+              {isDirty && (
+                <div className="flex items-center justify-end gap-2">
+                  <Button variant="ghost" onClick={() => setDraft(null)}>
+                    Descartar
+                  </Button>
+                  <Button
+                    disabled={update.isPending}
+                    onClick={async () => {
+                      await update.mutateAsync({ description: draft });
+                      setDraft(null);
+                      toast.success("Descripción guardada");
+                    }}
+                  >
+                    Guardar
+                  </Button>
+                </div>
+              )}
             </TabsContent>
 
             <TabsContent value="grants" className="mt-4">
