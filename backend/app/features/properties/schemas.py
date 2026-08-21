@@ -75,6 +75,13 @@ class PropertyResponse(PropertyBase):
     # responses so the grid can render a real image without one request per row;
     # None when the property has no photos.
     cover_url: str | None = None
+    # Where each fact came from: {"area_sqm": {"src": "declared"}, …}. A missing
+    # key means nobody recorded it, which is the honest state for everything
+    # entered before this existed. The agent guard reads it before quoting a
+    # figure as fact, and the property page marks the ones nobody checked.
+    provenance: dict[str, Any] = {}
+    building_id: UUID | None = None
+    unit_label: str | None = None
 
     model_config = {"from_attributes": True}
 
