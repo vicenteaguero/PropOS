@@ -75,6 +75,9 @@ class PropertyResponse(PropertyBase):
     # responses so the grid can render a real image without one request per row;
     # None when the property has no photos.
     cover_url: str | None = None
+    #: The 400px derivative of the same photo. Sent alongside `cover_url` so the
+    #: grid can declare a real srcSet — `sizes` on its own does nothing.
+    cover_thumb_url: str | None = None
     # Where each fact came from: {"area_sqm": {"src": "declared"}, …}. A missing
     # key means nobody recorded it, which is the honest state for everything
     # entered before this existed. The agent guard reads it before quoting a

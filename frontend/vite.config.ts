@@ -230,7 +230,22 @@ export default defineConfig({
                   cacheableResponse: { statuses: [0, 200] },
                 },
               },
-              { urlPattern: /\.(js|css|png|jpg|svg|mjs)$/, handler: "CacheFirst" },
+              {
+                // Last, and deliberately broad: everything with a
+                // content-hashed name, plus any image that reached the page by
+                // another route. Declaring an expiry is not optional — without
+                // one this cache has no eviction policy at all and grows
+                // without a ceiling across deploys, on a device where storage
+                // is the scarce resource. A year and 300 entries covers every
+                // asset of several builds; the browser evicts the rest.
+                urlPattern: /\.(js|css|png|jpg|jpeg|webp|svg|mjs)$/,
+                handler: "CacheFirst",
+                options: {
+                  cacheName: "static-assets",
+                  expiration: { maxEntries: 300, maxAgeSeconds: 60 * 60 * 24 * 365 },
+                  cacheableResponse: { statuses: [0, 200] },
+                },
+              },
             ],
         navigateFallback: devPwa ? null : undefined,
       },

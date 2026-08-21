@@ -41,11 +41,10 @@ function MapRow({
     >
       {property.cover_url ? (
         <img
-          src={property.cover_url}
+          src={property.cover_thumb_url ?? property.cover_url}
           alt=""
           loading="lazy"
           decoding="async"
-          sizes="64px"
           className="size-14 shrink-0 rounded-lg object-cover"
         />
       ) : (

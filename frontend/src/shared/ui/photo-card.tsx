@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 export function PhotoCard({
   onClick,
   src,
+  srcThumb,
   alt,
   overlay,
   children,
@@ -23,6 +24,8 @@ export function PhotoCard({
   onClick: () => void;
   /** Cover image. Falls back to the gradient band when absent or broken. */
   src?: string | null;
+  /** 400px derivative of the same photo, offered to narrow viewports. */
+  srcThumb?: string | null;
   alt?: string;
   /** Absolutely-positioned content over the photo band (badges, icons). */
   overlay?: ReactNode;
@@ -53,6 +56,11 @@ export function PhotoCard({
             alt={alt ?? ""}
             loading="lazy"
             decoding="async"
+            // `sizes` was here on its own, which does nothing: without a
+            // `srcSet` the browser has one candidate and no choice to make. Now
+            // a phone can take the 400px file where it used to fetch the 800px
+            // one for a half-width tile.
+            srcSet={srcThumb ? `${srcThumb} 400w, ${src} 800w` : undefined}
             sizes="(min-width: 1536px) 25vw, (min-width: 1024px) 33vw, 100vw"
             onError={() => setBroken(true)}
             className="size-full object-cover"

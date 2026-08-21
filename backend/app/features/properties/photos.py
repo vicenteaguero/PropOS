@@ -447,18 +447,23 @@ class PropertyPhotoService:
         paths: dict[str, str | None] = {
             pid: storage_path_from_url(url_by_file.get(file_id)) for pid, file_id in first_by_property.items()
         }
-        wanted = [derivative_path(path, "card") for path in paths.values() if path]
+        # Both derivatives, so the caller can offer the browser a real srcSet
+        # and a phone can take the 400px file instead of the 800px one.
+        wanted = [derivative_path(path, v) for path in paths.values() if path for v in DERIVATIVE_SIZES]
         wanted += [path for path in paths.values() if path]
         signed = sign_many(wanted)
 
-        covers: dict[str, str] = {}
+        covers: dict[str, dict[str, str]] = {}
         for pid, path in paths.items():
             file_id = first_by_property[pid]
             stored = url_by_file.get(file_id)
             if not stored:
                 continue
             original = signed.get(path, stored) if path else stored
-            covers[pid] = _variant_url(signed, path, "card", original)
+            covers[pid] = {
+                "card": _variant_url(signed, path, "card", original),
+                "thumb": _variant_url(signed, path, "thumb", original),
+            }
         return covers
 
     @staticmethod

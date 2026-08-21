@@ -64,7 +64,6 @@ export function PhotoGrid({
               className="size-full object-cover transition-transform group-hover:scale-105"
               loading="lazy"
               decoding="async"
-              sizes={strip ? "112px" : "(min-width: 1024px) 16vw, 33vw"}
             />
           </button>
           {onRemove && (

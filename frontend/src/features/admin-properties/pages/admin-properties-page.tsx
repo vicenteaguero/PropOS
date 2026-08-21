@@ -39,6 +39,7 @@ function PropertyCard({ property, onClick }: { property: Property; onClick: () =
       // `cover_url` is the ~800px WebP derivative signed by the list endpoint —
       // the grid never touches the full-resolution original.
       src={property.cover_url}
+      srcThumb={property.cover_thumb_url}
       alt={property.title}
       overlay={
         <>
