@@ -41,18 +41,27 @@ export function useDismissOnBack(open: boolean, onDismiss: () => void): void {
   // Deferring lets the re-run cancel it; a real unmount lets it through.
   const pendingPopRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // The URL our entry was pushed for. The cleanup pop is only correct while we
-  // are still ON that URL: if the overlay closed *because* something inside it
-  // navigated away, our entry is no longer on top and popping would undo that
-  // navigation instead. That is exactly what happened to every item in the "Más"
-  // sheet — tapping Propiedades navigated and was silently sent back one tick
-  // later, so the whole sheet looked dead.
-  const ownedUrlRef = useRef<string | null>(null);
-
-  // Updated on every render, so the deferred cleanup can tell "closed in place"
-  // from "closed because we navigated".
-  const liveUrlRef = useRef("");
-  liveUrlRef.current = `${location.pathname}${location.search}`;
+  /**
+   * Is our marker still the entry sitting on top of the history stack?
+   *
+   * The cleanup pop is only correct while it is: if the overlay closed *because*
+   * something inside it navigated away, our entry is gone and popping would undo
+   * that navigation instead. That is what killed every item in the "Más" sheet —
+   * tapping Documentos navigated and was silently sent back one tick later, so
+   * the whole sheet looked dead.
+   *
+   * Read from `window.history`, not from `useLocation()`. React Router 7 wraps
+   * navigation in `startTransition`, so the urgent `setOpen(false)` commits a
+   * render where `location` is still the OLD url while the new one is already
+   * on the stack. Comparing urls across that gap says "closed in place" for a
+   * navigation that did happen — which is the exact race this replaced.
+   * `history.state.usr` is where React Router keeps location state, and it is
+   * updated synchronously by `navigate()`.
+   */
+  const ownsTopOfStack = () => {
+    const usr = (window.history.state as { usr?: { __overlay?: string } } | null)?.usr;
+    return usr?.__overlay === marker;
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -66,7 +75,6 @@ export function useDismissOnBack(open: boolean, onDismiss: () => void): void {
       navigate(url, {
         state: { ...((location.state as Record<string, unknown> | null) ?? {}), __overlay: marker },
       });
-      ownedUrlRef.current = url;
       ownsEntryRef.current = true;
     }
 
@@ -79,14 +87,7 @@ export function useDismissOnBack(open: boolean, onDismiss: () => void): void {
       pendingPopRef.current = setTimeout(() => {
         pendingPopRef.current = null;
         ownsEntryRef.current = false;
-        // Compare against the LIVE url, not the one this closure captured at open
-        // time. `useLocation` re-renders the host on every navigation, so the ref
-        // is current even though the effect's own `location` is a render behind.
-        if (liveUrlRef.current !== ownedUrlRef.current) {
-          ownedUrlRef.current = null;
-          return;
-        }
-        ownedUrlRef.current = null;
+        if (!ownsTopOfStack()) return;
         navigate(-1);
       }, 0);
     };

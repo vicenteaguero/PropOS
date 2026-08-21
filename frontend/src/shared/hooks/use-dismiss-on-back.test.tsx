@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, beforeEach } from "vitest";
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { BrowserRouter, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { useDismissOnBack } from "./use-dismiss-on-back";
 
 function Probe() {
@@ -20,15 +20,20 @@ function Overlay({ open, onDismiss }: { open: boolean; onDismiss: () => void }) 
   useDismissOnBack(open, onDismiss);
   if (!open) return null;
   return (
-    <button
-      type="button"
-      onClick={() => {
-        navigate("/destino?tab=x", { replace: true });
-        onDismiss();
-      }}
-    >
-      ir
-    </button>
+    <>
+      <button
+        type="button"
+        onClick={() => {
+          navigate("/destino?tab=x", { replace: true });
+          onDismiss();
+        }}
+      >
+        ir
+      </button>
+      <button type="button" onClick={onDismiss}>
+        cerrar
+      </button>
+    </>
   );
 }
 
@@ -36,6 +41,12 @@ function Overlay({ open, onDismiss }: { open: boolean; onDismiss: () => void }) 
  * The sheet lives OUTSIDE the routed subtree, exactly like MobileBottomNav does
  * in AppLayout — otherwise navigating unmounts the hook's host mid-flight and
  * its refs stop tracking the location.
+ *
+ * BrowserRouter, not MemoryRouter: this hook exists to reconcile React state
+ * with the real history stack, and React Router 7 puts navigation inside
+ * `startTransition`. A memory history has neither, so it cannot reproduce the
+ * bug either version of this test was written for — the first one passed
+ * against code that was broken in every real browser.
  */
 function Harness() {
   const [open, setOpen] = useState(true);
@@ -50,21 +61,46 @@ function Harness() {
   );
 }
 
+/** Long enough for the deferred cleanup pop (setTimeout 0) and a popstate. */
+const settle = () => act(() => new Promise((r) => setTimeout(r, 30)));
+
 describe("useDismissOnBack", () => {
+  beforeEach(() => {
+    window.history.replaceState(null, "", "/origen");
+  });
+
   it("does not undo a navigation made from inside the overlay", async () => {
     // The regression: the cleanup popped the history entry it had pushed, which
     // landed one tick AFTER the navigation and sent the user straight back. Every
     // item in the mobile "Más" sheet looked like it did nothing at all.
     render(
-      <MemoryRouter initialEntries={["/origen"]}>
+      <BrowserRouter>
         <Harness />
-      </MemoryRouter>,
+      </BrowserRouter>,
     );
+    await settle();
 
     await userEvent.click(screen.getByRole("button", { name: "ir" }));
-    // Let the deferred cleanup pop run (setTimeout 0).
-    await act(() => new Promise((r) => setTimeout(r, 10)));
+    await settle();
 
     expect(screen.getByTestId("url").textContent).toBe("/destino?tab=x");
+  });
+
+  it("pops its own entry when the overlay is closed in place", async () => {
+    // The other half of the contract: closing by button must leave the stack as
+    // it found it, or the next Back is spent undoing an entry the user never saw.
+    render(
+      <BrowserRouter>
+        <Harness />
+      </BrowserRouter>,
+    );
+    await settle();
+    const depth = window.history.length;
+
+    await userEvent.click(screen.getByRole("button", { name: "cerrar" }));
+    await settle();
+
+    expect(window.history.length).toBe(depth);
+    expect(screen.getByTestId("url").textContent).toBe("/origen");
   });
 });
