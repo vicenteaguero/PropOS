@@ -20,7 +20,13 @@
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon-180x180.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <link rel="preload" href="/pdfjs/pdf.worker.min.mjs" as="script" type="module" crossorigin />
+    <!-- No preload for /pdfjs/pdf.worker.min.mjs. `rel=preload` is not a hint,
+         it is an immediate high-priority fetch, and that file is 1.046 kB —
+         downloaded on every cold visit, competing with the bundle that actually
+         paints the first screen, for a viewer most sessions never open.
+         document-preview.tsx points pdfjs at it when the viewer mounts, and the
+         CacheFirst rule for /pdfjs/* (one year, see vite.config.ts) keeps every
+         subsequent open instant. -->
     <title>PropOS</title>
   </head>
   <body>
