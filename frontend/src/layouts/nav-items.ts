@@ -5,6 +5,7 @@ import {
   Home,
   Inbox,
   ListChecks,
+  MessageSquareText,
   Phone,
   Receipt,
   Shield,
@@ -110,6 +111,10 @@ export function buildAdminGroups(agentName: string): NavGroup[] {
 export function buildSettingsShortcuts(agentName: string): NavItem[] {
   return [
     { label: "Usuarios", path: "/admin/users", icon: Users },
+    // Plantillas de WhatsApp + listas de cierre. Both are tables precisely so
+    // that editing one is not a deploy; without a destination here they stayed
+    // as unreachable as the constants they replaced.
+    { label: "Clientes", path: "/admin/settings/clientes", icon: MessageSquareText },
     { label: "Visitantes", path: "/admin/visitantes", icon: UserPlus },
     { label: "Teléfonos", path: "/admin/phones", icon: Phone, scope: "phones" },
     { label: "Importar datos", path: "/admin/datos/importar", icon: Upload, scope: "datos" },

@@ -112,6 +112,11 @@ const AgentPoliciesPage = lazy(() =>
     default: m.AgentPoliciesPage,
   })),
 );
+const ClientsCatalogsPage = lazy(() =>
+  import("@features/settings/pages/clients-catalogs-page").then((m) => ({
+    default: m.ClientsCatalogsPage,
+  })),
+);
 const SharePublicPage = lazy(() =>
   import("@features/documents/pages/share-public-page").then((m) => ({
     default: m.SharePublicPage,
@@ -345,6 +350,11 @@ export function AppRouter() {
               {/* What Propo may do without a human. Its own page under
                   Configuración; the backend gates it on ADMIN too. */}
               {role === "ADMIN" && <Route path="settings/propo" element={<AgentPoliciesPage />} />}
+              {/* The two Clientes catalogs — message templates and closing
+                  checklists. ADMIN at the router, same as the backend. */}
+              {role === "ADMIN" && (
+                <Route path="settings/clientes" element={<ClientsCatalogsPage />} />
+              )}
 
               {role === "ADMIN" && (
                 <>
