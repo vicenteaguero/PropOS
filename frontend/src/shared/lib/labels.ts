@@ -95,6 +95,10 @@ export const PIPELINE_STAGE_LABELS: Record<string, string> = {
   OFFER: "Oferta",
   RESERVATION: "Reserva",
   CLOSED: "Cerrado",
+  // Not a stage of any pipeline, but a legal destination from all of them:
+  // `pipeline_transitions` carries a wildcard row for abandoning a deal, and
+  // it rendered as the bare token "LOST" until this line existed.
+  LOST: "Perdido",
 };
 
 /** `opportunities/types.ts` → `OpportunityStatus`. */

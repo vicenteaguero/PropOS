@@ -6,7 +6,7 @@ import { useAuth } from "@shared/hooks/use-auth";
 import { formatClp } from "@shared/utils/currency";
 import { label } from "@shared/lib/labels";
 import { stageDot, STAGE_LABELS } from "@features/opportunities/types";
-import { timeAgoInline } from "@shared/utils/relative-time";
+import { dueText, timeAgoInline } from "@shared/utils/relative-time";
 import { Button } from "@/components/ui/button";
 import { useDeal, useSetDealStage } from "../hooks/use-deal";
 import type { ChecklistItem } from "../api/deals-api";
@@ -129,8 +129,9 @@ export function DealDetailPage() {
                       {item.blocking && item.status !== "done" && (
                         <span className="shrink-0 font-medium text-destructive">Bloqueante</span>
                       )}
-                      {item.due_at && (
-                        <span className="truncate">Vence {timeAgoInline(item.due_at)}</span>
+                      {/* A finished item's deadline is not information. */}
+                      {item.due_at && item.status !== "done" && (
+                        <span className="truncate">{dueText(item.due_at)}</span>
                       )}
                     </span>
                   }

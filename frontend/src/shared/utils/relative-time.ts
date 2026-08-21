@@ -74,3 +74,35 @@ export function timeAgoInline(iso: string | null | undefined, now: Date = new Da
   const text = timeAgo(iso, now);
   return text ? text.charAt(0).toLowerCase() + text.slice(1) : "";
 }
+
+/**
+ * When something is due, in either direction.
+ *
+ * `timeAgo` clamps to the past, so a deadline three days out came back as
+ * "Recién" — which reads as "just happened" for something that has not
+ * happened at all. A due date is the one relative time that regularly points
+ * forward, and it needs its own wording.
+ */
+export function dueText(iso: string | null | undefined, now: Date = new Date()): string {
+  if (!iso) return "";
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return "";
+
+  const ms = at.getTime() - now.getTime();
+  const days = Math.round(Math.abs(ms) / 86_400_000);
+  const overdue = ms < 0;
+
+  if (Math.abs(ms) < 3_600_000) return overdue ? "Vencida" : "Vence ahora";
+  if (days === 0) return overdue ? "Venció hoy" : "Vence hoy";
+  if (days === 1) return overdue ? "Venció ayer" : "Vence mañana";
+  if (days < 7) return overdue ? `Venció hace ${days} días` : `Vence en ${days} días`;
+
+  const weeks = Math.round(days / 7);
+  if (weeks < 5) {
+    const unit = weeks === 1 ? "semana" : "semanas";
+    return overdue ? `Venció hace ${weeks} ${unit}` : `Vence en ${weeks} ${unit}`;
+  }
+  const months = Math.round(days / 30);
+  const unit = months === 1 ? "mes" : "meses";
+  return overdue ? `Venció hace ${months} ${unit}` : `Vence en ${months} ${unit}`;
+}

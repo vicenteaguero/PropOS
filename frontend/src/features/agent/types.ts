@@ -53,6 +53,30 @@ export type ChatStreamEvent =
 
 export type ProposalStatus = "pending" | "accepted" | "rejected" | "superseded" | "expired";
 
+/**
+ * What the human actually said that produced a proposal.
+ *
+ * Null on every row created before the agent started recording it, so every
+ * consumer has to handle its absence — an empty quote block is worse than no
+ * quote block.
+ */
+export interface ProposalEvidence {
+  /** Verbatim fragment. Already in the speaker's language. */
+  quote?: string;
+  source?: "whatsapp" | "email" | "voice" | "chat";
+  conversation_id?: string;
+  client_message_id?: string;
+  transcript_id?: string;
+}
+
+/** `pending/schemas.py` → `RejectReason`. */
+export type ProposalRejectReason =
+  | "dato_incorrecto"
+  | "entidad_equivocada"
+  | "no_corresponde"
+  | "duplicado"
+  | "otro";
+
 export interface PendingProposal {
   id: string;
   tenant_id: string;
@@ -69,6 +93,10 @@ export interface PendingProposal {
   reviewer_user: string | null;
   reviewed_at: string | null;
   review_note: string | null;
+  // Optional rather than required: the API's response model has to opt each
+  // new column in, so an older backend simply omits them.
+  review_reason?: ProposalRejectReason | null;
+  evidence?: ProposalEvidence | null;
   created_row_id: string | null;
   created_at: string;
   updated_at: string;

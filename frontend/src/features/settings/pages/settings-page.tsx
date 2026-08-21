@@ -9,6 +9,7 @@ import {
   Loader2,
   Palette,
   Shield,
+  ShieldCheck,
   Sparkles,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -79,14 +80,16 @@ function SettingLine({
   title,
   sub,
   right,
+  className,
 }: {
   icon: LucideIcon;
   title: string;
   sub: string;
   right?: React.ReactNode;
+  className?: string;
 }) {
   return (
-    <div className="flex items-center gap-3">
+    <div className={cn("flex items-center gap-3", className)}>
       <RowIcon>
         <Icon className="size-[18px]" strokeWidth={1.8} />
       </RowIcon>
@@ -171,6 +174,7 @@ function AdminShortcuts() {
 
 export function SettingsPage() {
   usePageTitle("Configuración");
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const isDesktop = useIsDesktop();
   const tenantQ = useQuery({
@@ -365,12 +369,33 @@ export function SettingsPage() {
       key: "agente",
       title: "Agente IA",
       body: (
-        <SettingLine
-          icon={Sparkles}
-          title="Nombre del agente"
-          sub="Visible en sidebar, chat, pendientes y notificaciones."
-          right={agentNameInput}
-        />
+        <>
+          <SettingLine
+            icon={Sparkles}
+            title="Nombre del agente"
+            sub="Visible en sidebar, chat, pendientes y notificaciones."
+            right={agentNameInput}
+          />
+          {/* The whole line is the target, not just the chevron: a 16px arrow
+              is a hit area nobody finds on a phone. */}
+          <button
+            type="button"
+            onClick={() => navigate("/admin/settings/propo")}
+            className={cn(
+              "-mx-2 mt-3 flex w-[calc(100%+1rem)] items-center rounded-xl px-2 py-2 text-left transition hover:bg-secondary active:scale-[0.99]",
+              TOUCH_TARGET_ROW,
+              FOCUS_RING,
+            )}
+          >
+            <SettingLine
+              icon={ShieldCheck}
+              title="Permisos"
+              sub={`Qué puede hacer ${agentName || "el agente"} sin que nadie lo revise.`}
+              right={<ChevronRight className="size-4 shrink-0 text-muted-foreground" />}
+              className="w-full"
+            />
+          </button>
+        </>
       ),
     },
     {

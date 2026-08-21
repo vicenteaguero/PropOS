@@ -1,5 +1,5 @@
 import { apiRequest } from "@shared/api/http";
-import type { PendingProposal } from "@features/agent/types";
+import type { PendingProposal, ProposalRejectReason } from "@features/agent/types";
 
 const BASE = "/v1/pending";
 
@@ -7,6 +7,17 @@ export interface AcceptBody {
   overrides?: Record<string, unknown>;
   disambiguation?: Record<string, string>;
   note?: string;
+}
+
+export interface RejectBody {
+  /** Free-text detail. Stored in `review_note`. */
+  reason?: string;
+  /**
+   * Taxonomy value, stored in `review_reason`. Separate from `reason` because
+   * free text cannot be counted, and a rejection is the cheapest signal there
+   * is about where Propo is getting things wrong.
+   */
+  review_reason?: ProposalRejectReason;
 }
 
 export const pendingApi = {
@@ -26,10 +37,10 @@ export const pendingApi = {
       body,
     }),
 
-  reject: (id: string, reason?: string) =>
+  reject: (id: string, body: RejectBody = {}) =>
     apiRequest<PendingProposal>(`${BASE}/${id}/reject`, {
       method: "POST",
-      body: { reason },
+      body,
     }),
 
   bulkAccept: (proposalIds: string[]) =>
