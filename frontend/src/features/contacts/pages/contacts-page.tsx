@@ -21,6 +21,7 @@ import { ContactDetail } from "../components/contact-detail";
 import { CONTACT_TYPE_LABELS, CONTACT_TYPES, type ContactType } from "../types";
 import { CONTACT_TYPE_TONES } from "@shared/lib/tones";
 import { initials } from "@shared/utils/format";
+import { DuplicateContacts } from "../components/duplicate-contacts";
 
 /**
  * Personas — the CRM's centre of gravity.
@@ -137,6 +138,10 @@ export function ContactsPage() {
       emptyAction={{ label: "Nuevo contacto", onClick: () => setDialogOpen(true) }}
       footer={<ListCapNotice resource="contacts" count={data?.length} />}
     >
+      {/* Above the list, not buried in settings: nobody goes looking for
+          duplicates they do not know they have. */}
+      <DuplicateContacts onMerged={() => refetch()} />
+
       {filtered.map((c, i) => (
         <Row
           key={c.id}
