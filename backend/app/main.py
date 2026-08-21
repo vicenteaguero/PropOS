@@ -43,6 +43,7 @@ from app.features.agent.policies_api import router as agent_policies_router
 from app.features.attention.router import router as attention_router
 from app.features.data_health.router import router as data_health_router
 from app.features.search.router import router as search_router
+from app.features.settings.router import router as settings_catalogs_router
 from app.features.notifications.router import router as notifications_router
 from app.features.opportunities.router import router as opportunities_router
 from app.features.organizations.router import router as organizations_router
@@ -225,6 +226,7 @@ def create_app() -> FastAPI:
     application.include_router(notes_router, prefix=versioned_prefix)
     application.include_router(search_router, prefix=versioned_prefix)
     application.include_router(data_health_router, prefix=versioned_prefix)
+    application.include_router(settings_catalogs_router, prefix=versioned_prefix)
     application.include_router(attention_router, prefix=versioned_prefix)
     application.include_router(agent_policies_router, prefix=versioned_prefix)
     application.include_router(tags_router, prefix=versioned_prefix)
