@@ -7,10 +7,13 @@ from pydantic import BaseModel
 
 
 class EntityKind(StrEnum):
-    """The record types a note (or any future picker) can point at.
+    """What global search can find.
 
-    Mirrors the `note_target_kind` enum in the database, so the two cannot drift
-    without a compile-time or migration failure making it obvious.
+    The first six mirror the `note_target_kind` enum in the database, so a
+    picker and a note target cannot drift apart without a migration making it
+    obvious. MESSAGE is search-only: a message is not something a note can
+    point at, but "the conversation where they mentioned the bodega" is the
+    thing a broker most often needs to get back to.
     """
 
     PROPERTY = "PROPERTY"
@@ -19,6 +22,7 @@ class EntityKind(StrEnum):
     EVENT = "EVENT"
     PROJECT = "PROJECT"
     PLACE = "PLACE"
+    MESSAGE = "MESSAGE"
 
 
 class EntityHit(BaseModel):

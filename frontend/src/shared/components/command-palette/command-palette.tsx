@@ -81,12 +81,17 @@ export function CommandPalette({
   const searching = term.length >= 2;
 
   const roleRoot = `/${(user?.role ?? "ADMIN").toLowerCase()}`;
-  // Two kinds, not three. Opportunities have no page of their own — every hit
-  // landed on the same board — and resolving one costs a join through people
-  // and properties, so the palette ended up waiting on its slowest query for a
+  // Three kinds. Opportunities stay out: they have no page of their own, every
+  // hit landed on the same board, and resolving one costs a join through people
+  // and properties — the palette ended up waiting on its slowest query for a
   // result that told the user nothing.
+  //
+  // Messages earn their place for the opposite reason: "the conversation where
+  // they mentioned the bodega" is the thing a broker most often needs to get
+  // back to, and nothing else in the app can find it.
   const people = useEntitySearch("CONTACT", term, searching);
   const properties = useEntitySearch("PROPERTY", term, searching);
+  const messages = useEntitySearch("MESSAGE", term, searching);
 
   const records: { hit: EntityHit; to: string }[] = useMemo(() => {
     if (!searching) return [];
@@ -94,14 +99,16 @@ export function CommandPalette({
       CONTACT: (id) => `${roleRoot}/personas/${id}`,
       PROPERTY: (id) => `${roleRoot}/properties/${id}`,
       OPPORTUNITY: () => `${roleRoot}/clientes?tab=negocios`,
+      // Straight into the thread, which is the whole reason to search a message.
+      MESSAGE: (id) => `${roleRoot}/clientes?tab=conversaciones&hilo=whatsapp:${id}`,
       EVENT: () => `${roleRoot}/agenda`,
       PROJECT: () => `${roleRoot}/clientes?tab=propiedades`,
       PLACE: () => `${roleRoot}/clientes?tab=propiedades`,
     };
-    return [...(people.data ?? []), ...(properties.data ?? [])]
+    return [...(people.data ?? []), ...(properties.data ?? []), ...(messages.data ?? [])]
       .slice(0, 12)
       .map((hit) => ({ hit, to: path[hit.kind](hit.id) }));
-  }, [searching, people.data, properties.data, roleRoot]);
+  }, [searching, people.data, properties.data, messages.data, roleRoot]);
 
   const canPropo = useMemo(() => {
     if (!isAdminView) return false;
@@ -138,7 +145,12 @@ export function CommandPalette({
               {records.length > 0 && (
                 <CommandGroup heading="Registros">
                   {records.map(({ hit, to }) => {
-                    const Icon = hit.kind === "CONTACT" ? User : Building2;
+                    const Icon =
+                      hit.kind === "CONTACT"
+                        ? User
+                        : hit.kind === "MESSAGE"
+                          ? MessageSquare
+                          : Building2;
                     return (
                       <CommandItem
                         key={`${hit.kind}-${hit.id}`}

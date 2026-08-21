@@ -2,7 +2,15 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@shared/api/http";
 
 /** Mirrors `note_target_kind` in the database and `EntityKind` on the API. */
-export type EntityKind = "PROPERTY" | "CONTACT" | "OPPORTUNITY" | "EVENT" | "PROJECT" | "PLACE";
+export type EntityKind =
+  | "PROPERTY"
+  | "CONTACT"
+  | "OPPORTUNITY"
+  | "EVENT"
+  | "PROJECT"
+  | "PLACE"
+  /** Search-only: the id is the CONVERSATION, not the message. */
+  | "MESSAGE";
 
 export interface EntityHit {
   kind: EntityKind;

@@ -162,13 +162,25 @@ def test_query_is_folded_to_match_the_generated_columns():
     assert all(col == "name_search" for col, _ in log["like"])
 
 
-def test_kind_enum_matches_the_note_targets_migration():
-    """The enum mirrors `note_target_kind`; drift would break linking silently."""
-    assert {k.value for k in EntityKind} == {
-        "PROPERTY",
-        "CONTACT",
-        "OPPORTUNITY",
-        "EVENT",
-        "PROJECT",
-        "PLACE",
-    }
+#: Kinds that exist in the database as `note_target_kind`. A picker offering
+#: one of these has somewhere to store the link it creates.
+LINKABLE_KINDS = {"PROPERTY", "CONTACT", "OPPORTUNITY", "EVENT", "PROJECT", "PLACE"}
+
+#: Kinds global search can find but nothing can point AT. A message is not a
+#: note target; "the conversation where they mentioned the bodega" is still the
+#: thing a broker most often needs to get back to.
+SEARCH_ONLY_KINDS = {"MESSAGE"}
+
+
+def test_every_linkable_kind_is_searchable():
+    """The linkable set mirrors `note_target_kind`; drift breaks linking silently."""
+    assert LINKABLE_KINDS <= {k.value for k in EntityKind}
+
+
+def test_no_kind_exists_without_a_reason_to():
+    """A kind that is neither linkable nor deliberately search-only is drift.
+
+    This is the guard that caught MESSAGE being added — which was intentional,
+    so it is declared above rather than silently allowed.
+    """
+    assert {k.value for k in EntityKind} == LINKABLE_KINDS | SEARCH_ONLY_KINDS
