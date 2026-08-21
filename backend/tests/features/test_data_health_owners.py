@@ -19,9 +19,23 @@ TENANT = uuid4()
 OWNER = str(uuid4())
 
 
+#: Columns each table actually has, for the purposes of "does this filter
+#: reference something real". Only what the checks touch.
+_COLUMNS = {
+    "contacts": {"id", "type", "phone", "email", "tenant_id", "deleted_at"},
+    "properties": {"id", "title", "status", "is_draft", "list_price_cents", "address", "tenant_id", "deleted_at"},
+    "opportunities": {"id", "person_id", "property_id", "status", "tenant_id", "deleted_at"},
+    # No `deleted_at`: a stakeholder link is deleted, not archived.
+    "property_stakeholders": {"id", "contact_id", "property_id", "role", "tenant_id"},
+    "media_assets": {"target_row_id", "target_table", "tenant_id"},
+}
+
+
 class _Builder:
-    def __init__(self, rows: list[dict]):
+    def __init__(self, rows: list[dict], table: str = ""):
         self._rows = rows
+        self._table = table
+        self._columns = _COLUMNS.get(table, set())
 
     def select(self, *_a, **_k):
         return self
@@ -29,7 +43,14 @@ class _Builder:
     def eq(self, *_a, **_k):
         return self
 
-    def is_(self, *_a, **_k):
+    def is_(self, col, _value):
+        # Postgres raises 42703 for a filter on a column that does not exist,
+        # and PostgREST turns that into a 500 for the whole health check. The
+        # stub used to accept any column, so `property_stakeholders.deleted_at`
+        # — a column that has never existed — passed here and failed in
+        # production. Model the failure.
+        if col not in self._columns:
+            raise AssertionError(f"filtered on {self._table}.{col}, which does not exist")
         return self
 
     def limit(self, *_a, **_k):
@@ -48,7 +69,7 @@ class _Builder:
 def _client(tables: dict[str, list[dict]]):
     class _Client:
         def table(self, name):
-            return _Builder([dict(r) for r in tables.get(name, [])])
+            return _Builder([dict(r) for r in tables.get(name, [])], name)
 
     return _Client()
 
