@@ -1,10 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { pendingApi, type AcceptBody } from "../api/pending-api";
-
-interface PendingItem {
-  id: string;
-  status: string;
-}
+import { pendingApi, type AcceptBody, type RejectBody } from "../api/pending-api";
+import { withoutProposal } from "../lib/optimistic";
 
 export function usePendingProposals(status: string = "pending") {
   return useQuery({
@@ -20,15 +16,12 @@ export function usePendingCount() {
 }
 
 function optimisticRemoveById(qc: ReturnType<typeof useQueryClient>, id: string) {
-  const snapshots: Array<{ key: readonly unknown[]; data: PendingItem[] | undefined }> = [];
-  const queries = qc.getQueriesData<PendingItem[]>({ queryKey: ["pending"] });
+  const snapshots: Array<{ key: readonly unknown[]; data: unknown }> = [];
+  const queries = qc.getQueriesData({ queryKey: ["pending"] });
   for (const [key, data] of queries) {
+    if (data === undefined) continue;
     snapshots.push({ key, data });
-    if (data)
-      qc.setQueryData<PendingItem[]>(
-        key,
-        data.filter((p) => p.id !== id),
-      );
+    qc.setQueryData(key, withoutProposal(data, id));
   }
   return snapshots;
 }
@@ -57,7 +50,8 @@ export function useAcceptProposal() {
 export function useRejectProposal() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, reason }: { id: string; reason?: string }) => pendingApi.reject(id, reason),
+    mutationFn: ({ id, body }: { id: string; body?: RejectBody }) =>
+      pendingApi.reject(id, body ?? {}),
     onMutate: async ({ id }) => {
       await queryClient.cancelQueries({ queryKey: ["pending"] });
       return { snapshots: optimisticRemoveById(queryClient, id) };

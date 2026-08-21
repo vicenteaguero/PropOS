@@ -7,25 +7,14 @@ import { useAcceptProposal, useRejectProposal } from "@features/pending/hooks/us
 import { useQuery } from "@tanstack/react-query";
 import { pendingApi } from "@features/pending/api/pending-api";
 import { ProposalDisambiguationPicker } from "@features/pending/components/proposal-disambiguation-picker";
+import { ProposalEvidenceQuote } from "@features/pending/components/proposal-evidence";
+import { RejectProposalSheet } from "@features/pending/components/reject-proposal-sheet";
+import type { RejectBody } from "@features/pending/api/pending-api";
+import { agentActionLabel, label } from "@shared/lib/labels";
 
 interface Props {
   proposalId: string;
 }
-
-const KIND_LABELS: Record<string, string> = {
-  propose_create_person: "Crear persona",
-  propose_update_person: "Actualizar persona",
-  propose_log_interaction: "Registrar interacción",
-  propose_create_task: "Crear tarea",
-  propose_create_event: "Agendar evento",
-  propose_log_transaction: "Registrar transacción",
-  propose_create_campaign: "Crear campaña",
-  propose_create_organization: "Crear organización",
-  propose_add_note: "Agregar nota",
-  propose_create_property: "Crear propiedad",
-  propose_attach_photos_to_property: "Adjuntar fotos a propiedad",
-  propose_create_document_from_photos: "Crear documento con fotos",
-};
 
 // Spanish labels for payload keys so the card never leaks raw English field names.
 const FIELD_LABELS_ES: Record<string, string> = {
@@ -73,6 +62,7 @@ const fieldLabel = (k: string) => FIELD_LABELS_ES[k] ?? k;
 
 export function AgentInlineProposalCard({ proposalId }: Props) {
   const [editing, setEditing] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
   const [picks, setPicks] = useState<Record<string, string>>({});
   const accept = useAcceptProposal();
   const reject = useRejectProposal();
@@ -93,8 +83,8 @@ export function AgentInlineProposalCard({ proposalId }: Props) {
     );
   }
 
-  const summary =
-    (proposal.payload?.summary_es as string) || KIND_LABELS[proposal.kind] || proposal.kind;
+  const kindLabel = agentActionLabel(proposal.kind);
+  const summary = (proposal.payload?.summary_es as string) || kindLabel;
   const isPending = proposal.status === "pending";
   const accepted = proposal.status === "accepted";
   const rejected = proposal.status === "rejected";
@@ -111,8 +101,9 @@ export function AgentInlineProposalCard({ proposalId }: Props) {
     { candidates?: Array<Record<string, unknown>> }
   >;
 
-  const handleReject = async () => {
-    await reject.mutateAsync({ id: proposalId });
+  const handleReject = async (body: RejectBody) => {
+    await reject.mutateAsync({ id: proposalId, body });
+    setRejecting(false);
   };
 
   return (
@@ -129,11 +120,13 @@ export function AgentInlineProposalCard({ proposalId }: Props) {
         <div className="flex items-center justify-between gap-2">
           <CardTitle className="text-sm">{summary}</CardTitle>
           <Badge variant={accepted ? "default" : rejected ? "destructive" : "secondary"}>
-            {KIND_LABELS[proposal.kind] || proposal.kind}
+            {kindLabel}
           </Badge>
         </div>
       </CardHeader>
       <CardContent className="py-2 space-y-2">
+        <ProposalEvidenceQuote evidence={proposal.evidence} />
+
         {editing ? (
           <pre className="text-xs bg-muted p-2 rounded overflow-x-auto">
             {JSON.stringify(proposal.resolved_payload || proposal.payload, null, 2)}
@@ -188,7 +181,7 @@ export function AgentInlineProposalCard({ proposalId }: Props) {
             <Button
               size="sm"
               variant="ghost"
-              onClick={handleReject}
+              onClick={() => setRejecting(true)}
               disabled={reject.isPending}
               className="gap-1 text-destructive"
             >
@@ -202,8 +195,21 @@ export function AgentInlineProposalCard({ proposalId }: Props) {
             ✓ Aceptado{proposal.created_row_id ? ` → ${proposal.created_row_id.slice(0, 8)}` : ""}
           </p>
         )}
-        {rejected && <p className="text-xs text-destructive pt-1">✗ Rechazado</p>}
+        {rejected && (
+          <p className="text-xs text-destructive pt-1">
+            ✗ Rechazado
+            {proposal.review_reason ? ` — ${label("rejectReason", proposal.review_reason)}` : ""}
+          </p>
+        )}
       </CardContent>
+
+      <RejectProposalSheet
+        open={rejecting}
+        onOpenChange={setRejecting}
+        summary={summary}
+        submitting={reject.isPending}
+        onConfirm={handleReject}
+      />
     </Card>
   );
 }

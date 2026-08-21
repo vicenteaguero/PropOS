@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { listTime, timeAgo, timeAgoInline } from "./relative-time";
+import { dueText, listTime, timeAgo, timeAgoInline } from "./relative-time";
 
 // UTC throughout: the suite runs with TZ=UTC (see package.json), so anchoring
 // the fixtures to a Chilean offset moved them across day boundaries.
@@ -57,5 +57,31 @@ describe("timeAgoInline", () => {
 
   it("returns an empty string for a missing date, like timeAgo", () => {
     expect(timeAgoInline(null, now)).toBe("");
+  });
+});
+
+describe("dueText", () => {
+  const now = new Date("2026-08-20T12:00:00Z");
+
+  it("points forward for a deadline that has not passed", () => {
+    // `timeAgo` clamps to the past, so this used to read "Recién" — "just
+    // happened" for something three days away.
+    expect(dueText("2026-08-23T12:00:00Z", now)).toBe("Vence en 3 días");
+    expect(dueText("2026-08-21T12:00:00Z", now)).toBe("Vence mañana");
+    expect(dueText("2026-08-20T18:00:00Z", now)).toBe("Vence hoy");
+  });
+
+  it("points backward for one that has", () => {
+    expect(dueText("2026-08-17T12:00:00Z", now)).toBe("Venció hace 3 días");
+    expect(dueText("2026-08-19T12:00:00Z", now)).toBe("Venció ayer");
+  });
+
+  it("collapses to weeks and months rather than counting days forever", () => {
+    expect(dueText("2026-09-03T12:00:00Z", now)).toBe("Vence en 2 semanas");
+    expect(dueText("2026-06-20T12:00:00Z", now)).toBe("Venció hace 2 meses");
+  });
+
+  it("returns an empty string for a missing date", () => {
+    expect(dueText(null, now)).toBe("");
   });
 });

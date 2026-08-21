@@ -32,6 +32,7 @@ const ROUTES = [
   ["clientes-personas", "/admin/clientes?tab=personas"],
   ["clientes-persona", "/admin/personas/0c4c02d8-7a20-5b53-a220-69efe0baabcb"],
   ["clientes-negocios", "/admin/clientes?tab=negocios"],
+  ["clientes-negocio", "/admin/negocios/04e138de-fbfd-5892-9364-16ec4d10bc95"],
   ["clientes-propiedades", "/admin/clientes?tab=propiedades"],
   ["agenda", "/admin/agenda"],
   ["agenda-tareas", "/admin/agenda?tab=tareas"],
@@ -39,6 +40,8 @@ const ROUTES = [
   ["finanzas", "/admin/finanzas"],
   ["documentos", "/admin/documentos"],
   ["settings", "/admin/settings"],
+  ["settings-propo", "/admin/settings/propo"],
+  ["pendientes", "/admin/pendientes"],
 ];
 
 const VIEWS = [
@@ -58,13 +61,16 @@ for (const [vname, width, height] of VIEWS) {
     hasTouch: width < 768,
   });
   await ctx.addInitScript(
-    ([ref, session, tenant]) => {
+    // `process` does not exist in the page, so reading SHOT_THEME inside this
+    // function threw and every run came out dark whatever was asked for. Env
+    // has to be resolved here, in Node, and passed in as an argument.
+    ([ref, session, tenant, theme]) => {
       localStorage.setItem(`sb-${ref}-auth-token`, JSON.stringify(session));
       localStorage.setItem("propos.active_tenant_id", tenant);
-      localStorage.setItem("propos:theme", process.env.SHOT_THEME ?? "dark");
+      localStorage.setItem("propos:theme", theme);
       localStorage.setItem("propos:install-nudge-dismissed", "1");
     },
-    [REF, SESSION, TENANT],
+    [REF, SESSION, TENANT, process.env.SHOT_THEME ?? "dark"],
   );
   const page = await ctx.newPage();
   for (const [name, path] of ROUTES) {
