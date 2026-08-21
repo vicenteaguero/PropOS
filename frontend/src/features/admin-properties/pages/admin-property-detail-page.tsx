@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useAuth } from "@shared/hooks/use-auth";
 import {
   ArrowLeft,
@@ -46,6 +46,17 @@ export function AdminPropertyDetailPage() {
   const { user } = useAuth();
   const role = (user?.role ?? "ADMIN").toLowerCase();
   const qc = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab = searchParams.get("tab") === "grants" ? "grants" : "descripcion";
+  const setTab = (next: string) => {
+    const params = new URLSearchParams(searchParams);
+    // Descripción is the default, so it needs no parameter — keeps the shared
+    // link clean for the common case.
+    if (next === "descripcion") params.delete("tab");
+    else params.set("tab", next);
+    setSearchParams(params, { replace: true });
+  };
+
   const [editOpen, setEditOpen] = useState(false);
   const [draft, setDraft] = useState<string | null>(null);
 
@@ -252,7 +263,10 @@ export function AdminPropertyDetailPage() {
 
         {/* Tabs: Descripción IA + Accesos */}
         <div className="px-5 pt-6 lg:col-start-1 lg:row-start-4 lg:px-0">
-          <Tabs defaultValue="descripcion" className="w-full">
+          {/* The tab lives in the URL, not in component state: a broker who
+              sends "mira los interesados de esta propiedad" was sending a link
+              that opened on Descripción, and a refresh threw the tab away. */}
+          <Tabs value={tab} onValueChange={setTab} className="w-full">
             <TabsList>
               <TabsTrigger value="descripcion">Descripción IA</TabsTrigger>
               <TabsTrigger value="grants">Interesados</TabsTrigger>
