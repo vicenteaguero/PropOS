@@ -1,5 +1,5 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Building2, CheckCircle2, Circle, CircleDashed, Lock, User } from "lucide-react";
+import { ArrowLeft, Building2, CheckCircle2, Circle, CircleDashed, User } from "lucide-react";
 import { PageLayout } from "@shared/components/page-layout";
 import { ErrorState, PageSkeleton, Pill, Row, RoundButton, SectionLabel } from "@shared/ui";
 import { useAuth } from "@shared/hooks/use-auth";
@@ -92,9 +92,12 @@ export function DealDetailPage() {
               disabled={setStage.isPending}
               onClick={() => setStage.mutate(t.to_stage)}
             >
-              {t.requires_human && (
-                <Lock className="size-3.5 text-muted-foreground" strokeWidth={2} />
-              )}
+              {/* `requires_human` deliberately shows nothing here. It governs
+                  PROPO, not the broker — and this screen is the broker's, so a
+                  padlock on the one move only they can make read as "you are
+                  not allowed", the exact opposite of what the flag means. The
+                  distinction is surfaced where it is actionable: Configuración
+                  → Clientes → Pipelines. */}
               {STAGE_LABELS[t.to_stage] ?? t.to_stage}
             </Button>
           ))}
