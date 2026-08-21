@@ -124,7 +124,15 @@ export function ListShell({
             // `basis-full` below sm, which wrapped the primary action onto a
             // line of its own — one whole row of a phone screen holding a
             // single 36px round button.
-            className="order-first min-w-0 flex-1 sm:order-none sm:ml-auto sm:max-w-sm"
+            //
+            // `ml-auto` only when a title is actually painted: it exists to push
+            // the field away from the heading, and with the heading `sr-only`
+            // (see `titleSr`) it instead pinned the search to the right edge of
+            // a 1440px board, across an empty half-screen from nothing.
+            className={cn(
+              "order-first min-w-0 flex-1 sm:order-none sm:max-w-sm",
+              title && "sm:ml-auto",
+            )}
           />
         )}
         {action && <div className={cn("flex shrink-0 gap-2", !search && "ml-auto")}>{action}</div>}
