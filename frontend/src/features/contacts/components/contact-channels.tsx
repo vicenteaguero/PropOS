@@ -3,7 +3,7 @@ import { Mail, Phone, Plus, Star, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { HOVER_REVEAL, Pill, RoundButton } from "@shared/ui";
+import { HOVER_REVEAL, RoundButton, SwipeAction } from "@shared/ui";
 import {
   useAddContactEmail,
   useAddContactPhone,
@@ -43,6 +43,28 @@ export function ContactChannels({ contactId }: { contactId: string }) {
   // with one number it is a badge that distinguishes nothing.
   const showPrimary = { phone: data.phones.length > 1, email: data.emails.length > 1 };
 
+  /** Phones and e-mails as one list, so the row is written once. */
+  const channels = [
+    ...data.phones.map((p) => ({
+      id: `phone-${p.id}`,
+      icon: Phone,
+      value: p.e164,
+      href: `tel:${p.e164}`,
+      label: p.label,
+      primary: p.is_primary && showPrimary.phone,
+      remove: () => removePhone.mutate(p.id),
+    })),
+    ...data.emails.map((e) => ({
+      id: `email-${e.id}`,
+      icon: Mail,
+      value: e.address,
+      href: `mailto:${e.address}`,
+      label: null as string | null,
+      primary: e.is_primary && showPrimary.email,
+      remove: () => removeEmail.mutate(e.id),
+    })),
+  ];
+
   const submit = () => {
     const value = draft.trim();
     if (!value) return;
@@ -60,57 +82,53 @@ export function ContactChannels({ contactId }: { contactId: string }) {
   };
 
   return (
-    <div className="space-y-1">
-      {data.phones.map((phone) => (
-        <div key={phone.id} className="group flex items-center gap-3 text-sm">
-          <Phone className="size-4 shrink-0 text-muted-foreground" strokeWidth={1.8} />
-          <a href={`tel:${phone.e164}`} className="text-foreground hover:underline">
-            {phone.e164}
-          </a>
-          {phone.label && <span className="text-[12px] text-faint">{phone.label}</span>}
-          {phone.is_primary && showPrimary.phone && (
-            <Pill tone="neutral">
-              <Star className="size-3" strokeWidth={2.2} />
-              Principal
-            </Pill>
-          )}
-          <RoundButton
-            tone="ghost"
-            size={30}
-            aria-label={`Quitar ${phone.e164}`}
-            className={`ml-auto ${HOVER_REVEAL}`}
-            onClick={() => removePhone.mutate(phone.id)}
-          >
-            <Trash2 className="size-4 text-muted-foreground" strokeWidth={1.8} />
-          </RoundButton>
-        </div>
-      ))}
-
-      {data.emails.map((email) => (
-        <div key={email.id} className="group flex items-center gap-3 text-sm">
-          <Mail className="size-4 shrink-0 text-muted-foreground" strokeWidth={1.8} />
+    <div>
+      {/* Each way to reach the person is a real row, not a 20px text link with
+          a hover-revealed bin beside it. On a touch screen there is no hover,
+          so that bin was permanently visible and was the largest target in the
+          row — a destructive one, next to a phone number a broker is trying to
+          tap to CALL. The row now performs the useful action; removing is a
+          deliberate sideways drag. */}
+      {channels.map((c) => (
+        <SwipeAction
+          key={c.id}
+          tone="destructive"
+          icon={<Trash2 className="size-[18px]" strokeWidth={1.9} />}
+          label="Quitar"
+          onAction={() => c.remove()}
+          className="group"
+        >
           <a
-            href={`mailto:${email.address}`}
-            className="min-w-0 truncate text-foreground hover:underline"
+            href={c.href}
+            className="flex min-h-11 items-center gap-3 border-b border-border py-2 text-sm last:border-b-0"
           >
-            {email.address}
+            <c.icon className="size-4 shrink-0 text-muted-foreground" strokeWidth={1.8} />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[15px] text-foreground">{c.value}</span>
+              {(c.label || c.primary) && (
+                <span className="flex items-center gap-1.5 text-[12px] text-faint">
+                  {c.label}
+                  {c.primary && (
+                    <span className="inline-flex items-center gap-0.5">
+                      <Star className="size-3" strokeWidth={2.2} />
+                      Principal
+                    </span>
+                  )}
+                </span>
+              )}
+            </span>
           </a>
-          {email.is_primary && showPrimary.email && (
-            <Pill tone="neutral">
-              <Star className="size-3" strokeWidth={2.2} />
-              Principal
-            </Pill>
-          )}
+          {/* Pointer fallback: a mouse has no swipe. */}
           <RoundButton
             tone="ghost"
             size={30}
-            aria-label={`Quitar ${email.address}`}
-            className={`ml-auto ${HOVER_REVEAL}`}
-            onClick={() => removeEmail.mutate(email.id)}
+            aria-label={`Quitar ${c.value}`}
+            className={`absolute right-0 top-1/2 -translate-y-1/2 [@media(pointer:coarse)]:hidden ${HOVER_REVEAL}`}
+            onClick={() => c.remove()}
           >
             <Trash2 className="size-4 text-muted-foreground" strokeWidth={1.8} />
           </RoundButton>
-        </div>
+        </SwipeAction>
       ))}
 
       {adding ? (

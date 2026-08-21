@@ -11,7 +11,13 @@ function eventWhen(iso: string): string {
   const at = new Date(iso);
   const today = new Date();
   const sameDay = at.toDateString() === today.toDateString();
-  const time = at.toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" });
+  // `hour12: false` explicitly: es-CL defaults to a twelve-hour clock, so this
+  // read "04:15 p. m." while every other timestamp in the app reads 16:15.
+  const time = at.toLocaleTimeString("es-CL", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
   if (sameDay) return `hoy ${time}`;
   return `${at.toLocaleDateString("es-CL", { weekday: "short", day: "numeric", month: "short" })} ${time}`;
 }
