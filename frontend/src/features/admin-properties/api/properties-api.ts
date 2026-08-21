@@ -95,6 +95,16 @@ export interface BuildingContext {
   units: BuildingUnit[];
 }
 
+export interface PriceHistoryEntry {
+  at: string;
+  /** 'price_change' | 'status_change' */
+  trigger: string;
+  price_from_cents: number | null;
+  price_to_cents: number | null;
+  status_from: string | null;
+  status_to: string | null;
+}
+
 export const propertiesApi = {
   /** `q` is matched server-side, so search reaches past the 100-row cap. */
   list: (params: { q?: string } = {}) =>
@@ -105,6 +115,8 @@ export const propertiesApi = {
   create: (body: PropertyInput) => apiRequest<Property>("/v1/properties", { method: "POST", body }),
   update: (id: string, body: Partial<PropertyInput>) =>
     apiRequest<Property>(`/v1/properties/${id}`, { method: "PATCH", body }),
+  /** Price and status changes, newest first. Empty when nothing ever moved. */
+  history: (id: string) => apiRequest<PriceHistoryEntry[]>(`/v1/properties/${id}/history`),
   /** Null for a standalone house — the caller renders nothing, not an empty shell. */
   building: (id: string) => apiRequest<BuildingContext | null>(`/v1/properties/${id}/building`),
   photos: (id: string) => apiRequest<PropertyPhoto[]>(`/v1/properties/${id}/photos`),
