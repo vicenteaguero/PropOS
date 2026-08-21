@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:guard": "vite build && node scripts/critical-path-check.mjs",
     "build:check": "tsc -b && vite build",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "test": "TZ=UTC vitest run",
