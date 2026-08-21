@@ -50,6 +50,13 @@ def check_tenant(tenant_id: UUID) -> DataHealth:
         .data
     )
 
+    # An owner's link to a property is a stakeholder row, not a deal. Asking
+    # "does this person have an opportunity?" and reporting no as "propietario
+    # sin propiedad" flagged every owner in the book — the correct table has
+    # existed since the Clientes rewrite.
+    stakeholders = _rows("property_stakeholders", tenant_id, "contact_id")
+    owner_linked = {s["contact_id"] for s in stakeholders if s.get("contact_id")}
+
     linked_people = {o["person_id"] for o in opportunities if o.get("person_id")}
     linked_properties = {o["property_id"] for o in opportunities if o.get("property_id")}
     with_photos = {m["target_row_id"] for m in media if m.get("target_row_id")}
@@ -61,7 +68,11 @@ def check_tenant(tenant_id: UUID) -> DataHealth:
             findings.append(Finding(code=code, severity=severity, title=title, hint=hint, count=count, entity=entity))
 
     owners_without_property = [
-        c for c in contacts if (c.get("type") or "").upper() in {"LANDOWNER", "SELLER"} and c["id"] not in linked_people
+        c
+        for c in contacts
+        if (c.get("type") or "").upper() in {"LANDOWNER", "SELLER"}
+        and c["id"] not in owner_linked
+        and c["id"] not in linked_people
     ]
     add(
         "owner_without_property",
