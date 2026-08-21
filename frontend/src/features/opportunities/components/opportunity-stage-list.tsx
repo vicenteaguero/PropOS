@@ -154,7 +154,10 @@ export function OpportunityStageList({
               }}
               className="flex min-h-12 w-full items-center gap-3 border-b border-border py-2.5 text-left"
             >
-              <span className="size-2.5 shrink-0 rounded-full" style={{ background: stageDot(s) }} />
+              <span
+                className="size-2.5 shrink-0 rounded-full"
+                style={{ background: stageDot(s) }}
+              />
               <span className="min-w-0 flex-1 truncate text-[15px] font-medium text-foreground">
                 {STAGE_LABELS[s] ?? s}
               </span>

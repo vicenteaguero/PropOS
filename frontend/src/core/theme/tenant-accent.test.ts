@@ -1,9 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import {
-  bootstrapTenantAccent,
-  cacheTenantAccent,
-  readCachedAccent,
-} from "./tenant-accent";
+import { bootstrapTenantAccent, cacheTenantAccent, readCachedAccent } from "./tenant-accent";
 
 const TENANT = "dededede-0000-4000-8000-000000000001";
 const OTHER = "aaaaaaaa-0000-4000-8000-000000000002";

@@ -180,14 +180,14 @@ export function AppLayout() {
       // used to pin --app-header-h to 0 because it genuinely had no header.
       <AgentOverlayProvider>
         <TopbarSlotProvider>
-        <ImmersiveProvider>
-        <div className="flex min-h-dvh flex-col bg-background">
-          <SkipToContent />
-          {/* The shell's own sticky chrome. It publishes its measured height to
+          <ImmersiveProvider>
+            <div className="flex min-h-dvh flex-col bg-background">
+              <SkipToContent />
+              {/* The shell's own sticky chrome. It publishes its measured height to
               --app-header-h, so the token is honest in this shell instead of
               being pinned to 0 as it was when the shell had no header. */}
-          <MobileTopBar />
-          {/* tabIndex -1 so PageMetaProvider can move focus here on navigation
+              <MobileTopBar />
+              {/* tabIndex -1 so PageMetaProvider can move focus here on navigation
             without putting the region itself in the tab sequence.
 
             The top inset now belongs to MobileTopBar, which sits above this
@@ -196,18 +196,18 @@ export function AppLayout() {
             matter in landscape, where the cutout moves to the side, and the
             bottom clears the floating nav. All resolve to 0 on a laptop or
             tablet, so those layouts are unchanged. */}
-          <main
-            id="main-content"
-            tabIndex={-1}
-            className="flex-1 outline-none pr-[var(--safe-right)] pb-[var(--app-nav-h,0px)] pl-[var(--safe-left)]"
-          >
-            <Outlet />
-          </main>
-          <TenantSwitchGate />
-          <MobileBottomNav />
-          <InstallNudge />
-        </div>
-        </ImmersiveProvider>
+              <main
+                id="main-content"
+                tabIndex={-1}
+                className="flex-1 outline-none pr-[var(--safe-right)] pb-[var(--app-nav-h,0px)] pl-[var(--safe-left)]"
+              >
+                <Outlet />
+              </main>
+              <TenantSwitchGate />
+              <MobileBottomNav />
+              <InstallNudge />
+            </div>
+          </ImmersiveProvider>
         </TopbarSlotProvider>
       </AgentOverlayProvider>
     );

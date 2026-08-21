@@ -28,13 +28,7 @@ import { interactionsApi } from "@features/interactions/api/interactions-api";
 import { INTERACTION_KIND_LABELS } from "@features/interactions/types";
 import { apiRequest } from "@shared/api/http";
 import { useAgentOverlay } from "@features/agent/components/agent-overlay-host";
-import {
-  ErrorState,
-  PageSkeleton,
-  SectionLabel,
-  WhatsAppMark,
-  type PillTone,
-} from "@shared/ui";
+import { ErrorState, PageSkeleton, SectionLabel, WhatsAppMark, type PillTone } from "@shared/ui";
 import { cn } from "@/lib/utils";
 import { initials } from "@shared/utils/format";
 import { DataHealthCard } from "../components/data-health-card";

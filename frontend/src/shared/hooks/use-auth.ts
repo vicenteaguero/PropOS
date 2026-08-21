@@ -172,7 +172,6 @@ export function useAuthProvider(): AuthContextValue {
   const bootRef = useRef<{ userId: string; promise: Promise<void> } | null>(null);
 
   const boot = useCallback(async (session: Session) => {
-
     // Surface a loading state while we resolve profile/tenant on the first
     // authenticated transition (initial load or sign-in) so the UI can show a
     // skeleton instead of freezing on the login form. Skipped when an active

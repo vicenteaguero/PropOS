@@ -118,7 +118,12 @@ export function OpportunitiesPage() {
             >
               <Building2 className="size-4" strokeWidth={1.8} />
             </Button>
-            <Button size="icon" aria-label="Nuevo negocio" className="rounded-full" onClick={openNew}>
+            <Button
+              size="icon"
+              aria-label="Nuevo negocio"
+              className="rounded-full"
+              onClick={openNew}
+            >
               <Plus className="size-4" strokeWidth={1.8} />
             </Button>
           </>

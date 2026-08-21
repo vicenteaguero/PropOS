@@ -86,9 +86,7 @@ export function AttentionRow({
       className={selected ? "bg-secondary/60" : undefined}
       left={<KindMark item={item} />}
       title={item.title}
-      titleRight={
-        <span className="text-[12px] font-medium text-faint">{listTime(item.at)}</span>
-      }
+      titleRight={<span className="text-[12px] font-medium text-faint">{listTime(item.at)}</span>}
       sub={
         <span className="flex min-w-0 items-baseline gap-1.5">
           {item.subtitle ? (

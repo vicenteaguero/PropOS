@@ -35,9 +35,7 @@ export function ThemeController() {
     // hashed hue for one round trip, which is the flash the cache exists to
     // prevent. Prefer what we already know about this exact workspace.
     const cached = resolved ? null : readCachedAccent(tenantId);
-    applyTenantAccent(
-      cached ?? { seed: tenantId, color: brandColor, tint: brandTint },
-    );
+    applyTenantAccent(cached ?? { seed: tenantId, color: brandColor, tint: brandTint });
   }, [tenantId, brandColor, brandTint, resolved]);
 
   // Remember it for the next boot, so the app opens in the brokerage's colours
