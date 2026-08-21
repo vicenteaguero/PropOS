@@ -1,4 +1,5 @@
 import { ENV } from "@core/config/env";
+import { ApiError } from "./api-error";
 import { supabase } from "@core/supabase/client";
 
 const API_BASE = `${ENV.API_URL}/api`;
@@ -70,6 +71,8 @@ export interface RequestOptions {
   signal?: AbortSignal;
 }
 
+export { ApiError };
+
 export async function apiRequest<T>(path: string, opts: RequestOptions = {}): Promise<T> {
   const headers: Record<string, string> = await authHeaders();
   let body: BodyInit | undefined;
@@ -86,8 +89,7 @@ export async function apiRequest<T>(path: string, opts: RequestOptions = {}): Pr
     signal: opts.signal,
   });
   if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`API ${response.status}: ${text}`);
+    throw await ApiError.from(response);
   }
   if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
