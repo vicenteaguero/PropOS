@@ -119,12 +119,15 @@ def test_missing_deadline_sinks_within_its_bucket() -> None:
         (1, Urgency.SOON, "Sin responder"),
         (6, Urgency.TODAY, "Sin responder"),
         (21, Urgency.NOW, "Quedan 3 h de ventana"),
+        # The last hour counts in minutes: `int()` on the remaining hours floored
+        # to "Quedan 0 h de ventana" — a live countdown reading as expired.
+        (23.5, Urgency.NOW, "Quedan 30 min de ventana"),
         (30, Urgency.TODAY, "Requiere plantilla"),
         (24 * 40, Urgency.SOON, "Sin responder"),
     ],
 )
 def test_unanswered_reason_never_restates_the_timestamp(
-    hours: int, urgency: Urgency, reason: str, monkeypatch: pytest.MonkeyPatch
+    hours: float, urgency: Urgency, reason: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """The row prints `at` itself, so the reason must not say "hace 6 días" too.
 
