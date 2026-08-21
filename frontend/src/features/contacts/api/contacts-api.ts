@@ -4,10 +4,14 @@ import { qs } from "@shared/lib/query-string";
 
 export interface ListContactsParams {
   q?: string;
-  type?: string;
   include_deleted?: boolean;
   limit?: number;
 }
+// `type` used to be declared here and silently dropped before the request. It
+// also sat in the query key, so two different values cached separately while
+// returning identical rows. The endpoint has no such filter, and since the
+// Clientes rewrite `contacts.type` is a denormalised hint rather than the
+// truth — role is contextual, in property_stakeholders / opportunity_participants.
 
 export const contactsApi = {
   list: (params: ListContactsParams = {}) =>
