@@ -89,3 +89,42 @@ export interface ContactOverview {
   awaiting_reply: boolean;
   counts: OverviewCounts;
 }
+
+/** Mirrors `ContactPhoneOut` on the API. */
+export interface ContactPhone {
+  id: string;
+  e164: string;
+  label: string | null;
+  is_primary: boolean;
+  verified_at: string | null;
+}
+
+export interface ContactEmail {
+  id: string;
+  address: string;
+  label: string | null;
+  is_primary: boolean;
+  verified_at: string | null;
+}
+
+/**
+ * Every way to reach a person.
+ *
+ * `contacts.phone` / `.email` are the primary of each list, mirrored by a
+ * trigger for the readers that still expect a scalar column.
+ */
+export interface ContactChannels {
+  phones: ContactPhone[];
+  emails: ContactEmail[];
+}
+
+/** A pair the system thinks is one person. Detection proposes; a human decides. */
+export interface ContactDuplicate {
+  contact_id: string;
+  contact_name: string;
+  duplicate_id: string;
+  duplicate_name: string;
+  /** Spanish, shown as-is: "mismo teléfono", "mismo RUT". */
+  reason: string;
+  score: number;
+}
