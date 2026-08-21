@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { formatDateTime } from "@shared/utils/format";
 import { Button } from "@/components/ui/button";
 import { Check, X, Pencil, Loader2 } from "lucide-react";
 import { useAcceptProposal, useRejectProposal } from "@features/pending/hooks/use-pending";
@@ -10,7 +11,7 @@ import { ProposalDisambiguationPicker } from "@features/pending/components/propo
 import { ProposalEvidenceQuote } from "@features/pending/components/proposal-evidence";
 import { RejectProposalSheet } from "@features/pending/components/reject-proposal-sheet";
 import type { RejectBody } from "@features/pending/api/pending-api";
-import { agentActionLabel, label } from "@shared/lib/labels";
+import { agentActionLabel, label, type LabelKind } from "@shared/lib/labels";
 
 interface Props {
   proposalId: string;
@@ -57,8 +58,67 @@ const FIELD_LABELS_ES: Record<string, string> = {
   description: "Descripción",
   contact_name: "Contacto",
   property_title: "Propiedad",
+  // Keys the resolver adds after matching, which reached the card raw.
+  due: "Vence",
+  kind: "Tipo",
+  person: "Persona",
+  summary: "Resumen",
+  property: "Propiedad",
+  organization: "Organización",
 };
 const fieldLabel = (k: string) => FIELD_LABELS_ES[k] ?? k;
+
+/**
+ * Whether a payload entry means anything to the person reading the card.
+ *
+ * Resolved payloads carry the foreign keys the executor needs — `contact_id`,
+ * `property_id` — and a bare uuid tells a broker nothing while pushing the
+ * fields that DO mean something off the four-row preview. The resolved NAME is
+ * already on the card; the id is plumbing.
+ */
+function isShownToHumans(key: string, value: unknown): boolean {
+  if (key === "summary_es") return false;
+  if (key.endsWith("_id") || key === "id") return false;
+  return value !== null && value !== undefined && value !== "";
+}
+
+/**
+ * The quote is already on the card; repeating it as a field is noise.
+ *
+ * Several intents copy the client's sentence straight into a payload field —
+ * `summary` on an interaction, `body` on a note — so the same words appeared
+ * twice, six lines apart, in two different treatments.
+ */
+function echoesTheQuote(value: unknown, quote: string | undefined): boolean {
+  if (!quote || typeof value !== "string") return false;
+  const normalise = (t: string) => t.toLowerCase().replace(/\s+/g, " ").trim();
+  return normalise(quote).includes(normalise(value));
+}
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
+
+/** Payload keys whose VALUE is an enum with a Spanish label registry entry. */
+const VALUE_LABEL_KIND: Record<string, LabelKind> = {
+  kind: "interactionKind",
+  channel: "channel",
+  type: "contactType",
+  status: "taskStatus",
+  stage: "pipelineStage",
+  listing_kind: "listingKind",
+};
+
+/** Payload values are raw wire data: ISO stamps and nested objects. */
+function fieldValue(key: string, value: unknown): string {
+  if (typeof value === "string" && ISO_DATE.test(value)) {
+    return formatDateTime(value);
+  }
+  // Enum-shaped values are as raw as the keys were: "whatsapp", "OPEN".
+  if (typeof value === "string" && VALUE_LABEL_KIND[key]) {
+    return label(VALUE_LABEL_KIND[key], value);
+  }
+  if (typeof value === "object" && value !== null) return JSON.stringify(value);
+  return String(value);
+}
 
 export function AgentInlineProposalCard({ proposalId }: Props) {
   const [editing, setEditing] = useState(false);
@@ -117,11 +177,16 @@ export function AgentInlineProposalCard({ proposalId }: Props) {
       }
     >
       <CardHeader className="py-3">
+        {/* One name for the action, not two. The title and the badge were
+            printing the same string side by side; the badge now carries the
+            outcome, which is the thing the title cannot say. */}
         <div className="flex items-center justify-between gap-2">
           <CardTitle className="text-sm">{summary}</CardTitle>
-          <Badge variant={accepted ? "default" : rejected ? "destructive" : "secondary"}>
-            {kindLabel}
-          </Badge>
+          {(accepted || rejected) && (
+            <Badge variant={accepted ? "default" : "destructive"}>
+              {accepted ? "Aceptada" : "Rechazada"}
+            </Badge>
+          )}
         </div>
       </CardHeader>
       <CardContent className="py-2 space-y-2">
@@ -134,12 +199,16 @@ export function AgentInlineProposalCard({ proposalId }: Props) {
         ) : (
           <div className="text-xs text-muted-foreground">
             {Object.entries(proposal.resolved_payload || proposal.payload)
-              .filter(([k]) => k !== "summary_es")
+              .filter(
+                ([k, v]) =>
+                  isShownToHumans(k, v) &&
+                  !echoesTheQuote(v, proposal.evidence?.quote as string | undefined),
+              )
               .slice(0, 4)
               .map(([k, v]) => (
                 <div key={k}>
                   <span className="font-medium">{fieldLabel(k)}:</span>{" "}
-                  <span>{typeof v === "object" ? JSON.stringify(v) : String(v)}</span>
+                  <span>{fieldValue(k, v)}</span>
                 </div>
               ))}
           </div>
