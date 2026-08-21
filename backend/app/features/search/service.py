@@ -161,6 +161,77 @@ def _search_opportunities(tenant_id: UUID, q: str | None, limit: int) -> list[En
     return hits
 
 
+def _search_messages(tenant_id: UUID, q: str | None, limit: int) -> list[EntityHit]:
+    """Find a conversation by something that was said in it.
+
+    Two stores, because WhatsApp and e-mail are still separate stacks: the id
+    returned is the CONVERSATION, not the message, since getting back to the
+    thread is the point and a single message out of context is not useful.
+
+    An empty query returns nothing rather than the newest messages: "everything
+    anyone ever said" is not a useful default and would scan the busiest table
+    in the schema.
+    """
+    if not q or not q.strip():
+        return []
+    needle = q.strip()
+    client = get_supabase_client()
+    hits: list[EntityHit] = []
+    seen: set[str] = set()
+
+    rows = (
+        client.table("client_messages")
+        .select("conversation_id, content, created_at")
+        .eq("tenant_id", str(tenant_id))
+        .ilike("content", f"%{needle}%")
+        .order("created_at", desc=True)
+        .limit(limit)
+        .execute()
+        .data
+        or []
+    )
+    for row in rows:
+        conversation_id = row.get("conversation_id")
+        if not conversation_id or conversation_id in seen:
+            continue
+        seen.add(conversation_id)
+        hits.append(
+            EntityHit(
+                kind=EntityKind.MESSAGE,
+                id=conversation_id,
+                label=(row.get("content") or "")[:80],
+                sub="WhatsApp",
+            )
+        )
+
+    if len(hits) < limit:
+        emails = (
+            client.table("email_messages")
+            .select("thread_id, subject, snippet, sent_at")
+            .eq("tenant_id", str(tenant_id))
+            .or_(f"subject.ilike.%{needle}%,body_text.ilike.%{needle}%")
+            .order("sent_at", desc=True)
+            .limit(limit - len(hits))
+            .execute()
+            .data
+            or []
+        )
+        for row in emails:
+            thread_id = row.get("thread_id")
+            if not thread_id or thread_id in seen:
+                continue
+            seen.add(thread_id)
+            hits.append(
+                EntityHit(
+                    kind=EntityKind.MESSAGE,
+                    id=thread_id,
+                    label=(row.get("subject") or row.get("snippet") or "")[:80],
+                    sub="Correo",
+                )
+            )
+    return hits
+
+
 _SEARCHERS = {
     EntityKind.PROPERTY: _search_properties,
     EntityKind.CONTACT: _search_contacts,
@@ -168,6 +239,7 @@ _SEARCHERS = {
     EntityKind.EVENT: _search_events,
     EntityKind.PROJECT: _search_projects,
     EntityKind.PLACE: _search_places,
+    EntityKind.MESSAGE: _search_messages,
 }
 
 
