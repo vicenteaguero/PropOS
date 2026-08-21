@@ -43,8 +43,12 @@ describe("date formatters", () => {
     // wherever they run — asserting a wall-clock time without pinning the zone
     // passes in Chile and fails on a UTC CI runner.
     expect(formatDateTime(iso)).toMatch(/12-08-2026/);
-    expect(formatDateTime(iso)).toMatch(/2:30/);
+    // 24-hour, and no meridiem: "14:30", never "2:30 p. m.". Chile writes the
+    // former, and the conversation list and message bubbles already did.
+    expect(formatDateTime(iso)).toMatch(/14:30/);
+    expect(formatDateTime(iso)).not.toMatch(/m\./);
     expect(formatShortDateTime(iso)).toMatch(/12-08-26/);
+    expect(formatShortDateTime(iso)).toMatch(/14:30/);
     expect(formatDayMonth(iso)).toBe("12 ago");
     expect(formatDate(iso)).toBe("12-08-2026");
   });
