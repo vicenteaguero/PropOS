@@ -545,9 +545,45 @@
   * {
     @apply border-border outline-ring/50;
   }
+  /* The canvas, painted explicitly.
+   *
+   * A background set only on <body> is *propagated* to the canvas — until the
+   * layout viewport shrinks under it, which is exactly what
+   * `interactive-widget=resizes-content` does when the keyboard opens. In an
+   * installed PWA the strip left over is not painted by anything, so the broker
+   * saw their own iOS home screen through the app while typing. */
+  html {
+    background-color: var(--background);
+    /* And no rubber-band past the edges, which reveals the same thing. */
+    overscroll-behavior-y: none;
+  }
   body {
     @apply bg-background text-foreground;
+    min-height: 100dvh;
   }
+}
+
+/* A surface pinned to the VISUAL viewport rather than the layout one.
+ *
+ * `position: fixed; inset: 0` is measured against the layout viewport, which
+ * iOS does not shrink for the keyboard — it scrolls the visual viewport
+ * instead, so a full-screen panel and everything in it, header included, slides
+ * up out of view the moment an input takes focus. These two custom properties
+ * are published from `visualViewport` by useKeyboardInset; without it they are
+ * unset and this falls back to the ordinary full-screen box. */
+.fixed-vv {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: var(--vv-top, 0px);
+  height: var(--vv-h, 100dvh);
+}
+
+/* Bottom padding for a composer inside a `.fixed-vv` surface. The keyboard is
+ * OUTSIDE that box, so --kb-inset must not be added again; the only inset left
+ * is the home indicator, and only while the keyboard is down. */
+.pb-composer-vv {
+  padding-bottom: calc((1 - var(--kb-open)) * var(--safe-bottom) + 0.5rem);
 }
 
 /* driver.js brand overrides */
