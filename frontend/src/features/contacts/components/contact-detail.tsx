@@ -31,6 +31,7 @@ import { useContact, useDeleteContact, useUpdateContact } from "../hooks/use-con
 import { ContactFormDialog } from "./contact-form-dialog";
 import { ContactOpportunities } from "./contact-opportunities";
 import { ContactSummary } from "./contact-summary";
+import { ContactChannels } from "./contact-channels";
 import { CONTACT_TYPE_LABELS } from "../types";
 import { CONTACT_TYPE_TONES } from "@shared/lib/tones";
 import { initials } from "@shared/utils/format";
@@ -176,20 +177,12 @@ export function ContactDetail({ contactId, onBack, onDeleted }: ContactDetailPro
       {/* Where the relationship stands, before the raw fields. */}
       <ContactSummary contactId={contact.id} role={role} />
 
+      {/* Every way to reach them, not one of each: a second number used to be
+          a second person. */}
+      <ContactChannels contactId={contact.id} />
+
       {/* Detail fields */}
       <div className="mx-[var(--page-x)] mb-5 space-y-2.5 rounded-xl bg-card p-4">
-        {contact.phone && (
-          <div className="flex items-center gap-3 text-sm">
-            <Phone className="size-4 shrink-0 text-muted-foreground" strokeWidth={1.8} />
-            <span className="text-foreground">{contact.phone}</span>
-          </div>
-        )}
-        {contact.email && (
-          <div className="flex items-center gap-3 text-sm">
-            <Mail className="size-4 shrink-0 text-muted-foreground" strokeWidth={1.8} />
-            <span className="truncate text-foreground">{contact.email}</span>
-          </div>
-        )}
         {contact.address && (
           <div className="flex items-center gap-3 text-sm">
             <MapPin className="size-4 shrink-0 text-muted-foreground" strokeWidth={1.8} />
@@ -204,8 +197,8 @@ export function ContactDetail({ contactId, onBack, onDeleted }: ContactDetailPro
             <span className="text-foreground">RUT {contact.rut}</span>
           </div>
         )}
-        {!contact.phone && !contact.email && !contact.address && !contact.rut && (
-          <p className="text-sm text-muted-foreground">Sin datos de contacto.</p>
+        {!contact.address && !contact.rut && (
+          <p className="text-sm text-muted-foreground">Sin dirección ni RUT registrados.</p>
         )}
         <Link
           to={`/${role}/timeline/contacts/${contact.id}`}
