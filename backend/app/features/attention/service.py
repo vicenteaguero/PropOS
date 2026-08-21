@@ -146,7 +146,13 @@ def _unanswered(tenant_id: UUID, now: dt.datetime):
         elif hours >= _FREEFORM_HOURS:
             urgency, reason = Urgency.TODAY, "Requiere plantilla"
         elif hours >= _WINDOW_WARN_HOURS:
-            urgency, reason = Urgency.NOW, f"Quedan {int(_FREEFORM_HOURS - hours)} h de ventana"
+            # Minutes in the last hour. `int()` on the remaining hours floors to
+            # "Quedan 0 h de ventana" for everything under sixty minutes — a
+            # countdown that reads as expired, printed on the single most urgent
+            # row in the queue, where the number is the whole point.
+            left_min = int((_FREEFORM_HOURS - hours) * 60)
+            reason = f"Quedan {left_min} min de ventana" if left_min < 60 else f"Quedan {left_min // 60} h de ventana"
+            urgency = Urgency.NOW
         elif hours >= 4:
             urgency, reason = Urgency.TODAY, "Sin responder"
         else:
