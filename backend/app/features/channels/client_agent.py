@@ -20,6 +20,7 @@ from typing import Any
 
 from app.core.config.settings import settings
 from app.core.logging.logger import get_logger
+from app.core.phone import to_e164
 from app.core.supabase.client import get_supabase_client
 from app.features.notifications.whatsapp.dispatcher import (
     ConsentError,
@@ -268,25 +269,53 @@ def _ensure_contact_from_phone(
     happened to save the number first.
     """
     db = get_supabase_client()
+    e164 = to_e164(phone_e164) or phone_e164
+
+    # Every number the person has, not just the one that happens to sit in the
+    # legacy scalar column. A contact whose second line wrote in used to miss
+    # here and get a whole new contact created for them.
+    linked = (
+        db.table("contact_phones")
+        .select("contact_id")
+        .eq("tenant_id", tenant_id)
+        .eq("e164", e164)
+        .limit(1)
+        .execute()
+        .data
+    )
+    if linked:
+        rows = (
+            db.table("contacts")
+            .select("id, tenant_id, full_name, phone")
+            .eq("tenant_id", tenant_id)
+            .eq("id", linked[0]["contact_id"])
+            .limit(1)
+            .execute()
+            .data
+        )
+        if rows:
+            return rows[0]
+
     rows = (
         db.table("contacts")
         .select("id, tenant_id, full_name, phone")
         .eq("tenant_id", tenant_id)
-        .eq("phone", phone_e164)
+        .eq("phone", e164)
         .limit(1)
         .execute()
         .data
     )
     if rows:
         return rows[0]
+
     inserted = (
         db.table("contacts")
         .insert(
             {
                 "tenant_id": tenant_id,
                 "type": "BUYER",
-                "full_name": (contact_name or phone_e164).strip(),
-                "phone": phone_e164,
+                "full_name": (contact_name or e164).strip(),
+                "phone": e164,
                 "metadata": {"channel_origin": "whatsapp"},
             }
         )

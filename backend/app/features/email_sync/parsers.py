@@ -9,6 +9,8 @@ None. Regexes are covered by tests/features/email_sync/test_parsers.py.
 from __future__ import annotations
 
 import re
+
+from app.core.phone import match_key, to_e164
 from dataclasses import dataclass
 
 LEAD_SUBJECT_PATTERNS = {
@@ -126,32 +128,24 @@ _NAME_NOISE = re.compile(r"^[\s\W_]+|[\s\W_]+$")
 
 
 def normalize_phone(raw: str | None) -> str | None:
-    """Chilean mobile → last 8 digits (drops +56 / leading 9)."""
-    digits = re.sub(r"\D", "", raw or "")
-    if not digits:
-        return None
-    if digits.startswith("56") and len(digits) > 9:
-        digits = digits[2:]
-    return digits[-8:] if len(digits) >= 8 else digits
+    """Chilean mobile → last 8 digits (drops +56 / leading 9).
+
+    Kept as a name because callers import it; the rule itself now lives in
+    `app.core.phone`, which the WhatsApp path uses too. Two implementations of
+    "is this the same number" against one column is what let the same person
+    become two contacts depending on which channel reached us first.
+    """
+    return match_key(raw)
 
 
 def format_cl_phone(raw: str | None) -> str | None:
     """Chilean phone in dialable E.164 form, or None.
 
-    ``normalize_phone`` deliberately throws away the country and mobile
-    prefixes to get a stable match key; the CRM needs the number the broker
-    can actually dial, so keep both.
+    ``normalize_phone`` throws away the country and mobile prefixes to get a
+    stable match key; the CRM needs the number the broker can actually dial, so
+    both exist and both delegate to `app.core.phone`.
     """
-    digits = re.sub(r"\D", "", raw or "")
-    digits = digits.removeprefix("00")
-    if digits.startswith("56") and len(digits) > 9:
-        digits = digits[2:]
-    if len(digits) < 8:
-        return None
-    if len(digits) == 8:
-        # Portal leads are mobiles; an 8-digit number is missing its 9.
-        digits = f"9{digits}"
-    return f"+56{digits[-9:]}"
+    return to_e164(raw)
 
 
 def _clean_name(raw: str | None) -> str | None:
