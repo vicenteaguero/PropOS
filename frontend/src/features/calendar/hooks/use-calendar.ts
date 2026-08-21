@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { editByPrefix, patchById, rollbackAll } from "@shared/lib/optimistic";
 import { calendarApi, type EventInput, type EventPatch } from "../api/calendar-api";
 
 export function useCalendarFeed(from: string, to: string) {
@@ -41,12 +42,20 @@ export function useUpdateEvent() {
     mutationFn: ({ id, body }: { id: string; body: EventPatch }) =>
       calendarApi.updateEvent(id, body),
     // The "calendar" prefix covers both the feed and the single-event cache.
-    onSuccess: () => {
+    // Rescheduling is a drag, so the block has to move under the finger rather
+    // than a round trip later.
+    onMutate: async ({ id, body }) => {
+      await qc.cancelQueries({ queryKey: ["calendar"] });
+      return { snapshots: editByPrefix(qc, ["calendar"], (d: unknown) => patchById(d, id, body)) };
+    },
+    onError: (err, _vars, ctx) => {
+      rollbackAll(qc, ctx?.snapshots);
+      toast.error(err instanceof Error ? err.message : "No se pudo actualizar el evento");
+    },
+    onSettled: () => {
       qc.invalidateQueries({ queryKey: ["calendar"] });
       qc.invalidateQueries({ queryKey: ["tasks"] });
     },
-    onError: (err) =>
-      toast.error(err instanceof Error ? err.message : "No se pudo actualizar el evento"),
   });
 }
 
