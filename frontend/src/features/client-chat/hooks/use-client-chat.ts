@@ -1,15 +1,78 @@
 import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { supabase } from "@core/supabase/client";
 import { clientChatApi } from "../api/client-chat-api";
 import type { ClientMessage, ConversationStatus } from "../types";
 
-export function useConversations(status?: ConversationStatus, archived = false) {
+export function useConversations(
+  status?: ConversationStatus,
+  archived = false,
+  opts: { waitingOn?: "client" | "us" | "nobody"; unidentified?: boolean } = {},
+) {
   return useQuery({
-    queryKey: ["client-chat", "conversations", status ?? "all", archived ? "archived" : "active"],
-    queryFn: () => clientChatApi.listConversations(status, archived),
+    queryKey: [
+      "client-chat",
+      "conversations",
+      status ?? "all",
+      archived ? "archived" : "active",
+      opts.waitingOn ?? "any",
+      opts.unidentified ?? "any",
+    ],
+    queryFn: () => clientChatApi.listConversations(status, archived, opts),
     refetchInterval: 20_000,
     staleTime: 30_000,
+  });
+}
+
+/**
+ * Attach an unidentified thread to a person.
+ *
+ * Invalidates every conversation list: the thread leaves the "Sin identificar"
+ * one and joins the identified one, and showing it in both until a refetch is
+ * how a broker ends up linking the same number twice.
+ */
+export function useLinkConversationContact() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, contactId }: { id: string; contactId: string }) =>
+      clientChatApi.linkContact(id, contactId),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["client-chat", "conversations"] });
+      void qc.invalidateQueries({ queryKey: ["attention"] });
+    },
+    onError: (err) =>
+      toast.error(err instanceof Error ? err.message : "No se pudo vincular la conversación"),
+  });
+}
+
+/** What the thread is about — a property, a deal, or both. */
+export function useConversationTargets(conversationId: string | undefined) {
+  return useQuery({
+    queryKey: ["client-chat", "targets", conversationId ?? ""],
+    queryFn: () => clientChatApi.listTargets(conversationId as string),
+    enabled: !!conversationId,
+    staleTime: 60_000,
+  });
+}
+
+export function useAddConversationTarget(conversationId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (target: Parameters<typeof clientChatApi.addTarget>[1]) =>
+      clientChatApi.addTarget(conversationId, target),
+    onSuccess: () =>
+      void qc.invalidateQueries({ queryKey: ["client-chat", "targets", conversationId] }),
+    onError: (err) => toast.error(err instanceof Error ? err.message : "No se pudo vincular"),
+  });
+}
+
+export function useRemoveConversationTarget(conversationId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (targetId: string) => clientChatApi.removeTarget(conversationId, targetId),
+    onSuccess: () =>
+      void qc.invalidateQueries({ queryKey: ["client-chat", "targets", conversationId] }),
   });
 }
 
