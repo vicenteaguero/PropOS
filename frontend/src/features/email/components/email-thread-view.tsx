@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useImmersive } from "@layouts/immersive";
 import { ArrowLeft, Loader2, Mail, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Pill, type PillTone, RoundButton, FOCUS_RING } from "@shared/ui";
@@ -65,6 +66,10 @@ interface Props {
  * "select a conversation" placeholder (the previous bug).
  */
 export function EmailThreadView({ threadId, onBack }: Props) {
+  // `onBack` is only passed by the phone pane, so it doubles as "this thread is
+  // the whole screen right now" — same contract as MessageThread, so both
+  // channels behave identically once opened.
+  useImmersive(!!onBack);
   const { data: thread, isLoading, error, refetch } = useEmailThread(threadId);
 
   if (isLoading) {
@@ -88,7 +93,7 @@ export function EmailThreadView({ threadId, onBack }: Props) {
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-background">
-      <div className="flex items-center gap-3 border-b border-border px-4 py-3">
+      <div className="flex items-center gap-3 border-b border-border px-4 py-3 pt-[calc(var(--safe-top)+0.75rem)]">
         {onBack && (
           <RoundButton
             tone="ghost"
