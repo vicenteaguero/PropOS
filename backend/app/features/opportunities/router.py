@@ -12,6 +12,7 @@ from app.features.opportunities.schemas import (
     OpportunityUpdate,
     StageHistoryResponse,
 )
+from app.features.opportunities.detail import build_detail
 from app.features.opportunities.service import OpportunityService
 
 router = APIRouter(
@@ -40,6 +41,19 @@ async def list_opportunities(
 @router.get("/{opp_id}", response_model=OpportunityResponse)
 async def get_opportunity(opp_id: UUID, tenant_id: UUID = Depends(get_tenant_id)) -> dict:
     return await OpportunityService.get_opportunity(opp_id, tenant_id)
+
+
+@router.get("/{opp_id}/detail")
+async def get_detail(
+    opp_id: UUID,
+    tenant_id: UUID = Depends(get_tenant_id),
+) -> dict:
+    """The deal, its people, its properties, its history and its file.
+
+    One call because a deal page that fired six is a deal page that renders in
+    six stages. The reads run concurrently off the event loop.
+    """
+    return await build_detail(tenant_id, opp_id)
 
 
 @router.get("/{opp_id}/history", response_model=list[StageHistoryResponse])
