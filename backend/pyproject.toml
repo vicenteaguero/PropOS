@@ -23,6 +23,11 @@ uvicorn = {extras = ["standard"], version = "^0.32"}
 pydantic = {extras = ["email"], version = "^2.9"}
 pydantic-settings = "^2.6"
 supabase = "^2.10"
+# Already present transitively (supabase-auth pulls pyjwt[crypto]), and
+# `core/supabase/auth.py` decodes the token's `exp` to bound its cache entry.
+# Declared explicitly so a resolver change that drops the transitive edge fails
+# here instead of at import time in production.
+pyjwt = "^2.13"
 python-dotenv = "^1.0"
 structlog = "^24.4"
 pywebpush = "^2.0"

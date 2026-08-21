@@ -5,6 +5,7 @@ from uuid import UUID
 from fastapi import HTTPException
 
 from app.core.logging.logger import get_logger
+from app.core.supabase.auth_cache import invalidate_profile
 from app.core.supabase.client import get_supabase_client
 
 TABLE = "tenant_memberships"
@@ -57,6 +58,7 @@ def _sync_profile_snapshot(client, user_id: UUID) -> None:
         # cannot be un-pointed. Deactivating the profile is the way to make the
         # stale snapshot inert — and `get_current_user` now honours that flag.
         client.table(PROFILES).update({"is_active": False}).eq("id", str(user_id)).execute()
+        invalidate_profile(str(user_id))
         logger.info("profile deactivated: no active memberships", event_type="membership", user_id=str(user_id))
         return
 
@@ -67,6 +69,7 @@ def _sync_profile_snapshot(client, user_id: UUID) -> None:
             "admin_scope": match.get("admin_scope") or [],
         }
     ).eq("id", str(user_id)).execute()
+    invalidate_profile(str(user_id))
 
 
 class MembershipService:
@@ -118,6 +121,7 @@ class MembershipService:
             }
         ).eq("id", str(user_id)).execute()
 
+        invalidate_profile(str(user_id))
         profile = client.table("profiles").select("*").eq("id", str(user_id)).single().execute()
         return profile.data
 
@@ -136,6 +140,9 @@ class MembershipService:
             resp = client.table(TABLE).insert(row).execute()
         except Exception as exc:
             raise HTTPException(status_code=400, detail=f"Membership insert failed: {exc}") from exc
+        # A new membership never changes the active one, but it can change what
+        # `get_user_profile` merges in, so the cached copy has to go.
+        invalidate_profile(str(user_id))
         return resp.data[0]
 
     @staticmethod

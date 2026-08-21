@@ -96,6 +96,23 @@ def get_supabase_client() -> Client:
     return scoped if scoped is not None else _shared_client()
 
 
+def has_scoped_client() -> bool:
+    """True when a request-scoped client is in effect.
+
+    Exists for the auth cache. `DevSchemaMiddleware` wraps the WHOLE request —
+    dependency resolution included — in a client bound to another schema, so a
+    cache keyed only by token or user id would serve a `public` profile to a
+    `propos_test` request. Bypassing while a scoped client is active is
+    provably leak-free, where a schema key component would only be leak-free if
+    the key were right.
+
+    Cheap to bypass: the only other `use_client` caller is the agent's audit
+    attribution, which is entered inside a router body long after auth resolved,
+    and `X-Db-Schema` is installed only when APP_ENV is development.
+    """
+    return _scoped_client.get() is not None
+
+
 # Historical entry point: callers (and tests) reset the singleton through the
 # getter, which used to be the `lru_cache`-decorated function itself.
 get_supabase_client.cache_clear = _shared_client.cache_clear  # type: ignore[attr-defined]

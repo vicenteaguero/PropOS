@@ -9,6 +9,7 @@ from fastapi import HTTPException
 from app.core.config.settings import settings
 from app.core.logging.logger import get_logger
 from app.core.rut import normalize_rut, validate_rut
+from app.core.supabase.auth_cache import invalidate_profile
 from app.core.supabase.client import get_supabase_client
 
 PROFILES_TABLE = "profiles"
@@ -450,6 +451,9 @@ class UserService:
         except Exception as exc:
             raise HTTPException(status_code=400, detail=f"disable failed: {exc}") from exc
         client.table(PROFILES_TABLE).update({"is_active": False}).eq("id", str(user_id)).execute()
+        # get_current_user now honours this flag, so a stale cached profile
+        # would keep a disabled account working for the rest of the TTL.
+        invalidate_profile(str(user_id))
         return {"ok": True}
 
     @staticmethod
@@ -460,6 +464,7 @@ class UserService:
         except Exception as exc:
             raise HTTPException(status_code=400, detail=f"enable failed: {exc}") from exc
         client.table(PROFILES_TABLE).update({"is_active": True}).eq("id", str(user_id)).execute()
+        invalidate_profile(str(user_id))
         return {"ok": True}
 
     @staticmethod
