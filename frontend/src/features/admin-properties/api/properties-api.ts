@@ -20,6 +20,24 @@ export interface Property {
   lng: number | null;
   /** Signed `card` derivative of the first photo, or null when there are none. */
   cover_url: string | null;
+  /**
+   * Where each fact came from. A missing key means nobody recorded it.
+   *
+   * Without this every field reads equally true: the 120 m² the owner
+   * mentioned on the phone sits in the same column, rendered the same way, as
+   * the 118.4 on the certificado — and an assistant reading the row states
+   * both with the same confidence.
+   */
+  provenance: Record<string, { src: "verified" | "declared" | "derived"; at?: string }>;
+  building_id: string | null;
+  unit_label: string | null;
+}
+
+/** How sure we are about one field. */
+export type Provenance = "verified" | "declared" | "derived" | "unknown";
+
+export function provenanceOf(property: Property, field: string): Provenance {
+  return property.provenance?.[field]?.src ?? "unknown";
 }
 
 export interface PropertyInput {

@@ -34,6 +34,7 @@ const ROUTES = [
   ["clientes-negocios", "/admin/clientes?tab=negocios"],
   ["clientes-negocio", "/admin/negocios/04e138de-fbfd-5892-9364-16ec4d10bc95"],
   ["clientes-propiedades", "/admin/clientes?tab=propiedades"],
+  ["clientes-propiedad", "/admin/propiedades/50114b89-d1a6-52bc-b965-b7dd064dead5"],
   ["agenda", "/admin/agenda"],
   ["agenda-tareas", "/admin/agenda?tab=tareas"],
   ["notas", "/admin/agenda?tab=notas"],

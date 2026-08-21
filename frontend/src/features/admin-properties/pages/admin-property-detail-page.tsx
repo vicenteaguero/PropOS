@@ -25,6 +25,8 @@ import { PropertyGallery } from "../components/property-gallery";
 import { PropertyLocationMap } from "../components/property-location-map";
 import { usePageTitle } from "@app/page-meta";
 import { formatClp } from "@shared/utils/currency";
+import { provenanceOf } from "../api/properties-api";
+import { PROVENANCE_TITLE, ProvenanceMark } from "../components/provenance-mark";
 import { label } from "@shared/lib/labels";
 import { LISTING_KIND_TONES, tone } from "@shared/lib/tones";
 
@@ -106,11 +108,19 @@ export function AdminPropertyDetailPage() {
   };
   const grants = grantsQ.data ?? [];
 
+  // `field` is what `properties.provenance` is keyed on. Bedrooms and
+  // bathrooms are left out: nobody certifies a bedroom count, and a mark on
+  // every tile would be wallpaper rather than a signal.
   const specs = [
-    { icon: BedDouble, label: "Dormitorios", value: p.bedrooms ?? "—" },
-    { icon: Bath, label: "Baños", value: p.bathrooms ?? "—" },
-    { icon: Maximize, label: "Superficie", value: p.area_sqm != null ? `${p.area_sqm} m²` : "—" },
-    { icon: CalendarClock, label: "Año", value: p.year_built ?? "—" },
+    { icon: BedDouble, label: "Dormitorios", value: p.bedrooms ?? "—", field: null },
+    { icon: Bath, label: "Baños", value: p.bathrooms ?? "—", field: null },
+    {
+      icon: Maximize,
+      label: "Superficie",
+      value: p.area_sqm != null ? `${p.area_sqm} m²` : "—",
+      field: "area_sqm",
+    },
+    { icon: CalendarClock, label: "Año", value: p.year_built ?? "—", field: "year_built" },
   ];
 
   const wazeHref = p.address
@@ -157,9 +167,21 @@ export function AdminPropertyDetailPage() {
             {p.title}
           </h1>
           {p.address && <p className="mt-1 text-[14px] text-muted-foreground">{p.address}</p>}
-          <div className="mt-2 text-[22px] font-bold tracking-tight text-foreground">
-            {formatClp(p.list_price_cents, "Precio a convenir")}
+          <div className="mt-2 flex items-center gap-2">
+            <span className="text-[22px] font-bold tracking-tight text-foreground">
+              {formatClp(p.list_price_cents, "Precio a convenir")}
+            </span>
+            {p.list_price_cents != null && (
+              <ProvenanceMark source={provenanceOf(p, "list_price_cents")} />
+            )}
           </div>
+          {/* Said in words, once, rather than a legend nobody reads: this is
+              the sentence a broker must be able to repeat to a buyer. */}
+          {p.list_price_cents != null && provenanceOf(p, "list_price_cents") !== "verified" && (
+            <p className="mt-1 text-[12px] text-muted-foreground">
+              {PROVENANCE_TITLE[provenanceOf(p, "list_price_cents")]}
+            </p>
+          )}
         </div>
 
         {/* Specs tile */}
@@ -170,7 +192,12 @@ export function AdminPropertyDetailPage() {
               return (
                 <div key={s.label} className="flex flex-col gap-1 bg-card px-4 py-3.5">
                   <Icon className="size-[18px] text-muted-foreground" strokeWidth={1.8} />
-                  <span className="text-base font-semibold text-foreground">{s.value}</span>
+                  <span className="flex items-center gap-1.5 text-base font-semibold text-foreground">
+                    {s.value}
+                    {s.field && s.value !== "—" && (
+                      <ProvenanceMark source={provenanceOf(p, s.field)} />
+                    )}
+                  </span>
                   <span className="text-[11px] text-muted-foreground">{s.label}</span>
                 </div>
               );
