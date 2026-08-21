@@ -1,5 +1,6 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useShellMode } from "@shared/hooks/use-shell-mode";
+import { usePageTitle } from "@app/page-meta";
 import { ArrowLeft, Building2, CheckCircle2, Circle, CircleDashed, User } from "lucide-react";
 import { PageLayout } from "@shared/components/page-layout";
 import { ErrorState, PageSkeleton, Pill, Row, RoundButton, SectionLabel } from "@shared/ui";
@@ -48,6 +49,9 @@ export function DealDetailPage() {
   const role = (user?.role ?? "ADMIN").toLowerCase();
   const { data, isLoading, error, refetch } = useDeal(id);
   const setStage = useSetDealStage(id ?? "");
+  // Names the browser tab and the phone shell's top bar, which was blank here:
+  // `/negocios/:id` is not a nav path, so there was nothing to fall back to.
+  usePageTitle(data?.participants[0]?.full_name);
 
   if (isLoading) return <PageSkeleton variant="detail" />;
   if (error || !data) {
@@ -88,27 +92,40 @@ export function DealDetailPage() {
       </div>
 
       {/* The moves that are legal from here. The server declares them, so the
-          page cannot offer one it is about to refuse. */}
+          page cannot offer one it is about to refuse.
+
+          Captioned, because four bare outline buttons reading "Oferta",
+          "Cerrado", "Perdido" beside a pill that ALSO names a stage read as a
+          filter or as the deal's current state — not as "press this and the
+          deal moves". */}
       {data.allowed_transitions.length > 0 && (
-        <div className="mb-6 flex flex-wrap gap-2 px-[var(--page-x)]">
-          {data.allowed_transitions.map((t) => (
-            <Button
-              key={t.to_stage}
-              size="sm"
-              variant="outline"
-              className="gap-1.5"
-              disabled={setStage.isPending}
-              onClick={() => setStage.mutate(t.to_stage)}
-            >
-              {/* `requires_human` deliberately shows nothing here. It governs
+        <div className="mb-6 px-[var(--page-x)]">
+          <SectionLabel>Mover a</SectionLabel>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {data.allowed_transitions.map((t) => (
+              <Button
+                key={t.to_stage}
+                size="sm"
+                variant="outline"
+                className="gap-1.5"
+                disabled={setStage.isPending}
+                onClick={() => setStage.mutate(t.to_stage)}
+              >
+                <span
+                  aria-hidden
+                  className="size-2 shrink-0 rounded-full"
+                  style={{ background: stageDot(t.to_stage) }}
+                />
+                {/* `requires_human` deliberately shows nothing here. It governs
                   PROPO, not the broker — and this screen is the broker's, so a
                   padlock on the one move only they can make read as "you are
                   not allowed", the exact opposite of what the flag means. The
                   distinction is surfaced where it is actionable: Configuración
                   → Clientes → Pipelines. */}
-              {STAGE_LABELS[t.to_stage] ?? t.to_stage}
-            </Button>
-          ))}
+                {STAGE_LABELS[t.to_stage] ?? t.to_stage}
+              </Button>
+            ))}
+          </div>
         </div>
       )}
 
