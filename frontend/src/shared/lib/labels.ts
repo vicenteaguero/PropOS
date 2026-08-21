@@ -39,7 +39,44 @@ export type LabelKind =
   | "uploadStatus"
   | "interactionKind"
   | "channel"
-  | "source";
+  | "source"
+  | "agentAction"
+  | "autonomyLevel"
+  | "rejectReason"
+  | "evidenceSource"
+  | "dealPropertyRole"
+  | "participantRole"
+  | "checklistStatus";
+
+/** `opportunity_properties.role` — a buyer saw three and offered on one. */
+export const DEAL_PROPERTY_ROLE_LABELS: Record<string, string> = {
+  interest: "Le interesa",
+  offered: "Ofertó",
+  closed: "Cerrada",
+  discarded: "Descartada",
+};
+
+/** `opportunity_participants.role`. Free text in the database, so unknown
+ *  values fall through to themselves rather than being hidden. */
+export const PARTICIPANT_ROLE_LABELS: Record<string, string> = {
+  comprador: "Comprador",
+  vendedor: "Vendedor",
+  propietario: "Propietario",
+  cónyuge: "Cónyuge",
+  conyuge: "Cónyuge",
+  "corredor contraparte": "Corredor contraparte",
+  abogado: "Abogado",
+  banco: "Ejecutivo del banco",
+};
+
+/** `opportunity_checklist_items.status`. */
+export const CHECKLIST_STATUS_LABELS: Record<string, string> = {
+  pending: "Pendiente",
+  in_progress: "En curso",
+  done: "Listo",
+  blocked: "Bloqueado",
+  na: "No aplica",
+};
 
 /** `tasks-api.ts` → `TaskStatus`. */
 export const TASK_STATUS_LABELS: Record<string, string> = {
@@ -240,6 +277,50 @@ export const SOURCE_LABELS: Record<string, string> = {
   system: "Sistema",
 };
 
+/**
+ * `agent/intent_registry.py` → `REGISTRY` keys, i.e. every action Propo knows
+ * how to take. Also used for the proposal cards, whose `kind` is the same token
+ * with a `propose_` prefix — see `agentActionLabel`.
+ */
+export const AGENT_ACTION_LABELS: Record<string, string> = {
+  add_note: "Agregar nota",
+  attach_photos_to_property: "Adjuntar fotos a una propiedad",
+  create_campaign: "Crear campaña",
+  create_document_from_photos: "Crear documento con fotos",
+  create_event: "Agendar evento",
+  create_organization: "Crear organización",
+  create_person: "Crear persona",
+  create_property: "Crear propiedad",
+  create_task: "Crear tarea",
+  log_interaction: "Registrar interacción",
+  log_transaction: "Registrar movimiento",
+  update_person: "Actualizar persona",
+};
+
+/** `agent/policies.py` → `AutonomyLevel`. */
+export const AUTONOMY_LEVEL_LABELS: Record<string, string> = {
+  observe: "Observa",
+  suggest: "Sugiere",
+  execute: "Ejecuta",
+};
+
+/** `pending/schemas.py` → `RejectReason`. Already Spanish on the wire. */
+export const REJECT_REASON_LABELS: Record<string, string> = {
+  dato_incorrecto: "Dato incorrecto",
+  entidad_equivocada: "Persona o propiedad equivocada",
+  no_corresponde: "No corresponde",
+  duplicado: "Duplicado",
+  otro: "Otro",
+};
+
+/** `pending_proposals.evidence.source` — where the quote was captured. */
+export const EVIDENCE_SOURCE_LABELS: Record<string, string> = {
+  whatsapp: "WhatsApp",
+  email: "Correo",
+  voice: "Nota de voz",
+  chat: "Chat",
+};
+
 const LABEL_MAPS: Record<LabelKind, Record<string, string>> = {
   taskStatus: TASK_STATUS_LABELS,
   pipelineStage: PIPELINE_STAGE_LABELS,
@@ -261,6 +342,13 @@ const LABEL_MAPS: Record<LabelKind, Record<string, string>> = {
   interactionKind: INTERACTION_KIND_LABELS_SHARED,
   channel: CHANNEL_LABELS,
   source: SOURCE_LABELS,
+  dealPropertyRole: DEAL_PROPERTY_ROLE_LABELS,
+  participantRole: PARTICIPANT_ROLE_LABELS,
+  checklistStatus: CHECKLIST_STATUS_LABELS,
+  agentAction: AGENT_ACTION_LABELS,
+  autonomyLevel: AUTONOMY_LEVEL_LABELS,
+  rejectReason: REJECT_REASON_LABELS,
+  evidenceSource: EVIDENCE_SOURCE_LABELS,
 };
 
 /** Placeholder for null/empty values, matching the em-dash used elsewhere. */
@@ -290,4 +378,18 @@ export function label(kind: LabelKind, value: string | null | undefined): string
  */
 export function labelAll(kind: LabelKind, values: readonly string[]): string[] {
   return values.map((v) => label(kind, v));
+}
+
+/**
+ * Translates a Propo action, accepting either form it appears in.
+ *
+ * The autonomy settings speak `action_kind` (`create_person`) while a queued
+ * proposal's `kind` carries the `propose_` prefix the dispatcher adds
+ * (`propose_create_person`). They name the same action, so one map serves both
+ * and the two screens cannot drift apart — which is exactly what happened while
+ * the proposal card kept a private copy of this list.
+ */
+export function agentActionLabel(kind: string | null | undefined): string {
+  if (!kind) return EMPTY;
+  return label("agentAction", kind.startsWith("propose_") ? kind.slice("propose_".length) : kind);
 }

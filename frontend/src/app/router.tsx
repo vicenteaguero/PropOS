@@ -107,6 +107,11 @@ const PrivacyPage = lazy(() =>
 const SettingsPage = lazy(() =>
   import("@features/settings/pages/settings-page").then((m) => ({ default: m.SettingsPage })),
 );
+const AgentPoliciesPage = lazy(() =>
+  import("@features/settings/pages/agent-policies-page").then((m) => ({
+    default: m.AgentPoliciesPage,
+  })),
+);
 const SharePublicPage = lazy(() =>
   import("@features/documents/pages/share-public-page").then((m) => ({
     default: m.SharePublicPage,
@@ -123,6 +128,9 @@ const WorkflowsPage = lazy(() =>
 
 // Section shells. Each hosts the former sibling pages as tabs; see
 // shared/ui/section-tabs.tsx for why the tab lives in a query param.
+const DealDetailPage = lazy(() =>
+  import("@features/deals/pages/deal-detail-page").then((m) => ({ default: m.DealDetailPage })),
+);
 const ClientsSectionPage = lazy(() =>
   import("@features/sections/pages/clients-section-page").then((m) => ({
     default: m.ClientsSectionPage,
@@ -256,6 +264,14 @@ export function AppRouter() {
                     }
                   />
                   <Route path="propiedades/:id" element={<AdminPropertyDetailPage />} />
+                  <Route
+                    path="negocios/:id"
+                    element={
+                      <ProtectedRoute requiredScope="crm">
+                        <DealDetailPage />
+                      </ProtectedRoute>
+                    }
+                  />
 
                   {/* Every path this section has ever had, from one table so
                       the test can assert against the real router rather than a
@@ -326,6 +342,9 @@ export function AppRouter() {
               />
               <Route path="timeline/:table/:id" element={<EntityTimelinePage />} />
               {role === "ADMIN" && <Route path="settings" element={<SettingsPage />} />}
+              {/* What Propo may do without a human. Its own page under
+                  Configuración; the backend gates it on ADMIN too. */}
+              {role === "ADMIN" && <Route path="settings/propo" element={<AgentPoliciesPage />} />}
 
               {role === "ADMIN" && (
                 <>

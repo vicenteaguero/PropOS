@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useProperties } from "@features/documents/hooks/use-entities";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AppShellScroll, ListCapNotice, ListShell } from "@shared/ui";
 import { toast } from "sonner";
+import { useAuth } from "@shared/hooks/use-auth";
 import { useContacts } from "@features/contacts/hooks/use-contacts";
 import {
   useCreateOpportunity,
@@ -29,11 +31,15 @@ export function OpportunitiesPage() {
   const create = useCreateOpportunity();
   const update = useUpdateOpportunity();
 
+  // Create only. Editing moved to the deal's own page, which is the only
+  // surface with room for its people, its properties and its file.
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<Opportunity | undefined>();
   const [search, setSearch] = useState("");
 
   const properties = useProperties();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const role = (user?.role ?? "ADMIN").toLowerCase();
 
   const nameMap = useMemo(() => {
     const m = new Map<string, string>();
@@ -77,10 +83,7 @@ export function OpportunitiesPage() {
     toast("Oportunidad marcada como perdida");
   };
 
-  const openNew = () => {
-    setEditing(undefined);
-    setDialogOpen(true);
-  };
+  const openNew = () => setDialogOpen(true);
 
   return (
     <AppShellScroll>
@@ -121,10 +124,10 @@ export function OpportunitiesPage() {
             onMove={move}
             onWon={won}
             onLost={lost}
-            onEdit={(opp) => {
-              setEditing(opp);
-              setDialogOpen(true);
-            }}
+            // The card opens the deal's own page rather than a modal: a
+            // modal has nowhere to put participants, the properties it
+            // touches, or the file it becomes after the handshake.
+            onEdit={(opp) => navigate(`/${role}/negocios/${opp.id}`)}
           />
         </div>
       </ListShell>
@@ -132,16 +135,10 @@ export function OpportunitiesPage() {
       <OpportunityFormDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        opportunity={editing}
-        pending={create.isPending || update.isPending}
+        pending={create.isPending}
         onSubmit={async (input) => {
-          if (editing) {
-            await update.mutateAsync({ id: editing.id, body: input });
-            toast.success("Oportunidad actualizada");
-          } else {
-            await create.mutateAsync(input);
-            toast.success("Oportunidad creada");
-          }
+          await create.mutateAsync(input);
+          toast.success("Negocio creado");
         }}
       />
     </AppShellScroll>
