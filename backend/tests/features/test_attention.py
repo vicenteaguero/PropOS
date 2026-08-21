@@ -27,26 +27,26 @@ class _StubClient:
     def __init__(self, rows: list[dict]):
         self._rows = rows
 
-    def table(self, _name: str) -> "_StubClient":
+    def table(self, _name: str) -> _StubClient:
         return self
 
-    def select(self, *_a, **_k) -> "_StubClient":
+    def select(self, *_a, **_k) -> _StubClient:
         return self
 
-    def eq(self, *_a, **_k) -> "_StubClient":
+    def eq(self, *_a, **_k) -> _StubClient:
         return self
 
-    def neq(self, *_a, **_k) -> "_StubClient":
+    def neq(self, *_a, **_k) -> _StubClient:
         return self
 
-    def is_(self, *_a, **_k) -> "_StubClient":
+    def is_(self, *_a, **_k) -> _StubClient:
         return self
 
-    def in_(self, _col, values) -> "_StubClient":
+    def in_(self, _col, values) -> _StubClient:
         self.in_values = values
         return self
 
-    def limit(self, *_a, **_k) -> "_StubClient":
+    def limit(self, *_a, **_k) -> _StubClient:
         return self
 
     def execute(self):
