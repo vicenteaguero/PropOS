@@ -167,6 +167,7 @@ def dispatch(
     session_id: UUID,
     evidence: dict[str, Any] | None = None,
     message_id: str | None = None,
+    force_level: AutonomyLevel | None = None,
 ) -> dict[str, Any]:
     """Run one intent. Returns a uniform shape consumed by ``chat.run_chat_turn``::
 
@@ -235,7 +236,12 @@ def dispatch(
     # in this file. `observe` records the intent and stops; `execute` writes the
     # domain row; `suggest` — the default for anything touching a person, a
     # deal, money or the outside world — queues a proposal for a human.
-    level = level_for(tenant_id, intent)
+    # `force_level` exists for one caller: extraction from an INBOUND CLIENT
+    # message. The tenant's policy governs what the broker's own instructions
+    # may do unattended; a message from outside the company is not an
+    # instruction, and "agenda una visita mañana" from a stranger must not
+    # become a calendar entry because a model found an intent in it.
+    level = force_level or level_for(tenant_id, intent)
 
     if level is AutonomyLevel.OBSERVE:
         logger.info("agent_observe_only", event_type="policy", intent=intent)
