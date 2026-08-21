@@ -8,17 +8,22 @@ import { propertiesApi } from "../api/properties-api";
 
 /** Building attributes worth naming, in the order a broker would say them. */
 const SHARED_LABELS: Record<string, string> = {
-  gastos_comunes: "Gastos comunes",
-  amenities: "Amenidades",
+  gastos_comunes_base_clp: "Gastos comunes",
+  amenidades: "Amenidades",
+  administracion: "Administración",
+  conserjeria: "Conserjería",
   bodegas: "Bodegas",
   estacionamientos: "Estacionamientos",
-  conserjeria: "Conserjería",
 };
 
-function sharedValue(key: string, value: unknown): string {
-  if (Array.isArray(value)) return value.join(" · ");
-  if (typeof value === "number" && key === "gastos_comunes") return formatClp(value * 100);
-  return String(value);
+/** One entry per pill. An array becomes one pill per item — joined into a
+ *  single string it ran past the edge of the card and clipped mid-word. */
+function sharedPills(key: string, value: unknown): string[] {
+  if (Array.isArray(value)) return value.map(String);
+  if (typeof value === "number" && key.endsWith("_clp")) {
+    return [`${SHARED_LABELS[key] ?? key}: ${formatClp(value * 100)}`];
+  }
+  return [`${SHARED_LABELS[key] ?? key}: ${String(value)}`];
 }
 
 /**
@@ -59,11 +64,13 @@ export function BuildingUnits({ propertyId, role }: { propertyId: string; role: 
             )}
             {shared.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-1.5">
-                {shared.map(([k, v]) => (
-                  <Pill key={k} tone="neutral">
-                    {SHARED_LABELS[k] ?? k}: {sharedValue(k, v)}
-                  </Pill>
-                ))}
+                {shared.flatMap(([k, v]) =>
+                  sharedPills(k, v).map((text) => (
+                    <Pill key={`${k}:${text}`} tone="neutral">
+                      {text}
+                    </Pill>
+                  )),
+                )}
               </div>
             )}
           </div>
@@ -86,9 +93,10 @@ export function BuildingUnits({ propertyId, role }: { propertyId: string; role: 
                       {u.unit_label}
                     </span>
                   )}
-                  <span className="min-w-0 flex-1 truncate text-[13px] text-foreground">
+                  <span className="hidden min-w-0 flex-1 truncate text-[13px] text-foreground sm:block">
                     {u.title}
                   </span>
+                  <span className="flex-1 sm:hidden" />
                   {u.area_sqm != null && (
                     <span className="shrink-0 text-[12px] tabular-nums text-muted-foreground">
                       {u.area_sqm} m²

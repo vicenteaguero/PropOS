@@ -207,7 +207,11 @@ export function AdminPropertyDetailPage() {
         </div>
 
         {/* Otras unidades del mismo edificio. Nada si es una casa suelta. */}
-        <div className="px-5 pt-5 lg:col-start-1 lg:px-0">
+        {/* Left column, full width. The narrow right rail truncated every unit
+            title to "Departamento 1D/1B …", which defeats the comparison this
+            section exists for. min-w-0 because a grid item otherwise takes its
+            min-content width and pushes the whole row past the viewport. */}
+        <div className="min-w-0 px-5 pt-5 lg:col-start-1 lg:px-0">
           <BuildingUnits propertyId={p.id} role={role} />
         </div>
 
