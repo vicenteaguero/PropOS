@@ -64,30 +64,39 @@ interface FunnelRow {
   opp_count: number;
 }
 
+/** Mirrors `GET /v1/analytics/dashboard`. */
+interface AnalyticsDashboard {
+  revenue_monthly: RevenueRow[];
+  funnel_monthly: FunnelRow[];
+  ad_roi: AdRoiRow[];
+  time_on_market: unknown[];
+  person_activity: unknown[];
+  pipeline: PipelineRow[];
+  pending: PendingCount;
+}
+
 export function AnalyticsPage() {
   const queryClient = useQueryClient();
   const agentName = useAgentName();
 
-  const revenue = useQuery({
-    queryKey: ["analytics", "revenue"],
-    queryFn: () => apiRequest<RevenueRow[]>("/v1/analytics/revenue-monthly"),
+  // One request, not five. Each of these used to be its own `useQuery`, so
+  // opening the page fired five HTTP calls that each re-ran the whole
+  // per-request auth chain before touching a materialised view. They are read
+  // together and drawn together, so they travel together; the backend runs them
+  // concurrently on worker threads.
+  const dashboard = useQuery({
+    queryKey: ["analytics", "dashboard"],
+    queryFn: () => apiRequest<AnalyticsDashboard>("/v1/analytics/dashboard"),
   });
-  const pending = useQuery({
-    queryKey: ["analytics", "pending"],
-    queryFn: () => apiRequest<PendingCount>("/v1/analytics/pending-count"),
-  });
-  const pipeline = useQuery({
-    queryKey: ["analytics", "pipeline"],
-    queryFn: () => apiRequest<PipelineRow[]>("/v1/analytics/pipeline"),
-  });
-  const adRoi = useQuery({
-    queryKey: ["analytics", "ad-roi"],
-    queryFn: () => apiRequest<AdRoiRow[]>("/v1/analytics/ad-roi"),
-  });
-  const funnel = useQuery({
-    queryKey: ["analytics", "funnel"],
-    queryFn: () => apiRequest<FunnelRow[]>("/v1/analytics/funnel-monthly"),
-  });
+
+  // The panels below still each want a query-shaped object (`data`,
+  // `isPending`, `isError`), and they all share the one request's status.
+  const slice = <T,>(data: T | undefined) => ({ ...dashboard, data });
+  const revenue = slice<RevenueRow[]>(dashboard.data?.revenue_monthly);
+  const pending = slice<PendingCount>(dashboard.data?.pending);
+  const pipeline = slice<PipelineRow[]>(dashboard.data?.pipeline);
+  const adRoi = slice<AdRoiRow[]>(dashboard.data?.ad_roi);
+  const funnel = slice<FunnelRow[]>(dashboard.data?.funnel_monthly);
 
   const refresh = useMutation({
     mutationFn: () => apiRequest<{ ok: boolean }>("/v1/analytics/refresh", { method: "POST" }),

@@ -83,24 +83,27 @@ class TestSummarizeByCurrency:
         assert summarize_by_currency([]) == {}
 
 
-def _builder_returning(rows: list[dict]) -> MagicMock:
-    builder = MagicMock()
-    for method in ("select", "eq", "is_", "gte", "lt", "order", "range", "limit"):
-        getattr(builder, method).return_value = builder
-    builder.execute.return_value = MagicMock(data=rows)
-    return builder
+def _rpc_returning(rows: list[dict]) -> MagicMock:
+    """Stub `client.rpc(name, params).execute()`.
+
+    The rows it returns are already grouped by (direction, status, currency),
+    which is what `finance_summary_totals` gives back — the summariser adds up
+    six buckets now, not every transaction in the tenant.
+    """
+    rpc = MagicMock()
+    rpc.return_value.execute.return_value = MagicMock(data=rows)
+    return rpc
 
 
 @pytest.mark.asyncio
 @patch("app.features.finance.service.get_supabase_client")
 async def test_summary_keeps_flat_keys_on_clp_and_exposes_other_currencies(mock_client):
-    builder = _builder_returning(
+    mock_client.return_value.rpc = _rpc_returning(
         [
             {"direction": "IN", "status": "COMPLETED", "amount_cents": 1_000_00, "currency": "CLP"},
             {"direction": "IN", "status": "COMPLETED", "amount_cents": 25_00, "currency": "UF"},
         ]
     )
-    mock_client.return_value.table.return_value = builder
 
     out = await FinanceService.summary(TENANT_ID)
 
@@ -113,19 +116,20 @@ async def test_summary_keeps_flat_keys_on_clp_and_exposes_other_currencies(mock_
 @pytest.mark.asyncio
 @patch("app.features.finance.service.get_supabase_client")
 async def test_summary_month_filter_uses_santiago_bounds(mock_client):
-    builder = _builder_returning([])
-    mock_client.return_value.table.return_value = builder
+    rpc = _rpc_returning([])
+    mock_client.return_value.rpc = rpc
 
     await FinanceService.summary(TENANT_ID, "2026-08")
 
-    builder.gte.assert_called_once_with("occurred_at", "2026-08-01T00:00:00-04:00")
-    builder.lt.assert_called_once_with("occurred_at", "2026-09-01T00:00:00-04:00")
+    _, params = rpc.call_args[0]
+    assert params["p_from"] == "2026-08-01T00:00:00-04:00"
+    assert params["p_to"] == "2026-09-01T00:00:00-04:00"
 
 
 @pytest.mark.asyncio
 @patch("app.features.finance.service.get_supabase_client")
 async def test_summary_without_rows_returns_zeroed_totals(mock_client):
-    mock_client.return_value.table.return_value = _builder_returning([])
+    mock_client.return_value.rpc = _rpc_returning([])
 
     out = await FinanceService.summary(TENANT_ID)
 
@@ -134,56 +138,23 @@ async def test_summary_without_rows_returns_zeroed_totals(mock_client):
     assert out["by_currency"] == {}
 
 
-class TestPagedScan:
-    def test_walks_pages_until_short_page(self):
-        from app.features.finance.service import PAGE_SIZE, _fetch_all
-
-        pages = [
-            [{"direction": "IN", "status": "COMPLETED", "amount_cents": 1, "currency": "CLP"}] * PAGE_SIZE,
-            [{"direction": "IN", "status": "COMPLETED", "amount_cents": 1, "currency": "CLP"}] * 7,
-        ]
-        calls: list[tuple[int, int]] = []
-
-        def make_builder():
-            builder = MagicMock()
-
-            def _range(start, end):
-                calls.append((start, end))
-                builder.execute.return_value = MagicMock(data=pages[len(calls) - 1])
-                return builder
-
-            builder.range.side_effect = _range
-            return builder
-
-        rows = _fetch_all(make_builder)
-
-        assert len(rows) == PAGE_SIZE + 7
-        assert calls == [(0, PAGE_SIZE - 1), (PAGE_SIZE, 2 * PAGE_SIZE - 1)]
-
-    def test_stops_at_max_pages(self):
-        from app.features.finance.service import MAX_PAGES, PAGE_SIZE, _fetch_all
-
-        full_page = [{"direction": "IN", "status": "COMPLETED", "amount_cents": 1, "currency": "CLP"}] * PAGE_SIZE
-
-        def make_builder():
-            builder = MagicMock()
-            builder.range.return_value = builder
-            builder.execute.return_value = MagicMock(data=full_page)
-            return builder
-
-        rows = _fetch_all(make_builder)
-
-        assert len(rows) == MAX_PAGES * PAGE_SIZE
-
-
 @pytest.mark.asyncio
 @patch("app.features.finance.service.get_supabase_client")
-async def test_summary_requests_a_bounded_range(mock_client):
-    from app.features.finance.service import PAGE_SIZE
+async def test_summary_asks_the_database_to_aggregate(mock_client):
+    """The paging loop this replaced is gone, and so is the reason for it.
 
-    builder = _builder_returning([])
-    mock_client.return_value.table.return_value = builder
+    `_fetch_all` walked `transactions` a thousand rows at a time because an
+    unbounded select is silently truncated at db-max-rows, which would have
+    produced a plausible but incomplete total. Aggregating in SQL removes the
+    failure mode rather than working around it: there is no page to truncate.
+    """
+    rpc = _rpc_returning([])
+    mock_client.return_value.rpc = rpc
 
     await FinanceService.summary(TENANT_ID)
 
-    builder.range.assert_called_once_with(0, PAGE_SIZE - 1)
+    rpc.assert_called_once_with(
+        "finance_summary_totals",
+        {"p_tenant_id": TENANT_ID, "p_from": None, "p_to": None},
+    )
+    mock_client.return_value.table.assert_not_called()

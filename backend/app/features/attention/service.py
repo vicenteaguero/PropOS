@@ -55,20 +55,34 @@ def _client():
     return get_thread_client()
 
 
-def _lookup(table: str, tenant_id: UUID, select: str):
-    """Name/title map for the whole tenant. Wider than a source scan: a single
-    stale contact missing from the map turns a row into "Sin nombre"."""
-    return (
+def _labels(table: str, tenant_id: UUID, select: str, ids: list[str]) -> dict[str, str]:
+    """Resolve exactly the ids the queue references, and nothing else.
+
+    This used to read the tenant's WHOLE contacts and properties tables — up to
+    `_LOOKUP_LIMIT` rows each — before any source had run, purely so a title
+    could say a name instead of an id. On a tenant of a few thousand people
+    that is megabytes of JSON per open of the home screen, to label perhaps
+    thirty rows. `contacts` alone showed 261k tuples read across 1,071
+    sequential scans in five days, which is that map, fetched over and over.
+
+    Resolving after the fact costs one extra wave but reads ~30 rows.
+    """
+    if not ids:
+        return {}
+    key, label = select.split(",", 1)
+    rows = (
         _client()
         .table(table)
         .select(select)
         .eq("tenant_id", str(tenant_id))
+        .in_(key, ids)
         .is_("deleted_at", "null")
         .limit(_LOOKUP_LIMIT)
         .execute()
         .data
         or []
     )
+    return {row[key]: row[label] for row in rows if row.get(label)}
 
 
 def _parse(value: str | None) -> dt.datetime | None:
@@ -96,7 +110,7 @@ def _humanize(delta: dt.timedelta) -> str:
     return f"hace {months} mes{'es' if months != 1 else ''}"
 
 
-def _unanswered(tenant_id: UUID, now: dt.datetime, names: dict[str, str], props: dict[str, str]):
+def _unanswered(tenant_id: UUID, now: dt.datetime):
     rows = (
         _client()
         .table("client_conversations")
@@ -145,8 +159,8 @@ def _unanswered(tenant_id: UUID, now: dt.datetime, names: dict[str, str], props:
             id=f"unanswered:{row['id']}",
             kind=AttentionKind.UNANSWERED,
             urgency=urgency,
-            title=(names.get(contact_id) if contact_id else None) or row.get("external_phone_e164") or "Sin nombre",
-            subtitle=props.get(property_id) if property_id else None,
+            title=row.get("external_phone_e164") or "Sin nombre",
+            subtitle=None,
             reason=reason,
             at=inbound,
             deadline=inbound + dt.timedelta(hours=_FREEFORM_HOURS),
@@ -156,7 +170,7 @@ def _unanswered(tenant_id: UUID, now: dt.datetime, names: dict[str, str], props:
         )
 
 
-def _email_waiting(tenant_id: UUID, now: dt.datetime, names: dict[str, str]):
+def _email_waiting(tenant_id: UUID, now: dt.datetime):
     """Open e-mail threads where the counterpart spoke last.
 
     This used to batch-read `email_messages` to work out the direction of the
@@ -205,10 +219,7 @@ def _email_waiting(tenant_id: UUID, now: dt.datetime, names: dict[str, str]):
             id=f"{kind.value}:{row['id']}",
             kind=kind,
             urgency=urgency,
-            title=(names.get(contact_id) if contact_id else None)
-            or row.get("counterpart_name")
-            or row.get("counterpart_email")
-            or "Sin remitente",
+            title=row.get("counterpart_name") or row.get("counterpart_email") or "Sin remitente",
             subtitle=row.get("subject"),
             reason=reason,
             at=at,
@@ -220,7 +231,7 @@ def _email_waiting(tenant_id: UUID, now: dt.datetime, names: dict[str, str]):
         )
 
 
-def _visits(tenant_id: UUID, now: dt.datetime, names: dict[str, str], props: dict[str, str]):
+def _visits(tenant_id: UUID, now: dt.datetime):
     horizon = now + dt.timedelta(hours=36)
     rows = (
         _client()
@@ -256,8 +267,8 @@ def _visits(tenant_id: UUID, now: dt.datetime, names: dict[str, str], props: dic
             id=f"visit:{row['id']}",
             kind=AttentionKind.VISIT,
             urgency=urgency,
-            title=(names.get(contact_id) if contact_id else None) or row.get("title") or "Sin contacto",
-            subtitle=(props.get(property_id) if property_id else None) or row.get("location"),
+            title=row.get("title") or "Sin contacto",
+            subtitle=row.get("location"),
             reason=f"{label} {'hoy' if at.date() == today else 'mañana'} a las {when}",
             at=at,
             deadline=at,
@@ -267,7 +278,7 @@ def _visits(tenant_id: UUID, now: dt.datetime, names: dict[str, str], props: dic
         )
 
 
-def _tasks(tenant_id: UUID, now: dt.datetime, listed_events: set[str], props: dict[str, str]):
+def _tasks(tenant_id: UUID, now: dt.datetime, listed_events: set[str]):
     rows = (
         _client()
         .table("tasks")
@@ -294,7 +305,10 @@ def _tasks(tenant_id: UUID, now: dt.datetime, listed_events: set[str], props: di
         if any(event_id in listed_events for event_id in related_events):
             continue
         related_properties = related.get("properties") or [] if isinstance(related, dict) else []
-        property_id = next((pid for pid in related_properties if pid in props), None)
+        # Was "first related property that exists in the tenant map"; without
+        # the whole-tenant map, take the first and let _resolve_labels decide
+        # whether it names anything.
+        property_id = related_properties[0] if related_properties else None
         late = now - due
         # Same abandonment rule as an unanswered thread: something two months
         # past due is a backlog item, not an emergency, and letting it sit in
@@ -311,7 +325,7 @@ def _tasks(tenant_id: UUID, now: dt.datetime, listed_events: set[str], props: di
             kind=AttentionKind.TASK,
             urgency=urgency,
             title=row.get("title") or "Tarea sin título",
-            subtitle=props.get(property_id) if property_id else None,
+            subtitle=None,
             reason=reason,
             at=due,
             deadline=due,
@@ -320,7 +334,7 @@ def _tasks(tenant_id: UUID, now: dt.datetime, listed_events: set[str], props: di
         )
 
 
-def _stalled(tenant_id: UUID, now: dt.datetime, names: dict[str, str], props: dict[str, str]):
+def _stalled(tenant_id: UUID, now: dt.datetime):
     cutoff = now - dt.timedelta(days=_STALL_DAYS)
     rows = (
         _client()
@@ -347,8 +361,8 @@ def _stalled(tenant_id: UUID, now: dt.datetime, names: dict[str, str], props: di
             id=f"stalled:{row['id']}",
             kind=AttentionKind.STALLED,
             urgency=urgency,
-            title=(names.get(person_id) if person_id else None) or "Negocio sin contacto",
-            subtitle=props.get(property_id) if property_id else None,
+            title="Negocio sin contacto",
+            subtitle=None,
             reason=f"Sin movimiento {_humanize(age)}",
             at=touched,
             contact_id=person_id,
@@ -388,6 +402,31 @@ async def _gather(*calls: Callable[[], Any]) -> list[Any]:
     return list(await asyncio.gather(*(asyncio.to_thread(call) for call in calls)))
 
 
+async def _resolve_labels(items: list[AttentionItem], tenant_id: UUID) -> None:
+    """Name the people and properties the queue points at, in place.
+
+    A person's name always wins the title, and a property's title always wins
+    the subtitle — the same precedence the sources used to apply themselves
+    while holding a map of the whole tenant. Anything that does not resolve
+    keeps the fallback the row carried (a phone number, an e-mail address, the
+    event's own title), which is what the map produced on a miss anyway.
+    """
+    contact_ids = sorted({item.contact_id for item in items if item.contact_id})
+    property_ids = sorted({item.property_id for item in items if item.property_id})
+    if not contact_ids and not property_ids:
+        return
+
+    names, props = await _gather(
+        lambda: _labels("contacts", tenant_id, "id,full_name", contact_ids),
+        lambda: _labels("properties", tenant_id, "id,title", property_ids),
+    )
+    for item in items:
+        if item.contact_id and (name := names.get(item.contact_id)):
+            item.title = name
+        if item.property_id and (title := props.get(item.property_id)):
+            item.subtitle = title
+
+
 async def build_feed(
     tenant_id: UUID,
     limit: int,
@@ -403,27 +442,25 @@ async def build_feed(
     """
     now = now or dt.datetime.now(dt.UTC)
 
-    contact_rows, property_rows = await _gather(
-        lambda: _lookup("contacts", tenant_id, "id,full_name"),
-        lambda: _lookup("properties", tenant_id, "id,title"),
-    )
-    names = {row["id"]: row["full_name"] for row in contact_rows if row.get("full_name")}
-    props = {row["id"]: row["title"] for row in property_rows if row.get("title")}
-
+    # The four independent sources go first and at the same time. The wave that
+    # used to precede them — reading the tenant's entire contacts and properties
+    # tables to build a name map — is gone; labels are resolved at the end, for
+    # the handful of ids the queue actually references.
     unanswered, emails, visits, stalled = await _gather(
-        lambda: list(_unanswered(tenant_id, now, names, props)),
-        lambda: list(_email_waiting(tenant_id, now, names)),
-        lambda: list(_visits(tenant_id, now, names, props)),
-        lambda: list(_stalled(tenant_id, now, names, props)),
+        lambda: list(_unanswered(tenant_id, now)),
+        lambda: list(_email_waiting(tenant_id, now)),
+        lambda: list(_visits(tenant_id, now)),
+        lambda: list(_stalled(tenant_id, now)),
     )
 
-    # Tasks come last because they are deduplicated against the visits already
+    # Tasks come after because they are deduplicated against the visits already
     # listed: the seeded "Preparar: Visita — …" task and the visit itself are
     # the same appointment.
     listed_events = {item.event_id for item in visits if item.event_id}
-    (tasks,) = await _gather(lambda: list(_tasks(tenant_id, now, listed_events, props)))
+    (tasks,) = await _gather(lambda: list(_tasks(tenant_id, now, listed_events)))
 
     items: list[AttentionItem] = [*unanswered, *emails, *visits, *tasks, *stalled]
+    await _resolve_labels(items, tenant_id)
 
     counts: dict[str, int] = {kind.value: 0 for kind in AttentionKind}
     for item in items:

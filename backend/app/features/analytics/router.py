@@ -5,6 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends
 
+from app.core.db import gather_blocking, run_blocking
 from app.core.dependencies import get_tenant_id, require_role, require_scope
 from app.core.supabase.client import get_supabase_client
 
@@ -15,89 +16,121 @@ router = APIRouter(
 )
 
 
-@router.get("/revenue-monthly")
-async def revenue_monthly(tenant_id: UUID = Depends(get_tenant_id)) -> list[dict]:
-    client = get_supabase_client()
+# One reader per view, so the individual endpoints and the batched dashboard
+# below cannot drift from each other. Each is synchronous and gets run on a
+# worker thread by its caller — the Supabase client blocks, and holding the
+# event loop through seven round trips is what made this page the slowest in
+# the app.
+def _view(view: str, tenant_id: UUID, order: str, limit: int, desc: bool = True) -> list[dict]:
     return (
-        client.table("mv_revenue_monthly")
+        get_supabase_client()
+        .table(view)
         .select("*")
         .eq("tenant_id", str(tenant_id))
-        .order("month", desc=True)
-        .limit(200)
+        .order(order, desc=desc)
+        .limit(limit)
         .execute()
         .data
     )
+
+
+def _revenue_monthly(tenant_id: UUID) -> list[dict]:
+    return _view("mv_revenue_monthly", tenant_id, "month", 200)
+
+
+def _funnel_monthly(tenant_id: UUID) -> list[dict]:
+    return _view("mv_funnel_monthly", tenant_id, "month", 200)
+
+
+def _ad_roi(tenant_id: UUID) -> list[dict]:
+    return _view("mv_ad_roi", tenant_id, "spend_cents", 200)
+
+
+def _time_on_market(tenant_id: UUID) -> list[dict]:
+    return _view("mv_time_on_market", tenant_id, "days_on_market", 200)
+
+
+def _person_activity(tenant_id: UUID) -> list[dict]:
+    return _view("mv_person_activity", tenant_id, "week", 500)
+
+
+def _pipeline(tenant_id: UUID) -> list[dict]:
+    return get_supabase_client().table("v_pipeline_status").select("*").eq("tenant_id", str(tenant_id)).execute().data
+
+
+def _pending_count(tenant_id: UUID) -> dict[str, Any]:
+    rows = (
+        get_supabase_client().table("v_open_pending_review").select("*").eq("tenant_id", str(tenant_id)).execute().data
+    )
+    return rows[0] if rows else {"pending_count": 0, "most_recent": None}
+
+
+@router.get("/dashboard")
+async def dashboard(tenant_id: UUID = Depends(get_tenant_id)) -> dict[str, Any]:
+    """Everything the analytics page draws, in one request.
+
+    The page mounted seven separate `useQuery` hooks, so opening it cost seven
+    HTTP requests — and each of those carried the per-request authentication
+    work with it, which at the time meant roughly eighty SQL statements to draw
+    one screen. The reads are independent, so here they run at once and come
+    back together.
+
+    The individual endpoints stay: they are still the right shape for a widget
+    that wants one series, and the agent-cost page uses its own.
+    """
+    revenue, funnel, roi, market, activity, pipe, pending = await gather_blocking(
+        lambda: _revenue_monthly(tenant_id),
+        lambda: _funnel_monthly(tenant_id),
+        lambda: _ad_roi(tenant_id),
+        lambda: _time_on_market(tenant_id),
+        lambda: _person_activity(tenant_id),
+        lambda: _pipeline(tenant_id),
+        lambda: _pending_count(tenant_id),
+    )
+    return {
+        "revenue_monthly": revenue,
+        "funnel_monthly": funnel,
+        "ad_roi": roi,
+        "time_on_market": market,
+        "person_activity": activity,
+        "pipeline": pipe,
+        "pending": pending,
+    }
+
+
+@router.get("/revenue-monthly")
+async def revenue_monthly(tenant_id: UUID = Depends(get_tenant_id)) -> list[dict]:
+    return await run_blocking(_revenue_monthly, tenant_id)
 
 
 @router.get("/funnel-monthly")
 async def funnel_monthly(tenant_id: UUID = Depends(get_tenant_id)) -> list[dict]:
-    client = get_supabase_client()
-    return (
-        client.table("mv_funnel_monthly")
-        .select("*")
-        .eq("tenant_id", str(tenant_id))
-        .order("month", desc=True)
-        .limit(200)
-        .execute()
-        .data
-    )
+    return await run_blocking(_funnel_monthly, tenant_id)
 
 
 @router.get("/ad-roi")
 async def ad_roi(tenant_id: UUID = Depends(get_tenant_id)) -> list[dict]:
-    client = get_supabase_client()
-    return (
-        client.table("mv_ad_roi")
-        .select("*")
-        .eq("tenant_id", str(tenant_id))
-        .order("spend_cents", desc=True)
-        .limit(200)
-        .execute()
-        .data
-    )
+    return await run_blocking(_ad_roi, tenant_id)
 
 
 @router.get("/time-on-market")
 async def time_on_market(tenant_id: UUID = Depends(get_tenant_id)) -> list[dict]:
-    client = get_supabase_client()
-    return (
-        client.table("mv_time_on_market")
-        .select("*")
-        .eq("tenant_id", str(tenant_id))
-        .order("days_on_market", desc=True)
-        .limit(200)
-        .execute()
-        .data
-    )
+    return await run_blocking(_time_on_market, tenant_id)
 
 
 @router.get("/person-activity")
 async def person_activity(tenant_id: UUID = Depends(get_tenant_id)) -> list[dict]:
-    client = get_supabase_client()
-    return (
-        client.table("mv_person_activity")
-        .select("*")
-        .eq("tenant_id", str(tenant_id))
-        .order("week", desc=True)
-        .limit(500)
-        .execute()
-        .data
-    )
+    return await run_blocking(_person_activity, tenant_id)
 
 
 @router.get("/pipeline")
 async def pipeline(tenant_id: UUID = Depends(get_tenant_id)) -> list[dict]:
-    client = get_supabase_client()
-    return client.table("v_pipeline_status").select("*").eq("tenant_id", str(tenant_id)).execute().data
+    return await run_blocking(_pipeline, tenant_id)
 
 
 @router.get("/pending-count")
 async def pending_count(tenant_id: UUID = Depends(get_tenant_id)) -> dict[str, Any]:
-    client = get_supabase_client()
-    rows = client.table("v_open_pending_review").select("*").eq("tenant_id", str(tenant_id)).execute().data
-    if not rows:
-        return {"pending_count": 0, "most_recent": None}
-    return rows[0]
+    return await run_blocking(_pending_count, tenant_id)
 
 
 @router.post("/refresh")
