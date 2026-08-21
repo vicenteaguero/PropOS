@@ -37,7 +37,7 @@ function NavTab({
   label: string;
 }) {
   return (
-    <NavLink to={to} end={end} className="flex flex-1 flex-col items-center gap-0.5 py-1">
+    <NavLink to={to} end={end} className="flex min-w-0 flex-1 flex-col items-center gap-0.5 py-1">
       {({ isActive }) => (
         <>
           <Icon
@@ -46,7 +46,7 @@ function NavTab({
           />
           <span
             className={cn(
-              "text-[11px]",
+              "max-w-full truncate text-[10.5px] leading-tight",
               isActive ? "font-bold text-foreground" : "font-medium text-muted-foreground",
             )}
           >
@@ -140,7 +140,13 @@ export function MobileBottomNav() {
         aria-hidden={propo.isOpen}
         className={`fixed inset-x-0 bottom-0 z-50 pt-1.5 ${propo.isOpen ? "invisible" : ""} pb-[calc(var(--safe-bottom)+0.75rem)] pl-[calc(var(--safe-left)+0.875rem)] pr-[calc(var(--safe-right)+0.875rem)]`}
       >
-        <div className="mx-auto flex max-w-md items-center justify-around rounded-3xl border border-border bg-card px-2 py-2 shadow-[0_6px_26px_rgba(0,0,0,0.18)]">
+        {/* A floating pill, not a bar. It used to span the full frame, which on a
+            phone reads as a wall across the bottom of every screen and pins the
+            thumb to the extreme corners; at ~19rem the five targets sit inside
+            the natural sweep of one thumb and the content keeps its edges.
+            Translucent over a blur so the page scrolling underneath stays
+            legible as motion instead of disappearing behind an opaque slab. */}
+        <div className="mx-auto flex w-full max-w-[19rem] items-center justify-around rounded-[var(--radius-4xl)] border border-border/70 bg-card/85 px-1.5 py-1.5 shadow-[0_12px_32px_-8px_rgb(0_0_0/0.5),0_2px_10px_rgb(0_0_0/0.28)] backdrop-blur-xl supports-[backdrop-filter]:bg-card/70">
           <NavTab to={base} end icon={Home} label="Inicio" />
           {allow("crm") && <NavTab to={`${base}/clientes`} icon={Users} label="Clientes" />}
           {canPropo && (
@@ -149,11 +155,11 @@ export function MobileBottomNav() {
                 type="button"
                 onClick={() => propo.open()}
                 aria-label="Abrir Propo"
-                className="-mt-7 flex size-[52px] items-center justify-center rounded-full bg-ink text-ink-foreground shadow-lg transition active:scale-90"
+                className="-mt-7 flex size-12 items-center justify-center rounded-full bg-ink text-ink-foreground shadow-[0_8px_20px_-4px_rgb(0_0_0/0.55)] transition active:scale-90"
               >
                 <Sparkles className="size-6" />
               </button>
-              <span className="-mt-1 text-[11px] font-bold text-foreground">Propo</span>
+              <span className="-mt-1 text-[10.5px] font-bold leading-tight text-foreground">Propo</span>
             </div>
           )}
           {allow("productividad") && (
@@ -166,7 +172,7 @@ export function MobileBottomNav() {
             type="button"
             onClick={() => setMoreOpen(true)}
             aria-label={pendingCount > 0 ? `Más · ${pendingCount} pendientes` : "Más"}
-            className="relative flex flex-1 flex-col items-center gap-0.5 py-1 text-muted-foreground"
+            className="relative flex min-w-0 flex-1 flex-col items-center gap-0.5 py-1 text-muted-foreground"
           >
             <LayoutGrid className="size-[22px]" strokeWidth={1.8} />
             {pendingCount > 0 && (
@@ -175,7 +181,7 @@ export function MobileBottomNav() {
                 className="absolute right-[calc(50%-16px)] top-0 size-2 rounded-full bg-primary"
               />
             )}
-            <span className="text-[11px] font-medium">Más</span>
+            <span className="text-[10.5px] font-medium leading-tight">Más</span>
           </button>
         </div>
       </nav>
