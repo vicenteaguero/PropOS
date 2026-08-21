@@ -85,7 +85,10 @@ def _build_payload(intent: str, resolved: ResolvedFields) -> dict[str, Any]:
         if resolved.property and resolved.property.resolved_id:
             related["properties"] = [str(resolved.property.resolved_id)]
         if resolved.person and resolved.person.resolved_id:
-            related["people"] = [str(resolved.person.resolved_id)]
+            # "contacts", matching the table and every other reader. This wrote
+            # "people" while `contacts/overview.py` counted "contacts", so a
+            # task Propo created never showed on the person it was about.
+            related["contacts"] = [str(resolved.person.resolved_id)]
         if resolved.project and resolved.project.resolved_id:
             related["projects"] = [str(resolved.project.resolved_id)]
         if related:

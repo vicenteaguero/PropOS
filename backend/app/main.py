@@ -16,6 +16,7 @@ from app.core.middleware.tenant import TenantMiddleware
 from app.core.middleware.timing import TimingMiddleware
 from app.features.ads.router import router as ads_router
 from app.features.analytics.router import router as analytics_router
+from app.features.analytics.router import timeline_router
 from app.features.agent.router import router as agent_router
 from app.features.agent.tools.executors import register_all_dispatchers
 from app.features.channels.phones_api import router as user_phones_router
@@ -231,6 +232,7 @@ def create_app() -> FastAPI:
     application.include_router(workflows_router, prefix=versioned_prefix)
     application.include_router(agent_router, prefix=versioned_prefix)
     application.include_router(analytics_router, prefix=versioned_prefix)
+    application.include_router(timeline_router, prefix=versioned_prefix)
     application.include_router(client_chat_router, prefix=versioned_prefix)
     application.include_router(user_phones_router, prefix=versioned_prefix)
     application.include_router(jobs_router, prefix=versioned_prefix)
