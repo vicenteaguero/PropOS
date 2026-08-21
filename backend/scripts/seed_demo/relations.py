@@ -1219,7 +1219,10 @@ def _proposal_payload(intent: str, quote: str, contact_name: str, now: datetime)
     if intent == "add_note":
         return {"body": quote, "person": contact_name}
     if intent == "log_interaction":
-        return {"kind": "whatsapp", "summary": quote[:140], "person": contact_name}
+        # WHATSAPP_LOG, not "whatsapp": `kind` is the `interaction_kind` enum,
+        # and the channel word is not one of its values — accepting the seeded
+        # proposal died on `invalid input value for enum interaction_kind`.
+        return {"kind": "WHATSAPP_LOG", "summary": quote[:140], "person": contact_name}
     if intent == "create_event":
         return {
             "title": f"Visita con {first_name}",

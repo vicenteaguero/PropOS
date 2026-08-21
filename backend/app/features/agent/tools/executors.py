@@ -155,6 +155,42 @@ def _accept_update_person(payload, tenant_id, user_id, agent_session_id):
     return ("contacts", UUID(row_id))
 
 
+#: The `interaction_kind` enum. Anything Propo proposes has to land on one of
+#: these or the INSERT dies on the enum, and the broker sees a 500 for a
+#: proposal the app itself offered them.
+_INTERACTION_KINDS = frozenset({"VISIT", "CALL", "EMAIL", "WHATSAPP_LOG", "NOTE", "MEETING", "SHOWING", "OTHER"})
+
+#: What the classifier actually emits, which is channel vocabulary rather than
+#: enum vocabulary — "whatsapp", not "WHATSAPP_LOG".
+_INTERACTION_KIND_ALIASES = {
+    "WHATSAPP": "WHATSAPP_LOG",
+    "MESSAGE": "WHATSAPP_LOG",
+    "MENSAJE": "WHATSAPP_LOG",
+    "CORREO": "EMAIL",
+    "MAIL": "EMAIL",
+    "LLAMADA": "CALL",
+    "PHONE": "CALL",
+    "TELEFONO": "CALL",
+    "VISITA": "VISIT",
+    "REUNION": "MEETING",
+    "NOTA": "NOTE",
+    "MUESTRA": "SHOWING",
+}
+
+
+def _normalise_interaction_kind(value: object) -> str:
+    """Map whatever the classifier said onto the enum.
+
+    Unknown values become OTHER rather than raising: the interaction is real —
+    it was said in a conversation — and losing it to a taxonomy mismatch is
+    worse than filing it under OTHER, which the broker can correct.
+    """
+    raw = str(value or "").strip().upper()
+    if raw in _INTERACTION_KINDS:
+        return raw
+    return _INTERACTION_KIND_ALIASES.get(raw, "OTHER")
+
+
 def _accept_log_interaction(payload, tenant_id, user_id, agent_session_id):
     client = get_supabase_client()
     participants = payload.pop("participant_person_ids", []) or []
@@ -164,6 +200,7 @@ def _accept_log_interaction(payload, tenant_id, user_id, agent_session_id):
     payload["tenant_id"] = str(tenant_id)
     payload["created_by"] = str(user_id)
     payload["source"] = "agent"
+    payload["kind"] = _normalise_interaction_kind(payload.get("kind"))
     if not payload.get("occurred_at"):
         payload["occurred_at"] = datetime.now(UTC).isoformat()
     row = client.table("interactions").insert(payload).execute().data[0]
