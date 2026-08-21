@@ -15,6 +15,7 @@ from uuid import UUID
 
 from fastapi import HTTPException, Request, status
 
+from app.core.supabase.auth_cache import invalidate_profile
 from app.core.supabase.client import get_supabase_client
 
 
@@ -122,6 +123,8 @@ def resolve_active_tenant(
             "admin_scope": membership.get("admin_scope") or [],
         }
     ).eq("id", user_id).execute()
+    # The cached profile still carries the old tenant/role/scope.
+    invalidate_profile(str(user_id))
 
     request.state.tenant_id = target
     return target
