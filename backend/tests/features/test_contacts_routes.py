@@ -12,7 +12,7 @@ from app.features.contacts.router import router
 
 #: Literal paths that must be declared before the uuid route that would
 #: otherwise capture them.
-LITERAL_PATHS = ["/duplicates"]
+LITERAL_PATHS = ["/contacts/duplicates"]
 
 
 def _paths_in_order() -> list[str]:
@@ -21,8 +21,8 @@ def _paths_in_order() -> list[str]:
 
 def test_literal_paths_are_declared_before_the_uuid_route() -> None:
     paths = _paths_in_order()
-    catch_all = paths.index("/{contact_id}")
+    catch_all = paths.index("/contacts/{contact_id}")
     for literal in LITERAL_PATHS:
         assert paths.index(literal) < catch_all, (
-            f"{literal} is declared after /{{contact_id}} and will be parsed as a uuid"
+            f"{literal} is declared after /contacts/{{contact_id}} and will be parsed as a uuid"
         )
