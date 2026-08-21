@@ -31,10 +31,6 @@ class IntentSpec:
     detailed: tuple[tuple[str, str], ...] = ()
     complex: bool = False
     defaults: dict[str, object] = field(default_factory=dict)
-    # When true and required fields present + no ambiguity, dispatcher writes
-    # directly to the target table instead of queuing in pending_proposals.
-    # Set to False for high-stakes intents that always need human confirmation.
-    auto_commit: bool = True
     # When true, dispatcher injects unprocessed media (recent photos in the
     # active session) into the payload as `media_message_ids`, so the executor
     # can attach them on commit. Used by attach_photos_to_property and
@@ -79,7 +75,6 @@ REGISTRY: dict[str, IntentSpec] = {
         target_table="contacts",
         required=("full_name",),
         optional=("phone", "email", "rut", "notes", "kind"),
-        auto_commit=False,
     ),
     "create_event": IntentSpec(
         name="create_event",
@@ -98,7 +93,6 @@ REGISTRY: dict[str, IntentSpec] = {
         optional=("currency", "description", "occurred_at", "status", "due_at"),
         aliases={"amount_clp": "amount", "due": "occurred_at", "vence": "due_at"},
         defaults={"currency": "CLP"},
-        auto_commit=False,
     ),
     "create_organization": IntentSpec(
         name="create_organization",

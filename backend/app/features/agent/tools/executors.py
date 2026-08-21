@@ -36,6 +36,8 @@ def _create_proposal(
     resolved_payload: dict[str, Any] | None = None,
     ambiguity: dict[str, Any] | None = None,
     confidence: float | None = None,
+    evidence: dict[str, Any] | None = None,
+    message_id: str | None = None,
 ) -> dict[str, Any]:
     client = get_supabase_client()
     row = {
@@ -50,6 +52,11 @@ def _create_proposal(
         "ambiguity": ambiguity,
         "status": "pending",
         "confidence": confidence,
+        # What the human actually said. A reviewer looking at a payload with no
+        # quote has to guess whether the AI understood; these three columns were
+        # declared from day one and the live path wrote none of them.
+        "evidence": evidence,
+        "message_id": message_id,
     }
     response = client.table(PENDING_TABLE).insert(row).execute().data[0]
     logger.info(
