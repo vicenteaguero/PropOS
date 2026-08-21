@@ -21,6 +21,7 @@ from typing import Any
 from app.core.config.settings import settings
 from app.core.logging.logger import get_logger
 from app.core.phone import to_e164
+from app.features.agent.guards import GuardError, assert_no_date_commitment, assert_not_quiet_hours
 from app.core.supabase.client import get_supabase_client
 from app.features.notifications.whatsapp.dispatcher import (
     ConsentError,
@@ -184,6 +185,23 @@ async def handle_inbound_client(
     history = _load_history(conv["id"])
     reply = await _generate_reply(history, user_text)
     if not reply:
+        return
+
+    # The rules the model has no vote on. A date the assistant invents is a
+    # promise the brokerage did not make, and a quiet-hours violation is a
+    # notification at 3 a.m. to somebody who asked for none.
+    try:
+        assert_no_date_commitment(reply)
+        if contact:
+            assert_not_quiet_hours(contact)
+    except GuardError as exc:
+        logger.warning(
+            "client_agent_guard_blocked",
+            event_type="compliance",
+            conversation_id=conv["id"],
+            reason=str(exc),
+        )
+        _flag_for_handoff(conv, "guard")
         return
 
     if violates_output_policy(reply):
