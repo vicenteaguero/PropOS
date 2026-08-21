@@ -14,6 +14,8 @@ export interface ResponsiveColumn<T> {
 export interface ResponsiveRowSpec {
   left?: ReactNode;
   title: ReactNode;
+  /** Trailing text on the title line — an amount, a time. See Row.titleRight. */
+  titleRight?: ReactNode;
   sub?: ReactNode;
   right?: ReactNode;
 }
@@ -59,6 +61,7 @@ export function ResponsiveTable<T>({
               onClick={onRowClick ? () => onRowClick(row) : undefined}
               left={spec.left}
               title={spec.title}
+              titleRight={spec.titleRight}
               sub={spec.sub}
               right={spec.right}
             />
