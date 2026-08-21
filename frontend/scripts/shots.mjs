@@ -40,6 +40,7 @@ const ROUTES = [
   ["finanzas", "/admin/finanzas"],
   ["documentos", "/admin/documentos"],
   ["settings", "/admin/settings"],
+  ["propo-politicas", "/admin/settings/propo"],
   ["settings-propo", "/admin/settings/propo"],
   ["pendientes", "/admin/pendientes"],
 ];
