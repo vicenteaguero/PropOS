@@ -1,26 +1,12 @@
-export const INTERACTION_KINDS = [
-  "VISIT",
-  "CALL",
-  "EMAIL",
-  "WHATSAPP_LOG",
-  "NOTE",
-  "MEETING",
-  "SHOWING",
-  "OTHER",
-] as const;
+// One registry, in shared/lib/labels.ts. The copy that lived here disagreed
+// with it on four of eight keys.
+export {
+  INTERACTION_KINDS,
+  INTERACTION_KIND_LABELS_SHARED as INTERACTION_KIND_LABELS,
+} from "@shared/lib/labels";
+import type { InteractionKind } from "@shared/lib/labels";
 
-export type InteractionKind = (typeof INTERACTION_KINDS)[number];
-
-export const INTERACTION_KIND_LABELS: Record<InteractionKind, string> = {
-  VISIT: "Visita",
-  CALL: "Llamada",
-  EMAIL: "Email",
-  WHATSAPP_LOG: "WhatsApp",
-  NOTE: "Nota",
-  MEETING: "Reunión",
-  SHOWING: "Muestra",
-  OTHER: "Otro",
-};
+export type { InteractionKind };
 
 export interface Interaction {
   id: string;

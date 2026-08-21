@@ -291,14 +291,38 @@ export const UPLOAD_STATUS_LABELS: Record<string, string> = {
 };
 
 /** `interactions` kinds — previously duplicated in features/interactions/types.ts. */
-export const INTERACTION_KIND_LABELS_SHARED: Record<string, string> = {
+/**
+ * The `interaction_kind` enum, in database order.
+ *
+ * There used to be a second, disagreeing copy of this in
+ * `features/interactions/types.ts`. This one carried `MESSAGE` and `WHATSAPP`,
+ * which the enum has never contained, and was missing `WHATSAPP_LOG` and
+ * `SHOWING`, which it does — so every WhatsApp interaction rendered its raw key
+ * anywhere that went through `label()`. The feature file now re-exports these.
+ */
+export const INTERACTION_KINDS = [
+  "VISIT",
+  "CALL",
+  "EMAIL",
+  "WHATSAPP_LOG",
+  "NOTE",
+  "MEETING",
+  "SHOWING",
+  "OTHER",
+] as const;
+
+export type InteractionKind = (typeof INTERACTION_KINDS)[number];
+
+export const INTERACTION_KIND_LABELS_SHARED: Record<InteractionKind, string> = {
   VISIT: "Visita",
   CALL: "Llamada",
-  MEETING: "Reunión",
-  MESSAGE: "Mensaje",
+  // "Correo", not "Email": the two copies disagreed on this one word, and the
+  // channel registry below already says Correo.
   EMAIL: "Correo",
-  WHATSAPP: "WhatsApp",
+  WHATSAPP_LOG: "WhatsApp",
   NOTE: "Nota",
+  MEETING: "Reunión",
+  SHOWING: "Muestra",
   OTHER: "Otro",
 };
 
