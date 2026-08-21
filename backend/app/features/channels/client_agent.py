@@ -145,7 +145,7 @@ async def handle_inbound_client(
         if dup:
             return
 
-    contact = _ensure_contact_from_phone(tenant_id, phone_e164, contact_name)
+    contact = _find_contact_by_phone(tenant_id, phone_e164)
     conv = _ensure_conversation(tenant_id, contact, phone_e164, external_thread_id)
 
     db.table("client_messages").insert(
@@ -167,12 +167,16 @@ async def handle_inbound_client(
     # LLM: a revocation must never be answered by the assistant, and must never
     # be counted as an inbound opt-in.
     if is_opt_out_request(user_text):
-        _record_opt_out(conv["tenant_id"], contact["id"])
+        if contact:
+            _record_opt_out(conv["tenant_id"], contact["id"])
         await _send_reply(conv, phone_e164, OPT_OUT_REPLY, consent_waiver="opt_out_acknowledgement")
         return
 
-    # Auto-record inbound consent (replying counts as opt-in for utility).
-    _record_inbound_consent(conv["tenant_id"], contact["id"])
+    # Replying counts as opt-in for utility messages. Nobody to record it
+    # against until the thread is identified, and that is the honest state:
+    # consent belongs to a person, not to a phone number.
+    if contact:
+        _record_inbound_consent(conv["tenant_id"], contact["id"])
 
     if not conv.get("ai_enabled", True) or conv.get("status") == "assigned":
         return
@@ -256,24 +260,32 @@ async def _send_reply(
         )
 
 
-def _ensure_contact_from_phone(
+def _find_contact_by_phone(
     tenant_id: str,
     phone_e164: str,
-    contact_name: str | None = None,
-) -> dict[str, Any]:
-    """Find (or create) the contact **inside the receiving tenant**.
+) -> dict[str, Any] | None:
+    """Whose number is this, inside the receiving tenant? None is a real answer.
 
-    The phone lookup must stay tenant-scoped: the same number can exist as a
-    contact of several inmobiliarias, and the service-role client bypasses
-    RLS, so an unscoped match hands the conversation to whichever tenant
-    happened to save the number first.
+    It used to be `_ensure_contact_from_phone`, and the "ensure" was the
+    problem: every unknown number minted a contact named after its own phone
+    number, typed BUYER because something had to go in the column, with no
+    consent evidence and no dedup. The junk was invisible — it looked exactly
+    like a real CRM row — and the queue of people we had not identified yet did
+    not exist as a concept.
+
+    Now an unknown number leaves `client_conversations.contact_id` NULL and the
+    thread surfaces under "Sin identificar", where a human links it to somebody
+    or creates a person on purpose.
+
+    The lookup must stay tenant-scoped: the same number can be a contact of
+    several inmobiliarias, and the service-role client bypasses RLS, so an
+    unscoped match hands the conversation to whichever tenant saved it first.
     """
     db = get_supabase_client()
     e164 = to_e164(phone_e164) or phone_e164
 
-    # Every number the person has, not just the one that happens to sit in the
-    # legacy scalar column. A contact whose second line wrote in used to miss
-    # here and get a whole new contact created for them.
+    # Every number the person has, not just whichever one sits in the legacy
+    # scalar column.
     linked = (
         db.table("contact_phones")
         .select("contact_id")
@@ -305,44 +317,37 @@ def _ensure_contact_from_phone(
         .execute()
         .data
     )
-    if rows:
-        return rows[0]
-
-    inserted = (
-        db.table("contacts")
-        .insert(
-            {
-                "tenant_id": tenant_id,
-                "type": "BUYER",
-                "full_name": (contact_name or e164).strip(),
-                "phone": e164,
-                "metadata": {"channel_origin": "whatsapp"},
-            }
-        )
-        .execute()
-        .data[0]
-    )
-    return inserted
+    return rows[0] if rows else None
 
 
 def _ensure_conversation(
     tenant_id: str,
-    contact: dict[str, Any],
+    contact: dict[str, Any] | None,
     phone_e164: str,
     external_thread_id: str | None,
 ) -> dict[str, Any]:
+    """The live thread for this number, creating one if there is none.
+
+    `contact` may be None: an unidentified number still gets a conversation, it
+    just does not get a person invented for it. The thread is then keyed on the
+    phone rather than the contact, so consecutive messages from the same unknown
+    number land in one place instead of opening a thread each time.
+    """
     db = get_supabase_client()
-    rows = (
+    query = (
         db.table("client_conversations")
         .select("*")
         .eq("tenant_id", tenant_id)
-        .eq("contact_id", contact["id"])
         .eq("source", "whatsapp")
         .order("last_message_at", desc=True)
         .limit(1)
-        .execute()
-        .data
     )
+    query = (
+        query.eq("contact_id", contact["id"])
+        if contact
+        else query.eq("external_phone_e164", phone_e164).is_("contact_id", "null")
+    )
+    rows = query.execute().data
     if rows:
         return rows[0]
     return (
@@ -350,12 +355,15 @@ def _ensure_conversation(
         .insert(
             {
                 "tenant_id": tenant_id,
-                "contact_id": contact["id"],
+                "contact_id": contact["id"] if contact else None,
                 "source": "whatsapp",
                 "external_thread_id": external_thread_id,
                 "external_phone_e164": phone_e164,
                 "status": "open",
                 "ai_enabled": True,
+                # Keep what WhatsApp told us their name is, so the person who
+                # identifies this thread has something to go on.
+                "metadata": {"channel_origin": "whatsapp"},
             }
         )
         .execute()

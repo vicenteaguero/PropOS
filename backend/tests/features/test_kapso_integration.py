@@ -310,6 +310,15 @@ class _Query:
         self.filters.append((column, value))
         return self
 
+    def is_(self, column: str, value: str):
+        """`.is_(col, "null")` — PostgREST's spelling of IS NULL.
+
+        The unidentified-thread lookup filters on `contact_id IS NULL`, which
+        this fake could not express until now.
+        """
+        self.filters.append((column, None if value == "null" else value))
+        return self
+
     def order(self, *_a, **_k):
         return self
 
@@ -432,18 +441,48 @@ def test_contact_lookup_is_tenant_scoped(monkeypatch):
         }
     )
     _patch_db(monkeypatch, db, "app.features.channels.client_agent")
-    contact = client_agent._ensure_contact_from_phone(TENANT_A, "+56911111111")
+    contact = client_agent._find_contact_by_phone(TENANT_A, "+56911111111")
     assert contact["id"] == "contact-a"
 
 
-def test_unknown_phone_creates_contact_in_receiving_tenant(monkeypatch):
+def test_unknown_phone_does_not_invent_a_contact(monkeypatch):
+    """An unknown number is an unidentified thread, not a new person.
+
+    This used to mint a contact named after its own phone number, typed BUYER
+    because the column needed something, with no consent evidence and no dedup.
+    The junk looked exactly like a real CRM row, and the queue of people we had
+    not identified yet did not exist.
+    """
     from app.features.channels import client_agent
 
     db = _FakeDB({"contacts": [{"id": "contact-b", "tenant_id": TENANT_B, "phone": "+56922222222"}]})
     _patch_db(monkeypatch, db, "app.features.channels.client_agent")
-    contact = client_agent._ensure_contact_from_phone(TENANT_A, "+56922222222", "Nuevo")
-    assert contact["tenant_id"] == TENANT_A
-    assert db.inserts[0][0] == "contacts"
+    contact = client_agent._find_contact_by_phone(TENANT_A, "+56922222222")
+    assert contact is None
+    assert not [i for i in db.inserts if i[0] == "contacts"]
+
+
+def test_an_unidentified_thread_still_gets_one_conversation(monkeypatch):
+    """Consecutive messages from one unknown number belong together."""
+    from app.features.channels import client_agent
+
+    db = _FakeDB(
+        {
+            "client_conversations": [
+                {
+                    "id": "conv-unknown",
+                    "tenant_id": TENANT_A,
+                    "contact_id": None,
+                    "source": "whatsapp",
+                    "external_phone_e164": "+56933333333",
+                }
+            ]
+        }
+    )
+    _patch_db(monkeypatch, db, "app.features.channels.client_agent")
+    conv = client_agent._ensure_conversation(TENANT_A, None, "+56933333333", None)
+    assert conv["id"] == "conv-unknown"
+    assert not [i for i in db.inserts if i[0] == "client_conversations"]
 
 
 def test_conversation_lookup_is_tenant_scoped(monkeypatch):
