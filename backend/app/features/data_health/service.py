@@ -22,17 +22,17 @@ from app.features.data_health.schemas import DataHealth, Finding, FindingEntity,
 _SCAN_LIMIT = 2000
 
 
-def _rows(table: str, tenant_id: UUID, select: str) -> list[dict]:
-    return (
-        get_supabase_client()
-        .table(table)
-        .select(select)
-        .eq("tenant_id", str(tenant_id))
-        .is_("deleted_at", "null")
-        .limit(_SCAN_LIMIT)
-        .execute()
-        .data
-    )
+def _rows(table: str, tenant_id: UUID, select: str, *, soft_deleted: bool = True) -> list[dict]:
+    """Scan a table for this tenant.
+
+    `soft_deleted=False` for join tables that have no `deleted_at` column —
+    filtering on one that does not exist is a 42703 from Postgres, which
+    surfaces as a 500 on the whole health check rather than a missing finding.
+    """
+    builder = get_supabase_client().table(table).select(select).eq("tenant_id", str(tenant_id))
+    if soft_deleted:
+        builder = builder.is_("deleted_at", "null")
+    return builder.limit(_SCAN_LIMIT).execute().data
 
 
 def check_tenant(tenant_id: UUID) -> DataHealth:
@@ -54,7 +54,7 @@ def check_tenant(tenant_id: UUID) -> DataHealth:
     # "does this person have an opportunity?" and reporting no as "propietario
     # sin propiedad" flagged every owner in the book — the correct table has
     # existed since the Clientes rewrite.
-    stakeholders = _rows("property_stakeholders", tenant_id, "contact_id")
+    stakeholders = _rows("property_stakeholders", tenant_id, "contact_id", soft_deleted=False)
     owner_linked = {s["contact_id"] for s in stakeholders if s.get("contact_id")}
 
     linked_people = {o["person_id"] for o in opportunities if o.get("person_id")}
