@@ -18,6 +18,7 @@ import {
   useProperties,
 } from "../hooks/use-entities";
 import { Field, ResponsiveSheet } from "@shared/ui";
+import { useOpenOnParam } from "@shared/hooks/use-open-on-param";
 
 // Lazy-load the camera capture flow so the documents page chunk stays small.
 // The scanner modules + dnd-kit only fetch when the user opens the camera.
@@ -475,9 +476,18 @@ export function NewDocumentButton() {
  * Mobile-first pair of block CTAs: Escanear (ink) opens the camera flow
  * directly; Subir (outline) opens the upload dialog. Reuses the same
  * `useFastAdd` state + dialog body as the rest of the feature.
+ *
+ * Also the one component that answers `?nuevo=1`. Home's "Documento" tile has
+ * linked here for as long as the tile has existed, but documents was the only
+ * one of the six destinations that never read the param, so the tile landed on
+ * the list and dropped the request in silence. The hook belongs here rather
+ * than in `useFastAdd`: `NewDocumentButton` and `AddDocumentCard` call that
+ * hook too, and if two of them were ever mounted at once the param would open
+ * two sheets.
  */
 export function NewDocumentActions() {
   const state = useFastAdd();
+  useOpenOnParam("nuevo", () => state.setOpen(true));
   return (
     <>
       <div className="grid grid-cols-2 gap-3">
