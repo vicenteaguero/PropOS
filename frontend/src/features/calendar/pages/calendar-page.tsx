@@ -457,7 +457,10 @@ export function CalendarPage() {
                 ~300px of a laptop screen was chrome before a single hour of the
                 calendar was visible. */}
             <div className="flex flex-wrap items-center gap-2 px-5 pt-4 pb-3 lg:px-8 lg:pt-6">
-              <h2 className="min-w-0 flex-1 truncate text-xl font-bold capitalize tracking-tight text-foreground">
+              {/* `first-letter:uppercase`, not `capitalize`: the latter title-cases
+                  EVERY word, so "17–23 de agosto" came out "17–23 De Ago…" —
+                  English casing rules applied to a Spanish date. */}
+              <h2 className="min-w-0 flex-1 truncate text-xl font-bold tracking-tight text-foreground first-letter:uppercase">
                 {periodLabel}
               </h2>
               <div className="hidden lg:block">
@@ -546,7 +549,9 @@ export function CalendarPage() {
                   />
                 </div>
                 <div className="flex min-h-0 w-80 shrink-0 flex-col overflow-y-auto rounded-xl border border-border">
-                  <SectionLabel className="mb-1 mt-3 px-4 capitalize">
+                  {/* Same rule as the period heading: only the first letter.
+                      `capitalize` gave "Jueves 21 De Agosto". */}
+                  <SectionLabel className="mb-1 mt-3 px-4 first-letter:uppercase">
                     {format(selected, "EEEE d 'de' MMMM", { locale: es })}
                   </SectionLabel>
                   <DayAgenda items={selectedItems} onOpen={setDetail} />
@@ -1229,8 +1234,11 @@ function EventRow({ item, onOpen }: { item: CalendarItem; onOpen: (it: CalendarI
           {item.title ?? "Sin título"}
         </div>
         {item.status && (
-          <div className="mt-1.5 text-[12.5px] capitalize text-muted-foreground">
-            {item.status.toLowerCase()}
+          // Through the registry, not `toLowerCase()`. That printed the raw enum
+          // — "Open", "Scheduled" — in English, on the Spanish surface a broker
+          // reads, for the one line meant to say what state the item is in.
+          <div className="mt-1.5 text-[12.5px] text-muted-foreground">
+            {label(item.item_type === "TASK" ? "taskStatus" : "eventStatus", item.status)}
           </div>
         )}
       </div>
