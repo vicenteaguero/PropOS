@@ -59,11 +59,6 @@ function txIcon(t: Transaction): LucideIcon {
   return t.direction === "IN" ? ArrowDownLeft : ArrowUpRight;
 }
 
-/** Short stable code from the transaction id (presentational). */
-function txCode(id: string): string {
-  return id.replace(/-/g, "").slice(0, 6).toUpperCase();
-}
-
 type KindFilter = "ALL" | "COMMISSION" | "EXPENSE" | "RECEIPT" | "PAYMENT";
 
 const KIND_FILTERS: { id: KindFilter; label: string }[] = [
@@ -293,8 +288,13 @@ export function FinancePage() {
                         <span className="block truncate font-medium text-foreground">
                           {t.description || categoryLabel(t.category)}
                         </span>
-                        <span className="block font-mono text-[11px] text-muted-foreground">
-                          {txCode(t.id)}
+                        {/* The category, not the first six hex digits of the
+                            row's uuid. That code was not a reference number a
+                            broker can quote, look up or reconcile against
+                            anything — it just took the second line of every row
+                            in the ledger. */}
+                        <span className="block truncate text-[12px] text-muted-foreground">
+                          {categoryLabel(t.category)}
                         </span>
                       </span>
                     </div>
@@ -327,21 +327,20 @@ export function FinancePage() {
                 </span>
               ),
               title: t.description || categoryLabel(t.category),
+              // The amount goes ON the title line, not in a column beside both
+              // lines. In `right` it shared a fixed column with two icon
+              // buttons, which left the description ~14 characters wide —
+              // "Comisión por o…" — on a screen 390px across.
+              titleRight: amountCell(t),
               sub: (
-                <span className="flex items-center gap-2">
+                <span className="flex min-w-0 items-center gap-2">
                   {statusCell(t)}
-                  <span className="truncate">
-                    {txCode(t.id)}
-                    {dateLabel(t) ? ` · ${dateLabel(t)}` : ""}
+                  <span className="min-w-0 flex-1 truncate">
+                    {[categoryLabel(t.category), dateLabel(t)].filter(Boolean).join(" · ")}
                   </span>
                 </span>
               ),
-              right: (
-                <div className="flex shrink-0 items-center gap-1.5">
-                  {amountCell(t)}
-                  {rowActions(t)}
-                </div>
-              ),
+              right: <div className="flex shrink-0 items-center gap-1.5">{rowActions(t)}</div>,
             };
           }}
         />
