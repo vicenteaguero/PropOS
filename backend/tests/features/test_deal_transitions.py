@@ -81,3 +81,43 @@ def test_allowed_targets_offers_only_legal_moves() -> None:
     targets = {t["to_stage"]: t["requires_human"] for t in allowed_targets(TENANT, DEAL)}
     assert targets == {"OFFER": False, "QUALIFIED": False, "LOST": True}
     assert "CLOSED" not in targets
+
+
+def test_a_target_reachable_two_ways_is_offered_once(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A wildcard row plus an explicit one for the same stage is legal config.
+
+    `from_stage = NULL` means "from any stage", so declaring both it and an
+    explicit `VISIT -> LOST` matches twice — and the deal page rendered two
+    identical "Perdido" buttons side by side, on a duplicate React key. One
+    target is one move however many rows describe it.
+    """
+    monkeypatch.setattr(
+        transitions,
+        "_transitions",
+        lambda *_a, **_k: [
+            {"from_stage": None, "to_stage": "LOST", "requires_human": True},
+            {"from_stage": "VISIT", "to_stage": "LOST", "requires_human": False},
+        ],
+    )
+    assert allowed_targets(TENANT, DEAL) == [{"to_stage": "LOST", "requires_human": True}]
+
+
+def test_merging_paths_keeps_the_stricter_rule(monkeypatch: pytest.MonkeyPatch) -> None:
+    """If ANY declared path to a stage reserves it for a person, the move does.
+
+    Taking the looser of the two would let Propo make a move the tenant
+    deliberately kept for a human — the failure that matters is the permissive
+    one, so the merge is an OR whichever order the rows arrive in.
+    """
+    for rows in (
+        [
+            {"from_stage": "VISIT", "to_stage": "CLOSED", "requires_human": False},
+            {"from_stage": None, "to_stage": "CLOSED", "requires_human": True},
+        ],
+        [
+            {"from_stage": None, "to_stage": "CLOSED", "requires_human": True},
+            {"from_stage": "VISIT", "to_stage": "CLOSED", "requires_human": False},
+        ],
+    ):
+        monkeypatch.setattr(transitions, "_transitions", lambda *_a, _r=rows, **_k: _r)
+        assert allowed_targets(TENANT, DEAL) == [{"to_stage": "CLOSED", "requires_human": True}]

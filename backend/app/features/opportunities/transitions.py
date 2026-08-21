@@ -78,13 +78,26 @@ def assert_allowed(
 
 
 def allowed_targets(tenant_id: UUID, opportunity: dict) -> list[dict]:
-    """The moves available from here, so the UI offers only legal ones."""
+    """The moves available from here, so the UI offers only legal ones.
+
+    One target, one entry. A `from_stage = NULL` row means "from any stage" (see
+    the Pipelines catalogue), so a pipeline that declares both the wildcard and
+    an explicit `OFFER -> LOST` matches twice — and the deal page rendered a
+    second identical "Perdido" button beside the first, on a duplicate React
+    key. That is legal configuration, not bad data, so it has to collapse here.
+
+    `requires_human` merges by OR: if any declared path to a stage insists on a
+    person, the move does. Taking the looser of two paths would let Propo make a
+    move the tenant deliberately reserved for a human.
+    """
     pipeline_id = opportunity.get("pipeline_id")
     if not pipeline_id:
         return []
     from_stage = opportunity.get("pipeline_stage")
-    return [
-        {"to_stage": r["to_stage"], "requires_human": r["requires_human"]}
-        for r in _transitions(tenant_id, pipeline_id)
-        if r["from_stage"] in (from_stage, None) and r["to_stage"] != from_stage
-    ]
+    merged: dict[str, bool] = {}
+    for r in _transitions(tenant_id, pipeline_id):
+        if r["from_stage"] not in (from_stage, None) or r["to_stage"] == from_stage:
+            continue
+        to_stage = r["to_stage"]
+        merged[to_stage] = merged.get(to_stage, False) or bool(r["requires_human"])
+    return [{"to_stage": k, "requires_human": v} for k, v in merged.items()]
