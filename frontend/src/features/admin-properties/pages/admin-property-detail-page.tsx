@@ -11,13 +11,12 @@ import {
   Pencil,
   Sparkles,
 } from "lucide-react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ErrorState, NavMark, PageSkeleton, Pill, Row, SectionLabel } from "@shared/ui";
 import { PageLayout } from "@shared/components/page-layout";
-import { apiRequest } from "@shared/api/http";
 import { toast } from "sonner";
 import { propertiesApi, type PropertyInput } from "../api/properties-api";
 import { PropertyFormDialog } from "../components/property-form-dialog";
@@ -31,13 +30,7 @@ import { provenanceOf } from "../api/properties-api";
 import { PROVENANCE_TITLE, ProvenanceMark } from "../components/provenance-mark";
 import { label } from "@shared/lib/labels";
 import { LISTING_KIND_TONES, tone } from "@shared/lib/tones";
-
-interface ApiGrant {
-  id: string;
-  user_id: string;
-  view: string;
-  capabilities: string[];
-}
+import { useProperty, usePropertyGrants } from "../hooks/use-property-detail";
 
 export function AdminPropertyDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -60,17 +53,9 @@ export function AdminPropertyDetailPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [draft, setDraft] = useState<string | null>(null);
 
-  const propQ = useQuery({
-    queryKey: ["admin", "property", id],
-    queryFn: () => propertiesApi.get(id as string),
-    enabled: !!id,
-  });
+  const propQ = useProperty(id);
   usePageTitle(propQ.data?.title);
-  const grantsQ = useQuery({
-    queryKey: ["admin", "property", id, "grants"],
-    queryFn: () => apiRequest<ApiGrant[]>(`/v1/properties/${id}/grants`),
-    enabled: !!id,
-  });
+  const grantsQ = usePropertyGrants(id);
   const update = useMutation({
     mutationFn: (body: Partial<PropertyInput>) => propertiesApi.update(id as string, body),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "property", id] }),

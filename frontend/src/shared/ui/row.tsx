@@ -16,6 +16,14 @@ interface RowProps {
   sub?: ReactNode;
   right?: ReactNode;
   onClick?: () => void;
+  /**
+   * Fired when the user shows intent — hover on a pointer, focus on a keyboard
+   * — but before the click. The place to prefetch what the click will open.
+   *
+   * Deliberately not `onPointerDown`: several lists that use this row are also
+   * drag surfaces, and the pointer is already claimed by the drag.
+   */
+  onIntent?: () => void;
   divider?: boolean;
   className?: string;
 }
@@ -28,6 +36,7 @@ export function Row({
   sub,
   right,
   onClick,
+  onIntent,
   divider = true,
   className,
 }: RowProps) {
@@ -56,7 +65,13 @@ export function Row({
     className,
   );
   return interactive ? (
-    <button type="button" onClick={onClick} className={cls}>
+    <button
+      type="button"
+      onClick={onClick}
+      onMouseEnter={onIntent}
+      onFocus={onIntent}
+      className={cls}
+    >
       {content}
     </button>
   ) : (

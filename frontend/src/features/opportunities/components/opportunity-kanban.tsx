@@ -13,6 +13,8 @@ import { cn } from "@/lib/utils";
 import { PIPELINE_STAGES, STAGE_LABELS, stageDot, type Opportunity } from "../types";
 import { initials } from "@shared/utils/format";
 import { formatClp } from "@shared/utils/currency";
+import { useIntentPrefetch } from "@shared/hooks/use-intent-prefetch";
+import { dealQueries } from "@features/deals/hooks/use-deal";
 
 interface Props {
   opportunities: Opportunity[];
@@ -35,6 +37,7 @@ function Card({
   onEdit,
 }: { opp: Opportunity } & Omit<Props, "opportunities" | "onMove">) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: opp.id });
+  const prefetch = useIntentPrefetch();
   const style = transform
     ? { transform: `translate(${transform.x}px, ${transform.y}px)` }
     : undefined;
@@ -47,6 +50,10 @@ function Card({
     <div
       ref={setNodeRef}
       style={style}
+      // Hover, not pointerdown: the card is a dnd-kit draggable, so the pointer
+      // is already claimed by the drag gesture. Hovering is the only signal
+      // here that means "about to open" rather than "about to move".
+      onMouseEnter={() => prefetch(dealQueries.detail(opp.id))}
       className={`group rounded-xl border border-border bg-card p-3 transition-shadow ${
         isDragging ? "opacity-50 shadow-lg" : "shadow-sm"
       }`}

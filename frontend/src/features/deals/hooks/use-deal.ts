@@ -7,13 +7,16 @@ export const dealKeys = {
   detail: (id: string) => ["deals", "detail", id] as const,
 };
 
+/** Query options, so a prefetch and the page cannot drift apart on the key. */
+export const dealQueries = {
+  detail: (id: string) => ({
+    queryKey: dealKeys.detail(id),
+    queryFn: () => dealsApi.detail(id),
+  }),
+};
+
 export function useDeal(id: string | undefined) {
-  return useQuery({
-    queryKey: dealKeys.detail(id ?? ""),
-    queryFn: () => dealsApi.detail(id as string),
-    enabled: !!id,
-    staleTime: 30_000,
-  });
+  return useQuery({ ...dealQueries.detail(id ?? ""), enabled: !!id, staleTime: 30_000 });
 }
 
 /**

@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { useOpenOnParam } from "@shared/hooks/use-open-on-param";
+import { useIntentPrefetch } from "@shared/hooks/use-intent-prefetch";
+import { propertyQueries } from "../hooks/use-property-detail";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@shared/hooks/use-auth";
 import { Bath, BedDouble, Maximize, Plus, LayoutGrid, Map as MapIcon } from "lucide-react";
@@ -22,7 +24,16 @@ function propertyCode(id: string): string {
   return id.replace(/-/g, "").slice(0, 6).toUpperCase();
 }
 
-function PropertyCard({ property, onClick }: { property: Property; onClick: () => void }) {
+function PropertyCard({
+  property,
+  onClick,
+  onIntent,
+}: {
+  property: Property;
+  onClick: () => void;
+  /** Hover/focus, before the click — the moment to fetch the detail. */
+  onIntent?: () => void;
+}) {
   const op = {
     label: label("listingKind", property.listing_kind),
     tone: tone(LISTING_KIND_TONES, property.listing_kind),
@@ -36,6 +47,7 @@ function PropertyCard({ property, onClick }: { property: Property; onClick: () =
   return (
     <PhotoCard
       onClick={onClick}
+      onIntent={onIntent}
       // `cover_url` is the ~800px WebP derivative signed by the list endpoint —
       // the grid never touches the full-resolution original.
       src={property.cover_url}
@@ -92,6 +104,7 @@ export function AdminPropertiesPage() {
   const qc = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   useOpenOnParam("nuevo", () => setDialogOpen(true));
+  const prefetch = useIntentPrefetch();
   const [view, setView] = useState<"lista" | "mapa">("lista");
   const [search, setSearch] = useState("");
   // Debounced so typing doesn't fire a request per keystroke; the query key
@@ -206,6 +219,7 @@ export function AdminPropertiesPage() {
                 key={p.id}
                 property={p}
                 onClick={() => navigate(`/${role}/propiedades/${p.id}`)}
+                onIntent={() => prefetch(propertyQueries.detail(p.id))}
               />
             ))}
           </div>
