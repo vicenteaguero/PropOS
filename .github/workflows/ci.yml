@@ -106,6 +106,13 @@ jobs:
       - name: Build
         run: npm run build
 
+      # The first-paint budget. `vendor-pdf` and `vendor-charts` shipped on every
+      # visit for months because `manualChunks` had absorbed `clsx` and
+      # `use-sync-external-store` into them, and nothing measured the entry
+      # graph. This reads the built output rather than trusting the config.
+      - name: Critical path budget
+        run: node scripts/critical-path-check.mjs
+
   migrations:
     name: Migrations (naming + ordering)
     runs-on: ubuntu-latest
