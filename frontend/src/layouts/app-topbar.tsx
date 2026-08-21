@@ -11,7 +11,7 @@ import {
   CommandPalette,
   useCommandPaletteHotkey,
 } from "@shared/components/command-palette/command-palette";
-import { titleForPath } from "@app/page-meta";
+import { useCurrentPageTitle } from "@app/page-meta";
 import { useTopbarSlotHost, useTopbarSlotOccupied } from "@layouts/topbar-slot";
 import { useIsImmersive } from "@layouts/immersive";
 import type { UserView } from "@shared/types/auth";
@@ -100,6 +100,7 @@ export function MobileTopBar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { pathname } = location;
+  const pageTitle = useCurrentPageTitle() ?? "";
   const setTabsHost = useTopbarSlotHost();
   const tabsInBar = useTopbarSlotOccupied();
   const [wsOpen, setWsOpen] = useState(false);
@@ -129,7 +130,6 @@ export function MobileTopBar() {
     memberships.find((m) => m.tenantId === user.tenantId)?.tenantName ?? "Workspace";
   // Home is the role root exactly — every deeper route names itself instead.
   const isHome = pathname === base;
-  const pageTitle = titleForPath(pathname) ?? "";
   const canGoBack = !isSectionRoot(pathname, base);
   // `location.key === "default"` is React Router's marker for the first entry of
   // the session: a cold-opened deep link has nothing to pop, so back means "up".

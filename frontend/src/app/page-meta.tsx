@@ -73,6 +73,20 @@ export function titleForPath(pathname: string): string | null {
 const PageTitleContext = createContext<((title: string | null) => void) | null>(null);
 
 /**
+ * The name of the current page, override included.
+ *
+ * The phone top bar used to call `titleForPath` directly, which only knows the
+ * nav tree — so a contact's page was labelled "Personas" while the page under
+ * it showed the person's name, and the bar named the section the user had left
+ * rather than the record they were looking at.
+ */
+const PageTitleValueContext = createContext<string | null>(null);
+
+export function useCurrentPageTitle(): string | null {
+  return useContext(PageTitleValueContext);
+}
+
+/**
  * Names the current page in the browser tab.
  *
  * Every tab used to read "PropOS", which is worst exactly where the product is
@@ -126,5 +140,11 @@ export function PageMetaProvider({ children }: { children: ReactNode }) {
     main?.focus({ preventScroll: true });
   }, [pathname]);
 
-  return <PageTitleContext.Provider value={setOverride}>{children}</PageTitleContext.Provider>;
+  return (
+    <PageTitleContext.Provider value={setOverride}>
+      <PageTitleValueContext.Provider value={override ?? titleForPath(pathname)}>
+        {children}
+      </PageTitleValueContext.Provider>
+    </PageTitleContext.Provider>
+  );
 }
