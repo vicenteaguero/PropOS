@@ -15,12 +15,16 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
+from app.core.logging.logger import get_logger
 from app.features.agent.attribution import agent_attribution
 from app.features.agent.intent_registry import _is_falsy
 from app.features.agent.intent_registry import get as get_intent_spec
 from app.features.agent.intent_registry import missing_required
 from app.features.agent.resolver import ResolvedFields
+from app.features.agent.policies import AutonomyLevel, level_for
 from app.features.agent.tools.executors import ACCEPTOR_BY_KIND, _create_proposal
+
+logger = get_logger("AGENT_DISPATCH")
 
 
 def _build_payload(intent: str, resolved: ResolvedFields) -> dict[str, Any]:
@@ -158,6 +162,8 @@ def dispatch(
     tenant_id: UUID,
     user_id: UUID,
     session_id: UUID,
+    evidence: dict[str, Any] | None = None,
+    message_id: str | None = None,
 ) -> dict[str, Any]:
     """Run one intent. Returns a uniform shape consumed by ``chat.run_chat_turn``::
 
@@ -222,11 +228,23 @@ def dispatch(
             "missing_fields": missing,
         }
 
-    # Auto-commit: when the intent allows it and we have no ambiguity / no
-    # missing required fields, write directly to the target table. Skips
-    # pending_proposals entirely. High-stakes intents (e.g. log_transaction)
-    # opt out via `auto_commit=False` and still go through the pending flow.
-    if intent_spec.auto_commit:
+    # How much of this Propo may do alone is the tenant's call, not a constant
+    # in this file. `observe` records the intent and stops; `execute` writes the
+    # domain row; `suggest` — the default for anything touching a person, a
+    # deal, money or the outside world — queues a proposal for a human.
+    level = level_for(tenant_id, intent)
+
+    if level is AutonomyLevel.OBSERVE:
+        logger.info("agent_observe_only", event_type="policy", intent=intent)
+        return {
+            "kind": "observed",
+            "proposal_kind": proposal_kind,
+            "target_table": target_table,
+            "summary_es": payload.get("summary_es"),
+            "payload": payload,
+        }
+
+    if level is AutonomyLevel.EXECUTE:
         accept_fn = ACCEPTOR_BY_KIND.get(proposal_kind)
         if accept_fn is not None:
             try:
@@ -235,8 +253,9 @@ def dispatch(
                 with agent_attribution(session_id):
                     committed_table, row_id = accept_fn(dict(payload), tenant_id, user_id, session_id)
             except Exception as exc:  # noqa: BLE001
-                # Auto-commit failed (e.g. DB constraint). Fall back to pending
-                # so the user can fix it manually rather than losing the action.
+                # The direct write failed (e.g. a DB constraint). Fall back to a
+                # proposal so the user can fix it by hand rather than losing the
+                # action outright.
                 result = _create_proposal(
                     kind=proposal_kind,
                     payload=payload,
@@ -244,12 +263,14 @@ def dispatch(
                     tenant_id=tenant_id,
                     user_id=user_id,
                     session_id=session_id,
+                    evidence=evidence,
+                    message_id=message_id,
                 )
                 return {
                     **result,
                     "kind": "proposal",
                     "proposal_kind": result.get("kind"),
-                    "auto_commit_error": str(exc)[:200],
+                    "execute_error": str(exc)[:200],
                 }
             return {
                 "kind": "executed",
@@ -267,6 +288,8 @@ def dispatch(
         tenant_id=tenant_id,
         user_id=user_id,
         session_id=session_id,
+        evidence=evidence,
+        message_id=message_id,
     )
     # `_create_proposal` returns its own `kind` (e.g. "propose_log_interaction").
     # Overwrite outcome.kind with the high-level shape so chat.py can branch.

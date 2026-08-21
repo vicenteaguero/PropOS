@@ -104,8 +104,14 @@ async def test_concurrent_scopes_do_not_steal_each_others_session(built_clients)
     assert seen[str(second)] == str(second)
 
 
-def test_auto_commit_writes_inside_the_attribution_scope(monkeypatch: pytest.MonkeyPatch):
-    """The P2-05 regression."""
+def test_direct_write_happens_inside_the_attribution_scope(monkeypatch: pytest.MonkeyPatch):
+    """The P2-05 regression.
+
+    The subject is the attribution scope, not the policy, so the level is
+    stubbed: `create_person` used to execute directly because `auto_commit`
+    defaulted to True, and under the risk-tiered defaults it now proposes —
+    which is the point of that change, not a regression in this one.
+    """
     seen: dict[str, Any] = {}
     active = [False]
 
@@ -122,6 +128,7 @@ def test_auto_commit_writes_inside_the_attribution_scope(monkeypatch: pytest.Mon
             return False
 
     monkeypatch.setattr(dispatcher, "agent_attribution", lambda _sid: _Recorder())
+    monkeypatch.setattr(dispatcher, "level_for", lambda *_a, **_k: dispatcher.AutonomyLevel.EXECUTE)
     monkeypatch.setattr(dispatcher, "ACCEPTOR_BY_KIND", {"propose_create_person": fake_acceptor})
 
     resolved = ResolvedFields(extras={"full_name": "Pedro Soto", "kind": "BUYER"})
