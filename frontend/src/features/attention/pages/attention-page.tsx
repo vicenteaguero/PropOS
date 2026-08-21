@@ -1,17 +1,17 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Archive, ArchiveRestore, Inbox, Mail, PenSquare } from "lucide-react";
+import { Archive, ArchiveRestore, PenSquare, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  BrandMark,
+  EmailMark,
   FilterSelect,
   HOVER_REVEAL,
   ListShell,
   MasterDetail,
-  Pill,
   RoundButton,
   Row,
-  ViewToggle,
+  SwipeAction,
+  WhatsAppMark,
   type PillTone,
 } from "@shared/ui";
 import { listTime } from "@shared/utils/relative-time";
@@ -24,6 +24,7 @@ import {
   URGENCY_ORDER,
 } from "../components/attention-row";
 import type { AttentionItem, AttentionKind } from "../api/attention-api";
+import { ChannelSwitch, type ChannelFilter } from "../components/channel-switch";
 
 /**
  * The kinds that are a conversation with a person waiting on the other end.
@@ -53,7 +54,6 @@ import type { EmailThread } from "@features/email/api/email-api";
 
 export type InboxChannel = "whatsapp" | "email";
 
-type ChannelFilter = "todos" | InboxChannel;
 /** Conversation states, plus one entry per attention kind. */
 type StateFilter = "todos" | "open" | "closed" | "archived" | "unidentified" | AttentionKind;
 
@@ -101,11 +101,6 @@ function SectionLabel({ children, count }: { children: React.ReactNode; count?: 
     </div>
   );
 }
-
-const CHANNEL_LABEL: Record<InboxChannel, string> = {
-  whatsapp: "WhatsApp",
-  email: "Correo",
-};
 
 /** `"whatsapp:<uuid>"` → coordinates. Anything else reads as "nothing open". */
 function parseThreadParam(raw: string | null): { channel: InboxChannel; id: string } | null {
@@ -431,26 +426,12 @@ export function AttentionPage({ channels = ["whatsapp", "email"] }: AttentionPag
   const filters = (
     <div className="flex items-center gap-2">
       {showWhatsApp && showEmail && (
-        <ViewToggle
-          value={channel}
-          onChange={(v: string) => setChannel(v as ChannelFilter)}
-          options={[
-            { value: "todos", label: "Todo", icon: <Inbox className="size-4" strokeWidth={1.9} /> },
-            {
-              value: "whatsapp",
-              label: CHANNEL_LABEL.whatsapp,
-              icon: <BrandMark brand="whatsapp" size={17} />,
-            },
-            {
-              value: "email",
-              label: CHANNEL_LABEL.email,
-              icon: <Mail className="size-4" strokeWidth={1.9} />,
-            },
-          ]}
-        />
+        <ChannelSwitch value={channel} onChange={setChannel} />
       )}
       <FilterSelect
-        label="Estado"
+        // "Estado" named the field; "Filtrar" names the act, which is what a
+        // control the broker taps should say.
+        label="Filtrar"
         value={state === "todos" ? null : state}
         onChange={(v) => setState((v ?? "todos") as StateFilter)}
         allLabel="Todo"
@@ -461,22 +442,28 @@ export function AttentionPage({ channels = ["whatsapp", "email"] }: AttentionPag
           return { value: f.id, label: count ? `${f.label} (${count})` : f.label };
         })}
       />
+      {/* Personas is no longer a headline tab (see SectionTab.secondary), so the
+          view it was pulled out of carries the door to it. A conversation is
+          with a person; the catalogue of people is the natural next place. */}
+      <button
+        type="button"
+        onClick={() => navigate(`/${role}/clientes?tab=personas`)}
+        className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border px-3 py-2 text-[13px] font-medium text-muted-foreground transition hover:text-foreground [@media(pointer:coarse)]:py-2.5"
+      >
+        <Users className="size-4" strokeWidth={1.9} />
+        Contactos
+      </button>
     </div>
   );
 
   const list = (
     <ListShell
       fill
-      title="Conversaciones"
-      meta={
-        // The queue's real size, not the page's: the API caps the list, and
-        // "60 por resolver" beside a section counting 9 read as a bug.
-        attentionItems.length > 0
-          ? `${attention.data?.total ?? attentionItems.length} sin responder`
-          : shown.length > 0
-            ? `${shown.length}`
-            : undefined
-      }
+      // No painted title: the section tab overhead already reads
+      // "Conversaciones", and the count that sat beside it ("82 sin responder")
+      // was a number nobody can act on — the rows below are already ordered by
+      // which one to answer first.
+      titleSr="Conversaciones"
       search={{
         value: query,
         onChange: setQuery,
@@ -540,7 +527,19 @@ export function AttentionPage({ channels = ["whatsapp", "email"] }: AttentionPag
       {shown.map((e, i) => (
         // Wrapper, not a `right` slot: Row is itself a <button> when tappable,
         // and a button inside a button is invalid and unreachable by keyboard.
-        <div key={e.key} className="group relative">
+        <SwipeAction
+          key={e.key}
+          onAction={() => archive(e)}
+          icon={
+            e.archived ? (
+              <ArchiveRestore className="size-[18px]" strokeWidth={1.9} />
+            ) : (
+              <Archive className="size-[18px]" strokeWidth={1.9} />
+            )
+          }
+          label={e.archived ? "Restaurar" : "Archivar"}
+          className="group"
+        >
           <Row
             divider={i < shown.length - 1}
             onClick={() => openThread(e.channel, e.id)}
@@ -549,42 +548,39 @@ export function AttentionPage({ channels = ["whatsapp", "email"] }: AttentionPag
                 ? "bg-secondary/60"
                 : undefined
             }
-            // The mark, bare. A tinted circle behind a brand glyph adds a
-            // second shape to parse per row and says nothing the glyph doesn't.
-            left={
-              <BrandMark
-                mono
-                brand={e.channel === "whatsapp" ? "whatsapp" : "email"}
-                size={20}
-                className="text-muted-foreground"
-              />
-            }
+            // The brand mark, in colour. Which channel a thread is on decides
+            // what may be said and how fast — a WhatsApp window closes, an
+            // e-mail does not — so it is the one thing worth recognising before
+            // reading a single word.
+            left={e.channel === "whatsapp" ? <WhatsAppMark size={22} /> : <EmailMark size={22} />}
             title={e.title}
-            sub={<span className="block truncate">{e.property ?? "Sin propiedad vinculada"}</span>}
-            right={
-              // pr-9 reserves the archive control's column. It used to sit
-              // BELOW the pill with a spacer holding its place, which made every
-              // row three lines tall for a control most rows never use.
-              <span className="flex shrink-0 flex-col items-end gap-1 pr-9">
-                <span className="text-[12px] whitespace-nowrap text-faint">
-                  {listTime(e.time ? new Date(e.time).toISOString() : null)}
+            titleRight={
+              <span className="text-[12px] font-medium text-faint">
+                {listTime(e.time ? new Date(e.time).toISOString() : null)}
+              </span>
+            }
+            sub={
+              <span className="flex min-w-0 items-baseline gap-1.5">
+                <span className="min-w-0 flex-1 truncate">
+                  {e.property ?? <span className="text-faint">Sin propiedad vinculada</span>}
                 </span>
                 {e.needsReply ? (
-                  <Pill tone="destructive" dot="var(--destructive)">
-                    Sin responder
-                  </Pill>
+                  <span className="shrink-0 font-medium text-destructive">Sin responder</span>
                 ) : (
-                  <Pill tone={e.statusTone}>{e.statusLabel}</Pill>
+                  e.closed && <span className="shrink-0 text-faint">{e.statusLabel}</span>
                 )}
               </span>
             }
           />
+          {/* Pointer fallback for the same action. The swipe is the phone
+              affordance; a mouse has no equivalent gesture, so hover still
+              reveals a button. */}
           <RoundButton
             tone="ghost"
             size={32}
             aria-label={e.archived ? "Restaurar" : "Archivar"}
             title={e.archived ? "Restaurar" : "Archivar"}
-            className={`absolute right-[var(--page-x)] top-1/2 -translate-y-1/2 ${HOVER_REVEAL}`}
+            className={`absolute right-[var(--page-x)] top-1/2 -translate-y-1/2 [@media(pointer:coarse)]:hidden ${HOVER_REVEAL}`}
             onClick={() => archive(e)}
           >
             {e.archived ? (
@@ -593,7 +589,7 @@ export function AttentionPage({ channels = ["whatsapp", "email"] }: AttentionPag
               <Archive className="size-4" strokeWidth={1.8} />
             )}
           </RoundButton>
-        </div>
+        </SwipeAction>
       ))}
     </ListShell>
   );

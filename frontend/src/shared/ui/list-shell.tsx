@@ -14,8 +14,15 @@ interface ListShellSearch {
 }
 
 interface ListShellProps {
-  /** Names the list. Rendered as the surface's only h1/h2. */
-  title: string;
+  /**
+   * Names the list. Omit inside a tabbed section — the tab already names the
+   * view, and printing both put "Personas" directly under a tab reading
+   * "Personas" on every list in the app. The accessible heading survives
+   * either way (see `titleSr`).
+   */
+  title?: string;
+  /** Heading for assistive tech when `title` is deliberately not painted. */
+  titleSr?: string;
   /** Search field, on the title line. Omit for surfaces with nothing to search. */
   search?: ListShellSearch;
   /** Primary action, on the title line, hard right. */
@@ -71,6 +78,7 @@ interface ListShellProps {
  */
 export function ListShell({
   title,
+  titleSr,
   search,
   action,
   filters,
@@ -93,8 +101,13 @@ export function ListShell({
   const header = (
     <div className={cn("shrink-0 px-[var(--page-x)] pt-4", filters ? "pb-3" : "pb-4")}>
       <div className="flex flex-wrap items-center gap-3">
-        <h2 className="shrink-0 text-[17px] font-semibold leading-tight tracking-tight text-foreground">
-          {title}
+        <h2
+          className={cn(
+            "shrink-0 text-[17px] font-semibold leading-tight tracking-tight text-foreground",
+            !title && "sr-only",
+          )}
+        >
+          {title ?? titleSr}
         </h2>
         {meta && <span className="shrink-0 text-[13px] text-muted-foreground">{meta}</span>}
         {search && (
@@ -107,7 +120,11 @@ export function ListShell({
             ariaLabel={search.ariaLabel ?? search.placeholder}
             variant="inline"
             debounceMs={0}
-            className="order-last w-full min-w-[12rem] basis-full sm:order-none sm:ml-auto sm:max-w-sm sm:basis-auto sm:flex-1"
+            // Shares the row with the action at every width. It used to take
+            // `basis-full` below sm, which wrapped the primary action onto a
+            // line of its own — one whole row of a phone screen holding a
+            // single 36px round button.
+            className="order-first min-w-0 flex-1 sm:order-none sm:ml-auto sm:max-w-sm"
           />
         )}
         {action && <div className={cn("flex shrink-0 gap-2", !search && "ml-auto")}>{action}</div>}

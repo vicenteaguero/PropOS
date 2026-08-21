@@ -21,6 +21,7 @@ export { Chips, Chip } from "./chips";
 export { FilterSelect, type FilterOption } from "./filter-select";
 export { PropertyFilter, rankProperties, type FilterableProperty } from "./property-filter";
 export { ViewToggle, type ViewToggleOption } from "./view-toggle";
+export { SwipeAction } from "./swipe-action";
 export { Segmented, type SegmentedItem } from "./segmented";
 export { SectionLabel } from "./section-label";
 export { SectionTabs, type SectionTab } from "./section-tabs";
@@ -38,6 +39,7 @@ export { WorkspacePill } from "./workspace-pill";
 export {
   BrandMark,
   WhatsAppMark,
+  EmailMark,
   TitanMark,
   NavMark,
   WazeMark,

@@ -121,16 +121,22 @@ def _unanswered(tenant_id: UUID, now: dt.datetime, names: dict[str, str], props:
         # Urgency tracks the free-form window, not raw age. A message from four
         # months ago is abandoned, not urgent: ranking it above a visit starting
         # in an hour is exactly how a queue becomes noise nobody reads.
+        # The reason says WHY this is here, never how long ago it arrived: the
+        # row prints `at` as a timestamp of its own, so "Sin responder hace 6
+        # días" next to "Sábado" was the same fact twice — and the longer of the
+        # two, which shoved the property (the thing a broker actually
+        # recognises) out of the row. A countdown is different information and
+        # stays.
         if hours >= _ABANDONED_HOURS:
-            urgency, reason = Urgency.SOON, f"Sin responder {_humanize(age)}"
+            urgency, reason = Urgency.SOON, "Sin responder"
         elif hours >= _FREEFORM_HOURS:
-            urgency, reason = Urgency.TODAY, f"Requiere plantilla · {_humanize(age)}"
+            urgency, reason = Urgency.TODAY, "Requiere plantilla"
         elif hours >= _WINDOW_WARN_HOURS:
             urgency, reason = Urgency.NOW, f"Quedan {int(_FREEFORM_HOURS - hours)} h de ventana"
         elif hours >= 4:
-            urgency, reason = Urgency.TODAY, f"Sin responder {_humanize(age)}"
+            urgency, reason = Urgency.TODAY, "Sin responder"
         else:
-            urgency, reason = Urgency.SOON, f"Sin responder {_humanize(age)}"
+            urgency, reason = Urgency.SOON, "Sin responder"
 
         contact_id = row.get("contact_id")
         meta = row.get("metadata") or {}
@@ -189,10 +195,10 @@ def _email_waiting(tenant_id: UUID, now: dt.datetime, names: dict[str, str]):
 
         if is_lead:
             kind = AttentionKind.LEAD
-            reason = f"Lead de {portal or 'portal'} · {_humanize(age)}"
+            reason = f"Lead de {portal or 'portal'}"
         else:
             kind = AttentionKind.UNANSWERED
-            reason = f"Correo sin responder {_humanize(age)}"
+            reason = "Sin responder"
 
         contact_id = row.get("contact_id")
         yield AttentionItem(

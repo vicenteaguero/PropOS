@@ -1,11 +1,13 @@
+import { useState, type ReactNode } from "react";
 import { Check, ChevronDown } from "lucide-react";
-import type { ReactNode } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useIsDesktop } from "@/hooks/use-mobile";
+import { BottomSheet } from "./bottom-sheet";
 import { cn } from "@/lib/utils";
 import { TOUCH_TARGET_ROW_COARSE } from "./touch-target";
 
@@ -34,9 +36,14 @@ interface FilterSelectProps {
  *
  * Chip rows do not survive contact with real data: ten contact types or forty
  * properties become a horizontally scrolling strip where most options are off
- * screen and the active one may not even be visible. A dropdown states the
- * current choice in place, costs one line whatever the option count, and can
- * carry a second line per option — which a chip cannot.
+ * screen and the active one may not even be visible. This states the current
+ * choice in place, costs one line whatever the option count, and can carry a
+ * second line per option — which a chip cannot.
+ *
+ * It opens as a dropdown on a mouse and as a bottom sheet on a finger. The
+ * dropdown alone anchored a 256px panel to a control near the right edge of a
+ * 390px screen, so it opened half off-canvas with 36px rows: a menu drawn for a
+ * cursor, handed to a thumb.
  */
 export function FilterSelect({
   label,
@@ -46,27 +53,70 @@ export function FilterSelect({
   allLabel,
   className,
 }: FilterSelectProps) {
+  const isDesktop = useIsDesktop();
+  const [sheetOpen, setSheetOpen] = useState(false);
   const active = options.find((o) => o.value === value) ?? null;
+
+  const trigger = (
+    <button
+      type="button"
+      onClick={isDesktop ? undefined : () => setSheetOpen(true)}
+      className={cn(
+        "inline-flex max-w-full items-center gap-1.5 rounded-full border px-3 text-[13px] font-medium transition",
+        TOUCH_TARGET_ROW_COARSE,
+        active
+          ? "border-foreground bg-ink text-ink-foreground"
+          : "border-border text-muted-foreground hover:text-foreground",
+        className,
+      )}
+    >
+      {active?.icon}
+      <span className="truncate">{active ? active.label : label}</span>
+      <ChevronDown className="size-3.5 shrink-0 opacity-70" strokeWidth={2.25} />
+    </button>
+  );
+
+  if (!isDesktop) {
+    return (
+      <>
+        {trigger}
+        <BottomSheet open={sheetOpen} onOpenChange={setSheetOpen} title={label}>
+          <div className="mt-1">
+            {allLabel && (
+              <SheetOption
+                label={allLabel}
+                selected={value === null}
+                onClick={() => {
+                  onChange(null);
+                  setSheetOpen(false);
+                }}
+              />
+            )}
+            {options.map((o) => (
+              <SheetOption
+                key={o.value}
+                label={o.label}
+                sub={o.sub}
+                icon={o.icon}
+                selected={value === o.value}
+                onClick={() => {
+                  onChange(o.value);
+                  setSheetOpen(false);
+                }}
+              />
+            ))}
+            {options.length === 0 && (
+              <p className="py-3 text-[14px] text-muted-foreground">Sin opciones</p>
+            )}
+          </div>
+        </BottomSheet>
+      </>
+    );
+  }
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          className={cn(
-            "inline-flex max-w-full items-center gap-1.5 rounded-full border px-3 text-[13px] font-medium transition",
-            TOUCH_TARGET_ROW_COARSE,
-            active
-              ? "border-foreground bg-ink text-ink-foreground"
-              : "border-border text-muted-foreground hover:text-foreground",
-            className,
-          )}
-        >
-          {active?.icon}
-          <span className="truncate">{active ? active.label : label}</span>
-          <ChevronDown className="size-3.5 shrink-0 opacity-70" strokeWidth={2.25} />
-        </button>
-      </DropdownMenuTrigger>
+      <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
       {/* Bounded height: the property list is the point of this component and it
           runs to dozens of entries. */}
       <DropdownMenuContent align="start" className="max-h-80 w-64 overflow-y-auto">
@@ -93,5 +143,34 @@ export function FilterSelect({
         )}
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+function SheetOption({
+  label,
+  sub,
+  icon,
+  selected,
+  onClick,
+}: {
+  label: string;
+  sub?: string;
+  icon?: ReactNode;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex min-h-12 w-full items-center gap-3 border-b border-border py-2.5 text-left last:border-b-0"
+    >
+      {icon}
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[15px] font-medium text-foreground">{label}</span>
+        {sub && <span className="block truncate text-[13px] text-muted-foreground">{sub}</span>}
+      </span>
+      {selected && <Check className="size-[18px] shrink-0 text-primary" strokeWidth={2.4} />}
+    </button>
   );
 }
