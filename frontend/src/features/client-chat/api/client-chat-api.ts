@@ -1,16 +1,55 @@
 import { apiRequest } from "@shared/api/http";
-import type { ClientConversation, ClientMessage, ConversationStatus } from "../types";
+import type {
+  ClientConversation,
+  ClientMessage,
+  ConversationStatus,
+  ConversationTarget,
+} from "../types";
 
 const BASE = "/v1/client-chat";
 
 export const clientChatApi = {
-  listConversations: (status?: ConversationStatus, archived = false) => {
+  listConversations: (
+    status?: ConversationStatus,
+    archived = false,
+    opts: { waitingOn?: "client" | "us" | "nobody"; unidentified?: boolean } = {},
+  ) => {
     const params = new URLSearchParams();
     if (status) params.set("status", status);
     if (archived) params.set("archived", "true");
+    if (opts.waitingOn) params.set("waiting_on", opts.waitingOn);
+    if (opts.unidentified !== undefined) params.set("unidentified", String(opts.unidentified));
     const qs = params.toString() ? `?${params.toString()}` : "";
     return apiRequest<ClientConversation[]>(`${BASE}/conversations${qs}`);
   },
+
+  /** Point an unidentified thread at a person, filing the number under them. */
+  linkContact: (conversationId: string, contactId: string) =>
+    apiRequest<ClientConversation>(`${BASE}/conversations/${conversationId}/contact`, {
+      method: "POST",
+      body: { contact_id: contactId },
+    }),
+
+  listTargets: (conversationId: string) =>
+    apiRequest<ConversationTarget[]>(`${BASE}/conversations/${conversationId}/targets`),
+
+  addTarget: (
+    conversationId: string,
+    target: {
+      target_kind: "PROPERTY" | "OPPORTUNITY";
+      property_id?: string;
+      opportunity_id?: string;
+    },
+  ) =>
+    apiRequest<ConversationTarget>(`${BASE}/conversations/${conversationId}/targets`, {
+      method: "POST",
+      body: target,
+    }),
+
+  removeTarget: (conversationId: string, targetId: string) =>
+    apiRequest<void>(`${BASE}/conversations/${conversationId}/targets/${targetId}`, {
+      method: "DELETE",
+    }),
 
   listMessages: (conversationId: string) =>
     apiRequest<ClientMessage[]>(`${BASE}/conversations/${conversationId}/messages`),

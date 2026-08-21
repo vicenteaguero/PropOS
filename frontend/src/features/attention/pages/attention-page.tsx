@@ -55,7 +55,7 @@ export type InboxChannel = "whatsapp" | "email";
 
 type ChannelFilter = "todos" | InboxChannel;
 /** Conversation states, plus one entry per attention kind. */
-type StateFilter = "todos" | "open" | "closed" | "archived" | AttentionKind;
+type StateFilter = "todos" | "open" | "closed" | "archived" | "unidentified" | AttentionKind;
 
 /** One row of the inbox, whatever channel it came from. */
 interface InboxEntry {
@@ -81,6 +81,10 @@ interface InboxEntry {
 
 const STATE_FILTERS: { id: StateFilter; label: string }[] = [
   ...CONVERSATION_KINDS.map((kind) => ({ id: kind as StateFilter, label: KIND_LABEL[kind] })),
+  // The queue that used to not exist. An unknown number silently minted a
+  // contact named after its own phone number, so this pile was invisible and
+  // made of junk rows.
+  { id: "unidentified", label: "Sin identificar" },
   { id: "open", label: "Conversaciones abiertas" },
   { id: "closed", label: "Cerradas" },
   { id: "archived", label: "Archivadas" },
@@ -124,9 +128,13 @@ function conversationEntry(
 ): InboxEntry {
   const last = toMs(c.last_message_at);
   const inbound = toMs(c.last_inbound_at);
-  // A name whenever we have one: the phone number is a fallback identity, not a
-  // label. Rows that all read "+569…" are unscannable.
-  const title = name || c.external_phone_e164 || "(sin número)";
+  // A name whenever we have one: a phone number is a fallback identity, not a
+  // label, and rows that all read "+569…" are unscannable. For a thread nobody
+  // has identified yet, WhatsApp's own display name is the best clue there is —
+  // it used to be thrown away, or worse, saved as the contact's full name.
+  const whatsappName =
+    typeof c.metadata?.whatsapp_name === "string" ? c.metadata.whatsapp_name : null;
+  const title = name || whatsappName || c.external_phone_e164 || "(sin número)";
   return {
     key: `whatsapp:${c.id}`,
     id: c.id,
@@ -223,10 +231,17 @@ export function AttentionPage({ channels = ["whatsapp", "email"] }: AttentionPag
   const showWhatsApp = channels.includes("whatsapp");
   const showEmail = channels.includes("email");
   const archivedView = state === "archived";
+  const unidentifiedView = state === "unidentified";
 
   // The WhatsApp list is archived-or-active server-side, so the view flag has to
   // reach the query rather than being filtered out of the result.
-  const convos = useConversations(undefined, archivedView);
+  // Server-side for the unidentified queue: it is a `contact_id IS NULL`
+  // index scan, and filtering it in the browser would need the whole table.
+  const convos = useConversations(
+    undefined,
+    archivedView,
+    unidentifiedView ? { unidentified: true } : {},
+  );
   const emails = useEmailThreads({});
   // Contacts resolve a role (comprador / propietario / …) per row. One fetch,
   // joined by contact_id; TanStack dedupes it with the Personas tab's copy.
@@ -308,7 +323,7 @@ export function AttentionPage({ channels = ["whatsapp", "email"] }: AttentionPag
       if (archivedView) return false;
       if (kindFilter && item.kind !== kindFilter) return false;
       // "Cerradas" is a question about the mailbox; the queue has no answer.
-      if (!kindFilter && state === "closed") return false;
+      if (!kindFilter && (state === "closed" || state === "unidentified")) return false;
       if (channel === "whatsapp" && !item.conversation_id) return false;
       if (channel === "email" && !item.thread_id) return false;
       if (!showWhatsApp && item.conversation_id) return false;
@@ -339,13 +354,26 @@ export function AttentionPage({ channels = ["whatsapp", "email"] }: AttentionPag
       if (channel !== "todos" && e.channel !== channel) return false;
       // Archived is a view, not a facet: everywhere else archived rows are out.
       if (archivedView ? !e.archived : e.archived) return false;
-      if (!archivedView && queuedThreadKeys.has(e.key)) return false;
+      // An unidentified thread has no name to rank and no person to attribute
+      // it to, so the ranked queue skips it. This filter is the only way to see
+      // that pile, which is the point of having it.
+      if (unidentifiedView && e.contactId) return false;
+      if (!unidentifiedView && !archivedView && queuedThreadKeys.has(e.key)) return false;
       if (state === "open" && e.closed) return false;
       if (state === "closed" && !e.closed) return false;
       if (q && !e.haystack.includes(q)) return false;
       return true;
     });
-  }, [entries, channel, state, kindFilter, archivedView, queuedThreadKeys, query]);
+  }, [
+    entries,
+    channel,
+    state,
+    kindFilter,
+    archivedView,
+    unidentifiedView,
+    queuedThreadKeys,
+    query,
+  ]);
 
   const isLoading =
     (showWhatsApp && convos.isPending) ||
@@ -499,7 +527,9 @@ export function AttentionPage({ channels = ["whatsapp", "email"] }: AttentionPag
         );
       })}
       {attentionItems.length > 0 && shown.length > 0 && (
-        <SectionLabel>{archivedView ? "Archivadas" : "Conversaciones"}</SectionLabel>
+        <SectionLabel>
+          {archivedView ? "Archivadas" : unidentifiedView ? "Sin identificar" : "Conversaciones"}
+        </SectionLabel>
       )}
       {shown.map((e, i) => (
         // Wrapper, not a `right` slot: Row is itself a <button> when tappable,

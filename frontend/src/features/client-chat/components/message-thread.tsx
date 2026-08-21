@@ -4,6 +4,7 @@ import { BrandMark, Pill, RoundButton, FOCUS_RING } from "@shared/ui";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useKeyboardInset } from "@shared/hooks/use-keyboard-inset";
+import { IdentifyBanner } from "./identify-banner";
 import { useConversationMessages, useSendMessage, useTakeover } from "../hooks/use-client-chat";
 import type { ClientConversation } from "../types";
 
@@ -66,6 +67,11 @@ export function MessageThread({ conversation, onBack }: Props) {
           {conversation.ai_enabled ? "Abierta" : "Manual"}
         </Pill>
       </div>
+
+      {/* Before anything else: we do not know who this is. Every other action
+          on this thread — consent, linking a property, letting Propo answer —
+          depends on there being a person behind the number. */}
+      {!conversation.contact_id && <IdentifyBanner conversation={conversation} />}
 
       {/* Actions */}
       <div className="flex flex-wrap gap-2 border-b border-border px-4 py-2.5">

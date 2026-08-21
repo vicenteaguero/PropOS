@@ -19,6 +19,19 @@ export interface ClientConversation {
   archived_at: string | null;
   created_at: string;
   metadata: Record<string, unknown>;
+  /** Who the thread is waiting on. Maintained by a trigger on every message. */
+  waiting_on: "client" | "us" | "nobody" | null;
+  first_response_at: string | null;
+  first_response_due_at: string | null;
+}
+
+/** What a thread is about. Mirrors `conversation_targets`. */
+export interface ConversationTarget {
+  id: string;
+  conversation_id: string;
+  target_kind: "PROPERTY" | "OPPORTUNITY";
+  property_id: string | null;
+  opportunity_id: string | null;
 }
 
 export interface ClientMessage {
