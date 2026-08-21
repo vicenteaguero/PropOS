@@ -36,6 +36,45 @@ class InteractionService:
         limit: int = 100,
     ) -> list[dict]:
         client = get_supabase_client()
+
+        # Filter in the DATABASE, not after the fetch. This used to pull the
+        # newest `limit` interactions for the whole tenant and then keep the
+        # ones matching the person — so a contact whose last interaction was
+        # older than the tenant's 100 most recent got an empty timeline, which
+        # reads as "never contacted" rather than "not in this page".
+        ids: set[str] | None = None
+        if person_id is not None:
+            ids = {
+                row["interaction_id"]
+                for row in (
+                    client.table("interaction_participants")
+                    .select("interaction_id")
+                    .eq("tenant_id", str(tenant_id))
+                    .eq("person_id", str(person_id))
+                    .execute()
+                    .data
+                    or []
+                )
+            }
+        if property_id is not None:
+            by_property = {
+                row["interaction_id"]
+                for row in (
+                    client.table("interaction_targets")
+                    .select("interaction_id")
+                    .eq("tenant_id", str(tenant_id))
+                    .eq("property_id", str(property_id))
+                    .execute()
+                    .data
+                    or []
+                )
+            }
+            # Both filters given: the interaction has to satisfy both.
+            ids = by_property if ids is None else (ids & by_property)
+
+        if ids is not None and not ids:
+            return []
+
         builder = (
             client.table(INTERACTIONS_TABLE)
             .select("*, interaction_participants(*), interaction_targets(*)")
@@ -46,18 +85,12 @@ class InteractionService:
         )
         if kind:
             builder = builder.eq("kind", kind)
-        rows = builder.execute().data
-        if person_id is not None:
-            rows = [
-                r for r in rows if any(p["person_id"] == str(person_id) for p in r.get("interaction_participants", []))
-            ]
-        if property_id is not None:
-            rows = [
-                r
-                for r in rows
-                if any(t.get("property_id") == str(property_id) for t in r.get("interaction_targets", []))
-            ]
-        return rows
+        if ids is not None:
+            # `in_` rather than an embedded `!inner` filter: that would also
+            # strip the embedded participants down to the matching one, and the
+            # timeline shows who else was there.
+            builder = builder.in_("id", sorted(ids))
+        return builder.execute().data
 
     @staticmethod
     async def get_interaction(interaction_id: UUID, tenant_id: UUID) -> dict:
