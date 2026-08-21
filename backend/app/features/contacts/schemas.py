@@ -140,3 +140,63 @@ class ContactOverview(BaseModel):
     #: The contact spoke last and nobody has answered.
     awaiting_reply: bool = False
     counts: OverviewCounts = OverviewCounts()
+
+
+class ContactPhoneOut(BaseModel):
+    id: UUID
+    e164: str
+    label: str | None = None
+    is_primary: bool = False
+    verified_at: datetime | None = None
+
+
+class ContactEmailOut(BaseModel):
+    id: UUID
+    address: str
+    label: str | None = None
+    is_primary: bool = False
+    verified_at: datetime | None = None
+
+
+class ContactChannels(BaseModel):
+    """Every way to reach a person.
+
+    `contacts.phone` / `.email` are the primary of each list, mirrored by
+    trigger for the readers that still expect a scalar column.
+    """
+
+    phones: list[ContactPhoneOut] = []
+    emails: list[ContactEmailOut] = []
+
+
+class AddPhoneRequest(BaseModel):
+    phone: str
+    label: str | None = None
+    make_primary: bool = False
+
+
+class AddEmailRequest(BaseModel):
+    email: str
+    label: str | None = None
+    make_primary: bool = False
+
+
+class ContactDuplicate(BaseModel):
+    """A candidate pair. Detection proposes; a human decides.
+
+    Never a constraint: a couple sharing a phone number is real data, and a
+    unique index would reject it.
+    """
+
+    contact_id: UUID
+    contact_name: str
+    duplicate_id: UUID
+    duplicate_name: str
+    #: Spanish, shown as-is: "mismo teléfono", "mismo RUT".
+    reason: str
+    score: float
+
+
+class MergeContactRequest(BaseModel):
+    #: The contact that will be folded away.
+    loser_id: UUID
