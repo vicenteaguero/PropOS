@@ -172,7 +172,10 @@ export default defineConfig({
     }),
   ],
   server: {
-    hmr: { clientPort: 5443 },
+    // 5443 is the HTTPS proxy `make dev-pwa-hmr` puts in front of vite. Running
+    // vite on its own left the HMR client dialling a port nothing was on, and
+    // the failed socket made the page reload on a loop.
+    hmr: { clientPort: Number(process.env.VITE_HMR_CLIENT_PORT ?? 5443) },
     host: "0.0.0.0",
     port: 5173,
     proxy: {
