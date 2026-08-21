@@ -591,14 +591,17 @@ def test_opt_out_message_confirms_and_skips_the_llm(monkeypatch):
 
     sent: list[str] = []
 
-    async def _fake_send_text(_phone, text):
+    # The bot's reply now goes through the WhatsApp dispatcher rather than
+    # straight to Kapso, so that consent and the 24 h window are checked on the
+    # way out. Patching here is what proves it still takes that path.
+    async def _fake_send(_tenant, _conversation, text, **_kwargs):
         sent.append(text)
-        return {"messages": [{"id": "wamid.out"}]}
+        return {"message_id": "msg-out", "kapso": {"messages": [{"id": "wamid.out"}]}}
 
     async def _explode(*_a, **_k):
         raise AssertionError("LLM must not be called on an opt-out message")
 
-    monkeypatch.setattr(client_agent.kapso_client, "send_text", _fake_send_text)
+    monkeypatch.setattr(client_agent, "send_freeform_to_conversation", _fake_send)
     monkeypatch.setattr(client_agent, "_generate_reply", _explode)
 
     asyncio.run(
@@ -709,14 +712,17 @@ def test_blocked_reply_degrades_to_handoff(monkeypatch):
 
     sent: list[str] = []
 
-    async def _fake_send_text(_phone, text):
+    # The bot's reply now goes through the WhatsApp dispatcher rather than
+    # straight to Kapso, so that consent and the 24 h window are checked on the
+    # way out. Patching here is what proves it still takes that path.
+    async def _fake_send(_tenant, _conversation, text, **_kwargs):
         sent.append(text)
-        return {"messages": [{"id": "wamid.out"}]}
+        return {"message_id": "msg-out", "kapso": {"messages": [{"id": "wamid.out"}]}}
 
     async def _leaky_reply(*_a, **_k):
         return "Te confirmo: quedan 2 unidades a $180.000.000 cada una."
 
-    monkeypatch.setattr(client_agent.kapso_client, "send_text", _fake_send_text)
+    monkeypatch.setattr(client_agent, "send_freeform_to_conversation", _fake_send)
     monkeypatch.setattr(client_agent, "_generate_reply", _leaky_reply)
 
     asyncio.run(
@@ -948,3 +954,82 @@ def test_unroutable_inbound_never_reaches_the_client_agent(monkeypatch):
     asyncio.run(ch_router._handle_message_batch([_inbound_item()]))
 
     assert handled == []
+
+
+# ─────────────── outbound goes through one guarded door ───────────────
+
+
+def test_bot_reply_is_dropped_when_consent_was_revoked(monkeypatch):
+    """The B2C bot used to call Kapso directly and check nothing.
+
+    It was the only sender in the system that skipped both the consent gate and
+    the 24 h window — the two rules the whole channel exists to respect.
+    """
+    import asyncio
+
+    from app.features.channels import client_agent
+    from app.features.notifications.whatsapp.dispatcher import ConsentError
+
+    calls: list[str] = []
+
+    async def _refuse(_tenant, _conversation, text, **kwargs):
+        calls.append(kwargs.get("consent_waiver") or "no-waiver")
+        raise ConsentError("contact not opted-in")
+
+    monkeypatch.setattr(client_agent, "send_freeform_to_conversation", _refuse)
+
+    # Must not raise: a blocked send is a compliance outcome, not a crash that
+    # takes the whole webhook batch down with it.
+    asyncio.run(
+        client_agent._send_reply(
+            {"tenant_id": TENANT_A, "id": "conv-1"},
+            "+56911111111",
+            "hola",
+        )
+    )
+    assert calls == ["no-waiver"]
+
+
+def test_opt_out_acknowledgement_survives_the_consent_gate(monkeypatch):
+    """Refusing to confirm "ya no recibirás mensajes" because they just opted
+    out is both absurd and worse for the person. One waiver, one reason."""
+    import asyncio
+
+    from app.features.channels import client_agent
+
+    waivers: list[str | None] = []
+
+    async def _capture(_tenant, _conversation, _text, **kwargs):
+        waivers.append(kwargs.get("consent_waiver"))
+        return {"message_id": "m"}
+
+    monkeypatch.setattr(client_agent, "send_freeform_to_conversation", _capture)
+    asyncio.run(
+        client_agent._send_reply(
+            {"tenant_id": TENANT_A, "id": "conv-1"},
+            "+56911111111",
+            client_agent.OPT_OUT_REPLY,
+            consent_waiver="opt_out_acknowledgement",
+        )
+    )
+    assert waivers == ["opt_out_acknowledgement"]
+
+
+def test_closed_window_hands_the_thread_to_a_human(monkeypatch):
+    """A free-form send outside the window is rejected by Meta anyway. Failing
+    silently loses the customer; flagging it puts a person on the thread."""
+    import asyncio
+
+    from app.features.channels import client_agent
+    from app.features.notifications.whatsapp.dispatcher import WindowError
+
+    flagged: list[str] = []
+
+    async def _closed(*_a, **_k):
+        raise WindowError("outside 24h freeform window")
+
+    monkeypatch.setattr(client_agent, "send_freeform_to_conversation", _closed)
+    monkeypatch.setattr(client_agent, "_flag_for_handoff", lambda _c, reason: flagged.append(reason))
+
+    asyncio.run(client_agent._send_reply({"tenant_id": TENANT_A, "id": "conv-1"}, "+56911111111", "hola"))
+    assert flagged == ["outside_window"]

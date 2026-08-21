@@ -21,8 +21,12 @@ from typing import Any
 from app.core.config.settings import settings
 from app.core.logging.logger import get_logger
 from app.core.supabase.client import get_supabase_client
+from app.features.notifications.whatsapp.dispatcher import (
+    ConsentError,
+    WindowError,
+    send_freeform_to_conversation,
+)
 from app.features.agent.rate_limiter import get_rate_limiter
-from app.features.integrations.kapso import client as kapso_client
 
 
 def _now() -> str:
@@ -163,7 +167,7 @@ async def handle_inbound_client(
     # be counted as an inbound opt-in.
     if is_opt_out_request(user_text):
         _record_opt_out(conv["tenant_id"], contact["id"])
-        await _send_reply(conv, phone_e164, OPT_OUT_REPLY)
+        await _send_reply(conv, phone_e164, OPT_OUT_REPLY, consent_waiver="opt_out_acknowledgement")
         return
 
     # Auto-record inbound consent (replying counts as opt-in for utility).
@@ -199,39 +203,56 @@ def _flag_for_handoff(conv: dict[str, Any], reason: str) -> None:
     ).eq("id", conv["id"]).execute()
 
 
-async def _send_reply(conv: dict[str, Any], phone_e164: str, text: str) -> None:
-    """Persist the outbound turn, ship it via Kapso, track delivery."""
-    db = get_supabase_client()
-    msg = (
-        db.table("client_messages")
-        .insert(
-            {
-                "tenant_id": conv["tenant_id"],
-                "conversation_id": conv["id"],
-                "direction": "outbound",
-                "sender_type": "agent_ai",
-                "content": text,
-                "delivery_status": "queued",
-            }
-        )
-        .execute()
-        .data[0]
-    )
+async def _send_reply(
+    conv: dict[str, Any],
+    phone_e164: str,
+    text: str,
+    *,
+    consent_waiver: str | None = None,
+) -> None:
+    """Ship the bot's reply through the one outbound path.
+
+    This used to call `kapso_client.send_text` directly, which made the B2C bot
+    the single sender in the system that checked neither consent nor the 24 h
+    free-form window — the two rules the whole channel is built around.
+    Everything now goes through `notifications.whatsapp.dispatcher`, which
+    records the outbound row, enforces both and tracks delivery.
+
+    `phone_e164` is no longer needed to send (the dispatcher reads it off the
+    conversation) and is kept for the failure log, where knowing which number a
+    send died on is the whole point.
+    """
     try:
-        resp = await kapso_client.send_text(phone_e164, text)
-        ext = (resp.get("messages") or [{}])[0].get("id")
-        # tenant-safe: row resolved by primary key from a tenant-scoped read
-        db.table("client_messages").update({"delivery_status": "sent", "external_message_id": ext}).eq(
-            "id", msg["id"]
-        ).execute()
-        # tenant-safe: row resolved by primary key from a tenant-scoped read
-        db.table("client_conversations").update({"last_message_at": _now()}).eq("id", conv["id"]).execute()
+        await send_freeform_to_conversation(
+            conv["tenant_id"],
+            conv["id"],
+            text,
+            consent_waiver=consent_waiver,
+        )
+    except ConsentError:
+        # Not a failure: they asked us to stop and we stopped.
+        logger.info(
+            "client_agent_send_blocked_no_consent",
+            event_type="compliance",
+            conversation_id=conv["id"],
+        )
+    except WindowError:
+        # The window closed between their message and our reply. A free-form
+        # send would be rejected by Meta anyway; a human picks it up with a
+        # template instead of the message failing silently.
+        logger.warning(
+            "client_agent_send_outside_window",
+            event_type="compliance",
+            conversation_id=conv["id"],
+        )
+        _flag_for_handoff(conv, "outside_window")
     except Exception as exc:  # noqa: BLE001
-        logger.exception("client_agent_send_failed", event_type="kapso", error=str(exc))
-        # tenant-safe: row resolved by primary key from a tenant-scoped read
-        db.table("client_messages").update({"delivery_status": "failed", "failure_reason": str(exc)[:500]}).eq(
-            "id", msg["id"]
-        ).execute()
+        logger.exception(
+            "client_agent_send_failed",
+            event_type="kapso",
+            phone=phone_e164,
+            error=str(exc)[:200],
+        )
 
 
 def _ensure_contact_from_phone(
