@@ -12,6 +12,8 @@ private. External URLs (media we did not upload) pass through untouched.
 from __future__ import annotations
 
 import io
+import threading
+import time
 from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import unquote, urlparse
@@ -37,6 +39,66 @@ TARGET_TABLE = "properties"
 PHOTO_ROLE = "PHOTO"
 
 DEFAULT_SIGNED_URL_TTL = 3600
+
+# How long a signed URL is handed back out of the process cache.
+#
+# The URL carries a token, so re-signing the same object produces a DIFFERENT
+# string every time — and a different string is a cache miss for the browser and
+# for the service worker's CacheFirst rule alike. The photos were therefore
+# re-downloaded on every load of the property list even though the bytes had not
+# changed; the `media` bucket holds 736 objects and 52 MB.
+#
+# Reusing the URL for most of its life makes it stable enough to be cached.
+# Well inside the hour it is valid for, so a client that starts a download at
+# the end of the window still finishes it.
+_URL_CACHE_TTL_SECONDS = 50 * 60
+_URL_CACHE_MAX = 2048
+_url_cache: dict[str, tuple[float, str]] = {}
+_url_lock = threading.Lock()
+
+
+def _cached_urls(paths: list[str]) -> tuple[dict[str, str], list[str]]:
+    """Split `paths` into what the cache can answer and what must be signed."""
+    now = time.monotonic()
+    hits: dict[str, str] = {}
+    misses: list[str] = []
+    with _url_lock:
+        for path in paths:
+            entry = _url_cache.get(path)
+            # Absolute deadline, and `-inf` on a miss: time.monotonic()'s epoch
+            # is arbitrary, so a 0.0 default reads as fresh during a process's
+            # first minutes. Same trap documented in agent/budget.py.
+            if entry and now < entry[0]:
+                hits[path] = entry[1]
+            else:
+                misses.append(path)
+    return hits, misses
+
+
+def _remember_urls(signed: dict[str, str]) -> None:
+    if not signed:
+        return
+    now = time.monotonic()
+    with _url_lock:
+        if len(_url_cache) + len(signed) > _URL_CACHE_MAX:
+            for key in [k for k, entry in _url_cache.items() if entry[0] <= now]:
+                del _url_cache[key]
+            if len(_url_cache) + len(signed) > _URL_CACHE_MAX:
+                _url_cache.clear()
+        # Room left after the sweep. A single batch can be larger than the whole
+        # cap — a tenant with thousands of photos on one page — and clearing
+        # first does not help if the insert then overshoots anyway. The tail is
+        # simply not cached; those paths re-sign next time.
+        room = _URL_CACHE_MAX - len(_url_cache)
+        for path, url in list(signed.items())[:room]:
+            _url_cache[path] = (now + _URL_CACHE_TTL_SECONDS, url)
+
+
+def reset_url_cache() -> None:
+    """Drop every cached signed URL. For tests."""
+    with _url_lock:
+        _url_cache.clear()
+
 
 # Long-edge box for each WebP derivative generated beside the original.
 # `thumb` feeds list covers and the gallery strip, `card` the hero; the
@@ -114,11 +176,21 @@ def storage_path_from_url(url: str | None) -> str | None:
 
 
 def signed_url(path: str, expires_in: int = DEFAULT_SIGNED_URL_TTL) -> str:
+    hits, misses = _cached_urls([path])
+    if not misses:
+        return hits[path]
     client = get_supabase_client()
     response = client.storage.from_(MEDIA_BUCKET).create_signed_url(path, expires_in)
     if isinstance(response, dict):
-        return response.get("signedURL") or response.get("signed_url") or ""
-    return str(response)
+        url = response.get("signedURL") or response.get("signed_url") or ""
+    else:
+        url = str(response)
+    if url and expires_in == DEFAULT_SIGNED_URL_TTL:
+        # Only the default TTL is cached: a caller asking for a shorter-lived
+        # URL wants a shorter-lived URL, and handing it a 50-minute one back
+        # would quietly ignore that.
+        _remember_urls({path: url})
+    return url
 
 
 def display_url(stored_url: str | None, expires_in: int = DEFAULT_SIGNED_URL_TTL) -> str:
@@ -198,12 +270,18 @@ def sign_many(paths: list[str], expires_in: int = DEFAULT_SIGNED_URL_TTL) -> dic
     unique = list(dict.fromkeys(p for p in paths if p))
     if not unique:
         return {}
+
+    cacheable = expires_in == DEFAULT_SIGNED_URL_TTL
+    hits, misses = _cached_urls(unique) if cacheable else ({}, unique)
+    if not misses:
+        return hits
+
     client = get_supabase_client()
     try:
-        results = client.storage.from_(MEDIA_BUCKET).create_signed_urls(unique, expires_in)
+        results = client.storage.from_(MEDIA_BUCKET).create_signed_urls(misses, expires_in)
     except Exception as exc:  # noqa: BLE001 — a page of broken images beats a 500
-        logger.error("batch_sign_failed", event_type="error", count=len(unique), error=str(exc)[:200])
-        return {}
+        logger.error("batch_sign_failed", event_type="error", count=len(misses), error=str(exc)[:200])
+        return hits
     signed: dict[str, str] = {}
     for item in results or []:
         if item.get("error"):
@@ -212,7 +290,9 @@ def sign_many(paths: list[str], expires_in: int = DEFAULT_SIGNED_URL_TTL) -> dic
         path = item.get("path")
         if url and path:
             signed[unquote(path)] = url
-    return signed
+    if cacheable:
+        _remember_urls(signed)
+    return {**hits, **signed}
 
 
 def _variant_url(signed: dict[str, str], path: str | None, variant: str, fallback: str) -> str:

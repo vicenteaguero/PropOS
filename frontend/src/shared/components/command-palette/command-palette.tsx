@@ -26,7 +26,7 @@ import { useThemeMode } from "@core/theme/theme-provider";
 import { useAgentName } from "@core/branding/agent-branding";
 import { useNavGroups } from "@layouts/use-nav-groups";
 import { useAgentOverlay } from "@features/agent/components/agent-overlay-host";
-import { useEntitySearch, type EntityHit, type EntityKind } from "@shared/api/entity-search";
+import { useEntitySearchMulti, type EntityHit, type EntityKind } from "@shared/api/entity-search";
 import { useDebounced } from "@shared/hooks/use-debounced";
 
 /**
@@ -99,15 +99,16 @@ export function CommandPalette({
   // Messages earn their place for the opposite reason: "the conversation where
   // they mentioned the bodega" is the thing a broker most often needs to get
   // back to, and nothing else in the app can find it.
-  const people = useEntitySearch("CONTACT", term, searching);
-  const properties = useEntitySearch("PROPERTY", term, searching);
-  const messages = useEntitySearch("MESSAGE", term, searching);
+  // One request for all three. The order here is the order the results appear
+  // in, so it doubles as the precedence rule: a person first, then the
+  // property, then the thread.
+  const hits = useEntitySearchMulti(["CONTACT", "PROPERTY", "MESSAGE"], term, searching);
 
   const records: { hit: EntityHit; to: string }[] = useMemo(() => {
     if (!searching) return [];
     const path: Record<EntityKind, (id: string) => string> = {
       CONTACT: (id) => `${roleRoot}/personas/${id}`,
-      PROPERTY: (id) => `${roleRoot}/properties/${id}`,
+      PROPERTY: (id) => `${roleRoot}/propiedades/${id}`,
       OPPORTUNITY: () => `${roleRoot}/clientes?tab=negocios`,
       // Straight into the thread, which is the whole reason to search a message.
       MESSAGE: (id) => `${roleRoot}/clientes?tab=conversaciones&hilo=whatsapp:${id}`,
@@ -115,10 +116,8 @@ export function CommandPalette({
       PROJECT: () => `${roleRoot}/clientes?tab=propiedades`,
       PLACE: () => `${roleRoot}/clientes?tab=propiedades`,
     };
-    return [...(people.data ?? []), ...(properties.data ?? []), ...(messages.data ?? [])]
-      .slice(0, 12)
-      .map((hit) => ({ hit, to: path[hit.kind](hit.id) }));
-  }, [searching, people.data, properties.data, messages.data, roleRoot]);
+    return (hits.data ?? []).slice(0, 12).map((hit) => ({ hit, to: path[hit.kind](hit.id) }));
+  }, [searching, hits.data, roleRoot]);
 
   const canPropo = useMemo(() => {
     if (!isAdminView) return false;
