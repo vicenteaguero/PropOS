@@ -24,6 +24,10 @@ from app.features.settings.schemas import (
     ChecklistTemplateWrite,
     MessageTemplate,
     MessageTemplateWrite,
+    Pipeline,
+    PipelineWrite,
+    Tag,
+    TagWrite,
 )
 
 router = APIRouter(
@@ -105,3 +109,68 @@ async def update_checklist_template(
 @router.delete("/checklist-templates/{template_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_checklist_template(template_id: UUID, tenant_id: UUID = Depends(get_tenant_id)) -> None:
     service.delete_checklist_template(tenant_id, template_id)
+
+
+# --- Pipelines -------------------------------------------------------------
+
+
+@router.get("/pipelines", response_model=list[Pipeline])
+async def list_pipelines(tenant_id: UUID = Depends(get_tenant_id)) -> list[Pipeline]:
+    """Pipelines with their declared transitions and how many deals ride them.
+
+    A pipeline that comes back with an EMPTY `transitions` list is not
+    misconfigured data the caller should hide — `assert_allowed` treats it as
+    unconstrained, so the screen has to say the state machine is off.
+    """
+    return service.list_pipelines(tenant_id)
+
+
+@router.post("/pipelines", response_model=Pipeline, status_code=status.HTTP_201_CREATED)
+async def create_pipeline(payload: PipelineWrite, tenant_id: UUID = Depends(get_tenant_id)) -> Pipeline:
+    return service.create_pipeline(tenant_id, payload)
+
+
+@router.get("/pipelines/{pipeline_id}", response_model=Pipeline)
+async def get_pipeline(pipeline_id: UUID, tenant_id: UUID = Depends(get_tenant_id)) -> Pipeline:
+    return service.get_pipeline(tenant_id, pipeline_id)
+
+
+@router.put("/pipelines/{pipeline_id}", response_model=Pipeline)
+async def update_pipeline(
+    pipeline_id: UUID,
+    payload: PipelineWrite,
+    tenant_id: UUID = Depends(get_tenant_id),
+) -> Pipeline:
+    return service.update_pipeline(tenant_id, pipeline_id, payload)
+
+
+@router.delete("/pipelines/{pipeline_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_pipeline(pipeline_id: UUID, tenant_id: UUID = Depends(get_tenant_id)) -> None:
+    """Deals keep existing: `opportunities.pipeline_id` is ON DELETE SET NULL,
+    so they come out of this with no pipeline and therefore no rules."""
+    service.delete_pipeline(tenant_id, pipeline_id)
+
+
+# --- Tags ------------------------------------------------------------------
+
+
+@router.get("/tags", response_model=list[Tag])
+async def list_tags(tenant_id: UUID = Depends(get_tenant_id)) -> list[Tag]:
+    """Tags with how many rows carry each one."""
+    return service.list_tags(tenant_id)
+
+
+@router.post("/tags", response_model=Tag, status_code=status.HTTP_201_CREATED)
+async def create_tag(payload: TagWrite, tenant_id: UUID = Depends(get_tenant_id)) -> Tag:
+    return service.create_tag(tenant_id, payload)
+
+
+@router.put("/tags/{tag_id}", response_model=Tag)
+async def update_tag(tag_id: UUID, payload: TagWrite, tenant_id: UUID = Depends(get_tenant_id)) -> Tag:
+    return service.update_tag(tenant_id, tag_id, payload)
+
+
+@router.delete("/tags/{tag_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_tag(tag_id: UUID, tenant_id: UUID = Depends(get_tenant_id)) -> None:
+    """Cascades to `taggings`: the label comes off every row that carried it."""
+    service.delete_tag(tenant_id, tag_id)

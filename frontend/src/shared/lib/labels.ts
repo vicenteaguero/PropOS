@@ -46,7 +46,11 @@ export type LabelKind =
   | "evidenceSource"
   | "dealPropertyRole"
   | "participantRole"
-  | "checklistStatus";
+  | "checklistStatus"
+  | "templateCategory"
+  | "templateApprovalStatus"
+  | "operationKind"
+  | "checklistOwnerRole";
 
 /** `opportunity_properties.role` — a buyer saw three and offered on one. */
 export const DEAL_PROPERTY_ROLE_LABELS: Record<string, string> = {
@@ -67,6 +71,44 @@ export const PARTICIPANT_ROLE_LABELS: Record<string, string> = {
   "corredor contraparte": "Corredor contraparte",
   abogado: "Abogado",
   banco: "Ejecutivo del banco",
+};
+
+/** `message_templates.category` — Meta's billing tiers. `marketing` is the
+ *  expensive one, and the one Meta scrutinises hardest on approval. */
+export const TEMPLATE_CATEGORY_LABELS: Record<string, string> = {
+  utility: "Utilidad",
+  marketing: "Marketing",
+  authentication: "Autenticación",
+};
+
+/** `message_templates.approval_status` — whether Meta will deliver it. */
+export const TEMPLATE_APPROVAL_STATUS_LABELS: Record<string, string> = {
+  draft: "Borrador",
+  submitted: "En revisión",
+  approved: "Aprobada",
+  rejected: "Rechazada",
+};
+
+/** `checklist_templates.operation_kind`. Free text in the database. */
+export const OPERATION_KIND_LABELS: Record<string, string> = {
+  venta: "Venta",
+  arriendo: "Arriendo",
+};
+
+/** `checklist_template_items.owner_role` — who has to produce the document.
+ *  Free text, so an unknown role falls through to itself. */
+export const CHECKLIST_OWNER_ROLE_LABELS: Record<string, string> = {
+  corredor: "Corredor",
+  abogado: "Abogado",
+  banco: "Banco",
+  comprador: "Comprador",
+  vendedor: "Vendedor",
+  propietario: "Propietario",
+  arrendatario: "Arrendatario",
+  arrendador: "Arrendador",
+  notaria: "Notaría",
+  notaría: "Notaría",
+  conservador: "Conservador",
 };
 
 /** `opportunity_checklist_items.status`. */
@@ -349,6 +391,10 @@ const LABEL_MAPS: Record<LabelKind, Record<string, string>> = {
   dealPropertyRole: DEAL_PROPERTY_ROLE_LABELS,
   participantRole: PARTICIPANT_ROLE_LABELS,
   checklistStatus: CHECKLIST_STATUS_LABELS,
+  templateCategory: TEMPLATE_CATEGORY_LABELS,
+  templateApprovalStatus: TEMPLATE_APPROVAL_STATUS_LABELS,
+  operationKind: OPERATION_KIND_LABELS,
+  checklistOwnerRole: CHECKLIST_OWNER_ROLE_LABELS,
   agentAction: AGENT_ACTION_LABELS,
   autonomyLevel: AUTONOMY_LEVEL_LABELS,
   rejectReason: REJECT_REASON_LABELS,

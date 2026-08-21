@@ -16,11 +16,14 @@ from app.features.settings.schemas import (
     ApprovalStatus,
     ChecklistItemWrite,
     MessageTemplateWrite,
+    PipelineTransition,
+    PipelineWrite,
 )
 from app.features.settings.service import (
     normalize_items,
     placeholders_in,
     resolve_approval,
+    validate_pipeline,
     validate_variables,
 )
 
@@ -162,3 +165,106 @@ def test_blocking_survives_the_renumber() -> None:
 
 def test_an_empty_list_normalizes_to_nothing() -> None:
     assert normalize_items([]) == []
+
+
+# --- pipelines --------------------------------------------------------------
+
+
+def test_pipeline_literal_list_is_declared_before_the_uuid_route() -> None:
+    paths = _paths_in_order()
+    catch_all = paths.index("/settings/pipelines/{pipeline_id}")
+    assert paths.index("/settings/pipelines") < catch_all
+
+
+def test_tag_literal_list_is_declared_before_the_uuid_route() -> None:
+    paths = _paths_in_order()
+    catch_all = paths.index("/settings/tags/{tag_id}")
+    assert paths.index("/settings/tags") < catch_all
+
+
+def _pipeline(**over) -> PipelineWrite:
+    base = dict(name="Ventas", stages=["LEAD", "VISIT", "CLOSED"], transitions=[])
+    return PipelineWrite(**{**base, **over})
+
+
+def _t(from_stage, to_stage, requires_human=False) -> PipelineTransition:
+    return PipelineTransition(from_stage=from_stage, to_stage=to_stage, requires_human=requires_human)
+
+
+def test_a_valid_rule_set_survives_validation() -> None:
+    rows = validate_pipeline(
+        _pipeline(transitions=[_t("LEAD", "VISIT"), _t("VISIT", "CLOSED", True), _t(None, "CLOSED")])
+    )
+    assert [(r["from_stage"], r["to_stage"], r["requires_human"]) for r in rows] == [
+        ("LEAD", "VISIT", False),
+        ("VISIT", "CLOSED", True),
+        (None, "CLOSED", False),
+    ]
+
+
+def test_from_any_stage_survives_as_none_rather_than_a_blank() -> None:
+    # NULL from_stage is the "from anywhere" rule, not a missing value.
+    rows = validate_pipeline(_pipeline(transitions=[_t(None, "CLOSED")]))
+    assert rows[0]["from_stage"] is None
+
+
+def test_an_empty_rule_set_is_accepted_because_it_means_something() -> None:
+    # `assert_allowed` returns early when a pipeline has no transitions, so an
+    # empty list is "no state machine", not an invalid payload to be rejected.
+    assert validate_pipeline(_pipeline(transitions=[])) == []
+
+
+def test_a_destination_outside_the_stage_list_is_allowed() -> None:
+    # Every seeded pipeline declares `NULL -> LOST`, and LOST is deliberately
+    # not one of the six stages: abandoning a deal takes it OUT of the flow.
+    # Rejecting this would make the editor unable to save the real data back.
+    rows = validate_pipeline(_pipeline(transitions=[_t(None, "LOST")]))
+    assert rows == [{"from_stage": None, "to_stage": "LOST", "requires_human": False}]
+
+
+def test_a_blank_destination_is_refused() -> None:
+    with pytest.raises(HTTPException) as exc:
+        validate_pipeline(_pipeline(transitions=[_t("LEAD", "   ")]))
+    assert exc.value.status_code == 422
+
+
+def test_a_rule_starting_at_an_unknown_stage_is_refused() -> None:
+    with pytest.raises(HTTPException):
+        validate_pipeline(_pipeline(transitions=[_t("OFERTA", "CLOSED")]))
+
+
+def test_a_rule_from_a_stage_to_itself_is_refused() -> None:
+    with pytest.raises(HTTPException):
+        validate_pipeline(_pipeline(transitions=[_t("LEAD", "LEAD")]))
+
+
+def test_duplicate_rules_are_refused_before_the_unique_index_sees_them() -> None:
+    with pytest.raises(HTTPException):
+        validate_pipeline(_pipeline(transitions=[_t("LEAD", "VISIT"), _t("LEAD", "VISIT", True)]))
+
+
+def test_two_from_any_rules_to_the_same_stage_are_a_duplicate_too() -> None:
+    with pytest.raises(HTTPException):
+        validate_pipeline(_pipeline(transitions=[_t(None, "CLOSED"), _t(None, "CLOSED")]))
+
+
+def test_the_same_target_from_two_origins_is_not_a_duplicate() -> None:
+    rows = validate_pipeline(_pipeline(transitions=[_t("LEAD", "CLOSED"), _t("VISIT", "CLOSED")]))
+    assert len(rows) == 2
+
+
+def test_blank_stage_names_are_refused() -> None:
+    with pytest.raises(HTTPException):
+        validate_pipeline(_pipeline(stages=["LEAD", "  "]))
+
+
+def test_duplicate_stage_names_are_refused() -> None:
+    with pytest.raises(HTTPException):
+        validate_pipeline(_pipeline(stages=["LEAD", "LEAD"]))
+
+
+def test_stage_names_are_trimmed_before_they_are_matched() -> None:
+    # Transitions match by string equality against the deal's stage, so a
+    # trailing space in the stage list silently breaks every rule using it.
+    rows = validate_pipeline(_pipeline(stages=["LEAD ", "VISIT"], transitions=[_t("LEAD", "VISIT")]))
+    assert rows[0]["from_stage"] == "LEAD"

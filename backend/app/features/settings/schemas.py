@@ -98,3 +98,52 @@ class ChecklistTemplateWrite(BaseModel):
     is_default: bool = False
     #: The whole list, in the order it should run. Replaces what is stored.
     items: list[ChecklistItemWrite] = Field(default_factory=list)
+
+
+class PipelineTransition(BaseModel):
+    """One declared move.
+
+    `from_stage = None` is not a missing value: it means "from any stage".
+    Abandoning a deal is legal wherever it currently sits, and enumerating one
+    row per origin to say so would be six rows of noise.
+    """
+
+    from_stage: str | None = None
+    to_stage: str
+    #: The line Propo does not cross. Marking a deal won or lost is a
+    #: commercial judgement with money attached; a person makes it.
+    requires_human: bool = False
+
+
+class Pipeline(BaseModel):
+    id: UUID
+    name: str
+    stages: list[str]
+    is_default: bool
+    transitions: list[PipelineTransition] = Field(default_factory=list)
+    #: Deals currently sitting on this pipeline. Deleting it does not delete
+    #: them — the FK is ON DELETE SET NULL, so they come out unconstrained.
+    deal_count: int = 0
+
+
+class PipelineWrite(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    stages: list[str] = Field(min_length=1)
+    is_default: bool = False
+    #: The whole rule set, replacing what is stored. An EMPTY list is a
+    #: meaningful choice and not a no-op: `assert_allowed` treats a pipeline
+    #: with no declared transitions as unconstrained.
+    transitions: list[PipelineTransition] = Field(default_factory=list)
+
+
+class Tag(BaseModel):
+    id: UUID
+    name: str
+    color: str | None = None
+    #: Rows in `taggings` pointing here. Deleting the tag cascades to them.
+    usage_count: int = 0
+
+
+class TagWrite(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    color: str | None = None
