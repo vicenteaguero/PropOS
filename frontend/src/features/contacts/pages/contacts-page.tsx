@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
 import { useOpenOnParam } from "@shared/hooks/use-open-on-param";
+import { useIntentPrefetch } from "@shared/hooks/use-intent-prefetch";
+import { apiRequest } from "@shared/api/http";
 import { useSearchParams } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,7 +17,8 @@ import {
 import { useProperties } from "@features/documents/hooks/use-entities";
 import { useOpportunities } from "@features/opportunities/hooks/use-opportunities";
 import { toast } from "sonner";
-import { useContacts, useCreateContact } from "../hooks/use-contacts";
+import { contactsApi } from "../api/contacts-api";
+import { contactsKeys, useContacts, useCreateContact } from "../hooks/use-contacts";
 import { ContactFormDialog } from "../components/contact-form-dialog";
 import { ContactDetail } from "../components/contact-detail";
 import { CONTACT_TYPE_LABELS, CONTACT_TYPES, type ContactType } from "../types";
@@ -39,6 +42,7 @@ import { DuplicateContacts } from "../components/duplicate-contacts";
 export function ContactsPage() {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<ContactType | "ALL">("ALL");
+  const prefetch = useIntentPrefetch();
   // "Everyone involved in THIS property" is the question a broker actually
   // asks; before this the only filter was the contact's type, which answers a
   // question nobody has.
@@ -146,6 +150,19 @@ export function ContactsPage() {
         <Row
           key={c.id}
           onClick={() => select(c.id)}
+          // Hovering a row starts the two requests the pane will make, so by
+          // the time the click lands the detail usually has nothing to wait
+          // for. Keys come from the same factory the hooks use — a key that
+          // differs by a character warms a cache nobody reads.
+          onIntent={() =>
+            prefetch(
+              { queryKey: contactsKeys.detail(c.id), queryFn: () => contactsApi.get(c.id) },
+              {
+                queryKey: contactsKeys.overview(c.id),
+                queryFn: () => apiRequest(`/v1/contacts/${c.id}/overview`),
+              },
+            )
+          }
           divider={i < filtered.length - 1}
           className={selectedId === c.id ? "bg-secondary/60" : undefined}
           left={

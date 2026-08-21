@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
  */
 export function PhotoCard({
   onClick,
+  onIntent,
   src,
   srcThumb,
   alt,
@@ -22,6 +23,8 @@ export function PhotoCard({
   className,
 }: {
   onClick: () => void;
+  /** Hover/focus. Used to prefetch what the click will open. */
+  onIntent?: () => void;
   /** Cover image. Falls back to the gradient band when absent or broken. */
   src?: string | null;
   /** 400px derivative of the same photo, offered to narrow viewports. */
@@ -41,6 +44,8 @@ export function PhotoCard({
     <button
       type="button"
       onClick={onClick}
+      onMouseEnter={onIntent}
+      onFocus={onIntent}
       className={cn(
         "block w-full overflow-hidden rounded-xl bg-card text-left transition active:scale-[0.99]",
         className,
