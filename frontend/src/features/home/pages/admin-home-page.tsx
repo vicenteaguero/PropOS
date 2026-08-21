@@ -15,7 +15,7 @@ import {
   UserPlus,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { startOfDay, endOfDay, format } from "date-fns";
+import { startOfDay, endOfDay, startOfMonth, format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useAuth } from "@shared/hooks/use-auth";
 import { useAgentName } from "@core/branding/agent-branding";
@@ -31,7 +31,6 @@ import { useAgentOverlay } from "@features/agent/components/agent-overlay-host";
 import {
   ErrorState,
   PageSkeleton,
-  Pill,
   SectionLabel,
   WhatsAppMark,
   type PillTone,
@@ -102,6 +101,15 @@ export function AdminHomePage() {
   // OFFER + RESERVATION are the negotiation-stage opportunities.
   const negociacion = openOpps.filter(
     (o) => o.pipeline_stage === "OFFER" || o.pipeline_stage === "RESERVATION",
+  ).length;
+
+  // Three open-pipeline counts answer "what is in flight" but nothing answered
+  // "did any of it land". Won deals are a separate query because the strip above
+  // deliberately asks for status=OPEN.
+  const wonQ = useOpportunities({ status: "WON", limit: 100 });
+  const monthStart = startOfMonth(new Date()).toISOString();
+  const cierresDelMes = (wonQ.data ?? []).filter(
+    (o) => (o.updated_at ?? o.created_at ?? "") >= monthStart,
   ).length;
 
   const today = new Date();
@@ -308,29 +316,35 @@ export function AdminHomePage() {
     <button
       type="button"
       onClick={() => navigate(`${base}/clientes?tab=negocios`)}
+      aria-label="Ver negocios"
       className={cn(
-        "flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-background py-3 text-left transition hover:border-primary/40",
+        "grid w-full grid-cols-4 items-start gap-2 rounded-xl border border-border bg-background py-3 transition hover:border-primary/40",
         CARD_X,
       )}
     >
+      {/* An equal grid, not a flex row with a chevron on the end. The chevron
+          took a column's worth of width out of the last figure, so `flex-1`
+          handed the four spans unequal room and the numbers — which are read by
+          comparing them — no longer lined up under their labels. The whole strip
+          is one target; it does not need an arrow to say so. */}
       {[
-        { value: leadsActivos, label: "Leads activos" },
+        { value: leadsActivos, label: "Leads" },
         { value: enVisita, label: "En visita" },
         { value: negociacion, label: "Negociación" },
+        { value: cierresDelMes, label: "Cerrados" },
       ].map((stat) => (
-        <span key={stat.label} className="min-w-0 flex-1">
+        <span key={stat.label} className="flex min-w-0 flex-col items-center text-center">
           {/* Ink, not the brand accent. Colour in this app means money — pine
               for what comes in, brick for what goes out — so tinting a headcount
               green made three neutral figures read as revenue. */}
           <span className="block font-display text-2xl font-semibold leading-none tabular-nums text-foreground">
             {oppsQ.isPending ? "…" : stat.value}
           </span>
-          <span className="mt-1 block truncate text-[12.5px] text-muted-foreground">
+          <span className="mt-1.5 block w-full truncate text-[11.5px] leading-tight text-muted-foreground">
             {stat.label}
           </span>
         </span>
       ))}
-      <ChevronRight className="size-[18px] shrink-0 text-muted-foreground" />
     </button>
   );
 
@@ -416,20 +430,37 @@ export function AdminHomePage() {
     </section>
   );
 
+  /**
+   * The proposal queue, at the top of the page and on the brand accent.
+   *
+   * It used to be an outlined row in the right-hand column, below attention and
+   * data health — the same weight as everything around it, for the one thing on
+   * this screen that is blocking: until these are reviewed, what Propo heard in
+   * a conversation is not in the CRM. It leads the page whenever it is non-empty
+   * and disappears entirely when it is, so it never becomes a permanent fixture
+   * the eye learns to skip.
+   */
   const pendingCard = pendingCount > 0 && (
     <button
       type="button"
       onClick={() => navigate(`${base}/pendientes`)}
       className={cn(
-        "flex w-full items-center gap-3 rounded-xl border border-border py-3 text-left transition hover:bg-secondary/50",
+        "flex w-full items-center gap-3 rounded-xl border border-primary/35 bg-primary/10 py-3 text-left transition hover:bg-primary/15 active:scale-[0.99]",
         CARD_X,
       )}
     >
-      <Inbox className="size-[18px] shrink-0 text-muted-foreground" strokeWidth={1.9} />
-      <span className="min-w-0 flex-1 truncate text-[15px] font-semibold text-foreground">
-        Pendientes
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+        <Inbox className="size-[18px]" strokeWidth={2} />
       </span>
-      <Pill tone="accent">{pendingCount}</Pill>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[15px] font-semibold text-foreground">
+          {pendingCount} {pendingCount === 1 ? "pendiente" : "pendientes"} de {agentName}
+        </span>
+        <span className="block truncate text-[12.5px] text-muted-foreground">
+          Revisa lo que Propo propone
+        </span>
+      </span>
+      <ChevronRight className="size-[18px] shrink-0 text-primary" />
     </button>
   );
 
@@ -477,12 +508,14 @@ export function AdminHomePage() {
             </p>
           </div>
 
-          {/* Propo first: asking is the fastest way in, and it is the one control
+          {/* Blocking work first, then the way to create more of it. Propo's
+              queue is the only thing here that goes stale if ignored, so it
+              outranks the composer that fills it. */}
+          {pendingCard}
 
-              that answers any question. The agenda below is what is already
-
+          {/* Asking is the fastest way in, and it is the one control that
+              answers any question. The agenda below is what is already
               scheduled. */}
-
           {propoBar}
 
           {todayFeed.isError ? (
@@ -530,7 +563,6 @@ export function AdminHomePage() {
 
         {/* Below xl this is simply the rest of the single column. */}
         <aside className="flex min-w-0 flex-col gap-4">
-          {pendingCard}
           {/* What is waiting on a person, before what is wrong with the data. */}
           {allow("crm") && <AttentionCard />}
           {/* Data problems belong where the day starts, not buried in settings:
