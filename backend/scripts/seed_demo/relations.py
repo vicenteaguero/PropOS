@@ -30,6 +30,7 @@ from app.features.agent.intent_registry import REGISTRY as INTENT_REGISTRY
 from app.features.notifications.whatsapp.templates import REGISTRY as TEMPLATE_REGISTRY
 from scripts.seed_demo.context import (
     DEMO_TENANT_ID,
+    SeedAbortError,
     SeedContext,
     assert_safe_to_write,
     insert_many,
@@ -1043,6 +1044,11 @@ def _seed_price_history(
     """
     assert_safe_to_write(DEMO_TENANT_ID)
     priced = [p for p in properties if p.get("list_price_cents")]
+    if not priced:
+        # Every property unpriced is not a real state for this seed — it means
+        # the rows were loaded without the column, which is how this shipped
+        # writing zero snapshots and reporting success.
+        raise SeedAbortError("no priced properties: is list_price_cents in the SELECT?")
     movers = priced[: max(1, len(priced) // 3)]
     written = 0
     with conn.cursor() as cursor:
@@ -1383,8 +1389,11 @@ def seed_relations(conn: Any, state: SeedContext, rng_seed: int = 20260819) -> S
     properties = _str_ids(
         _load(
             conn,
-            "SELECT id, title, address, status, area_sqm, year_built, metadata FROM properties"
-            " WHERE tenant_id = %s AND deleted_at IS NULL ORDER BY id",
+            # `list_price_cents` is needed by the price-history seeder; without
+            # it every property looked unpriced and the ladder wrote nothing,
+            # silently, because "no priced properties" is a legal state.
+            "SELECT id, title, address, status, area_sqm, year_built, list_price_cents, metadata"
+            " FROM properties WHERE tenant_id = %s AND deleted_at IS NULL ORDER BY id",
             (DEMO_TENANT_ID,),
         ),
         "id",
