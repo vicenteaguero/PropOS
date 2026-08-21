@@ -5,6 +5,7 @@ from typing import Any
 from uuid import UUID
 
 from app.core.logging.logger import get_logger
+from app.core.db import run_blocking
 from app.core.supabase.client import get_supabase_client
 
 TASKS_TABLE = "tasks"
@@ -34,25 +35,30 @@ class TaskService:
         only_open: bool = False,
         limit: int = 200,
     ) -> list[dict]:
-        client = get_supabase_client()
-        builder = (
-            client.table(TASKS_TABLE)
-            .select("*")
-            .eq("tenant_id", str(tenant_id))
-            .is_("deleted_at", "null")
-            .order("priority", desc=True)
-            .order("due_at", desc=False)
-            .limit(limit)
-        )
-        if kind:
-            builder = builder.eq("kind", kind)
-        if status:
-            builder = builder.eq("status", status)
-        if owner_user is not None:
-            builder = builder.eq("owner_user", str(owner_user))
-        if only_open:
-            builder = builder.in_("status", ["OPEN", "IN_PROGRESS", "BLOCKED"])
-        return builder.execute().data
+        # Off the event loop: the Supabase client is synchronous, so an
+        # inline round trip holds the whole worker for its duration.
+        def _read() -> list[dict]:
+            client = get_supabase_client()
+            builder = (
+                client.table(TASKS_TABLE)
+                .select("*")
+                .eq("tenant_id", str(tenant_id))
+                .is_("deleted_at", "null")
+                .order("priority", desc=True)
+                .order("due_at", desc=False)
+                .limit(limit)
+            )
+            if kind:
+                builder = builder.eq("kind", kind)
+            if status:
+                builder = builder.eq("status", status)
+            if owner_user is not None:
+                builder = builder.eq("owner_user", str(owner_user))
+            if only_open:
+                builder = builder.in_("status", ["OPEN", "IN_PROGRESS", "BLOCKED"])
+            return builder.execute().data
+
+        return await run_blocking(_read)
 
     @staticmethod
     async def get_task(task_id: UUID, tenant_id: UUID) -> dict:

@@ -179,9 +179,9 @@ def test_an_explicit_client_bypasses_the_cache(mock_client):
 # ── the dev-schema bypass ─────────────────────────────────────────────────────
 
 
-@patch("app.core.supabase.auth.has_scoped_client", return_value=True)
+@patch("app.core.supabase.auth.is_schema_overridden", return_value=True)
 @patch("app.core.supabase.auth.get_supabase_client")
-def test_a_scoped_client_neither_reads_nor_writes_the_cache(mock_client, _scoped):
+def test_a_schema_override_neither_reads_nor_writes_the_cache(mock_client, _override):
     """DevSchemaMiddleware binds the whole request to another schema, so a
     cached `public` profile must never answer a `propos_test` request."""
     get_user = _gotrue(mock_client)

@@ -5,6 +5,7 @@ from typing import Any
 from uuid import UUID
 
 from app.core.logging.logger import get_logger
+from app.core.db import run_blocking
 from app.core.supabase.client import get_supabase_client
 
 CONTACTS_TABLE = "contacts"
@@ -38,23 +39,30 @@ class ContactService:
         limit: int = 100,
         offset: int = 0,
     ) -> list[dict]:
-        client = get_supabase_client()
-        # Always bounded: an unlimited select is truncated at db-max-rows with
-        # no error, so the caller can't tell a short page from the whole table.
-        builder = (
-            client.table(CONTACTS_TABLE)
-            .select("*")
-            .eq("tenant_id", str(tenant_id))
-            .order("created_at", desc=True)
-            .range(offset, offset + limit - 1)
-        )
-        if not include_drafts:
-            builder = builder.eq("is_draft", False)
-        if not include_deleted:
-            builder = builder.is_("deleted_at", "null")
-        if query:
-            builder = builder.ilike("full_name", f"%{query}%")
-        return builder.execute().data
+        # The read runs on a worker thread: the Supabase client is synchronous,
+        # so doing it inline would hold the event loop for the whole round trip
+        # and queue every other request behind this one.
+        def _read() -> list[dict]:
+            client = get_supabase_client()
+            # Always bounded: an unlimited select is truncated at db-max-rows
+            # with no error, so the caller can't tell a short page from the
+            # whole table.
+            builder = (
+                client.table(CONTACTS_TABLE)
+                .select("*")
+                .eq("tenant_id", str(tenant_id))
+                .order("created_at", desc=True)
+                .range(offset, offset + limit - 1)
+            )
+            if not include_drafts:
+                builder = builder.eq("is_draft", False)
+            if not include_deleted:
+                builder = builder.is_("deleted_at", "null")
+            if query:
+                builder = builder.ilike("full_name", f"%{query}%")
+            return builder.execute().data
+
+        return await run_blocking(_read)
 
     @staticmethod
     async def list_contacts_by_property(
@@ -89,16 +97,19 @@ class ContactService:
 
     @staticmethod
     async def get_contact(contact_id: UUID, tenant_id: UUID) -> dict:
-        client = get_supabase_client()
-        return (
-            client.table(CONTACTS_TABLE)
-            .select("*")
-            .eq("id", str(contact_id))
-            .eq("tenant_id", str(tenant_id))
-            .single()
-            .execute()
-            .data
-        )
+        def _read() -> dict:
+            return (
+                get_supabase_client()
+                .table(CONTACTS_TABLE)
+                .select("*")
+                .eq("id", str(contact_id))
+                .eq("tenant_id", str(tenant_id))
+                .single()
+                .execute()
+                .data
+            )
+
+        return await run_blocking(_read)
 
     @staticmethod
     async def create_contact(payload, tenant_id: UUID, created_by: UUID) -> dict:

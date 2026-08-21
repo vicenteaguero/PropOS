@@ -6,7 +6,7 @@ import jwt
 from supabase import Client
 
 from app.core.supabase import auth_cache
-from app.core.supabase.client import get_supabase_client, has_scoped_client
+from app.core.supabase.client import get_supabase_client, is_schema_overridden
 
 PROFILES_TABLE = "profiles"
 
@@ -41,8 +41,8 @@ def verify_token(token: str) -> dict:
     key is a hash of the whole token and why that is the property everything
     else rests on.
     """
-    if has_scoped_client():
-        # Dev schema switch: never read or write the cache. See has_scoped_client.
+    if is_schema_overridden():
+        # Dev schema switch: never read or write the cache. See is_schema_overridden.
         return get_supabase_client().auth.get_user(token).user
 
     cached = auth_cache.get_token(token)
@@ -74,7 +74,7 @@ def get_user_profile(user_id: str, client: Client | None = None) -> dict:
     caller has asked for a specific connection, so answering from a shared dict
     would ignore the request.
     """
-    use_cache = client is None and not has_scoped_client()
+    use_cache = client is None and not is_schema_overridden()
     if use_cache:
         cached = auth_cache.get_profile(user_id)
         if cached is not None:
