@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { formatDate, formatDateTime } from "@shared/utils/format";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Check, X, Pencil, Loader2 } from "lucide-react";
 import { useAcceptProposal, useRejectProposal } from "@features/pending/hooks/use-pending";
 import { useQuery } from "@tanstack/react-query";
@@ -12,9 +11,20 @@ import { ProposalEvidenceQuote } from "@features/pending/components/proposal-evi
 import { RejectProposalSheet } from "@features/pending/components/reject-proposal-sheet";
 import type { RejectBody } from "@features/pending/api/pending-api";
 import { agentActionLabel, label, type LabelKind } from "@shared/lib/labels";
+import type { PendingProposal } from "@features/agent/types";
 
 interface Props {
   proposalId: string;
+  /**
+   * The proposal itself, when the caller already has it.
+   *
+   * The Pendientes page fetches the whole list and then rendered one card per
+   * row by id — and every card fetched itself again. Six proposals meant seven
+   * round trips to display data that arrived complete in the first one, on a
+   * backend where the per-request cost dominates. The chat still passes only an
+   * id, because there a proposal arrives as a reference inside a message.
+   */
+  proposal?: PendingProposal;
 }
 
 // Spanish labels for payload keys so the card never leaks raw English field names.
@@ -127,26 +137,26 @@ function fieldValue(key: string, value: unknown): string {
   return String(value);
 }
 
-export function AgentInlineProposalCard({ proposalId }: Props) {
+export function AgentInlineProposalCard({ proposalId, proposal: given }: Props) {
   const [editing, setEditing] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [picks, setPicks] = useState<Record<string, string>>({});
   const accept = useAcceptProposal();
   const reject = useRejectProposal();
 
-  const { data: proposal, isLoading } = useQuery({
+  const { data: fetched, isLoading } = useQuery({
     queryKey: ["pending", "detail", proposalId],
     queryFn: () => pendingApi.get(proposalId),
     refetchInterval: false,
+    enabled: given === undefined,
   });
+  const proposal = given ?? fetched;
 
   if (isLoading || !proposal) {
     return (
-      <Card className="border-dashed">
-        <CardContent className="py-3 flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" /> Cargando propuesta…
-        </CardContent>
-      </Card>
+      <div className="flex items-center gap-2 rounded-xl border border-dashed border-border px-3.5 py-3 text-sm text-muted-foreground">
+        <Loader2 className="size-4 animate-spin" /> Cargando propuesta…
+      </div>
     );
   }
 
@@ -173,111 +183,130 @@ export function AgentInlineProposalCard({ proposalId }: Props) {
     setRejecting(false);
   };
 
+  /**
+   * Every field, for the drawer. The four-line preview above is the summary;
+   * "Ver detalle" used to answer it with `JSON.stringify(payload, null, 2)` in a
+   * monospace block — the raw wire shape, English keys and all, on a surface
+   * whose entire premise is that the broker can judge the proposal without
+   * leaving the queue.
+   */
+  const allFields = Object.entries(proposal.resolved_payload || proposal.payload).filter(([k, v]) =>
+    isShownToHumans(k, v),
+  );
+  const previewFields = allFields
+    .filter(([, v]) => !echoesTheQuote(v, proposal.evidence?.quote as string | undefined))
+    .slice(0, 3);
+
   return (
-    <Card
-      className={
+    /* A plain surface, not shadcn's <Card>. That component ships `gap-6` between
+       header and content and `py-6`/`px-6` around them — 24px of air in three
+       places on a card whose whole content is a title, a quote and three short
+       lines, so four proposals filled a phone screen and the queue could not be
+       scanned. Same tokens, a third of the padding. */
+    <div
+      className={cn(
+        "rounded-xl border px-3.5 py-3",
         accepted
           ? "border-success/30 bg-success/5"
           : rejected
             ? "border-destructive/30 bg-destructive/5"
-            : "border-primary/20"
-      }
+            : "border-border bg-card",
+      )}
     >
-      <CardHeader className="py-3">
-        {/* One name for the action, not two. The title and the badge were
-            printing the same string side by side; the badge now carries the
-            outcome, which is the thing the title cannot say. */}
-        <div className="flex items-center justify-between gap-2">
-          <CardTitle className="text-sm">{summary}</CardTitle>
-          {(accepted || rejected) && (
-            <Badge variant={accepted ? "default" : "destructive"}>
-              {accepted ? "Aceptada" : "Rechazada"}
-            </Badge>
-          )}
-        </div>
-      </CardHeader>
-      <CardContent className="py-2 space-y-2">
-        <ProposalEvidenceQuote evidence={proposal.evidence} />
-
-        {editing ? (
-          <pre className="text-xs bg-muted p-2 rounded overflow-x-auto">
-            {JSON.stringify(proposal.resolved_payload || proposal.payload, null, 2)}
-          </pre>
-        ) : (
-          <div className="text-xs text-muted-foreground">
-            {Object.entries(proposal.resolved_payload || proposal.payload)
-              .filter(
-                ([k, v]) =>
-                  isShownToHumans(k, v) &&
-                  !echoesTheQuote(v, proposal.evidence?.quote as string | undefined),
-              )
-              .slice(0, 4)
-              .map(([k, v]) => (
-                <div key={k}>
-                  <span className="font-medium">{fieldLabel(k)}:</span>{" "}
-                  <span>{fieldValue(k, v)}</span>
-                </div>
-              ))}
-          </div>
+      <div className="flex items-baseline gap-2">
+        <h3 className="min-w-0 flex-1 truncate text-[15px] font-semibold text-foreground">
+          {summary}
+        </h3>
+        {(accepted || rejected) && (
+          <span
+            className={cn(
+              "shrink-0 text-[11.5px] font-semibold",
+              accepted ? "text-success" : "text-destructive",
+            )}
+          >
+            {accepted ? "Aceptada" : "Rechazada"}
+          </span>
         )}
+      </div>
 
-        {Object.entries(ambiguityFields).map(([field, info]) => {
-          const cands = info.candidates;
-          if (!cands || cands.length < 2) return null;
-          return (
+      <ProposalEvidenceQuote evidence={proposal.evidence} className="mt-2" />
+
+      {previewFields.length > 0 && (
+        <dl className="mt-2 space-y-0.5 text-[12.5px] leading-snug">
+          {previewFields.map(([k, v]) => (
+            <div key={k} className="flex gap-1.5">
+              <dt className="shrink-0 text-muted-foreground">{fieldLabel(k)}</dt>
+              <dd className="min-w-0 flex-1 truncate text-foreground">{fieldValue(k, v)}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+
+      {editing && (
+        <dl className="mt-2 space-y-0.5 border-t border-border pt-2 text-[12.5px] leading-snug">
+          {allFields.map(([k, v]) => (
+            <div key={k} className="flex gap-1.5">
+              <dt className="shrink-0 text-muted-foreground">{fieldLabel(k)}</dt>
+              <dd className="min-w-0 flex-1 text-foreground">{fieldValue(k, v)}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+
+      {Object.entries(ambiguityFields).map(([field, info]) => {
+        const cands = info.candidates;
+        if (!cands || cands.length < 2) return null;
+        return (
+          <div key={field} className="mt-2">
             <ProposalDisambiguationPicker
-              key={field}
               field={field}
               candidates={cands as never}
               selected={picks[field]}
               onPick={(id) => setPicks((p) => ({ ...p, [field]: id }))}
             />
-          );
-        })}
-
-        {isPending && (
-          <div className="flex gap-2 pt-1">
-            <Button size="sm" onClick={handleAccept} disabled={accept.isPending} className="gap-1">
-              {accept.isPending ? (
-                <Loader2 className="size-3 animate-spin" />
-              ) : (
-                <Check className="size-3" />
-              )}
-              Aceptar
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setEditing((e) => !e)}
-              className="gap-1"
-            >
-              <Pencil className="size-3" />
-              {editing ? "Ocultar" : "Ver detalle"}
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setRejecting(true)}
-              disabled={reject.isPending}
-              className="gap-1 text-destructive"
-            >
-              <X className="size-3" />
-              Rechazar
-            </Button>
           </div>
-        )}
-        {accepted && (
-          <p className="text-xs text-success pt-1">
-            ✓ Aceptado{proposal.created_row_id ? ` → ${proposal.created_row_id.slice(0, 8)}` : ""}
-          </p>
-        )}
-        {rejected && (
-          <p className="text-xs text-destructive pt-1">
-            ✗ Rechazado
-            {proposal.review_reason ? ` — ${label("rejectReason", proposal.review_reason)}` : ""}
-          </p>
-        )}
-      </CardContent>
+        );
+      })}
+
+      {isPending && (
+        /* Accept is the answer 90% of the time and gets the only filled button;
+           reject is a bare glyph on the far side of the row, where a thumb
+           reaching for "Aceptar" cannot land on it. */
+        <div className="mt-2.5 flex items-center gap-2">
+          <Button size="sm" onClick={handleAccept} disabled={accept.isPending} className="gap-1.5">
+            {accept.isPending ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : (
+              <Check className="size-3.5" strokeWidth={2.4} />
+            )}
+            Aceptar
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setEditing((e) => !e)}
+            className="gap-1 text-muted-foreground"
+          >
+            <Pencil className="size-3.5" />
+            {editing ? "Ocultar" : "Detalle"}
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            aria-label="Rechazar"
+            onClick={() => setRejecting(true)}
+            disabled={reject.isPending}
+            className="ml-auto text-muted-foreground hover:text-destructive"
+          >
+            <X className="size-4" strokeWidth={2.2} />
+          </Button>
+        </div>
+      )}
+      {rejected && proposal.review_reason && (
+        <p className="mt-2 text-[12px] text-destructive">
+          {label("rejectReason", proposal.review_reason)}
+        </p>
+      )}
 
       <RejectProposalSheet
         open={rejecting}
@@ -286,6 +315,6 @@ export function AgentInlineProposalCard({ proposalId }: Props) {
         submitting={reject.isPending}
         onConfirm={handleReject}
       />
-    </Card>
+    </div>
   );
 }

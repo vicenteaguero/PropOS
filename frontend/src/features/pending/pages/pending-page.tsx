@@ -61,7 +61,7 @@ export function PendingPage() {
         {!isLoading && !isError && count > 0 && (
           <div className="grid grid-cols-2 gap-4 xl:grid-cols-3 [&>*]:self-start">
             {data?.map((p) => (
-              <AgentInlineProposalCard key={p.id} proposalId={p.id} />
+              <AgentInlineProposalCard key={p.id} proposalId={p.id} proposal={p} />
             ))}
           </div>
         )}
@@ -69,14 +69,19 @@ export function PendingPage() {
     );
   }
 
-  // Mobile: unchanged — capped column, full-width segmented control, stacked cards.
+  /**
+   * Mobile: the filter IS the heading.
+   *
+   * This screen used to open with the shell's own bar reading "Pendientes",
+   * then an h1 reading "Pendientes de Propo", then a full-width segmented
+   * control — three stacked rows saying the same word before a single proposal
+   * appeared, on the screen a push notification lands you in. The shell bar
+   * already names the page and now carries a back control, so the page starts
+   * at the one control that changes what is on it.
+   */
   return (
     <PageLayout width="md" noPadding>
-      <div className="px-5 pt-4 pb-5">
-        <PageHeader title={`Pendientes de ${agentName}`} className="mb-0" />
-      </div>
-
-      <Segmented items={TABS} value={tab} onChange={setTab} className="mb-5" />
+      <Segmented items={TABS} value={tab} onChange={setTab} className="mb-3" />
 
       {isLoading && loading}
 
@@ -87,9 +92,9 @@ export function PendingPage() {
       {!isLoading && !isError && count === 0 && empty}
 
       {!isLoading && !isError && count > 0 && (
-        <div className="space-y-3 px-5 pb-6">
+        <div className="space-y-2 px-[var(--page-x)] pb-6">
           {data?.map((p) => (
-            <AgentInlineProposalCard key={p.id} proposalId={p.id} />
+            <AgentInlineProposalCard key={p.id} proposalId={p.id} proposal={p} />
           ))}
         </div>
       )}
