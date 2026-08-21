@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { useShellMode } from "@shared/hooks/use-shell-mode";
 import { BackButton } from "./back-button";
 
 /**
@@ -28,12 +29,17 @@ interface PageHeaderProps {
 }
 
 export function PageHeader({ title, actions, backTo, size = "page", className }: PageHeaderProps) {
+  // The phone shell's top bar carries a back control on every route that is not
+  // a section root, so a second one in the page header put two arrows on top of
+  // each other on every detail screen. The sidebar shell has no such bar, so
+  // there the page keeps its own.
+  const shellOwnsBack = useShellMode() === "bottom-nav";
   return (
     // The back control sits ON the title line, not above it: a stacked "Volver"
     // row cost a whole line of vertical rhythm on a phone and put the title
     // further from the top of the screen than the shell header already is.
     <div className={cn("mb-4 flex flex-wrap items-center gap-x-2 gap-y-3", className)}>
-      {backTo && <BackButton fallbackTo={backTo} />}
+      {backTo && !shellOwnsBack && <BackButton fallbackTo={backTo} />}
       <h1
         className={cn(
           "min-w-0 flex-1 truncate font-semibold leading-tight tracking-tight text-foreground",

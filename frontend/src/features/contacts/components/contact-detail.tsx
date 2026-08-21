@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useShellMode } from "@shared/hooks/use-shell-mode";
+import { usePageTitle } from "@app/page-meta";
 import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -79,11 +81,16 @@ interface ContactDetailProps {
  * loading / error-retry states so it can drop into any container.
  */
 export function ContactDetail({ contactId, onBack, onDeleted }: ContactDetailProps) {
+  const shellOwnsBack = useShellMode() === "bottom-nav";
   const navigate = useNavigate();
   const { user } = useAuth();
   const role = user?.role.toLowerCase() ?? "agent";
 
   const { data: contact, isLoading, error, refetch } = useContact(contactId);
+  // Names the browser tab AND the phone shell's top bar. It used to be the
+  // literal string "Persona", printed directly above a page whose largest
+  // element is the person's name.
+  usePageTitle(contact?.full_name);
   const update = useUpdateContact(contactId);
   const del = useDeleteContact();
 
@@ -110,9 +117,11 @@ export function ContactDetail({ contactId, onBack, onDeleted }: ContactDetailPro
 
   return (
     <div className="pb-6">
-      {/* Top bar */}
+      {/* Top bar. The back control is hidden in the phone shell, whose own top
+          bar now carries one on every route below a section root — two arrows,
+          one above the other, was the result of adding it. */}
       <div className="flex items-center justify-between px-[var(--page-x)] pt-4 pb-2">
-        {onBack ? (
+        {onBack && !shellOwnsBack ? (
           <RoundButton tone="ghost" onClick={onBack} aria-label="Volver">
             <ArrowLeft className="size-5" strokeWidth={1.8} />
           </RoundButton>

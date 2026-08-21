@@ -2,7 +2,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import { PageLayout } from "@shared/components/page-layout";
 import { useAuth } from "@shared/hooks/use-auth";
 import { ContactDetail } from "../components/contact-detail";
-import { usePageTitle } from "@app/page-meta";
 
 /**
  * Standalone contact detail route (`/<role>/personas/:id`). Kept for deep-links
@@ -16,7 +15,9 @@ export function ContactDetailPage() {
   const role = user?.role.toLowerCase() ?? "agent";
 
   const backToList = () => navigate(`/${role}/clientes?tab=personas`);
-  usePageTitle("Persona");
+  // Named by the record, not by its type: the shell top bar prints this, and
+  // "Persona" over a page already showing the person's name said nothing.
+  // ContactDetail owns the name, so the page title follows it from there.
 
   // Deep links land here on every viewport (the list page only routes to it on
   // phones).
