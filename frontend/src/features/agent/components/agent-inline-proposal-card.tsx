@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { formatDateTime } from "@shared/utils/format";
+import { formatDate, formatDateTime } from "@shared/utils/format";
 import { Button } from "@/components/ui/button";
 import { Check, X, Pencil, Loader2 } from "lucide-react";
 import { useAcceptProposal, useRejectProposal } from "@features/pending/hooks/use-pending";
@@ -95,7 +95,11 @@ function echoesTheQuote(value: unknown, quote: string | undefined): boolean {
   return normalise(quote).includes(normalise(value));
 }
 
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
+const ISO_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
+/** A due date has no time. It fell through the datetime test and was printed
+ *  raw, so one proposal read "Vence: 2026-08-22" and the next, with a time,
+ *  read "Inicio: 23-08-2026, 7:00 a. m." — two formats on the same card. */
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 /** Payload keys whose VALUE is an enum with a Spanish label registry entry. */
 const VALUE_LABEL_KIND: Record<string, LabelKind> = {
@@ -109,8 +113,11 @@ const VALUE_LABEL_KIND: Record<string, LabelKind> = {
 
 /** Payload values are raw wire data: ISO stamps and nested objects. */
 function fieldValue(key: string, value: unknown): string {
-  if (typeof value === "string" && ISO_DATE.test(value)) {
+  if (typeof value === "string" && ISO_DATETIME.test(value)) {
     return formatDateTime(value);
+  }
+  if (typeof value === "string" && ISO_DAY.test(value)) {
+    return formatDate(value);
   }
   // Enum-shaped values are as raw as the keys were: "whatsapp", "OPEN".
   if (typeof value === "string" && VALUE_LABEL_KIND[key]) {
