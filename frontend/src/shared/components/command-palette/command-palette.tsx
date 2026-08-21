@@ -1,6 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Building2, LogOut, Moon, Settings, Sparkles, Sun, User, Check } from "lucide-react";
+import {
+  Building2,
+  Check,
+  LogOut,
+  MessageSquare,
+  Moon,
+  Settings,
+  Sparkles,
+  Sun,
+  User,
+} from "lucide-react";
 import {
   Command,
   CommandEmpty,
