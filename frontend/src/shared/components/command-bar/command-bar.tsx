@@ -11,12 +11,27 @@ import {
  * admin with agent scope, which left the AGENT role with no quick navigation
  * whatsoever. It is now a plain affordance for the palette, shown to every
  * role; Propo is one of the palette's entries rather than the whole feature.
+ *
+ * Two shapes, because the trigger has to survive a narrow viewport. The search
+ * pill was `hidden md:flex` and nothing replaced it below that breakpoint, so
+ * on a phone the palette had no visible trigger at all and its only other way
+ * in is ⌘K — a key a phone does not have. The owner and buyer views use this
+ * shell on mobile, so the icon fallback is what makes the palette reachable for
+ * them at all. (The broker shell has its own trigger in MobileTopBar.)
  */
 export function CommandBar() {
   const [open, setOpen] = useCommandPaletteHotkey();
 
   return (
     <>
+      <button
+        type="button"
+        aria-label="Buscar"
+        onClick={() => setOpen(true)}
+        className="flex size-9 items-center justify-center rounded-full bg-secondary text-foreground transition hover:bg-muted md:hidden [@media(pointer:coarse)]:size-11"
+      >
+        <Search className="size-[18px]" strokeWidth={1.9} />
+      </button>
       <button
         type="button"
         onClick={() => setOpen(true)}
