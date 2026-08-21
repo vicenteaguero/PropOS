@@ -15,6 +15,7 @@ from app.core.dependencies import (
     require_role,
     require_scope,
 )
+from app.core.phone import to_e164
 from app.core.supabase.client import get_supabase_client
 
 
@@ -57,7 +58,15 @@ async def list_conversations(
     tenant_id: UUID = Depends(get_tenant_id),
     status: str | None = None,
     archived: bool = False,
+    waiting_on: str | None = None,
+    unidentified: bool | None = None,
 ) -> list[dict]:
+    """Threads, filterable by who is waiting and whether we know who they are.
+
+    `unidentified` is the queue that used to not exist: a message from an
+    unknown number silently minted a contact called after its own phone number,
+    so the pile was invisible and made of junk rows.
+    """
     db = get_supabase_client()
     q = (
         db.table("client_conversations")
@@ -68,6 +77,12 @@ async def list_conversations(
     )
     if status:
         q = q.eq("status", status)
+    if waiting_on:
+        q = q.eq("waiting_on", waiting_on)
+    if unidentified is True:
+        q = q.is_("contact_id", "null")
+    elif unidentified is False:
+        q = q.not_.is_("contact_id", "null")
     if archived:
         q = q.not_.is_("archived_at", "null")
     else:
@@ -197,3 +212,147 @@ async def revoke_consent(
         "tenant_id", str(tenant_id)
     ).eq("contact_id", str(contact_id)).eq("channel", channel).execute()
     return {"status": "revoked"}
+
+
+class LinkContactRequest(BaseModel):
+    """Attach an unidentified thread to a person we already know."""
+
+    contact_id: UUID
+
+
+@router.post("/conversations/{conversation_id}/contact")
+async def link_conversation_contact(
+    conversation_id: UUID,
+    payload: LinkContactRequest,
+    tenant_id: UUID = Depends(get_tenant_id),
+) -> dict:
+    """Point a thread at a person, and file the number under them.
+
+    Both halves matter: without the phone row the next message from that same
+    number lands unidentified all over again.
+    """
+    db = get_supabase_client()
+    conv = (
+        db.table("client_conversations")
+        .select("id,external_phone_e164")
+        .eq("tenant_id", str(tenant_id))
+        .eq("id", str(conversation_id))
+        .single()
+        .execute()
+        .data
+    )
+    if not conv:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    contact = (
+        db.table("contacts")
+        .select("id")
+        .eq("tenant_id", str(tenant_id))
+        .eq("id", str(payload.contact_id))
+        .limit(1)
+        .execute()
+        .data
+    )
+    if not contact:
+        raise HTTPException(status_code=404, detail="Contact not found")
+
+    e164 = to_e164(conv.get("external_phone_e164"))
+    if e164:
+        db.table("contact_phones").upsert(
+            {
+                "tenant_id": str(tenant_id),
+                "contact_id": str(payload.contact_id),
+                "e164": e164,
+                "label": "WhatsApp",
+            },
+            on_conflict="contact_id,e164",
+        ).execute()
+
+    row = (
+        db.table("client_conversations")
+        .update({"contact_id": str(payload.contact_id)})
+        .eq("tenant_id", str(tenant_id))
+        .eq("id", str(conversation_id))
+        .execute()
+        .data[0]
+    )
+    return row
+
+
+class ConversationTargetRequest(BaseModel):
+    """What the thread is about."""
+
+    target_kind: str = Field(pattern="^(PROPERTY|OPPORTUNITY)$")
+    property_id: UUID | None = None
+    opportunity_id: UUID | None = None
+
+
+@router.get("/conversations/{conversation_id}/targets")
+async def list_conversation_targets(
+    conversation_id: UUID,
+    tenant_id: UUID = Depends(get_tenant_id),
+) -> list[dict]:
+    return (
+        get_supabase_client()
+        .table("conversation_targets")
+        .select("*")
+        .eq("tenant_id", str(tenant_id))
+        .eq("conversation_id", str(conversation_id))
+        .execute()
+        .data
+        or []
+    )
+
+
+@router.post("/conversations/{conversation_id}/targets", status_code=201)
+async def add_conversation_target(
+    conversation_id: UUID,
+    payload: ConversationTargetRequest,
+    tenant_id: UUID = Depends(get_tenant_id),
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> dict:
+    """Say what a thread is about.
+
+    Until now the inbox inferred it in the browser by joining a contact's open
+    opportunities to properties and taking the first — a guess presented as a
+    fact, and wrong the moment somebody asks about two properties.
+    """
+    if payload.target_kind == "PROPERTY" and not payload.property_id:
+        raise HTTPException(status_code=422, detail="property_id required for PROPERTY")
+    if payload.target_kind == "OPPORTUNITY" and not payload.opportunity_id:
+        raise HTTPException(status_code=422, detail="opportunity_id required for OPPORTUNITY")
+
+    row = (
+        get_supabase_client()
+        .table("conversation_targets")
+        .insert(
+            {
+                "tenant_id": str(tenant_id),
+                "conversation_id": str(conversation_id),
+                "target_kind": payload.target_kind,
+                "property_id": str(payload.property_id) if payload.property_id else None,
+                "opportunity_id": str(payload.opportunity_id) if payload.opportunity_id else None,
+                "created_by": str(current_user["id"]),
+            }
+        )
+        .execute()
+        .data[0]
+    )
+    return row
+
+
+@router.delete("/conversations/{conversation_id}/targets/{target_id}", status_code=204)
+async def remove_conversation_target(
+    conversation_id: UUID,
+    target_id: UUID,
+    tenant_id: UUID = Depends(get_tenant_id),
+) -> None:
+    (
+        get_supabase_client()
+        .table("conversation_targets")
+        .delete()
+        .eq("tenant_id", str(tenant_id))
+        .eq("conversation_id", str(conversation_id))
+        .eq("id", str(target_id))
+        .execute()
+    )
