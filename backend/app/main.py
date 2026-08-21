@@ -13,7 +13,6 @@ from app.core.config.constants import API_PREFIX, API_VERSION, HEALTH_PATH
 from app.core.config.settings import settings
 from app.core.logging.logger import configure_logging, get_logger
 from app.core.middleware.dev_schema import DevSchemaMiddleware
-from app.core.middleware.tenant import TenantMiddleware
 from app.core.middleware.timing import TimingMiddleware
 from app.features.ads.router import router as ads_router
 from app.features.analytics.router import router as analytics_router
@@ -189,7 +188,6 @@ def create_app() -> FastAPI:
     # it saves.
     application.add_middleware(GZipMiddleware, minimum_size=1000)
     application.add_middleware(TimingMiddleware)
-    application.add_middleware(TenantMiddleware)
     # Development only: lets the frontend flip between `public` and the
     # `propos_test` mirror per request instead of restarting the API.
     if settings.app_env == "development":
