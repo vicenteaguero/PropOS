@@ -31,6 +31,12 @@ const SESSION = JSON.parse(readFileSync(SESSION_PATH, "utf8"));
 const ROUTES = [
   ["home", "/admin"],
   ["clientes-conversaciones", "/admin/clientes?tab=conversaciones"],
+  // A real thread, open: the header, the day separators and the composer are
+  // only reviewable with messages behind them.
+  [
+    "clientes-conversacion",
+    "/admin/clientes?tab=conversaciones&hilo=whatsapp:623786ce-5a17-5598-b3be-92e88cd20c98",
+  ],
   ["clientes-personas", "/admin/clientes?tab=personas"],
   ["clientes-persona", "/admin/personas/0c4c02d8-7a20-5b53-a220-69efe0baabcb"],
   ["clientes-negocios", "/admin/clientes?tab=negocios"],

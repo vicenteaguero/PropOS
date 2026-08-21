@@ -425,9 +425,7 @@ export function AttentionPage({ channels = ["whatsapp", "email"] }: AttentionPag
    */
   const filters = (
     <div className="flex items-center gap-2">
-      {showWhatsApp && showEmail && (
-        <ChannelSwitch value={channel} onChange={setChannel} />
-      )}
+      {showWhatsApp && showEmail && <ChannelSwitch value={channel} onChange={setChannel} />}
       <FilterSelect
         // "Estado" named the field; "Filtrar" names the act, which is what a
         // control the broker taps should say.
@@ -596,6 +594,9 @@ export function AttentionPage({ channels = ["whatsapp", "email"] }: AttentionPag
 
   const selectedConversation =
     selected?.channel === "whatsapp" ? (conversationById.get(selected.id) ?? null) : null;
+  const selectedEntry = selected
+    ? entries.find((e) => e.key === `${selected.channel}:${selected.id}`)
+    : undefined;
 
   return (
     <>
@@ -605,7 +606,15 @@ export function AttentionPage({ channels = ["whatsapp", "email"] }: AttentionPag
         listWidth="24rem"
         detail={
           selectedConversation ? (
-            <MessageThread conversation={selectedConversation} onBack={closeThread} />
+            <MessageThread
+              conversation={selectedConversation}
+              // The list already resolved both; the thread had no way to and
+              // fell back to the phone number, so opening a conversation lost
+              // the name the row had just shown.
+              title={selectedEntry?.title}
+              subtitle={selectedEntry?.property}
+              onBack={closeThread}
+            />
           ) : selected?.channel === "email" ? (
             <EmailThreadView threadId={selected.id} onBack={closeThread} />
           ) : (
