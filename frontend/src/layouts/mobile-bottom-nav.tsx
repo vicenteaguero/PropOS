@@ -169,7 +169,9 @@ export function MobileBottomNav() {
               >
                 <Sparkles className="size-6" />
               </button>
-              <span className="-mt-1 text-[10.5px] font-bold leading-tight text-foreground">Propo</span>
+              <span className="-mt-1 text-[10.5px] font-bold leading-tight text-foreground">
+                Propo
+              </span>
             </div>
           )}
           {allow("productividad") && (

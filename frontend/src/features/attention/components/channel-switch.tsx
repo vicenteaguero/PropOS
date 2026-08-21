@@ -22,12 +22,7 @@ export function ChannelSwitch({
   value: ChannelFilter;
   onChange: (value: ChannelFilter) => void;
 }) {
-  const item = (
-    id: ChannelFilter,
-    label: string,
-    icon: React.ReactNode,
-    activeClass: string,
-  ) => {
+  const item = (id: ChannelFilter, label: string, icon: React.ReactNode, activeClass: string) => {
     const active = value === id;
     return (
       <button
@@ -56,18 +51,8 @@ export function ChannelSwitch({
         <Inbox className="size-[18px]" strokeWidth={1.9} />,
         "bg-primary/15 text-primary",
       )}
-      {item(
-        "whatsapp",
-        "WhatsApp",
-        <WhatsAppMark size={19} />,
-        "bg-[#25D366]/15 text-foreground",
-      )}
-      {item(
-        "email",
-        "Correo",
-        <EmailMark size={19} />,
-        "bg-foreground/10 text-foreground",
-      )}
+      {item("whatsapp", "WhatsApp", <WhatsAppMark size={19} />, "bg-[#25D366]/15 text-foreground")}
+      {item("email", "Correo", <EmailMark size={19} />, "bg-foreground/10 text-foreground")}
     </div>
   );
 }
