@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, createContext, useContext } from "react";
+import { useState, useEffect, useCallback, useRef, createContext, useContext } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import { supabase } from "@core/supabase/client";
@@ -154,18 +154,24 @@ export function useAuthProvider(): AuthContextValue {
     isAuthenticated: false,
   });
 
-  const handleSession = useCallback(async (session: Session | null) => {
-    if (!session?.user) {
-      setState({
-        user: null,
-        memberships: [],
-        grants: [],
-        isLoading: false,
-        isAuthenticated: false,
-      });
-      setActiveTenantId(null);
-      return;
-    }
+  /**
+   * The boot that is already running (or has run) for a given user.
+   *
+   * Supabase reports the same session twice on every load — `getSession()`
+   * resolves with it AND `onAuthStateChange` fires `INITIAL_SESSION` with it —
+   * and React StrictMode runs the effect twice again in development. So a single
+   * page load performed the whole identity handshake four times in dev and twice
+   * in production: four `/memberships/me`, four `/grants/me`, one profile read
+   * each, and four `POST /memberships/activate` — a WRITE, and the most
+   * expensive statement this database runs, fired three times for nothing.
+   *
+   * Keyed by user id rather than by access token on purpose: an hourly token
+   * refresh is a new token for the same person, and re-running the handshake
+   * would re-issue that write on a timer for every open tab.
+   */
+  const bootRef = useRef<{ userId: string; promise: Promise<void> } | null>(null);
+
+  const boot = useCallback(async (session: Session) => {
 
     // Surface a loading state while we resolve profile/tenant on the first
     // authenticated transition (initial load or sign-in) so the UI can show a
@@ -220,6 +226,31 @@ export function useAuthProvider(): AuthContextValue {
     }
   }, []);
 
+  const handleSession = useCallback(
+    async (session: Session | null) => {
+      if (!session?.user) {
+        bootRef.current = null;
+        setState({
+          user: null,
+          memberships: [],
+          grants: [],
+          isLoading: false,
+          isAuthenticated: false,
+        });
+        setActiveTenantId(null);
+        return;
+      }
+      const running = bootRef.current;
+      if (running?.userId === session.user.id) return running.promise;
+      // Recorded BEFORE the first await, so the second caller — which arrives in
+      // the same tick — sees it.
+      const promise = boot(session);
+      bootRef.current = { userId: session.user.id, promise };
+      return promise;
+    },
+    [boot],
+  );
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       handleSession(session);
@@ -238,6 +269,7 @@ export function useAuthProvider(): AuthContextValue {
 
   const signOut = useCallback(async () => {
     logger.info("auth", "User signing out");
+    bootRef.current = null;
     setActiveTenantId(null);
     // Business data cached for the outgoing user must not survive the sign-out —
     // in memory or on disk.
