@@ -177,12 +177,10 @@ export function ContactDetail({ contactId, onBack, onDeleted }: ContactDetailPro
       {/* Where the relationship stands, before the raw fields. */}
       <ContactSummary contactId={contact.id} role={role} />
 
-      {/* Every way to reach them, not one of each: a second number used to be
-          a second person. */}
-      <ContactChannels contactId={contact.id} />
-
-      {/* Detail fields */}
+      {/* One card for how to reach them and who they are. Every way to reach
+          them, not one of each: a second number used to be a second person. */}
       <div className="mx-[var(--page-x)] mb-5 space-y-2.5 rounded-xl bg-card p-4">
+        <ContactChannels contactId={contact.id} />
         {contact.address && (
           <div className="flex items-center gap-3 text-sm">
             <MapPin className="size-4 shrink-0 text-muted-foreground" strokeWidth={1.8} />
