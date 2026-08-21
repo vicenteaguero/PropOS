@@ -34,16 +34,34 @@ function safeDate(ts: DateLike): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-/** "12-08-2026, 10:30 a. m." — the default for timestamps in lists and detail rows. */
+/**
+ * The clock, once.
+ *
+ * `timeStyle: "short"` on es-CL renders "10:30 a. m." — a twelve-hour clock with
+ * four characters of trailing punctuation, in a country that writes 10:30. It
+ * also disagreed with the conversation list and the message bubbles, which set
+ * their own 24-hour formatters, so the same instant read two ways one screen
+ * apart.
+ *
+ * Spelled out part by part rather than via `timeStyle`, because `dateStyle` and
+ * `timeStyle` cannot be combined with individual component options — mixing
+ * them throws `Invalid option : option` at runtime, on every timestamp in the
+ * app. es-CL renders these exactly as `medium`/`short` did.
+ */
+const CLOCK = { hour: "2-digit", minute: "2-digit", hour12: false } as const;
+const DATE_FULL = { day: "2-digit", month: "2-digit", year: "numeric" } as const;
+const DATE_SHORT = { day: "2-digit", month: "2-digit", year: "2-digit" } as const;
+
+/** "12-08-2026, 10:30" — the default for timestamps in lists and detail rows. */
 export function formatDateTime(ts: DateLike, fallback = ""): string {
   const d = safeDate(ts);
-  return d ? d.toLocaleString("es-CL", { dateStyle: "medium", timeStyle: "short" }) : fallback;
+  return d ? d.toLocaleString("es-CL", { ...DATE_FULL, ...CLOCK }) : fallback;
 }
 
-/** "12-08-26, 10:30 a. m." — two-digit year, for dense rows. */
+/** "12-08-26, 10:30" — two-digit year, for dense rows. */
 export function formatShortDateTime(ts: DateLike, fallback = ""): string {
   const d = safeDate(ts);
-  return d ? d.toLocaleString("es-CL", { dateStyle: "short", timeStyle: "short" }) : fallback;
+  return d ? d.toLocaleString("es-CL", { ...DATE_SHORT, ...CLOCK }) : fallback;
 }
 
 /** "12 ago" — for compact cards where the year is noise. */
