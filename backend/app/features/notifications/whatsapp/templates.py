@@ -59,3 +59,49 @@ def render_variables(template: Template, vars_map: dict[str, str]) -> list[str]:
     if missing:
         raise ValueError(f"template {template.name} missing vars: {missing}")
     return [str(vars_map[v]) for v in template.variables]
+
+
+def list_for_tenant(tenant_id: str, channel: str = "whatsapp") -> list[dict[str, object]]:
+    """Templates a tenant may actually send right now.
+
+    Reads `message_templates`, falling back to the code REGISTRY when the table
+    has no rows for this tenant — a brokerage that never configured any is not
+    left with an empty picker, and the three that ship with the product keep
+    working. Only `approved` ones come back: outside the 24 h window Meta
+    rejects anything else, and offering a draft would be offering a failure.
+    """
+    from app.core.supabase.client import get_supabase_client
+
+    rows = (
+        get_supabase_client()
+        .table("message_templates")
+        .select("id,name,body,variables,category,language,approval_status")
+        .eq("tenant_id", tenant_id)
+        .eq("channel", channel)
+        .eq("approval_status", "approved")
+        .order("name")
+        .execute()
+        .data
+        or []
+    )
+    if rows:
+        return [
+            {
+                "name": row["name"],
+                "body": row["body"],
+                "variables": row.get("variables") or [],
+                "category": row.get("category") or "utility",
+                "language": row.get("language") or "es",
+            }
+            for row in rows
+        ]
+    return [
+        {
+            "name": template.name,
+            "body": template.body,
+            "variables": list(template.variables),
+            "category": template.category,
+            "language": template.language,
+        }
+        for template in REGISTRY.values()
+    ]

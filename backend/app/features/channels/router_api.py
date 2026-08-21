@@ -356,3 +356,67 @@ async def remove_conversation_target(
         .eq("id", str(target_id))
         .execute()
     )
+
+
+@router.get("/templates")
+async def list_templates(tenant_id: UUID = Depends(get_tenant_id)) -> list[dict]:
+    """Approved templates for this tenant.
+
+    Outside the 24 h free-form window a template is the ONLY thing that can be
+    sent, so this is the difference between answering a client and not. The
+    inbox used to simply disable the composer and leave the broker with nothing.
+    """
+    from app.features.notifications.whatsapp import templates as tmpl
+
+    return tmpl.list_for_tenant(str(tenant_id))
+
+
+class SendTemplateRequest(BaseModel):
+    template_name: str
+    #: Positional variables, in the order the template declares them.
+    variables: dict[str, str] = Field(default_factory=dict)
+
+
+@router.post("/conversations/{conversation_id}/send-template")
+async def send_template(
+    conversation_id: UUID,
+    payload: SendTemplateRequest,
+    tenant_id: UUID = Depends(get_tenant_id),
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> dict:
+    """Send an approved template to a thread whose window has closed."""
+    from app.features.notifications.whatsapp.dispatcher import (
+        ConsentError,
+        send_template_to_contact,
+    )
+
+    conv = (
+        get_supabase_client()
+        .table("client_conversations")
+        .select("contact_id, external_phone_e164")
+        .eq("tenant_id", str(tenant_id))
+        .eq("id", str(conversation_id))
+        .single()
+        .execute()
+        .data
+    )
+    if not conv:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    if not conv.get("contact_id"):
+        # A template is a marketing-regulated send; it needs a data subject,
+        # not a phone number.
+        raise HTTPException(status_code=409, detail="Identify the conversation first")
+
+    try:
+        return await send_template_to_contact(
+            tenant_id,
+            conv["contact_id"],
+            conv["external_phone_e164"],
+            payload.template_name,
+            payload.variables,
+            sender_user_id=str(current_user["id"]),
+        )
+    except ConsentError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Template not found") from exc

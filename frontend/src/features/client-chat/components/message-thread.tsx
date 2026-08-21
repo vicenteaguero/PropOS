@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useKeyboardInset } from "@shared/hooks/use-keyboard-inset";
 import { IdentifyBanner } from "./identify-banner";
+import { TemplatePicker } from "./template-picker";
 import { useConversationMessages, useSendMessage, useTakeover } from "../hooks/use-client-chat";
 import type { ClientConversation } from "../types";
 
@@ -143,9 +144,14 @@ export function MessageThread({ conversation, onBack }: Props) {
       {/* Composer */}
       <div className="pb-composer border-t border-border px-4 py-3">
         {!inWindow && (
-          <div className="mb-2 rounded-xl border border-destructive/40 bg-destructive/10 p-2.5 text-xs text-destructive">
-            Fuera de la ventana de 24h — sólo plantillas aprobadas hasta nueva respuesta del
-            cliente.
+          <div className="mb-2 space-y-2">
+            <div className="rounded-xl border border-warning/40 bg-warning/10 p-2.5 text-xs text-warning">
+              Pasaron más de 24 h desde su último mensaje. WhatsApp sólo entrega plantillas
+              aprobadas hasta que vuelva a escribir.
+            </div>
+            {/* A closed window used to end here, with a disabled input and no
+                way forward. The template IS the way forward. */}
+            <TemplatePicker conversationId={conversation.id} />
           </div>
         )}
         <div className="flex items-center gap-2">
