@@ -209,10 +209,18 @@ with the active tab in a `?tab=` query param:
 | Finanzas | `/:role/finanzas` | Movimientos · Analítica · Costo Propo (dev admin) |
 | Documentos | `/:role/documentos` | Archivos · Enlaces |
 
-Detail routes keep their original paths (`/:role/personas/:id`, `/:role/properties/:id`,
-`/:role/documents/:id`); the old LIST paths are `<Navigate>` redirects into the right tab, so
-saved links and push-notification deep links still land. A new capability should become a tab,
-not a fifth section.
+Detail routes keep their original paths (`/:role/personas/:id`, `/:role/propiedades/:id`,
+`/:role/negocios/:id`, `/:role/documents/:id`); the old LIST paths are `<Navigate>` redirects into
+the right tab, so saved links and push-notification deep links still land. A new capability should
+become a tab, not a fifth section.
+
+The catalogs behind Clientes live at `/admin/settings/clientes` (ADMIN only), same tab pattern:
+**Plantillas** (`message_templates`) · **Listas de cierre** (`checklist_templates`) · **Pipelines**
+(`pipelines` + `pipeline_transitions`) · **Etiquetas** (`tags`). Two behaviours there are
+surprising and are surfaced on the screen on purpose: `pipeline_transitions.from_stage = NULL`
+means "from any stage", and a pipeline with **zero** declared transitions is unconstrained —
+`assert_allowed` returns early rather than freezing a tenant that never configured one, so deleting
+the last transition silently turns the state machine off.
 
 Design rules that came out of the same pass: no page subtitles and no explanatory copy
 (`PageHeader` has no `description` slot on purpose), `--radius` is 8px with every radius going
