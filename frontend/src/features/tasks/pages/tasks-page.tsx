@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { formatDateTime } from "@shared/utils/format";
 import {
   addDays,
   endOfWeek,
@@ -81,7 +82,9 @@ function priorityPill(priority: number) {
 
 function dueLabel(due: string): { text: string; tone: "neutral" | "warning" } {
   const d = new Date(due);
-  const text = d.toLocaleString("es-CL", { dateStyle: "medium", timeStyle: "short" });
+  // The shared formatter, so a due date reads the same here as everywhere
+  // else — `timeStyle: "short"` gave this one screen a 12-hour clock.
+  const text = formatDateTime(d);
   return { text, tone: isPast(d) && !isToday(d) ? "warning" : "neutral" };
 }
 
