@@ -61,3 +61,13 @@ export interface ClientConsent {
   method: string | null;
   proof: Record<string, unknown>;
 }
+
+/** An approved WhatsApp template. Mirrors `message_templates`. */
+export interface MessageTemplate {
+  name: string;
+  body: string;
+  /** Ordered names, mapped onto Meta's positional {{1}}..{{n}}. */
+  variables: string[];
+  category: string;
+  language: string;
+}

@@ -203,3 +203,33 @@ export function useUpsertConsent() {
     },
   });
 }
+
+/**
+ * The templates this tenant may send.
+ *
+ * Only fetched when the window has closed: inside it, free text works and a
+ * picker would be a control nobody needs.
+ */
+export function useMessageTemplates(enabled: boolean) {
+  return useQuery({
+    queryKey: ["client-chat", "templates"],
+    queryFn: () => clientChatApi.listTemplates(),
+    enabled,
+    staleTime: 10 * 60_000,
+  });
+}
+
+export function useSendTemplate(conversationId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ name, variables }: { name: string; variables: Record<string, string> }) =>
+      clientChatApi.sendTemplate(conversationId, name, variables),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["client-chat", "messages", conversationId] });
+      void qc.invalidateQueries({ queryKey: ["client-chat", "conversations"] });
+      toast.success("Plantilla enviada");
+    },
+    onError: (err) =>
+      toast.error(err instanceof Error ? err.message : "No se pudo enviar la plantilla"),
+  });
+}

@@ -4,6 +4,7 @@ import type {
   ClientMessage,
   ConversationStatus,
   ConversationTarget,
+  MessageTemplate,
 } from "../types";
 
 const BASE = "/v1/client-chat";
@@ -28,6 +29,15 @@ export const clientChatApi = {
     apiRequest<ClientConversation>(`${BASE}/conversations/${conversationId}/contact`, {
       method: "POST",
       body: { contact_id: contactId },
+    }),
+
+  /** Approved templates: outside the 24 h window, the only thing sendable. */
+  listTemplates: () => apiRequest<MessageTemplate[]>(`${BASE}/templates`),
+
+  sendTemplate: (conversationId: string, templateName: string, variables: Record<string, string>) =>
+    apiRequest<{ message_id: string }>(`${BASE}/conversations/${conversationId}/send-template`, {
+      method: "POST",
+      body: { template_name: templateName, variables },
     }),
 
   listTargets: (conversationId: string) =>
