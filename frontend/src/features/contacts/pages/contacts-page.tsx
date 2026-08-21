@@ -103,7 +103,8 @@ export function ContactsPage() {
   const list = (
     <ListShell
       fill
-      title="Personas"
+      // The section tab already reads "Personas"; see ListShell.titleSr.
+      titleSr="Personas"
       // No count while more pages exist: showing the loaded rows as if they
       // were the total is the same lie the cap notice was built to admit.
       meta={!hasNextPage && filtered.length > 0 ? `${filtered.length}` : undefined}

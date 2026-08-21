@@ -16,7 +16,10 @@ import { join } from "node:path";
 const OUT =
   process.env.SHOT_DIR ??
   "/tmp/claude-501/-Users-vicenteaguero-real-state-PropOS/fb4a9bba-dfa9-4b5d-ae44-f79dd8ce1579/scratchpad/shots";
-const BASE = "http://localhost:5199";
+// Port is an env var: more than one dev server can be up at a time (two
+// sessions, or vite plus the HTTPS proxy), and a hardcoded port silently
+// photographs whichever one happens to own it.
+const BASE = process.env.SHOT_BASE ?? "http://localhost:5199";
 const REF = "tlbkwrjzraaikdrajwqh";
 const TENANT = "dededede-0000-4000-8000-000000000001";
 // A REAL Supabase session, because this harness talks to the real backend.
