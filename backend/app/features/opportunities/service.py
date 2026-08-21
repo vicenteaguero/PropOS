@@ -30,6 +30,28 @@ def _norm(data: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
+def _count_of(embed: Any) -> int:
+    """PostgREST returns an embedded `count` as `[{"count": n}]`, or `[]`."""
+    if isinstance(embed, list) and embed:
+        return int(embed[0].get("count") or 0)
+    return 0
+
+
+def _flatten_counts(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Turn the embedded counts into plain numbers the response model declares.
+
+    Reported as EXTRAS, not totals: the card already names the principal person
+    and property, so "+1" has to mean "one more than the one you can see". A
+    deal with a single participant contributes nothing.
+    """
+    for row in rows:
+        participants = _count_of(row.pop("opportunity_participants", None))
+        properties = _count_of(row.pop("opportunity_properties", None))
+        row["extra_participants"] = max(0, participants - 1)
+        row["extra_properties"] = max(0, properties - 1)
+    return rows
+
+
 class OpportunityService:
     @staticmethod
     async def list_opportunities(
@@ -42,9 +64,14 @@ class OpportunityService:
         offset: int = 0,
     ) -> list[dict]:
         client = get_supabase_client()
+        # Count the extra participants and properties so a card can say a deal
+        # has more than the one person and one property it names. Half the deals
+        # in a real book do, and `person_id`/`property_id` are only the
+        # principal — the card silently claimed a two-buyer deal was a one-buyer
+        # deal. `count="exact"` on the embed returns the count without the rows.
         builder = (
             client.table(OPP_TABLE)
-            .select("*")
+            .select("*, opportunity_participants(count), opportunity_properties(count)")
             .eq("tenant_id", str(tenant_id))
             .is_("deleted_at", "null")
             .order("created_at", desc=True)
@@ -58,7 +85,7 @@ class OpportunityService:
             builder = builder.eq("person_id", str(person_id))
         if property_id:
             builder = builder.eq("property_id", str(property_id))
-        return builder.execute().data
+        return _flatten_counts(builder.execute().data or [])
 
     @staticmethod
     async def get_opportunity(opp_id: UUID, tenant_id: UUID) -> dict:
