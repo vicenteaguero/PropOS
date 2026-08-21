@@ -57,12 +57,30 @@ function Card({
             {initials(name)}
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm font-semibold leading-tight text-foreground">
-              {name}
+            {/* `person_id` and `property_id` are only the PRINCIPAL ones. Half
+                the deals in a real book have more, and a card naming one buyer
+                on a two-buyer deal is not shorthand, it is wrong. The suffix is
+                the count BEYOND what is shown. */}
+            <span className="flex items-baseline gap-1.5">
+              <span className="min-w-0 truncate text-sm font-semibold leading-tight text-foreground">
+                {name}
+              </span>
+              {opp.extra_participants > 0 && (
+                <span className="shrink-0 text-[12px] font-medium tabular-nums text-muted-foreground">
+                  +{opp.extra_participants}
+                </span>
+              )}
             </span>
             {property && (
-              <span className="mt-0.5 block truncate text-[12.5px] text-muted-foreground">
-                {property}
+              <span className="mt-0.5 flex items-baseline gap-1.5">
+                <span className="min-w-0 truncate text-[12.5px] text-muted-foreground">
+                  {property}
+                </span>
+                {opp.extra_properties > 0 && (
+                  <span className="shrink-0 text-[12px] tabular-nums text-muted-foreground">
+                    +{opp.extra_properties}
+                  </span>
+                )}
               </span>
             )}
             {value && (

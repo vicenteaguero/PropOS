@@ -53,6 +53,9 @@ export interface Opportunity {
   probability: number | null;
   lost_reason: string | null;
   notes: string | null;
+  /** Participants and properties BEYOND the principal person_id/property_id. */
+  extra_participants: number;
+  extra_properties: number;
   created_at: string;
   updated_at: string;
   closed_at: string | null;

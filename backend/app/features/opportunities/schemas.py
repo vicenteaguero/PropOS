@@ -58,6 +58,13 @@ class OpportunityResponse(OpportunityBase):
     updated_at: datetime
     closed_at: datetime | None = None
 
+    #: How many participants and properties the deal has BEYOND the principal
+    #: `person_id` / `property_id` the card already names. `person_id` is only
+    #: the main one, so a card showing it alone claimed a two-buyer deal was a
+    #: one-buyer deal. Zero on the detail endpoints, which list them in full.
+    extra_participants: int = 0
+    extra_properties: int = 0
+
     model_config = {"from_attributes": True}
 
 
