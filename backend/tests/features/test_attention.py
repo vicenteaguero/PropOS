@@ -42,6 +42,10 @@ class _StubClient:
     def is_(self, *_a, **_k) -> "_StubClient":
         return self
 
+    def in_(self, _col, values) -> "_StubClient":
+        self.in_values = values
+        return self
+
     def limit(self, *_a, **_k) -> "_StubClient":
         return self
 
@@ -143,8 +147,37 @@ def test_unanswered_reason_never_restates_the_timestamp(
     ]
     monkeypatch.setattr(service, "_client", lambda: _StubClient(rows))
 
-    produced = list(service._unanswered(TENANT, NOW, {}, {}))
+    produced = list(service._unanswered(TENANT, NOW))
     assert len(produced) == 1
     assert produced[0].urgency is urgency
     assert produced[0].reason == reason
     assert "hace" not in produced[0].reason
+
+
+def test_labels_reads_only_the_ids_the_queue_references(monkeypatch):
+    """The map used to be the whole tenant.
+
+    `_labels` replaced a `select * from contacts limit 5000` that ran before
+    any source did, purely to turn ids into names. On a real book that is
+    megabytes per open of the home screen — production showed 261k tuples read
+    across a thousand sequential scans of `contacts` in five days — to label a
+    few dozen rows. This asserts the `in_` filter is actually applied, because
+    dropping it would silently restore the old behaviour: the function would
+    still return correct labels, just by reading everything.
+    """
+    stub = _StubClient([{"id": "c1", "full_name": "Ana"}, {"id": "c2", "full_name": "Beto"}])
+    monkeypatch.setattr(service, "_client", lambda: stub)
+
+    out = service._labels("contacts", TENANT, "id,full_name", ["c1", "c2"])
+
+    assert out == {"c1": "Ana", "c2": "Beto"}
+    assert stub.in_values == ["c1", "c2"]
+
+
+def test_labels_makes_no_query_at_all_when_nothing_is_referenced(monkeypatch):
+    def _boom():
+        raise AssertionError("_labels must not touch the database for an empty id list")
+
+    monkeypatch.setattr(service, "_client", _boom)
+
+    assert service._labels("contacts", TENANT, "id,full_name", []) == {}
