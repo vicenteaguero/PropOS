@@ -89,8 +89,26 @@ def resolve_active_tenant(
             detail="No tenant memberships for user",
         )
 
-    # Skip RPC if snapshot already matches and no header override.
-    if requested is None and target == current_snapshot:
+    # Nothing to do when the request asks for the tenant the snapshot already
+    # points at. This used to also require `requested is None`, which made it
+    # dead code: the frontend attaches X-Tenant-Id to every request once a
+    # workspace is chosen (shared/api/http.ts), so `requested` was never None
+    # and every single API call re-validated the membership and rewrote
+    # `profiles` — 15k writes in five days, the most expensive statement in the
+    # database, and 65% of `audit_log` by way of the audit trigger.
+    #
+    # Trusting the snapshot here is not trusting the client. `profiles.tenant_id`
+    # is only ever written by two paths (MembershipService.activate and the slow
+    # path below) and both validate the membership first, so it is a
+    # server-validated assertion. The header is client input, but it is only
+    # honoured when it AGREES with that assertion.
+    #
+    # What this gives up is catching a revoked membership on the very next
+    # request. That is paid for on the write side instead:
+    # MembershipService._sync_profile_snapshot repoints the snapshot when a
+    # membership is edited or removed, which forces the mismatch below.
+    if target == current_snapshot:
+        request.state.tenant_id = target
         return target
 
     # Validate membership + sync the profile snapshot (tenant_id/role/admin_scope)

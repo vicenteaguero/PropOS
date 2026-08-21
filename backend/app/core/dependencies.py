@@ -35,6 +35,21 @@ async def get_current_user(
             detail=UNAUTHORIZED_MESSAGE,
         )
 
+    # `is False`, not falsy: the column defaults to true and is nullable, so an
+    # older row with NULL must keep working. Only an explicit deactivation
+    # rejects.
+    #
+    # UserService.deactivate has been writing this flag for months and nothing
+    # ever read it, so "deactivated" users kept full API access. It is also
+    # what makes a profile whose last membership was removed inert — see
+    # MembershipService._sync_profile_snapshot, which cannot null the NOT NULL
+    # `tenant_id` and deactivates the profile instead.
+    if profile.get("is_active") is False:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is deactivated",
+        )
+
     return {
         "id": profile["id"],
         "role": profile["role"],
