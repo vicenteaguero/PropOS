@@ -266,6 +266,12 @@ export function AttentionPage({ channels = ["whatsapp", "email"] }: AttentionPag
    * the person's open opportunity; both queries are already in cache from the
    * Personas and Pipeline tabs, so this costs nothing extra in practice.
    */
+  const propertyTitles = useMemo(() => {
+    const titles = new Map<string, string>();
+    for (const p of properties.data ?? []) if (p.title) titles.set(p.id, p.title);
+    return titles;
+  }, [properties.data]);
+
   const propertyByContact = useMemo(() => {
     const titles = new Map<string, string>();
     for (const p of properties.data ?? []) if (p.title) titles.set(p.id, p.title);
@@ -614,7 +620,12 @@ export function AttentionPage({ channels = ["whatsapp", "email"] }: AttentionPag
         }
         aside={
           selectedConversation ? (
-            <ConversationAside conversation={selectedConversation} />
+            <ConversationAside
+              conversation={selectedConversation}
+              // The properties list is already in cache for the rows; resolving
+              // a title here costs nothing rather than a fetch per target.
+              titleFor={(propertyId) => propertyTitles.get(propertyId) ?? null}
+            />
           ) : undefined
         }
       />

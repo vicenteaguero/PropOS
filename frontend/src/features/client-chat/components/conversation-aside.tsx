@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { BrandMark, Pill, SectionLabel } from "@shared/ui";
 import { useAuth } from "@shared/hooks/use-auth";
 import type { ClientConversation } from "../types";
+import { ConversationTargets } from "./conversation-targets";
 import { formatDateTime } from "@shared/utils/format";
 
 /**
@@ -9,7 +10,14 @@ import { formatDateTime } from "@shared/utils/format";
  * — contact, channel, AI state, and the 24h consent window — from data already
  * loaded with the conversation (no extra fetch).
  */
-export function ConversationAside({ conversation }: { conversation: ClientConversation }) {
+export function ConversationAside({
+  conversation,
+  titleFor = () => null,
+}: {
+  conversation: ClientConversation;
+  /** Resolves a property id to its title from the list already in cache. */
+  titleFor?: (id: string) => string | null;
+}) {
   const { user } = useAuth();
   const role = user?.role.toLowerCase() ?? "agent";
 
@@ -33,6 +41,10 @@ export function ConversationAside({ conversation }: { conversation: ClientConver
           {conversation.archived_at && <Pill tone="neutral">Archivada</Pill>}
         </div>
       </div>
+
+      {/* What it is about, before what state it is in: the property is the
+          fact a broker recognises, and it used to be a browser-side guess. */}
+      <ConversationTargets conversationId={conversation.id} titleFor={titleFor} />
 
       <div>
         <SectionLabel>Estado</SectionLabel>
