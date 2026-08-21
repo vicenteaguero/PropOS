@@ -60,14 +60,24 @@ def require_role(*roles: str) -> Callable:
     return role_checker
 
 
+def scope_allows(admin_scope: list[str] | None, scope: str) -> bool:
+    """An empty `admin_scope` is full admin; otherwise it is a whitelist.
+
+    The rule itself, separated from the FastAPI dependency, because it is also
+    needed off the request path — `channels/router.py` decides whether a WhatsApp
+    number belongs to a broker entitled to Propo, and had its own copy of this
+    convention. Two copies of an authorization rule is one too many.
+    """
+    return not admin_scope or scope in admin_scope
+
+
 def require_scope(scope: str) -> Callable:
     """Allow when user has empty admin_scope (full admin) or scope is whitelisted."""
 
     async def scope_checker(
         current_user: dict[str, Any] = Depends(get_current_user),
     ) -> dict[str, Any]:
-        admin_scope: list[str] = current_user.get("admin_scope") or []
-        if admin_scope and scope not in admin_scope:
+        if not scope_allows(current_user.get("admin_scope"), scope):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=FORBIDDEN_MESSAGE,
