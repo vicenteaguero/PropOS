@@ -19,6 +19,7 @@ import { tenantSwatch } from "@core/theme/tenant-accent";
 import { useAgentOverlay } from "@features/agent/components/agent-overlay-host";
 import { BottomSheet, Pill } from "@shared/ui";
 import { useNavGroups, usePendingCount } from "@layouts/use-nav-groups";
+import { useIsImmersive } from "@layouts/immersive";
 import { SETTINGS_PATH } from "@layouts/nav-items";
 import { cn } from "@/lib/utils";
 import type { UserView } from "@shared/types/auth";
@@ -64,11 +65,17 @@ function NavTab({
  * a scope, and its bottom pad is `env(safe-area-inset-bottom)`, which differs
  * per device and is 0 in the browser but ~34px in the installed PWA.
  */
-function usePublishNavHeight(ref: React.RefObject<HTMLElement | null>) {
+function usePublishNavHeight(ref: React.RefObject<HTMLElement | null>, hidden: boolean) {
   useEffect(() => {
+    const root = document.documentElement;
+    // Hidden is not "unchanged": every pinned surface subtracts this token, so
+    // a nav that is not on screen has to report 0 rather than its last height.
+    if (hidden) {
+      root.style.setProperty("--app-nav-h", "0px");
+      return;
+    }
     const el = ref.current;
     if (!el) return;
-    const root = document.documentElement;
     const publish = () => root.style.setProperty("--app-nav-h", `${el.offsetHeight}px`);
     publish();
     const ro = new ResizeObserver(publish);
@@ -77,7 +84,7 @@ function usePublishNavHeight(ref: React.RefObject<HTMLElement | null>) {
       ro.disconnect();
       root.style.removeProperty("--app-nav-h");
     };
-  }, [ref]);
+  }, [ref, hidden]);
 }
 
 export function MobileBottomNav() {
@@ -89,9 +96,12 @@ export function MobileBottomNav() {
   const { groups } = useNavGroups();
   const pendingCount = usePendingCount();
   const navRef = useRef<HTMLElement>(null);
-  usePublishNavHeight(navRef);
+  const immersive = useIsImmersive();
+  usePublishNavHeight(navRef, immersive);
 
   if (!user) return null;
+  // An open conversation owns the whole screen (see useImmersive).
+  if (immersive) return null;
 
   const base = `/${user.role.toLowerCase()}`;
   const view = (user.view as UserView | undefined) ?? "agent";

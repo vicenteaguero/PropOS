@@ -13,6 +13,7 @@ import {
 } from "@shared/components/command-palette/command-palette";
 import { titleForPath } from "@app/page-meta";
 import { useTopbarSlotHost, useTopbarSlotOccupied } from "@layouts/topbar-slot";
+import { useIsImmersive } from "@layouts/immersive";
 import type { UserView } from "@shared/types/auth";
 import { cn } from "@/lib/utils";
 
@@ -39,11 +40,17 @@ export const HEADER_CONTROL_SQUARE = "size-9 [@media(pointer:coarse)]:size-11";
  * in a browser tab and ~59px under a Dynamic Island. Measuring is the only way
  * both shells can share the same token honestly.
  */
-function usePublishHeaderHeight(ref: React.RefObject<HTMLElement | null>) {
+function usePublishHeaderHeight(ref: React.RefObject<HTMLElement | null>, hidden: boolean) {
   useEffect(() => {
+    const root = document.documentElement;
+    // See the same guard in MobileBottomNav: hidden must publish 0, not the
+    // last height, or every pinned surface keeps a gap where the bar was.
+    if (hidden) {
+      root.style.setProperty("--app-header-h", "0px");
+      return;
+    }
     const el = ref.current;
     if (!el) return;
-    const root = document.documentElement;
     const publish = () => root.style.setProperty("--app-header-h", `${el.offsetHeight}px`);
     publish();
     const ro = new ResizeObserver(publish);
@@ -53,7 +60,7 @@ function usePublishHeaderHeight(ref: React.RefObject<HTMLElement | null>) {
       // Back to the :root default (3.5rem), which is the sidebar shell's header.
       root.style.removeProperty("--app-header-h");
     };
-  }, [ref]);
+  }, [ref, hidden]);
 }
 
 /** Pendientes count, kept local so the bar works on every page, not just Inicio. */
@@ -103,7 +110,8 @@ export function MobileTopBar() {
   // product is built for.
   const [paletteOpen, setPaletteOpen] = useCommandPaletteHotkey();
   const barRef = useRef<HTMLElement>(null);
-  usePublishHeaderHeight(barRef);
+  const immersive = useIsImmersive();
+  usePublishHeaderHeight(barRef, immersive);
 
   const view = (user?.view as UserView | undefined) ?? "agent";
   const scope = user?.adminScope ?? [];
@@ -113,6 +121,8 @@ export function MobileTopBar() {
   const pendingCount = usePendingBadge(canPendientes);
 
   if (!user) return null;
+  // An open conversation owns the whole screen (see useImmersive).
+  if (immersive) return null;
 
   const base = `/${user.role.toLowerCase()}`;
   const tenantName =

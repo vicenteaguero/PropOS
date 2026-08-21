@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNo
 import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
 import { useTopbarSlot } from "@layouts/topbar-slot";
+import { useIsImmersive } from "@layouts/immersive";
 import { cn } from "@/lib/utils";
 import { TOUCH_TARGET_ROW_COARSE } from "./touch-target";
 
@@ -250,7 +251,12 @@ interface SectionTabsProps {
 export function SectionTabs({ tabs, param = "tab", className }: SectionTabsProps) {
   const barRef = useRef<HTMLDivElement>(null);
   const topbarHost = useTopbarSlot();
-  usePublishTabsHeight(barRef, !topbarHost);
+  // A surface inside a tab can take the whole screen (an open conversation).
+  // The top bar unmounts, which releases the portal host — and without this the
+  // strip would simply fall back to rendering in place, putting the section tabs
+  // back on top of the very screen that asked for them to go.
+  const immersive = useIsImmersive();
+  usePublishTabsHeight(barRef, !topbarHost && !immersive);
   const [params, setParams] = useSearchParams();
   const requested = params.get(param);
   const active =
@@ -284,7 +290,7 @@ export function SectionTabs({ tabs, param = "tab", className }: SectionTabsProps
 
   return (
     <div className={cn("flex min-h-0 flex-1 flex-col", className)}>
-      {topbarHost ? (
+      {immersive ? null : topbarHost ? (
         createPortal(bar, topbarHost)
       ) : (
         <div ref={barRef} className="shrink-0">
