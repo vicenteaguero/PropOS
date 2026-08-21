@@ -23,6 +23,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.core.logging.logger import get_logger
+from app.core.dependencies import scope_allows
 from app.core.supabase.client import get_supabase_client
 from app.features.channels.tenant_routing import (
     TenantRoutingError,
@@ -281,6 +282,7 @@ def _has_agent_access(user_id: str, tenant_id: str) -> bool:
         return False
     if row.get("role") != "ADMIN":
         return False
-    admin_scope = row.get("admin_scope") or []
-    # Empty scope = full admin, same rule as core.dependencies.require_scope.
-    return not admin_scope or "agent" in admin_scope
+    # The one implementation of the scope convention, shared with the HTTP
+    # dependency. This used to be a second copy of the rule, which is how an
+    # authorization convention drifts.
+    return scope_allows(row.get("admin_scope"), "agent")

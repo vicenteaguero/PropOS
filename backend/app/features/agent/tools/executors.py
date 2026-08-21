@@ -107,13 +107,36 @@ def _rollback_on_failure(client, table: str, row_ids: list[str]) -> Iterator[Non
 
 
 def _accept_create_person(payload, tenant_id, user_id, agent_session_id):
+    """Create a contact from a proposal, with its provenance on the row.
+
+    `consent` is deliberately left NULL: nobody attested to anything here, and
+    `compliance/service.py` reads NULL as "no consent recorded" and refuses
+    marketing, e-mail and WhatsApp for that contact. That is the correct
+    outcome — what was missing is that it happened silently, so a contact the
+    AI invented looked exactly like one a broker entered with evidence.
+
+    Not routed through `ContactService.create_contact` on purpose: that method
+    is async and this runs synchronously inside `agent_attribution`, so calling
+    it would mean spinning a loop inside the attribution scope. The one thing
+    worth borrowing from it is the warning, which is emitted below.
+    """
     client = get_supabase_client()
     payload = {k: v for k, v in payload.items() if k not in ("summary_es",)}
     payload["tenant_id"] = str(tenant_id)
     payload["created_by"] = str(user_id)
     if "kind" in payload:
         payload["type"] = payload.pop("kind")
+    metadata = dict(payload.get("metadata") or {})
+    metadata["created_via"] = "agent"
+    metadata["agent_session_id"] = str(agent_session_id)
+    payload["metadata"] = metadata
     row = client.table("contacts").insert(payload).execute().data[0]
+    logger.warning(
+        "consent_not_captured",
+        event_type="write",
+        contact_id=row["id"],
+        reason="created from an agent proposal; no consent evidence exists",
+    )
     return ("contacts", UUID(row["id"]))
 
 
