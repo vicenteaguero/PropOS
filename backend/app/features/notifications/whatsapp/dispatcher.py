@@ -29,7 +29,7 @@ class WindowError(RuntimeError):
     pass
 
 
-def _has_consent(tenant_id: str, contact_id: str) -> bool:
+def has_consent(tenant_id: str, contact_id: str) -> bool:
     db = get_supabase_client()
     rows = (
         db.table("client_consents")
@@ -47,7 +47,7 @@ def _has_consent(tenant_id: str, contact_id: str) -> bool:
     return bool(row.get("opted_in_at")) and not row.get("opted_out_at")
 
 
-def _within_freeform_window(conversation_id: str) -> bool:
+def within_freeform_window(conversation_id: str) -> bool:
     db = get_supabase_client()
     # tenant-safe: row resolved by primary key from a tenant-scoped read
     row = db.table("client_conversations").select("last_inbound_at").eq("id", conversation_id).limit(1).execute().data
@@ -131,7 +131,7 @@ async def send_template_to_contact(
     sender_user_id: str | None = None,
 ) -> dict[str, Any]:
     tenant_id, contact_id = str(tenant_id), str(contact_id)
-    if not _has_consent(tenant_id, contact_id):
+    if not has_consent(tenant_id, contact_id):
         raise ConsentError(f"contact {contact_id} not opted-in for whatsapp")
 
     template = tmpl.get(template_name)
@@ -161,7 +161,15 @@ async def send_freeform_to_conversation(
     text: str,
     *,
     sender_user_id: str | None = None,
+    consent_waiver: str | None = None,
 ) -> dict[str, Any]:
+    """Send a free-form message inside the 24 h window.
+
+    `consent_waiver` is a REASON, not a boolean, and there is exactly one
+    legitimate value today: acknowledging an opt-out. Refusing to confirm "ya no
+    recibirás mensajes" because the person just opted out is both absurd and
+    worse for them. Every other caller passes nothing and gets the consent gate.
+    """
     tenant_id, conversation_id = str(tenant_id), str(conversation_id)
     db = get_supabase_client()
     conv = (
@@ -175,9 +183,16 @@ async def send_freeform_to_conversation(
     )
     if not conv:
         raise RuntimeError(f"conversation {conversation_id} not found")
-    if conv.get("contact_id") and not _has_consent(tenant_id, conv["contact_id"]):
-        raise ConsentError("contact not opted-in")
-    if not _within_freeform_window(conversation_id):
+    if conv.get("contact_id") and not has_consent(tenant_id, conv["contact_id"]):
+        if consent_waiver is None:
+            raise ConsentError("contact not opted-in")
+        logger.info(
+            "whatsapp_consent_waived",
+            event_type="compliance",
+            reason=consent_waiver,
+            conversation_id=conversation_id,
+        )
+    if not within_freeform_window(conversation_id):
         raise WindowError("outside 24h freeform window — use a template")
 
     phone = conv.get("external_phone_e164")
