@@ -54,6 +54,72 @@ function versionManifest(): Plugin {
   };
 }
 
+/**
+ * Which vendor chunk each package belongs to, keyed by package root.
+ *
+ * This used to be the object form of `manualChunks`, and that form is a trap:
+ * Rollup assigns a named group the whole dependency SUBTREE of the packages it
+ * lists, so a tiny utility that several packages share lands inside whichever
+ * heavy group happened to claim it first. That is exactly what happened —
+ * `clsx` (needed by `cn()`, i.e. by every component in the app) ended up inside
+ * `vendor-pdf`, and `use-sync-external-store` (pulled in by a Radix primitive)
+ * inside `vendor-charts`. The entry chunk therefore imported both heavy vendors
+ * STATICALLY, for one 2 kB helper each:
+ *
+ *     import{c as Lb}from"./vendor-pdf-*.js";      // clsx — 894 kB
+ *     import{r as OE}from"./vendor-charts-*.js";   // use-sync-external-store — 383 kB
+ *
+ * So 1.28 MB of pdf-lib and recharts downloaded AND executed before first
+ * paint, on every visit, and Vite's `modulepreload` links in index.html were
+ * simply reporting that honestly. Keeping those packages out of the service
+ * worker precache (see `globIgnores` below) did nothing about it.
+ *
+ * The function form fixes the class of bug, not just today's instance: it
+ * matches on the package root only, so a shared dependency that nothing here
+ * names explicitly falls through to `undefined` and Rollup gives it its own
+ * automatically-split chunk instead of smuggling it into a heavy one.
+ *
+ * The small shared utilities below are listed under `vendor-react` on purpose:
+ * they are a few kB, the shell needs them to render anything at all, and
+ * naming them is what stops them from being absorbed again.
+ */
+const VENDOR_GROUPS: Record<string, string[]> = {
+  "vendor-react": [
+    "react",
+    "react-dom",
+    "react-router-dom",
+    "@tanstack/react-query",
+    "@tanstack/react-virtual",
+    "clsx",
+    "tailwind-merge",
+    "class-variance-authority",
+    "use-sync-external-store",
+  ],
+  "vendor-supabase": ["@supabase/supabase-js"],
+  "vendor-pdf": ["pdf-lib", "react-pdf", "pdfjs-dist"],
+  "vendor-charts": ["recharts"],
+  "vendor-dnd": ["@dnd-kit/core", "@dnd-kit/sortable", "@dnd-kit/utilities"],
+  // Deliberately smaller than it was. `mammoth` (DOCX → HTML), `file-type` and
+  // `browser-image-compression` each serve one screen, but sat in the same
+  // group as `lucide-react`, which the layout imports on every page — so they
+  // rode along on every load. Unlisted, they get their own chunks and load when
+  // the screen that needs them does.
+  "vendor-misc": ["qrcode.react", "idb", "sonner", "lucide-react"],
+};
+
+const PACKAGE_TO_CHUNK = new Map<string, string>(
+  Object.entries(VENDOR_GROUPS).flatMap(([chunk, packages]) => packages.map((p) => [p, chunk])),
+);
+
+function manualChunks(id: string): string | undefined {
+  const parts = id.split("node_modules/");
+  if (parts.length < 2) return undefined;
+  const after = parts[parts.length - 1];
+  const segments = after.split("/");
+  const pkg = after.startsWith("@") ? `${segments[0]}/${segments[1]}` : segments[0];
+  return PACKAGE_TO_CHUNK.get(pkg);
+}
+
 export default defineConfig({
   envDir: "../",
   define: {
@@ -203,28 +269,7 @@ export default defineConfig({
     chunkSizeWarningLimit: 1500,
     rollupOptions: {
       output: {
-        manualChunks: {
-          "vendor-react": [
-            "react",
-            "react-dom",
-            "react-router-dom",
-            "@tanstack/react-query",
-            "@tanstack/react-virtual",
-          ],
-          "vendor-supabase": ["@supabase/supabase-js"],
-          "vendor-pdf": ["pdf-lib", "react-pdf", "pdfjs-dist"],
-          "vendor-charts": ["recharts"],
-          "vendor-dnd": ["@dnd-kit/core", "@dnd-kit/sortable", "@dnd-kit/utilities"],
-          "vendor-misc": [
-            "browser-image-compression",
-            "qrcode.react",
-            "file-type",
-            "mammoth",
-            "idb",
-            "sonner",
-            "lucide-react",
-          ],
-        },
+        manualChunks,
       },
     },
   },
