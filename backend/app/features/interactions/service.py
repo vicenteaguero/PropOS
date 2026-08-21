@@ -26,6 +26,22 @@ def _serialize(data: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
+def _with_relations(rows: list[dict]) -> list[dict]:
+    """Rename the embedded relations to the names the response model uses.
+
+    PostgREST returns `interaction_participants` / `interaction_targets`;
+    `InteractionResponse` declares `participants` / `targets` with a default of
+    `[]`. FastAPI therefore dropped both and served empty lists — the list
+    endpoint has never once returned who was in an interaction or what it was
+    about, silently, because the default made it look like there simply were
+    none.
+    """
+    for row in rows:
+        row["participants"] = row.pop("interaction_participants", None) or []
+        row["targets"] = row.pop("interaction_targets", None) or []
+    return rows
+
+
 class InteractionService:
     @staticmethod
     async def list_interactions(
@@ -42,38 +58,37 @@ class InteractionService:
         # ones matching the person — so a contact whose last interaction was
         # older than the tenant's 100 most recent got an empty timeline, which
         # reads as "never contacted" rather than "not in this page".
-        ids: set[str] | None = None
-        if person_id is not None:
-            ids = {
-                row["interaction_id"]
-                for row in (
-                    client.table("interaction_participants")
-                    .select("interaction_id")
-                    .eq("tenant_id", str(tenant_id))
-                    .eq("person_id", str(person_id))
-                    .execute()
-                    .data
-                    or []
-                )
-            }
-        if property_id is not None:
-            by_property = {
-                row["interaction_id"]
-                for row in (
-                    client.table("interaction_targets")
-                    .select("interaction_id")
-                    .eq("tenant_id", str(tenant_id))
-                    .eq("property_id", str(property_id))
-                    .execute()
-                    .data
-                    or []
-                )
-            }
-            # Both filters given: the interaction has to satisfy both.
-            ids = by_property if ids is None else (ids & by_property)
-
-        if ids is not None and not ids:
-            return []
+        #
+        # Two queries rather than one, on purpose. A single `!inner` embed
+        # filters the EMBEDDED rows too, so the participants list would come
+        # back holding only the person searched for — and the timeline shows who
+        # else was in the room. So: page the ids with the inner filter (at most
+        # `limit` of them, which keeps the follow-up URL bounded), then fetch
+        # those ids with the embeds unfiltered.
+        ids: list[str] | None = None
+        if person_id is not None or property_id is not None:
+            embeds = []
+            if person_id is not None:
+                embeds.append("interaction_participants!inner(person_id)")
+            if property_id is not None:
+                embeds.append("interaction_targets!inner(property_id)")
+            page = (
+                client.table(INTERACTIONS_TABLE)
+                .select(", ".join(["id", *embeds]))
+                .eq("tenant_id", str(tenant_id))
+                .is_("deleted_at", "null")
+                .order("occurred_at", desc=True)
+                .limit(limit)
+            )
+            if kind:
+                page = page.eq("kind", kind)
+            if person_id is not None:
+                page = page.eq("interaction_participants.person_id", str(person_id))
+            if property_id is not None:
+                page = page.eq("interaction_targets.property_id", str(property_id))
+            ids = [row["id"] for row in (page.execute().data or [])]
+            if not ids:
+                return []
 
         builder = (
             client.table(INTERACTIONS_TABLE)
@@ -86,16 +101,13 @@ class InteractionService:
         if kind:
             builder = builder.eq("kind", kind)
         if ids is not None:
-            # `in_` rather than an embedded `!inner` filter: that would also
-            # strip the embedded participants down to the matching one, and the
-            # timeline shows who else was there.
-            builder = builder.in_("id", sorted(ids))
-        return builder.execute().data
+            builder = builder.in_("id", ids)
+        return _with_relations(builder.execute().data or [])
 
     @staticmethod
     async def get_interaction(interaction_id: UUID, tenant_id: UUID) -> dict:
         client = get_supabase_client()
-        return (
+        row = (
             client.table(INTERACTIONS_TABLE)
             .select("*, interaction_participants(*), interaction_targets(*)")
             .eq("id", str(interaction_id))
@@ -104,6 +116,7 @@ class InteractionService:
             .execute()
             .data
         )
+        return _with_relations([row])[0] if row else row
 
     @staticmethod
     async def create_interaction(payload, tenant_id: UUID, created_by: UUID) -> dict:
