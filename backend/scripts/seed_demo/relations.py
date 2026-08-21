@@ -1025,6 +1025,79 @@ BUILDING_SPECS: tuple[tuple[str, str, str, int, dict[str, Any]], ...] = (
 )
 
 
+def _seed_price_history(
+    conn: Any,
+    state: SeedContext,
+    rng: random.Random,
+    properties: list[dict[str, Any]],
+    now: datetime,
+) -> None:
+    """Walk a third of the inventory back through one or two price drops.
+
+    `trg_property_snapshot` has been recording price and status changes since
+    `20240101000027`, but the seed inserted every property once and never moved
+    it, so the table was empty and the history section had nothing to render.
+    The rows are written by UPDATEing the live price — going through the trigger
+    rather than inserting snapshots directly, so what the screen shows is what
+    production would actually produce.
+    """
+    assert_safe_to_write(DEMO_TENANT_ID)
+    priced = [p for p in properties if p.get("list_price_cents")]
+    movers = priced[: max(1, len(priced) // 3)]
+    written = 0
+    with conn.cursor() as cursor:
+        for prop in movers:
+            asking = int(prop["list_price_cents"])
+            # Two drops for some, one for the rest: a listing that has been
+            # reduced twice is the one a broker most needs to notice.
+            drops = rng.choice((1, 1, 2))
+            # Walk DOWN from the asking price, leaving the property at the last
+            # step. Restoring the original price afterwards would fire the
+            # trigger again and every listing would read "subió y bajó".
+            price = asking
+            for _ in range(drops):
+                # Rounded to the nearest 100.000 CLP: nobody lists a flat at
+                # $146.253.007, and the stray digits read as a bug on screen.
+                price = round(price * rng.uniform(0.90, 0.97) / 100_000_00) * 100_000_00
+                cursor.execute(
+                    "UPDATE public.properties SET list_price_cents = %s WHERE id = %s AND tenant_id = %s",
+                    (price, prop["id"], DEMO_TENANT_ID),
+                )
+            written += drops
+
+    # The trigger stamps `now()`, so every drop would otherwise carry the same
+    # timestamp as the seed run and read as "all reduced this second". Spread
+    # them backwards IN ORDER: a plain random date per row would put the second
+    # reduction of a listing before its first, and the history would contradict
+    # the prices it is showing.
+    with conn.cursor() as cursor:
+        cursor.execute(
+            """
+            WITH ordered AS (
+              SELECT id,
+                     -- NOT created_at: it defaults to now(), which is
+                     -- transaction time, so every snapshot written by this
+                     -- seed shares one value and the tie broke arbitrarily —
+                     -- half the listings rendered a reduction as a rise. The
+                     -- ladder only ever walks down, so the recorded old price
+                     -- IS the ordering: the lowest one is the most recent.
+                     row_number() OVER (
+                       PARTITION BY property_id
+                       ORDER BY (snapshot_data->>'list_price_cents')::bigint ASC
+                     ) AS rn
+              FROM public.property_snapshots
+              WHERE tenant_id = %s
+            )
+            UPDATE public.property_snapshots s
+               SET snapshot_at = %s - (o.rn * interval '45 days') - (random() * interval '20 days')
+              FROM ordered o
+             WHERE s.id = o.id
+            """,
+            (DEMO_TENANT_ID, now),
+        )
+    state.record("property_snapshots", written)
+
+
 def _seed_buildings(
     conn: Any,
     state: SeedContext,
@@ -1345,5 +1418,6 @@ def seed_relations(conn: Any, state: SeedContext, rng_seed: int = 20260819) -> S
     _seed_expediente(conn, state, opportunities, author, now)
     _seed_provenance(conn, state, rng, properties, now)
     _seed_buildings(conn, state, rng, properties, author, now)
+    _seed_price_history(conn, state, rng, properties, now)
     _seed_pending_proposals(conn, state, rng, contacts, author, now)
     return state

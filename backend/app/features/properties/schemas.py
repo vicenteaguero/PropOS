@@ -144,3 +144,22 @@ class BuildingContext(BaseModel):
     shared: dict[str, Any] = {}
     #: Everything else in the building. Excludes the property being viewed.
     units: list[BuildingUnit] = []
+
+
+class PriceHistoryEntry(BaseModel):
+    """One recorded change to a property's price or status.
+
+    `property_snapshots.snapshot_data` is `to_jsonb(OLD)` — the row BEFORE the
+    change — so a snapshot on its own only says where a value came from. The
+    destination is the next-newer snapshot's `OLD`, or the live row for the most
+    recent one. That stitching happens server-side: it is the difference between
+    "a list of old rows" and a history anyone can read.
+    """
+
+    at: datetime
+    #: 'price_change' | 'status_change'
+    trigger: str
+    price_from_cents: int | None = None
+    price_to_cents: int | None = None
+    status_from: str | None = None
+    status_to: str | None = None

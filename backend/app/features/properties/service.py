@@ -145,3 +145,56 @@ class PropertyService:
             or []
         )
         return {**buildings[0], "units": units}
+
+    @staticmethod
+    async def get_price_history(tenant_id: UUID, property_id: UUID) -> list[dict]:
+        """Every recorded price and status change, newest first.
+
+        The trigger has been writing these since `20240101000027` and nothing
+        ever read them — a broker asking "how long has this been at this price"
+        had the answer in the database and no way to see it.
+        """
+        client = get_supabase_client()
+        current = (
+            client.table(PROPERTIES_TABLE)
+            .select("list_price_cents,status")
+            .eq("tenant_id", str(tenant_id))
+            .eq("id", str(property_id))
+            .limit(1)
+            .execute()
+            .data
+        )
+        if not current:
+            return []
+
+        snapshots = (
+            client.table("property_snapshots")
+            .select("snapshot_at,trigger,snapshot_data")
+            .eq("tenant_id", str(tenant_id))
+            .eq("property_id", str(property_id))
+            .order("snapshot_at", desc=True)
+            .limit(50)
+            .execute()
+            .data
+            or []
+        )
+
+        # Walk newest → oldest. Each snapshot holds the value BEFORE its change,
+        # so the value AFTER it is whatever the next-newer snapshot recorded as
+        # its own "before" — and for the newest, the live row.
+        after = current[0]
+        entries: list[dict] = []
+        for snap in snapshots:
+            before = snap.get("snapshot_data") or {}
+            entries.append(
+                {
+                    "at": snap["snapshot_at"],
+                    "trigger": snap["trigger"],
+                    "price_from_cents": before.get("list_price_cents"),
+                    "price_to_cents": after.get("list_price_cents"),
+                    "status_from": before.get("status"),
+                    "status_to": after.get("status"),
+                }
+            )
+            after = before
+        return entries

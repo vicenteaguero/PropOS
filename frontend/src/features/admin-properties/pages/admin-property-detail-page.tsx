@@ -23,6 +23,7 @@ import { propertiesApi, type PropertyInput } from "../api/properties-api";
 import { PropertyFormDialog } from "../components/property-form-dialog";
 import { PropertyGallery } from "../components/property-gallery";
 import { BuildingUnits } from "../components/building-units";
+import { PriceHistory } from "../components/price-history";
 import { PropertyLocationMap } from "../components/property-location-map";
 import { usePageTitle } from "@app/page-meta";
 import { formatClp } from "@shared/utils/currency";
@@ -204,6 +205,11 @@ export function AdminPropertyDetailPage() {
               );
             })}
           </div>
+        </div>
+
+        {/* Cambios de precio y estado. Nada si la publicación nunca se movió. */}
+        <div className="min-w-0 px-5 pt-5 lg:col-start-1 lg:px-0">
+          <PriceHistory propertyId={p.id} />
         </div>
 
         {/* Otras unidades del mismo edificio. Nada si es una casa suelta. */}

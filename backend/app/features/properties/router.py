@@ -18,6 +18,7 @@ from app.features.properties.photos import (
 )
 from app.features.properties.schemas import (
     BuildingContext,
+    PriceHistoryEntry,
     GeneratedDescription,
     GenerateDescriptionRequest,
     PropertyCreate,
@@ -103,6 +104,20 @@ async def generate_property_description(
     tenant_id: UUID = Depends(get_tenant_id),
 ) -> dict:
     return await generate_description(property_id, tenant_id, payload.tone, payload.portal, payload.max_words)
+
+
+@router.get(
+    "/{property_id}/history",
+    response_model=list[PriceHistoryEntry],
+    dependencies=[Depends(require_role("ADMIN", "AGENT", "LANDOWNER", "CONTENT"))],
+)
+async def get_property_history(
+    property_id: UUID,
+    tenant_id: UUID = Depends(get_tenant_id),
+) -> list[dict]:
+    """Price and status changes, newest first. Empty for a property that has
+    never moved, which is the honest answer rather than an invented baseline."""
+    return await PropertyService.get_price_history(tenant_id, property_id)
 
 
 @router.get(
