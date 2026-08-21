@@ -197,7 +197,6 @@ export default defineConfig({
         // CacheFirst runtimeCaching rule below still caches them permanently
         // on first real use, so offline access survives after one visit.
         globIgnores: [
-          "logo.png",
           "assets/heic2any-*.js", // HEIC decode, iOS photo upload only
           "assets/vendor-pdf-*.js", // pdf-lib + react-pdf, document viewer only
           "assets/vendor-charts-*.js", // recharts, analytics pages only
