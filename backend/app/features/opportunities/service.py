@@ -1,10 +1,16 @@
 from __future__ import annotations
 
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
 from app.core.supabase.client import get_supabase_client
+from app.features.opportunities.transitions import assert_allowed
+
+#: Stages at which a deal becomes an expediente. Named here rather than guessed
+#: from position: a pipeline can have any stage names, and "the one before the
+#: last" is not a rule anybody wrote down.
+AGREEMENT_STAGES = frozenset({"RESERVATION", "OFFER_ACCEPTED", "ACUERDO"})
 
 OPP_TABLE = "opportunities"
 HISTORY_TABLE = "opportunity_stage_history"
@@ -89,18 +95,117 @@ class OpportunityService:
         return client.table(OPP_TABLE).insert(data).execute().data[0]
 
     @staticmethod
-    async def update_opportunity(opp_id: UUID, payload, tenant_id: UUID) -> dict:
+    async def update_opportunity(opp_id: UUID, payload, tenant_id: UUID, *, by_agent: bool = False) -> dict:
         client = get_supabase_client()
         data = _norm(payload.model_dump(exclude_unset=True))
         is_won = data.get("status") == "WON"
         if data.get("status") in ("WON", "LOST") and "closed_at" not in data:
             data["closed_at"] = datetime.now(UTC).isoformat()
+
+        # A stage change is a state machine move, not a field edit. Read the
+        # current row first so the transition can be checked against where the
+        # deal actually is rather than where the caller assumes it is.
+        if "pipeline_stage" in data:
+            current = (
+                client.table(OPP_TABLE)
+                .select("id,pipeline_id,pipeline_stage")
+                .eq("id", str(opp_id))
+                .eq("tenant_id", str(tenant_id))
+                .single()
+                .execute()
+                .data
+            )
+            if current:
+                assert_allowed(tenant_id, current, data["pipeline_stage"], by_agent=by_agent)
+                if data["pipeline_stage"] in AGREEMENT_STAGES and "agreed_at" not in data:
+                    data["agreed_at"] = datetime.now(UTC).isoformat()
+
         row = (
             client.table(OPP_TABLE).update(data).eq("id", str(opp_id)).eq("tenant_id", str(tenant_id)).execute().data[0]
         )
         if is_won:
             OpportunityService._spawn_commission_receivable(client, row, tenant_id)
+        if data.get("pipeline_stage") in AGREEMENT_STAGES:
+            OpportunityService._instantiate_checklist(client, row, tenant_id)
         return row
+
+    @staticmethod
+    def _instantiate_checklist(client, opp: dict, tenant_id: UUID) -> None:
+        """On agreement: turn the tenant's template into this deal's file.
+
+        Past the handshake the deal stops being a pipeline. What is uncertain is
+        no longer WHETHER but WHEN, and what blocks it is the bank, the notaría
+        and the conservador — none of which move because somebody followed up.
+
+        Idempotent through the UNIQUE on `opportunity_id`: re-entering the stage
+        must not wipe the work already done on the list.
+        """
+        existing = (
+            client.table("opportunity_checklists")
+            .select("id")
+            .eq("tenant_id", str(tenant_id))
+            .eq("opportunity_id", str(opp["id"]))
+            .limit(1)
+            .execute()
+            .data
+        )
+        if existing:
+            return
+
+        templates = (
+            client.table("checklist_templates")
+            .select("id")
+            .eq("tenant_id", str(tenant_id))
+            .order("is_default", desc=True)
+            .limit(1)
+            .execute()
+            .data
+        )
+        if not templates:
+            return
+        template_id = templates[0]["id"]
+
+        checklist = (
+            client.table("opportunity_checklists")
+            .insert(
+                {
+                    "tenant_id": str(tenant_id),
+                    "opportunity_id": str(opp["id"]),
+                    "template_id": template_id,
+                }
+            )
+            .execute()
+            .data[0]
+        )
+        items = (
+            client.table("checklist_template_items")
+            .select("position,title,description,blocking,owner_role,due_offset_days")
+            .eq("tenant_id", str(tenant_id))
+            .eq("template_id", template_id)
+            .order("position")
+            .execute()
+            .data
+            or []
+        )
+        if not items:
+            return
+        now = datetime.now(UTC)
+        client.table("opportunity_checklist_items").insert(
+            [
+                {
+                    "tenant_id": str(tenant_id),
+                    "checklist_id": checklist["id"],
+                    "position": item["position"],
+                    "title": item["title"],
+                    "description": item.get("description"),
+                    "blocking": item.get("blocking", False),
+                    "due_at": (now + timedelta(days=item["due_offset_days"])).isoformat()
+                    if item.get("due_offset_days") is not None
+                    else None,
+                }
+                for item in items
+            ]
+        ).execute()
 
     @staticmethod
     def _spawn_commission_receivable(client, opp: dict, tenant_id: UUID) -> None:
