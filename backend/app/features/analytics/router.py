@@ -107,26 +107,6 @@ async def refresh(_=Depends(get_tenant_id)) -> dict[str, bool]:
     return {"ok": True}
 
 
-@router.get("/entity-timeline")
-async def entity_timeline(
-    table_name: str,
-    row_id: UUID,
-    tenant_id: UUID = Depends(get_tenant_id),
-) -> list[dict]:
-    client = get_supabase_client()
-    return (
-        client.table("v_entity_timeline")
-        .select("*")
-        .eq("tenant_id", str(tenant_id))
-        .eq("table_name", table_name)
-        .eq("row_id", str(row_id))
-        .order("event_at", desc=True)
-        .limit(100)
-        .execute()
-        .data
-    )
-
-
 @router.get("/agent-cost")
 async def agent_cost(tenant_id: UUID = Depends(get_tenant_id)) -> dict[str, Any]:
     """Agent usage stats: tokens + cost per session, per day."""
@@ -190,3 +170,40 @@ async def agent_cost(tenant_id: UUID = Depends(get_tenant_id)) -> dict[str, Any]
             key=lambda x: x["day"],
         ),
     }
+
+
+# The entity history is CRM, not analytics: same data source, different
+# audience. Mounted separately so it can carry the gate its callers actually
+# have.
+timeline_router = APIRouter(
+    prefix="/analytics",
+    tags=["timeline"],
+    dependencies=[Depends(require_role("ADMIN", "AGENT")), Depends(require_scope("crm"))],
+)
+
+
+@timeline_router.get("/entity-timeline")
+async def entity_timeline(
+    table_name: str,
+    row_id: UUID,
+    tenant_id: UUID = Depends(get_tenant_id),
+) -> list[dict]:
+    """Everything that ever happened to one record.
+
+    On its own router because it is not analytics. It was gated on ADMIN plus
+    the `analytics` scope while being linked from the contact and property
+    pages, which an AGENT can open — so the link was a guaranteed 403 for every
+    agent in the company.
+    """
+    client = get_supabase_client()
+    return (
+        client.table("v_entity_timeline")
+        .select("*")
+        .eq("tenant_id", str(tenant_id))
+        .eq("table_name", table_name)
+        .eq("row_id", str(row_id))
+        .order("event_at", desc=True)
+        .limit(100)
+        .execute()
+        .data
+    )
