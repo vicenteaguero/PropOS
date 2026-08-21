@@ -6,6 +6,8 @@ export interface ListContactsParams {
   q?: string;
   include_deleted?: boolean;
   limit?: number;
+  /** Row to start at. The endpoint has always accepted it; nothing sent it. */
+  offset?: number;
 }
 // `type` used to be declared here and silently dropped before the request. It
 // also sat in the query key, so two different values cached separately while
@@ -16,7 +18,12 @@ export interface ListContactsParams {
 export const contactsApi = {
   list: (params: ListContactsParams = {}) =>
     apiRequest<Contact[]>(
-      `/v1/contacts${qs({ q: params.q, include_deleted: params.include_deleted, limit: params.limit })}`,
+      `/v1/contacts${qs({
+        q: params.q,
+        include_deleted: params.include_deleted,
+        limit: params.limit,
+        offset: params.offset,
+      })}`,
     ),
   get: (id: string) => apiRequest<Contact>(`/v1/contacts/${id}`),
   create: (body: ContactInput) => apiRequest<Contact>("/v1/contacts", { method: "POST", body }),

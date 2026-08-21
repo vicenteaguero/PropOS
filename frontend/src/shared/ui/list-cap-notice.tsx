@@ -7,8 +7,9 @@ import { cn } from "@/lib/utils";
  * and silently returns at most that many rows.
  */
 export const LIST_CAPS = {
-  contacts: 100,
-  properties: 100,
+  // contacts and properties are paginated now — see `useContactsInfinite` and
+  // the properties list. They are deliberately absent: leaving them here would
+  // let a page warn about a cap that no longer exists.
   opportunities: 200,
   interactions: 100,
   notes: 100,

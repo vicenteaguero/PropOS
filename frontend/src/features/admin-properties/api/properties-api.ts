@@ -108,11 +108,15 @@ export interface PriceHistoryEntry {
 }
 
 export const propertiesApi = {
-  /** `q` is matched server-side, so search reaches past the 100-row cap. */
-  list: (params: { q?: string } = {}) =>
-    apiRequest<Property[]>(
-      `/v1/properties${params.q?.trim() ? `?q=${encodeURIComponent(params.q.trim())}` : ""}`,
-    ),
+  /** `q` is matched server-side, so search reaches past the current page. */
+  list: (params: { q?: string; limit?: number; offset?: number } = {}) => {
+    const qs = new URLSearchParams();
+    if (params.q?.trim()) qs.set("q", params.q.trim());
+    if (params.limit != null) qs.set("limit", String(params.limit));
+    if (params.offset) qs.set("offset", String(params.offset));
+    const query = qs.toString();
+    return apiRequest<Property[]>(`/v1/properties${query ? `?${query}` : ""}`);
+  },
   get: (id: string) => apiRequest<Property>(`/v1/properties/${id}`),
   create: (body: PropertyInput) => apiRequest<Property>("/v1/properties", { method: "POST", body }),
   update: (id: string, body: Partial<PropertyInput>) =>

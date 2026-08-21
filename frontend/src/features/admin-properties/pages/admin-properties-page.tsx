@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useOpenOnParam } from "@shared/hooks/use-open-on-param";
 import { useIntentPrefetch } from "@shared/hooks/use-intent-prefetch";
 import { propertyQueries } from "../hooks/use-property-detail";
@@ -6,11 +6,11 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@shared/hooks/use-auth";
 import { Bath, BedDouble, Maximize, Plus, LayoutGrid, Map as MapIcon } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { PageLayout } from "@shared/components/page-layout";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
-import { ListCapNotice, ListShell, PhotoCard, Pill, ViewToggle } from "@shared/ui";
+import { ListShell, LoadMore, PhotoCard, Pill, ViewToggle } from "@shared/ui";
 import { toast } from "sonner";
 import { propertiesApi, type Property, type PropertyInput } from "../api/properties-api";
 import { PropertyFormDialog } from "../components/property-form-dialog";
@@ -95,6 +95,9 @@ function PropertyCard({
   );
 }
 
+/** Rows per request: two or three grid rows, so a page fills a screen. */
+const PROPERTIES_PAGE_SIZE = 60;
+
 export function AdminPropertiesPage() {
   const navigate = useNavigate();
   // Never hardcode /admin: an AGENT tapping a card was thrown out of their own
@@ -114,11 +117,28 @@ export function AdminPropertiesPage() {
     const t = setTimeout(() => setDebounced(search), 250);
     return () => clearTimeout(t);
   }, [search]);
-  const { data, isLoading, error, refetch } = useQuery({
+  // Paged rather than a single capped slab: the endpoint stopped at 100 rows
+  // and said nothing, so a tenant past that simply could not reach the rest.
+  const {
+    data: pages,
+    isLoading,
+    error,
+    refetch,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
     queryKey: ["admin", "properties", debounced],
-    queryFn: () => propertiesApi.list({ q: debounced }),
+    queryFn: ({ pageParam }) =>
+      propertiesApi.list({ q: debounced, limit: PROPERTIES_PAGE_SIZE, offset: pageParam }),
+    initialPageParam: 0,
+    // A short page is the end of the list. The endpoint returns rows, not a
+    // total, and asking for a count per page would cost more than the page.
+    getNextPageParam: (last, all) =>
+      last.length < PROPERTIES_PAGE_SIZE ? undefined : all.length * PROPERTIES_PAGE_SIZE,
     placeholderData: (prev) => prev,
   });
+  const data = useMemo(() => pages?.pages.flat(), [pages]);
   const create = useMutation({
     mutationFn: (body: PropertyInput) => propertiesApi.create(body),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "properties"] }),
@@ -201,13 +221,6 @@ export function AdminPropertiesPage() {
             />
           )
         }
-        footer={
-          <ListCapNotice
-            resource="properties"
-            count={properties.length}
-            className="mx-[var(--page-x)]"
-          />
-        }
       >
         {view === "lista" ? (
           // Two columns from 360px up. One card per screen meant scrolling
@@ -222,6 +235,11 @@ export function AdminPropertiesPage() {
                 onIntent={() => prefetch(propertyQueries.detail(p.id))}
               />
             ))}
+            {hasNextPage && (
+              <div className="col-span-full">
+                <LoadMore onVisible={fetchNextPage} busy={isFetchingNextPage} />
+              </div>
+            )}
           </div>
         ) : (
           <PropertyMapView properties={properties} />

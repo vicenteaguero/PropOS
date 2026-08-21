@@ -7,7 +7,7 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   FilterSelect,
-  ListCapNotice,
+  LoadMore,
   ListShell,
   MasterDetail,
   Pill,
@@ -18,7 +18,7 @@ import { useProperties } from "@features/documents/hooks/use-entities";
 import { useOpportunities } from "@features/opportunities/hooks/use-opportunities";
 import { toast } from "sonner";
 import { contactsApi } from "../api/contacts-api";
-import { contactsKeys, useContacts, useCreateContact } from "../hooks/use-contacts";
+import { contactsKeys, useContactsInfinite, useCreateContact } from "../hooks/use-contacts";
 import { ContactFormDialog } from "../components/contact-form-dialog";
 import { ContactDetail } from "../components/contact-detail";
 import { CONTACT_TYPE_LABELS, CONTACT_TYPES, type ContactType } from "../types";
@@ -67,7 +67,16 @@ export function ContactsPage() {
     setParams(next, { replace: true });
   };
 
-  const { data, isLoading, error, refetch } = useContacts({ q: search || undefined, limit: 300 });
+  const {
+    data: pages,
+    isLoading,
+    error,
+    refetch,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useContactsInfinite({ q: search || undefined });
+  const data = useMemo(() => pages?.pages.flat(), [pages]);
   const create = useCreateContact();
   const properties = useProperties();
   const opportunities = useOpportunities({ limit: 500 });
@@ -95,7 +104,9 @@ export function ContactsPage() {
     <ListShell
       fill
       title="Personas"
-      meta={filtered.length > 0 ? `${filtered.length}` : undefined}
+      // No count while more pages exist: showing the loaded rows as if they
+      // were the total is the same lie the cap notice was built to admit.
+      meta={!hasNextPage && filtered.length > 0 ? `${filtered.length}` : undefined}
       search={{
         value: search,
         onChange: setSearch,
@@ -140,7 +151,6 @@ export function ContactsPage() {
         search || typeFilter !== "ALL" || propertyId ? "Sin coincidencias" : "Sin contactos"
       }
       emptyAction={{ label: "Nuevo contacto", onClick: () => setDialogOpen(true) }}
-      footer={<ListCapNotice resource="contacts" count={data?.length} />}
     >
       {/* Above the list, not buried in settings: nobody goes looking for
           duplicates they do not know they have. */}
@@ -175,6 +185,8 @@ export function ContactsPage() {
           right={<Pill tone={CONTACT_TYPE_TONES[c.type]}>{CONTACT_TYPE_LABELS[c.type]}</Pill>}
         />
       ))}
+
+      {hasNextPage && <LoadMore onVisible={fetchNextPage} busy={isFetchingNextPage} />}
     </ListShell>
   );
 

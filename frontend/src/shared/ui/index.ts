@@ -50,3 +50,4 @@ export {
 } from "./icons/brand-marks";
 export { TabBar, type TabBarItem, type TabBarVariant } from "./section-tabs";
 export { ListShell } from "./list-shell";
+export { LoadMore } from "./load-more";

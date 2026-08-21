@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { apiRequest } from "@shared/api/http";
 import { contactsApi, type ListContactsParams } from "../api/contacts-api";
@@ -24,6 +24,34 @@ export function useContacts(params: ListContactsParams = {}) {
   return useQuery({
     queryKey: contactsKeys.list(params),
     queryFn: () => contactsApi.list(params),
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+  });
+}
+
+/** Rows per request. Small enough to paint fast, big enough to fill a screen. */
+export const CONTACTS_PAGE_SIZE = 50;
+
+/**
+ * The people list, paged.
+ *
+ * `useContacts` asks for a fixed slab and the endpoint silently caps it, so a
+ * tenant with more people than the cap simply could not reach the rest — the
+ * list looked complete and the missing rows read as missing data.
+ * `ListCapNotice` was built to admit that in the UI; this removes the reason
+ * for it.
+ */
+export function useContactsInfinite(params: Omit<ListContactsParams, "offset"> = {}) {
+  return useInfiniteQuery({
+    queryKey: contactsKeys.list({ ...params, infinite: true } as ListContactsParams),
+    queryFn: ({ pageParam }) =>
+      contactsApi.list({ ...params, limit: CONTACTS_PAGE_SIZE, offset: pageParam }),
+    initialPageParam: 0,
+    // A short page means the end. The endpoint returns rows, not a total, so
+    // there is nothing else to go on — and asking for a count on every page
+    // would cost more than the page.
+    getNextPageParam: (last, all) =>
+      last.length < CONTACTS_PAGE_SIZE ? undefined : all.length * CONTACTS_PAGE_SIZE,
     staleTime: 30_000,
     refetchOnWindowFocus: false,
   });
