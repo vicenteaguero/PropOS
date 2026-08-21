@@ -21,6 +21,7 @@ from typing import Any
 from app.core.config.settings import settings
 from app.core.logging.logger import get_logger
 from app.core.phone import to_e164
+from app.features.channels.extraction import extract_from_inbound
 from app.features.agent.guards import GuardError, assert_no_date_commitment, assert_not_quiet_hours
 from app.core.supabase.client import get_supabase_client
 from app.features.notifications.whatsapp.dispatcher import (
@@ -178,6 +179,21 @@ async def handle_inbound_client(
     # consent belongs to a person, not to a phone number.
     if contact:
         _record_inbound_consent(conv["tenant_id"], contact["id"])
+
+    # Read what they said before answering it. This is the thesis of the
+    # product: the broker converses and the record follows, instead of somebody
+    # having to remember to go and type it in afterwards. Best-effort — a
+    # failure here must never cost the client their reply.
+    try:
+        await extract_from_inbound(
+            tenant_id=conv["tenant_id"],
+            conversation=conv,
+            message_id=external_message_id,
+            text=user_text,
+            proposed_by_user=conv.get("assigned_user_id"),
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("inbound_extraction_failed", event_type="llm", error=str(exc)[:200])
 
     if not conv.get("ai_enabled", True) or conv.get("status") == "assigned":
         return
