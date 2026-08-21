@@ -151,52 +151,30 @@ def _unanswered(tenant_id: UUID, now: dt.datetime, names: dict[str, str], props:
 
 
 def _email_waiting(tenant_id: UUID, now: dt.datetime, names: dict[str, str]):
-    """Open email threads where the counterpart spoke last.
+    """Open e-mail threads where the counterpart spoke last.
 
-    `email_threads` carries no inbound timestamp, so "are they waiting on us"
-    cannot be read off the thread row the way it can for WhatsApp — which is
-    why the inbox could never mark an email as unanswered. The direction of the
-    LAST message answers it exactly, and one batched read over the open threads
-    is cheap enough to do on every request.
+    This used to batch-read `email_messages` to work out the direction of the
+    last message, because `email_threads` carried no inbound timestamp — which
+    is also why the inbox hardcoded `needsReply: false` for the whole e-mail
+    channel. A trigger now maintains `waiting_on` and `last_inbound_at`, so the
+    question is a column and an index instead of a second query and a guess.
     """
     rows = (
         _client()
         .table("email_threads")
-        .select("id,subject,counterpart_name,counterpart_email,contact_id,last_message_at,portal,is_lead")
+        .select("id,subject,counterpart_name,counterpart_email,contact_id,last_inbound_at,portal,is_lead")
         .eq("tenant_id", str(tenant_id))
         .eq("status", "OPEN")
+        .eq("waiting_on", "us")
         .is_("deleted_at", "null")
         .limit(_SCAN_LIMIT)
         .execute()
         .data
         or []
     )
-    if not rows:
-        return
-
-    messages = (
-        _client()
-        .table("email_messages")
-        .select("thread_id,direction,sent_at")
-        .eq("tenant_id", str(tenant_id))
-        .in_("thread_id", [row["id"] for row in rows])
-        .order("sent_at")
-        .limit(_SCAN_LIMIT * 4)
-        .execute()
-        .data
-        or []
-    )
-    # Ordered ascending, so the last write per thread wins.
-    last_direction: dict[str, str] = {}
-    for message in messages:
-        thread_id = message.get("thread_id")
-        if thread_id:
-            last_direction[thread_id] = message.get("direction") or ""
 
     for row in rows:
-        if last_direction.get(row["id"]) != "IN":
-            continue
-        at = _parse(row.get("last_message_at"))
+        at = _parse(row.get("last_inbound_at"))
         age = now - at if at else dt.timedelta()
         hours = age.total_seconds() / 3600
         is_lead = bool(row.get("is_lead"))
@@ -228,8 +206,8 @@ def _email_waiting(tenant_id: UUID, now: dt.datetime, names: dict[str, str]):
             subtitle=row.get("subject"),
             reason=reason,
             at=at,
-            # A lead goes cold in a day; portals send the same enquiry to every
-            # broker with the listing, so the first reply usually wins it.
+            # A portal sends the same enquiry to every broker with the listing,
+            # so the first reply usually wins it.
             deadline=(at + dt.timedelta(hours=_FREEFORM_HOURS)) if at else None,
             contact_id=contact_id,
             thread_id=row["id"],
