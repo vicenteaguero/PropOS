@@ -112,3 +112,35 @@ class PropertyPhoto(BaseModel):
     position: int = 0
     title: str | None = None
     created_at: datetime | None = None
+
+
+class BuildingUnit(BaseModel):
+    """A sibling unit in the same building."""
+
+    id: UUID
+    title: str
+    unit_label: str | None = None
+    status: str
+    list_price_cents: int | None = None
+    area_sqm: float | None = None
+
+
+class BuildingContext(BaseModel):
+    """The building a property belongs to, and what else is in it.
+
+    `properties.address` is free text, so forty flats in one tower become forty
+    spellings of one street: nothing can group them, price them against each
+    other, or notice the same building being photographed forty times. This is
+    the answer to "what else do we have here", which is the first thing a buyer
+    asks and the CRM could not answer.
+    """
+
+    id: UUID
+    name: str
+    address: str | None = None
+    comuna: str | None = None
+    year_built: int | None = None
+    #: Attributes every unit inherits: amenities, gastos comunes base.
+    shared: dict[str, Any] = {}
+    #: Everything else in the building. Excludes the property being viewed.
+    units: list[BuildingUnit] = []

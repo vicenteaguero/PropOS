@@ -17,6 +17,7 @@ from app.features.properties.photos import (
     PropertyPhotoService,
 )
 from app.features.properties.schemas import (
+    BuildingContext,
     GeneratedDescription,
     GenerateDescriptionRequest,
     PropertyCreate,
@@ -102,6 +103,23 @@ async def generate_property_description(
     tenant_id: UUID = Depends(get_tenant_id),
 ) -> dict:
     return await generate_description(property_id, tenant_id, payload.tone, payload.portal, payload.max_words)
+
+
+@router.get(
+    "/{property_id}/building",
+    response_model=BuildingContext | None,
+    dependencies=[Depends(require_role("ADMIN", "AGENT", "LANDOWNER", "CONTENT"))],
+)
+async def get_property_building(
+    property_id: UUID,
+    tenant_id: UUID = Depends(get_tenant_id),
+) -> dict | None:
+    """The building this unit belongs to, and the other units in it.
+
+    Null for a standalone house, which is most of the inventory — the caller
+    renders nothing rather than an empty section.
+    """
+    return await PropertyService.get_building_context(tenant_id, property_id)
 
 
 @router.get(

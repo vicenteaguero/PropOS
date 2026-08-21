@@ -75,6 +75,26 @@ export interface GeneratedDescription {
   highlights: string[];
 }
 
+export interface BuildingUnit {
+  id: string;
+  title: string;
+  unit_label: string | null;
+  status: string;
+  list_price_cents: number | null;
+  area_sqm: number | null;
+}
+
+export interface BuildingContext {
+  id: string;
+  name: string;
+  address: string | null;
+  comuna: string | null;
+  year_built: number | null;
+  /** Attributes every unit inherits — amenities, gastos comunes. Entered once. */
+  shared: Record<string, unknown>;
+  units: BuildingUnit[];
+}
+
 export const propertiesApi = {
   /** `q` is matched server-side, so search reaches past the 100-row cap. */
   list: (params: { q?: string } = {}) =>
@@ -85,6 +105,8 @@ export const propertiesApi = {
   create: (body: PropertyInput) => apiRequest<Property>("/v1/properties", { method: "POST", body }),
   update: (id: string, body: Partial<PropertyInput>) =>
     apiRequest<Property>(`/v1/properties/${id}`, { method: "PATCH", body }),
+  /** Null for a standalone house — the caller renders nothing, not an empty shell. */
+  building: (id: string) => apiRequest<BuildingContext | null>(`/v1/properties/${id}/building`),
   photos: (id: string) => apiRequest<PropertyPhoto[]>(`/v1/properties/${id}/photos`),
   uploadPhotos: (id: string, files: File[]) => {
     const fd = new FormData();
