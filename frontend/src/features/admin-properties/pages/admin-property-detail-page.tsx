@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import { propertiesApi, type PropertyInput } from "../api/properties-api";
 import { PropertyFormDialog } from "../components/property-form-dialog";
 import { PropertyGallery } from "../components/property-gallery";
+import { BuildingUnits } from "../components/building-units";
 import { PropertyLocationMap } from "../components/property-location-map";
 import { usePageTitle } from "@app/page-meta";
 import { formatClp } from "@shared/utils/currency";
@@ -203,6 +204,11 @@ export function AdminPropertyDetailPage() {
               );
             })}
           </div>
+        </div>
+
+        {/* Otras unidades del mismo edificio. Nada si es una casa suelta. */}
+        <div className="px-5 pt-5 lg:col-start-1 lg:px-0">
+          <BuildingUnits propertyId={p.id} role={role} />
         </div>
 
         {/* Cómo llegar */}

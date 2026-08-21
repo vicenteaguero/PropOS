@@ -99,3 +99,49 @@ class PropertyService:
     async def delete_property(property_id: UUID, tenant_id: UUID) -> None:
         client = get_supabase_client()
         (client.table(PROPERTIES_TABLE).delete().eq("id", str(property_id)).eq("tenant_id", str(tenant_id)).execute())
+
+    @staticmethod
+    async def get_building_context(tenant_id: UUID, property_id: UUID) -> dict | None:
+        """The building this property is in, and its other units. None when it is
+        a standalone house, which is most of them."""
+        client = get_supabase_client()
+        rows = (
+            client.table("properties")
+            .select("building_id")
+            .eq("tenant_id", str(tenant_id))
+            .eq("id", str(property_id))
+            .limit(1)
+            .execute()
+            .data
+        )
+        building_id = rows[0].get("building_id") if rows else None
+        if not building_id:
+            return None
+
+        buildings = (
+            client.table("buildings")
+            .select("id,name,address,comuna,year_built,shared")
+            .eq("tenant_id", str(tenant_id))
+            .eq("id", building_id)
+            .is_("deleted_at", "null")
+            .limit(1)
+            .execute()
+            .data
+        )
+        if not buildings:
+            return None
+
+        units = (
+            client.table("properties")
+            .select("id,title,unit_label,status,list_price_cents,area_sqm")
+            .eq("tenant_id", str(tenant_id))
+            .eq("building_id", building_id)
+            .neq("id", str(property_id))
+            .is_("deleted_at", "null")
+            .order("unit_label")
+            .limit(50)
+            .execute()
+            .data
+            or []
+        )
+        return {**buildings[0], "units": units}
