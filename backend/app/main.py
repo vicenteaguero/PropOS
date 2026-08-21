@@ -38,6 +38,7 @@ from app.features.internal_areas.router import router as internal_areas_router
 from app.features.jobs.router import router as jobs_router
 from app.features.reminders.router import router as reminders_router
 from app.features.notes.router import router as notes_router
+from app.features.agent.policies_api import router as agent_policies_router
 from app.features.attention.router import router as attention_router
 from app.features.data_health.router import router as data_health_router
 from app.features.search.router import router as search_router
@@ -224,6 +225,7 @@ def create_app() -> FastAPI:
     application.include_router(search_router, prefix=versioned_prefix)
     application.include_router(data_health_router, prefix=versioned_prefix)
     application.include_router(attention_router, prefix=versioned_prefix)
+    application.include_router(agent_policies_router, prefix=versioned_prefix)
     application.include_router(tags_router, prefix=versioned_prefix)
     application.include_router(taggings_router, prefix=versioned_prefix)
     application.include_router(workflows_router, prefix=versioned_prefix)

@@ -82,6 +82,7 @@ async def reject_pending(
         tenant_id=tenant_id,
         reviewer_user=UUID(current_user["id"]),
         reason=payload.reason,
+        review_reason=payload.review_reason.value if payload.review_reason else None,
     )
 
 

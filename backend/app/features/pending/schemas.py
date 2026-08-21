@@ -48,8 +48,25 @@ class AcceptProposalRequest(BaseModel):
     note: str | None = None
 
 
+class RejectReason(str, Enum):
+    """Why a proposal was turned down.
+
+    A taxonomy, not just free text, because a rejection is the cheapest signal
+    there is about where the AI is wrong and free text cannot be counted. Small
+    on purpose; the detail goes in `reason`.
+    """
+
+    DATO_INCORRECTO = "dato_incorrecto"
+    ENTIDAD_EQUIVOCADA = "entidad_equivocada"
+    NO_CORRESPONDE = "no_corresponde"
+    DUPLICADO = "duplicado"
+    OTRO = "otro"
+
+
 class RejectProposalRequest(BaseModel):
+    #: Free-text detail, stored in `review_note`.
     reason: str | None = None
+    review_reason: RejectReason | None = None
 
 
 class AcceptProposalResponse(BaseModel):
