@@ -7,6 +7,7 @@ from typing import Any
 import anyio
 from fastapi import FastAPI, Header, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 
 from app.core.config.constants import API_PREFIX, API_VERSION, HEALTH_PATH
 from app.core.config.settings import settings
@@ -181,6 +182,12 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    # Compress before anything else looks at the body. List endpoints return
+    # plain JSON — a page of 100 contacts went out uncompressed, and on a phone
+    # bytes are latency. `minimum_size` keeps the CPU off the many small
+    # responses (health, counts, single rows) where framing would cost more than
+    # it saves.
+    application.add_middleware(GZipMiddleware, minimum_size=1000)
     application.add_middleware(TimingMiddleware)
     application.add_middleware(TenantMiddleware)
     # Development only: lets the frontend flip between `public` and the
