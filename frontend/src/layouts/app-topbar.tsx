@@ -1,12 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Bell, Building2, Check } from "lucide-react";
+import { Bell, Building2, Check, Search } from "lucide-react";
 import { useAuth } from "@shared/hooks/use-auth";
 import { apiRequest } from "@shared/api/http";
 import { tenantSwatch } from "@core/theme/tenant-accent";
 import { UfButton } from "@features/uf/components/uf-button";
 import { BottomSheet, WorkspacePill } from "@shared/ui";
+import {
+  CommandPalette,
+  useCommandPaletteHotkey,
+} from "@shared/components/command-palette/command-palette";
 import { titleForPath } from "@app/page-meta";
 import type { UserView } from "@shared/types/auth";
 import { cn } from "@/lib/utils";
@@ -73,6 +77,12 @@ export function MobileTopBar() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const [wsOpen, setWsOpen] = useState(false);
+  // The palette lives here rather than beside the shell so that the one visible
+  // trigger and the surface it opens share state. On a phone ⌘K and `/` are not
+  // reachable, so without a button the palette simply did not exist — the
+  // fastest route to any record in the product, missing on the form factor the
+  // product is built for.
+  const [paletteOpen, setPaletteOpen] = useCommandPaletteHotkey();
   const barRef = useRef<HTMLElement>(null);
   usePublishHeaderHeight(barRef);
 
@@ -116,6 +126,21 @@ export function MobileTopBar() {
             </span>
           )}
           <div className="flex items-center gap-1.5">
+            {/* Deliberately NOT gated on `isHome`, unlike everything beside it.
+                Workspace, UF and the bell are home chrome; search is the one
+                control whose whole value is being reachable from wherever the
+                broker already is. */}
+            <button
+              type="button"
+              aria-label="Buscar"
+              onClick={() => setPaletteOpen(true)}
+              className={cn(
+                "flex items-center justify-center rounded-full bg-secondary text-foreground transition active:scale-90",
+                HEADER_CONTROL_SQUARE,
+              )}
+            >
+              <Search className="size-[18px]" strokeWidth={1.9} />
+            </button>
             {/* UfButton belongs to the UF feature; sizing it from the outside
                 keeps this row's single height rule without reaching into it. */}
             {isHome && (
@@ -144,6 +169,8 @@ export function MobileTopBar() {
           </div>
         </div>
       </header>
+
+      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
 
       <BottomSheet open={wsOpen} onOpenChange={setWsOpen} title="Espacio de trabajo">
         <div className="mt-3">

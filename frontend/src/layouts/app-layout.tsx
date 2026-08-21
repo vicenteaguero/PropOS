@@ -17,10 +17,6 @@ import { MobileTopBar, HEADER_CONTROL, HEADER_CONTROL_SQUARE } from "@layouts/ap
 import { SidebarWidthProbe } from "@layouts/sidebar-width-probe";
 import { useNavGroups } from "@layouts/use-nav-groups";
 import { CommandBar } from "@shared/components/command-bar/command-bar";
-import {
-  CommandPalette,
-  useCommandPaletteHotkey,
-} from "@shared/components/command-palette/command-palette";
 import { useAuth } from "@shared/hooks/use-auth";
 import { useShellMode } from "@shared/hooks/use-shell-mode";
 import { useThemeMode } from "@core/theme/theme-provider";
@@ -133,12 +129,6 @@ function TenantSwitchGate() {
   );
 }
 
-/** Palette host for the headerless mobile shell (external keyboards, ⌘K). */
-function MobileCommandPalette() {
-  const [open, setOpen] = useCommandPaletteHotkey();
-  return <CommandPalette open={open} onOpenChange={setOpen} />;
-}
-
 export function AppLayout() {
   const { user, signOut } = useAuth();
   const shellMode = useShellMode();
@@ -211,7 +201,6 @@ export function AppLayout() {
           </main>
           <TenantSwitchGate />
           <MobileBottomNav />
-          <MobileCommandPalette />
           <InstallNudge />
         </div>
       </AgentOverlayProvider>
