@@ -19,11 +19,6 @@ import { formatClp } from "@shared/utils/currency";
 import { label } from "@shared/lib/labels";
 import { LISTING_KIND_TONES, tone } from "@shared/lib/tones";
 
-/** Short stable code from the property id (presentational). */
-function propertyCode(id: string): string {
-  return id.replace(/-/g, "").slice(0, 6).toUpperCase();
-}
-
 function PropertyCard({
   property,
   onClick,
@@ -59,9 +54,10 @@ function PropertyCard({
             <Pill tone={op.tone}>{op.label}</Pill>
             {property.is_draft && <Pill tone="neutral">Borrador</Pill>}
           </div>
-          <span className="absolute right-3 top-3 rounded-full bg-background/80 px-2.5 py-0.5 text-[11px] font-semibold text-muted-foreground backdrop-blur">
-            {propertyCode(property.id)}
-          </span>
+          {/* Nothing on the right. It used to carry the first six hex digits
+              of the row's uuid — "5F393E" — as the loudest badge on the card,
+              for a code the broker cannot quote, cannot search for and never
+              sees anywhere else in the product. */}
         </>
       }
     >
@@ -78,12 +74,12 @@ function PropertyCard({
           {formatClp(property.list_price_cents, "Precio a convenir")}
         </div>
         {specs.length > 0 && (
-          <div className="mt-2 flex items-center gap-4 text-[13px] text-muted-foreground">
+          <div className="mt-2 flex items-center gap-3 whitespace-nowrap text-[13px] text-muted-foreground">
             {specs.map((s, i) => {
               const Icon = s.icon;
               return (
-                <span key={i} className="inline-flex items-center gap-1.5">
-                  <Icon className="size-4" strokeWidth={1.8} />
+                <span key={i} className="inline-flex shrink-0 items-center gap-1.5">
+                  <Icon className="size-4 shrink-0" strokeWidth={1.8} />
                   {s.value}
                 </span>
               );
