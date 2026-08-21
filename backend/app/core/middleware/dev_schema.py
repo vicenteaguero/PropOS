@@ -19,7 +19,7 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
-from app.core.supabase.client import build_client, use_client
+from app.core.supabase.client import build_client, use_schema_override
 
 HEADER = "X-Db-Schema"
 
@@ -39,5 +39,5 @@ class DevSchemaMiddleware(BaseHTTPMiddleware):
                 status_code=400,
                 content={"detail": f"unsupported schema: {schema}"},
             )
-        with use_client(build_client(schema=schema)):
+        with use_schema_override(build_client(schema=schema)):
             return await call_next(request)

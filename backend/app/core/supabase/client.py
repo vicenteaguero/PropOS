@@ -21,6 +21,16 @@ from app.core.config.settings import settings
 # requests would stamp each other's writes.
 _scoped_client: ContextVar[Client | None] = ContextVar("supabase_scoped_client", default=None)
 
+# Whether the CURRENT request is pinned to a non-default Postgres schema.
+#
+# Tracked separately from `_scoped_client` because the two answer different
+# questions. A scoped client means "somebody published a client here" — the dev
+# schema switch does that, but so does `run_blocking`, which publishes a
+# per-thread client for a read fan-out and changes no schema at all. The auth
+# cache must bypass for the first and not the second, so inferring one from the
+# other would have quietly disabled caching on every threaded read path.
+_schema_overridden: ContextVar[bool] = ContextVar("supabase_schema_overridden", default=False)
+
 
 def _schema() -> str:
     """Target schema. `SUPABASE_DB_SCHEMA` lets integration tests mirror to
@@ -77,6 +87,20 @@ def get_thread_client() -> Client:
 
 
 @contextmanager
+def use_schema_override(client: Client) -> Iterator[Client]:
+    """`use_client`, plus a flag saying the schema is not the default one.
+
+    Only `DevSchemaMiddleware` should call this.
+    """
+    token = _schema_overridden.set(True)
+    try:
+        with use_client(client) as scoped:
+            yield scoped
+    finally:
+        _schema_overridden.reset(token)
+
+
+@contextmanager
 def use_client(client: Client) -> Iterator[Client]:
     """Make `client` the one `get_supabase_client()` returns in this context.
 
@@ -96,21 +120,20 @@ def get_supabase_client() -> Client:
     return scoped if scoped is not None else _shared_client()
 
 
-def has_scoped_client() -> bool:
-    """True when a request-scoped client is in effect.
+def is_schema_overridden() -> bool:
+    """True when this request is pinned to a non-default schema.
 
     Exists for the auth cache. `DevSchemaMiddleware` wraps the WHOLE request —
     dependency resolution included — in a client bound to another schema, so a
     cache keyed only by token or user id would serve a `public` profile to a
-    `propos_test` request. Bypassing while a scoped client is active is
-    provably leak-free, where a schema key component would only be leak-free if
-    the key were right.
+    `propos_test` request. Bypassing while the schema is overridden is provably
+    leak-free, where a schema key component would only be leak-free if the key
+    were right.
 
-    Cheap to bypass: the only other `use_client` caller is the agent's audit
-    attribution, which is entered inside a router body long after auth resolved,
-    and `X-Db-Schema` is installed only when APP_ENV is development.
+    Costs nothing in practice: `X-Db-Schema` is only honoured when APP_ENV is
+    development, so the bypass is confined to a developer's local loop.
     """
-    return _scoped_client.get() is not None
+    return _schema_overridden.get()
 
 
 # Historical entry point: callers (and tests) reset the singleton through the

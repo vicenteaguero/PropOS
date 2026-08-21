@@ -5,6 +5,7 @@ from typing import Any
 from uuid import UUID
 
 from app.core.logging.logger import get_logger
+from app.core.db import run_blocking
 from app.core.supabase.client import get_supabase_client
 
 EVENTS_TABLE = "events"
@@ -117,12 +118,20 @@ class EventService:
     async def calendar_feed(
         tenant_id: UUID, date_from: datetime | None = None, date_to: datetime | None = None
     ) -> list[dict]:
-        client = get_supabase_client()
-        builder = (
-            client.table("v_calendar_feed").select("*").eq("tenant_id", str(tenant_id)).order("start_at", desc=False)
-        )
-        if date_from:
-            builder = builder.gte("start_at", date_from.isoformat())
-        if date_to:
-            builder = builder.lte("start_at", date_to.isoformat())
-        return builder.execute().data
+        # Off the event loop: the Supabase client is synchronous, so an
+        # inline round trip holds the whole worker for its duration.
+        def _read() -> list[dict]:
+            client = get_supabase_client()
+            builder = (
+                client.table("v_calendar_feed")
+                .select("*")
+                .eq("tenant_id", str(tenant_id))
+                .order("start_at", desc=False)
+            )
+            if date_from:
+                builder = builder.gte("start_at", date_from.isoformat())
+            if date_to:
+                builder = builder.lte("start_at", date_to.isoformat())
+            return builder.execute().data
+
+        return await run_blocking(_read)

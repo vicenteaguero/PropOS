@@ -4,6 +4,7 @@ from datetime import UTC, date, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
+from app.core.db import run_blocking
 from app.core.supabase.client import get_supabase_client
 from app.features.opportunities.transitions import assert_allowed
 
@@ -63,29 +64,34 @@ class OpportunityService:
         limit: int = 200,
         offset: int = 0,
     ) -> list[dict]:
-        client = get_supabase_client()
-        # Count the extra participants and properties so a card can say a deal
-        # has more than the one person and one property it names. Half the deals
-        # in a real book do, and `person_id`/`property_id` are only the
-        # principal — the card silently claimed a two-buyer deal was a one-buyer
-        # deal. `count="exact"` on the embed returns the count without the rows.
-        builder = (
-            client.table(OPP_TABLE)
-            .select("*, opportunity_participants(count), opportunity_properties(count)")
-            .eq("tenant_id", str(tenant_id))
-            .is_("deleted_at", "null")
-            .order("created_at", desc=True)
-            .range(offset, offset + limit - 1)
-        )
-        if status:
-            builder = builder.eq("status", status)
-        if stage:
-            builder = builder.eq("pipeline_stage", stage)
-        if person_id:
-            builder = builder.eq("person_id", str(person_id))
-        if property_id:
-            builder = builder.eq("property_id", str(property_id))
-        return _flatten_counts(builder.execute().data or [])
+        # Off the event loop: the Supabase client is synchronous, so an
+        # inline round trip holds the whole worker for its duration.
+        def _read() -> list[dict]:
+            client = get_supabase_client()
+            # Count the extra participants and properties so a card can say a deal
+            # has more than the one person and one property it names. Half the deals
+            # in a real book do, and `person_id`/`property_id` are only the
+            # principal — the card silently claimed a two-buyer deal was a one-buyer
+            # deal. `count="exact"` on the embed returns the count without the rows.
+            builder = (
+                client.table(OPP_TABLE)
+                .select("*, opportunity_participants(count), opportunity_properties(count)")
+                .eq("tenant_id", str(tenant_id))
+                .is_("deleted_at", "null")
+                .order("created_at", desc=True)
+                .range(offset, offset + limit - 1)
+            )
+            if status:
+                builder = builder.eq("status", status)
+            if stage:
+                builder = builder.eq("pipeline_stage", stage)
+            if person_id:
+                builder = builder.eq("person_id", str(person_id))
+            if property_id:
+                builder = builder.eq("property_id", str(property_id))
+            return _flatten_counts(builder.execute().data or [])
+
+        return await run_blocking(_read)
 
     @staticmethod
     async def get_opportunity(opp_id: UUID, tenant_id: UUID) -> dict:
