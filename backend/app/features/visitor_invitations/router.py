@@ -83,17 +83,18 @@ async def resend_invitation(
 @admin_router.delete(
     "/{invitation_id}",
     status_code=204,
-    response_class=None,  # type: ignore[arg-type]
+    # No `response_class=None`. It was here with a silenced type error, and it
+    # made FastAPI raise "A response class is needed to generate OpenAPI" while
+    # building the schema — which takes down /openapi.json and /docs for the
+    # WHOLE app, not just this route. A 204 needs no response class: returning
+    # None from the handler is enough.
     dependencies=[Depends(require_role("ADMIN"))],
 )
 async def expire_invitation(
     invitation_id: UUID,
     tenant_id: UUID = Depends(get_tenant_id),
-):
+) -> None:
     await VisitorInvitationService.expire_invitation(invitation_id, tenant_id)
-    from fastapi import Response
-
-    return Response(status_code=204)
 
 
 # ---------------------------------------------------------------- public
