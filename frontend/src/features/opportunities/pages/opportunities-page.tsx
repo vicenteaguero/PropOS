@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useProperties } from "@features/documents/hooks/use-entities";
-import { Plus } from "lucide-react";
+import { Building2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AppShellScroll, ListCapNotice, ListShell } from "@shared/ui";
 import { toast } from "sonner";
 import { useAuth } from "@shared/hooks/use-auth";
+import { useIsDesktop } from "@/hooks/use-mobile";
 import { useContacts } from "@features/contacts/hooks/use-contacts";
 import {
   useCreateOpportunity,
@@ -13,6 +14,7 @@ import {
   useUpdateOpportunity,
 } from "../hooks/use-opportunities";
 import { OpportunityKanban } from "../components/opportunity-kanban";
+import { OpportunityStageList } from "../components/opportunity-stage-list";
 import { OpportunityFormDialog } from "../components/opportunity-form-dialog";
 import type { Opportunity } from "../types";
 
@@ -38,6 +40,7 @@ export function OpportunitiesPage() {
 
   const properties = useProperties();
   const navigate = useNavigate();
+  const isDesktop = useIsDesktop();
   const { user } = useAuth();
   const role = (user?.role ?? "ADMIN").toLowerCase();
 
@@ -90,8 +93,9 @@ export function OpportunitiesPage() {
       <ListShell
         fill
         className="min-h-0 flex-1"
-        title="Negocios"
-        meta={shown.length > 0 ? `${shown.length} abiertos` : undefined}
+        // The section tab already reads "Negocios"; the count moved onto the
+        // stage the broker is actually looking at, where it means something.
+        titleSr="Negocios"
         search={{
           value: search,
           onChange: setSearch,
@@ -99,9 +103,25 @@ export function OpportunitiesPage() {
           ariaLabel: "Buscar oportunidades",
         }}
         action={
-          <Button size="icon" aria-label="Nuevo negocio" className="rounded-full" onClick={openNew}>
-            <Plus className="size-4" strokeWidth={1.8} />
-          </Button>
+          <>
+            {/* Propiedades stopped being a headline tab (see
+                SectionTab.secondary); a deal is about a property, so this is the
+                view that owns the door to the catalogue — the same move
+                Conversaciones makes for Personas, in the same slot. */}
+            <Button
+              size="icon"
+              variant="outline"
+              aria-label="Ver propiedades"
+              title="Ver propiedades"
+              className="rounded-full"
+              onClick={() => navigate(`/${role}/clientes?tab=propiedades`)}
+            >
+              <Building2 className="size-4" strokeWidth={1.8} />
+            </Button>
+            <Button size="icon" aria-label="Nuevo negocio" className="rounded-full" onClick={openNew}>
+              <Plus className="size-4" strokeWidth={1.8} />
+            </Button>
+          </>
         }
         skeleton="board"
         bodyPadding="page"
@@ -116,19 +136,31 @@ export function OpportunitiesPage() {
       >
         {/* h-full so the board fills the pane and its columns scroll internally,
             instead of the pane scrolling a board taller than the viewport. */}
-        <div className="h-full pb-2">
-          <OpportunityKanban
-            opportunities={shown}
-            nameFor={nameFor}
-            propertyFor={propertyFor}
-            onMove={move}
-            onWon={won}
-            onLost={lost}
-            // The card opens the deal's own page rather than a modal: a
-            // modal has nowhere to put participants, the properties it
-            // touches, or the file it becomes after the handshake.
-            onEdit={(opp) => navigate(`/${role}/negocios/${opp.id}`)}
-          />
+        <div className="flex h-full min-h-0 flex-col pb-2">
+          {isDesktop ? (
+            <OpportunityKanban
+              opportunities={shown}
+              nameFor={nameFor}
+              propertyFor={propertyFor}
+              onMove={move}
+              onWon={won}
+              onLost={lost}
+              // The card opens the deal's own page rather than a modal: a
+              // modal has nowhere to put participants, the properties it
+              // touches, or the file it becomes after the handshake.
+              onEdit={(opp) => navigate(`/${role}/negocios/${opp.id}`)}
+            />
+          ) : (
+            <OpportunityStageList
+              opportunities={shown}
+              nameFor={nameFor}
+              propertyFor={propertyFor}
+              onMove={move}
+              onWon={won}
+              onLost={lost}
+              onOpen={(opp) => navigate(`/${role}/negocios/${opp.id}`)}
+            />
+          )}
         </div>
       </ListShell>
 
