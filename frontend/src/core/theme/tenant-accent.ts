@@ -100,6 +100,62 @@ export function applyTenantAccent({ seed, color, tint }: AccentInput): void {
   clearTenantAccent();
 }
 
+/**
+ * The last resolved accent, replayed before the first paint.
+ *
+ * `tenantId` arrives with the auth session but `brand_color`, `brand_tint` and
+ * the curated `[data-tenant]` palette all come from `/v1/tenants/me`, a network
+ * round trip later. So a signed-in user watched the app paint in the default
+ * palette and then recolour itself once the query landed — every launch, every
+ * reload. Caching the resolved values and applying them synchronously at boot
+ * removes the flash; the query still runs and still wins, it just usually
+ * agrees with what is already on screen.
+ */
+const CACHE_KEY = "propos:tenant-accent";
+const ACTIVE_TENANT_KEY = "propos.active_tenant_id";
+
+interface CachedAccent extends AccentInput {
+  slug?: string | null;
+}
+
+export function cacheTenantAccent(accent: CachedAccent): void {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(accent));
+  } catch {
+    // Private mode / quota. The accent still applies, it just flashes next boot.
+  }
+}
+
+/** The cached accent, but only if it belongs to `seed`. Null otherwise. */
+export function readCachedAccent(seed: string | null): CachedAccent | null {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    const cached = raw ? (JSON.parse(raw) as CachedAccent) : null;
+    if (!cached?.seed) return null;
+    // Switching workspace writes the new id immediately; the accent cache only
+    // catches up once the new tenant's branding resolves. Replaying a mismatched
+    // accent would paint the previous brokerage's colours.
+    return cached.seed === seed ? cached : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Apply the cached accent, if it belongs to the workspace we are about to open. */
+export function bootstrapTenantAccent(): void {
+  if (typeof document === "undefined") return;
+  let active: string | null = null;
+  try {
+    active = localStorage.getItem(ACTIVE_TENANT_KEY);
+  } catch {
+    return;
+  }
+  const cached = readCachedAccent(active);
+  if (!cached) return;
+  applyTenantAccent(cached);
+  if (cached.slug) document.documentElement.dataset.tenant = cached.slug;
+}
+
 /** Remove all inline accent overrides → falls back to the index.css default. */
 export function clearTenantAccent(): void {
   if (typeof document === "undefined") return;

@@ -8,11 +8,13 @@ import { App } from "@app/app";
 import { requestUpdate } from "@core/version/version";
 import { bootstrapPalette } from "@core/theme/palette";
 import { bootstrapTheme } from "@core/theme/theme";
+import { bootstrapTenantAccent } from "@core/theme/tenant-accent";
 import "./index.css";
 
-// Apply persisted theme (light/dark) + palette before first paint
+// Apply persisted theme (light/dark), palette and tenant accent before first paint
 bootstrapTheme();
 bootstrapPalette();
+bootstrapTenantAccent();
 
 const UPDATE_INTERVAL_MS = 60 * 1000;
 
