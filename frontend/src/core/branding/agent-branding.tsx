@@ -10,6 +10,8 @@ interface TenantBranding {
   /** Surface tint percentage, 0-12. See applyTenantAccent. */
   brandTint: number | null;
   slug: string | null;
+  /** False until /v1/tenants/me answers — the rest of this object is defaults. */
+  resolved: boolean;
 }
 
 interface TenantResponse {
@@ -30,6 +32,7 @@ const DEFAULT: TenantBranding = {
   brandColor: null,
   brandTint: null,
   slug: null,
+  resolved: false,
 };
 
 const AgentBrandingContext = createContext<TenantBranding>(DEFAULT);
@@ -55,6 +58,7 @@ export function AgentBrandingProvider({ children }: { children: ReactNode }) {
       brandColor: settings?.brand_color || null,
       brandTint: typeof settings?.brand_tint === "number" ? settings.brand_tint : null,
       slug: query.data.slug || null,
+      resolved: true,
     };
   }, [query.data]);
 
