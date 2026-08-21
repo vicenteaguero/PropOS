@@ -4,11 +4,8 @@ import {
   Building2,
   CalendarDays,
   CalendarPlus,
-  CheckSquare,
   ChevronRight,
-  FileText,
   Inbox,
-  MessageCircle,
   Mic,
   Phone,
   Receipt,
@@ -39,7 +36,6 @@ import {
   WhatsAppMark,
   type PillTone,
 } from "@shared/ui";
-import { useIsDesktop } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { initials } from "@shared/utils/format";
 import { DataHealthCard } from "../components/data-health-card";
@@ -87,7 +83,6 @@ export function AdminHomePage() {
   const navigate = useNavigate();
   const propo = useAgentOverlay();
   // The tile grid means something different once a sidebar is on screen.
-  const isDesktop = useIsDesktop();
 
   const role = (user?.role ?? "ADMIN").toLowerCase();
   const base = `/${role}`;
@@ -147,27 +142,20 @@ export function AdminHomePage() {
   const activity = activityQ.data ?? [];
 
   /**
-   * Starting points, not a second navigation.
+   * Starting points, not a second navigation — on every viewport.
    *
-   * On a phone these were the only way to reach half the app, so they were
-   * destinations. With a sidebar on screen, repeating "Propiedades" and
-   * "Finanzas" as tiles duplicates two clicks away — so the desktop grid offers
-   * the things a broker STARTS rather than the places they browse: create a
-   * visit, log a person, upload a document, record an expense.
+   * These used to be destinations on a phone and actions on a desktop, which
+   * had the ergonomics backwards. The phone already carries Inicio, Clientes,
+   * Agenda and Más in the bottom nav, so a grid of destinations mostly repeated
+   * the bar directly beneath it, while the actions the bar does NOT offer had
+   * no home at all: creating a person cost Clientes → Personas → +, three taps,
+   * against one click on a desktop that needs the help least.
    *
    * The query params below are read by each surface to open its create sheet,
    * which is why they are links and not callbacks: the action survives a
-   * refresh and can be linked to.
+   * refresh, can be linked to, and — because `useOpenOnParam` is viewport-blind
+   * — already worked on a phone before anything pointed at it.
    */
-  const destinationTiles: Tile[] = [
-    { to: `${base}/agenda?tab=tareas`, label: "Tareas", icon: CheckSquare, scope: "productividad" },
-    { to: `${base}/agenda?tab=notas`, label: "Notas", icon: StickyNote, scope: "productividad" },
-    { to: `${base}/clientes?tab=whatsapp`, label: "WhatsApp", icon: MessageCircle, scope: "inbox" },
-    { to: `${base}/documentos`, label: "Docs", icon: FileText, scope: "documents" },
-    { to: `${base}/clientes?tab=propiedades`, label: "Propiedades", icon: Building2 },
-    { to: "/admin/finanzas", label: "Finanzas", icon: Receipt, scope: "finanzas", adminOnly: true },
-  ];
-
   const actionTiles: Tile[] = [
     {
       to: `${base}/agenda?tab=calendario&nuevo=1`,
@@ -202,9 +190,7 @@ export function AdminHomePage() {
     },
   ];
 
-  const tiles = (isDesktop ? actionTiles : destinationTiles).filter(
-    (t) => allow(t.scope) && (!t.adminOnly || isAdmin),
-  );
+  const tiles = actionTiles.filter((t) => allow(t.scope) && (!t.adminOnly || isAdmin));
 
   const propoBar = canPropo && (
     <div className="flex gap-2">
