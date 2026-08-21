@@ -32,7 +32,7 @@
 #      slower than docker. Emergency override: _SKIP_CI_GATE=true.
 #
 # Sizing: one container serves the Kapso webhook, the Cloud Scheduler jobs and
-# both Vercel frontends, and some handlers still call the synchronous Supabase
+# both Vercel frontends, and most handlers still call the synchronous Supabase
 # client (plus a blocking 30s Whisper request) straight from the event loop. At
 # --max-instances=1 a single audio transcription or email-sync run queues every
 # other request behind it, including webhooks that Kapso retries and then drops.
@@ -40,6 +40,18 @@
 # and --min-instances stays 0 -- but they stop one slow handler from taking the
 # whole service down. Change this file, not the live service: a
 # `gcloud run services update` is overwritten by the next deploy.
+#
+# --concurrency=8 is the important number, and it is deliberately far below the
+# platform default of 80. That default assumes handlers that yield while they
+# wait; ours do not -- a blocking Supabase call holds the event loop, so with
+# two uvicorn workers the real capacity of an instance is about two requests at
+# a time. Leaving concurrency at 80 did not give us 80: it let 80 requests queue
+# INSIDE one container while Cloud Run, seeing an instance that had not hit its
+# limit, declined to start another. Setting it to the honest number is what
+# turns a queue into a scale-out. Revisit it once the read paths stop blocking.
+#
+# --cpu-boost costs nothing and shortens cold starts, which every user pays for
+# while --min-instances is 0.
 steps:
   # python:3.12-slim rather than the gcloud builder: the gate is pure stdlib and
   # this image is ~45MB, so it starts before docker has finished pulling layers.
@@ -148,7 +160,9 @@ steps:
           --min-instances=0 \
           --max-instances=3 \
           --memory=1Gi \
-          --cpu=1 \
+          --cpu=2 \
+          --cpu-boost \
+          --concurrency=8 \
           --env-vars-file=config/docker/cloudrun-env.yaml \
           --set-secrets="$$SECRETS"
 
