@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 /**
  * Publishes the on-screen keyboard's height to `--kb-inset` on <html>.
@@ -10,11 +10,19 @@ import { useEffect } from "react";
  * of that — which is the "two kilometres away" gap. `visualViewport` is the
  * only API that reports the covered strip.
  *
- * Call once, high in the tree. Surfaces consume it as
+ * Also publishes the visual viewport's own box as `--vv-h` / `--vv-top`, for
+ * surfaces that must sit ON the visible area rather than on the layout viewport
+ * — see `.fixed-vv` in index.css. And returns whether the keyboard is up, which
+ * a few surfaces need in JS: suggestions worth showing on an empty chat are
+ * worth hiding the moment there is a keyboard covering half the screen.
+ *
+ * Call once per surface. Surfaces consume the inset as
  * `pb-[calc(var(--kb-inset,0px)+…)]` and should drop their `--safe-bottom`
  * padding while it is non-zero: the home indicator is under the keyboard.
  */
-export function useKeyboardInset() {
+export function useKeyboardInset(): { open: boolean } {
+  const [open, setOpen] = useState(false);
+
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
@@ -37,7 +45,16 @@ export function useKeyboardInset() {
       // one reports the covered strip, the other has already removed it. Without
       // it the composer kept its home-indicator padding while sitting ON the
       // keyboard — ~46px of dead air.
-      root.style.setProperty("--kb-open", covered > 80 || shrunk > 80 ? "1" : "0");
+      const isOpen = covered > 80 || shrunk > 80;
+      root.style.setProperty("--kb-open", isOpen ? "1" : "0");
+      setOpen(isOpen);
+      // The visible box itself. On iOS a `position: fixed` element is laid out
+      // against the LAYOUT viewport, which the keyboard does not change — so
+      // focusing an input scrolls the visual viewport and carries the whole
+      // surface, header included, up off the screen. Pinning to these two
+      // numbers is the only way a full-screen surface stays put.
+      root.style.setProperty("--vv-h", `${Math.round(vv.height)}px`);
+      root.style.setProperty("--vv-top", `${Math.round(vv.offsetTop)}px`);
     };
     update();
     vv.addEventListener("resize", update);
@@ -47,6 +64,10 @@ export function useKeyboardInset() {
       vv.removeEventListener("scroll", update);
       root.style.removeProperty("--kb-inset");
       root.style.removeProperty("--kb-open");
+      root.style.removeProperty("--vv-h");
+      root.style.removeProperty("--vv-top");
     };
   }, []);
+
+  return { open };
 }

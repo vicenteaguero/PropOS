@@ -33,8 +33,9 @@ export function AgentOverlay({ onClose, initialMode = "chat" }: Props) {
   // Android Back (and the iOS edge swipe in standalone) closes this, rather
   // than navigating away and discarding whatever was typed.
   useDismissOnBack(true, onClose);
-  // Keeps the composer above the on-screen keyboard instead of behind it.
-  useKeyboardInset();
+  // Keeps the composer above the on-screen keyboard instead of behind it, and
+  // pins this panel to the visible box rather than the layout viewport.
+  const keyboard = useKeyboardInset();
   const sessionQuery = useAgentSession();
   const sessionId = sessionQuery.data?.id;
   const messagesQuery = useAgentMessages(sessionId);
@@ -59,15 +60,20 @@ export function AgentOverlay({ onClose, initialMode = "chat" }: Props) {
   };
 
   const messages = messagesQuery.data ?? [];
+  // Hidden the moment there is a keyboard. Three example prompts are useful on
+  // an empty chat and useless once the broker is typing — and on a phone the
+  // keyboard leaves ~300px, which the suggestions were pushing the composer out
+  // of. They come back when the keyboard goes.
   const showSuggestions =
     mode === "chat" &&
+    !keyboard.open &&
     messages.length === 0 &&
     !chat.isStreaming &&
     !chat.pendingUserText &&
     chat.pendingAudio.length === 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end md:bg-overlay/50 md:backdrop-blur-md">
+    <div className="fixed-vv z-50 flex justify-end md:bg-overlay/50 md:backdrop-blur-md">
       <button
         type="button"
         aria-label="Cerrar"
@@ -176,10 +182,11 @@ export function AgentOverlay({ onClose, initialMode = "chat" }: Props) {
               )}
             </div>
             {chat.error && <p className="px-4 text-xs text-red-400">{chat.error}</p>}
-            {/* Both insets, never summed: while the keyboard is up it covers the
-                home indicator, so --safe-bottom must not be added on top of it.
-                max() is correct here precisely because only one is ever live. */}
-            <div className="shrink-0 border-t border-white/10 p-3 pb-composer">
+            {/* `.pb-composer-vv`, not `.pb-composer`: this panel is pinned to
+                the visual viewport, so the keyboard is already outside its box
+                and adding --kb-inset again would float the composer a keyboard's
+                height above the keys. */}
+            <div className="pb-composer-vv shrink-0 border-t border-white/10 p-3">
               <AgentComposer
                 onSend={chat.send}
                 onAudio={chat.submitAudio}
