@@ -174,7 +174,10 @@ def _search_messages(tenant_id: UUID, q: str | None, limit: int) -> list[EntityH
     """
     if not q or not q.strip():
         return []
-    needle = q.strip()
+    # Folded the same way the column is, so "credito" finds "crédito". Against
+    # the raw column those were two different searches and one of them silently
+    # returned nothing.
+    needle = _fold(q.strip())
     client = get_supabase_client()
     hits: list[EntityHit] = []
     seen: set[str] = set()
@@ -183,7 +186,7 @@ def _search_messages(tenant_id: UUID, q: str | None, limit: int) -> list[EntityH
         client.table("client_messages")
         .select("conversation_id, content, created_at")
         .eq("tenant_id", str(tenant_id))
-        .ilike("content", f"%{needle}%")
+        .like("content_search", f"%{needle}%")
         .order("created_at", desc=True)
         .limit(limit)
         .execute()
@@ -209,7 +212,7 @@ def _search_messages(tenant_id: UUID, q: str | None, limit: int) -> list[EntityH
             client.table("email_messages")
             .select("thread_id, subject, snippet, sent_at")
             .eq("tenant_id", str(tenant_id))
-            .or_(f"subject.ilike.%{needle}%,body_text.ilike.%{needle}%")
+            .or_(f"subject_search.like.%{needle}%,body_search.like.%{needle}%")
             .order("sent_at", desc=True)
             .limit(limit - len(hits))
             .execute()

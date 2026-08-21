@@ -184,3 +184,72 @@ def test_no_kind_exists_without_a_reason_to():
     so it is declared above rather than silently allowed.
     """
     assert {k.value for k in EntityKind} == LINKABLE_KINDS | SEARCH_ONLY_KINDS
+
+
+def test_message_search_is_accent_insensitive_like_every_other_kind():
+    """ "credito" has to find "crédito".
+
+    Message search shipped against the raw column while every other kind used
+    the folded one, so those were two different searches and one of them
+    silently returned nothing — which reads as "that conversation does not
+    exist" rather than as a bug.
+    """
+    log: dict = {}
+    conversation = str(uuid4())
+    tables = {
+        "client_messages": [
+            {
+                "conversation_id": conversation,
+                "content": "¿Ayudan con el crédito hipotecario?",
+                "content_search": "?ayudan con el credito hipotecario?",
+                "created_at": "2026-08-20T10:00:00Z",
+            }
+        ],
+        "email_messages": [],
+    }
+    with patch(
+        "app.features.search.service.get_supabase_client",
+        return_value=_client(tables, log),
+    ):
+        for typed in ("credito", "crédito", "CRÉDITO"):
+            hits = search_entities(TENANT, EntityKind.MESSAGE, q=typed)
+            assert len(hits) == 1, typed
+            assert str(hits[0].id) == conversation
+
+    # Never against the display column: that is the bug this replaced.
+    assert all(col in ("content_search", "subject_search") for col, _ in log.get("like", []))
+
+
+def test_message_search_returns_the_conversation_not_the_message():
+    """Getting back to the thread is the point; one line out of context is not."""
+    conversation = str(uuid4())
+    tables = {
+        "client_messages": [
+            {
+                "conversation_id": conversation,
+                "content": "tiene bodega",
+                "content_search": "tiene bodega",
+                "created_at": "2026-08-20T10:00:00Z",
+            },
+            {
+                "conversation_id": conversation,
+                "content": "la bodega mide 4 m2",
+                "content_search": "la bodega mide 4 m2",
+                "created_at": "2026-08-20T11:00:00Z",
+            },
+        ],
+        "email_messages": [],
+    }
+    with patch("app.features.search.service.get_supabase_client", return_value=_client(tables)):
+        hits = search_entities(TENANT, EntityKind.MESSAGE, q="bodega")
+    # Two matching messages, one thread to go back to.
+    assert len(hits) == 1
+    assert str(hits[0].id) == conversation
+
+
+def test_an_empty_query_does_not_scan_every_message():
+    """ "Everything anyone ever said" is not a useful default, and it would scan
+    the busiest table in the schema."""
+    with patch("app.features.search.service.get_supabase_client", return_value=_client({})):
+        assert search_entities(TENANT, EntityKind.MESSAGE, q="") == []
+        assert search_entities(TENANT, EntityKind.MESSAGE, q=None) == []
