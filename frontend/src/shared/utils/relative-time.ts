@@ -10,7 +10,13 @@
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-const TIME = new Intl.DateTimeFormat("es-CL", { hour: "numeric", minute: "2-digit" });
+// 24h. `hour: "numeric"` on es-CL yields "6:47 a. m." — eleven characters of
+// trailing punctuation in a column six wide, for a country that writes 06:47.
+const TIME = new Intl.DateTimeFormat("es-CL", {
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
 const WEEKDAY = new Intl.DateTimeFormat("es-CL", { weekday: "long" });
 const DAY_MONTH = new Intl.DateTimeFormat("es-CL", { day: "numeric", month: "short" });
 const FULL = new Intl.DateTimeFormat("es-CL", { day: "numeric", month: "short", year: "numeric" });
