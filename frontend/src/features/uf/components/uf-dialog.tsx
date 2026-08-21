@@ -16,25 +16,23 @@ type Currency = "UF" | "CLP" | "USD";
 const CURRENCIES: Currency[] = ["UF", "CLP", "USD"];
 
 /**
- * One hue per currency, so a number's unit is readable before reading its
- * suffix. The tenant accent (`--primary`) is deliberately not used here: it is
- * a single hue and would paint all three the same, which is what made the
- * previous version unreadable. Pairs are light/dark because the app ships both.
+ * Colour is not how a unit is identified here.
+ *
+ * This dialog used to paint UF violet, CLP sky and USD emerald — three
+ * saturated hues that belong to no palette in the app, sitting next to flag
+ * emoji and a red backspace key, inside a product whose colour vocabulary is
+ * deliberately small and semantic: the tenant accent means "this workspace",
+ * pine means money in, brick means money out. Three decorative hues drowned all
+ * three of those meanings at once, and the figures they tinted are not gains or
+ * losses — they are the same amount said three ways.
+ *
+ * So the unit is carried by its code, which is already the unambiguous label a
+ * broker reads ("UF", "CLP", "USD"), set in the mono face at small size. The one
+ * coloured thing is the unit currently being typed. The deltas keep pine/brick,
+ * because there the colour genuinely is the meaning.
  */
-const CURRENCY_STYLE: Record<Currency, { text: string; solid: string }> = {
-  UF: {
-    text: "text-violet-600 dark:text-violet-400",
-    solid: "bg-violet-600 text-white dark:bg-violet-500 dark:text-white",
-  },
-  CLP: {
-    text: "text-sky-600 dark:text-sky-400",
-    solid: "bg-sky-600 text-white dark:bg-sky-500 dark:text-white",
-  },
-  USD: {
-    text: "text-emerald-600 dark:text-emerald-400",
-    solid: "bg-emerald-600 text-white dark:bg-emerald-500 dark:text-white",
-  },
-};
+const UNIT_LABEL =
+  "font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground";
 
 const CLP_FMT = new Intl.NumberFormat("es-CL", { maximumFractionDigits: 0 });
 const USD_FMT = new Intl.NumberFormat("es-CL", {
@@ -113,30 +111,6 @@ function sanitizeTyped(value: string): string {
   return `${int || "0"},${rest.join("").slice(0, 4)}`;
 }
 
-/**
- * Currency badge. CLP and USD carry their flag; UF has no country, so it gets a
- * violet diamond — a mark of its own rather than borrowing the Chilean flag,
- * which would make the two Chilean units look identical at a glance.
- */
-function Mark({ c, className }: { c: Currency; className?: string }) {
-  if (c === "UF") {
-    return (
-      <span
-        aria-hidden
-        className={cn(
-          "inline-block size-2.5 rotate-45 rounded-[2px] bg-violet-600 dark:bg-violet-400",
-          className,
-        )}
-      />
-    );
-  }
-  return (
-    <span aria-hidden className={cn("text-[13px] leading-none", className)}>
-      {c === "CLP" ? "🇨🇱" : "🇺🇸"}
-    </span>
-  );
-}
-
 /** Signed move, inline. Used for both the month and the year UF deltas. */
 function Delta({ value, label }: { value: number | null; label: string }) {
   if (value == null) return null;
@@ -157,22 +131,17 @@ function Delta({ value, label }: { value: number | null; label: string }) {
 
 /** One reference-rate cell: "1 <unidad>" over its value in pesos. */
 function RateCell({
-  currency,
   title,
   value,
   children,
 }: {
-  currency: Currency;
   title: string;
   value: number | null;
   children?: React.ReactNode;
 }) {
   return (
     <div className="min-w-0 px-2.5 py-1.5">
-      <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide">
-        <Mark c={currency} />
-        <span className={CURRENCY_STYLE[currency].text}>{title}</span>
-      </div>
+      <div className={UNIT_LABEL}>{title}</div>
       <div className="truncate text-[15px] font-semibold tabular-nums leading-tight">
         {value != null ? `$${CLP_FMT.format(Math.round(value))}` : "—"}
       </div>
@@ -206,13 +175,15 @@ function RatesPanel({
   return (
     <section className="overflow-hidden rounded-lg border border-border bg-card">
       <div className="grid grid-cols-2 divide-x divide-border">
-        <RateCell currency="UF" title="1 UF" value={ufValue}>
+        <RateCell title="1 UF" value={ufValue}>
           <div className="flex flex-wrap items-center gap-x-1.5 text-[10px] leading-tight">
             <Delta value={monthPct} label=" mes" />
             <Delta value={yearPct} label=" año" />
           </div>
-        </RateCell>
-        <RateCell currency="USD" title="1 USD" value={usdValue}>
+          {/* `close` is a UfPoint — the last published UF of the month. It was
+              rendered in the USD cell, so a ~$40.000 figure sat directly under a
+              ~$900 one, both labelled in pesos, reading as a dollar that had
+              moved forty-fold. It belongs to the unit it prices. */}
           {close && (
             <div className="truncate text-[10px] leading-tight text-muted-foreground">
               <span className="text-faint">cierre {formatDay(close.date)}</span>{" "}
@@ -222,6 +193,7 @@ function RatesPanel({
             </div>
           )}
         </RateCell>
+        <RateCell title="1 USD" value={usdValue} />
       </div>
       <div className="border-t border-border bg-muted/40 px-2.5 py-1 text-[10px] text-faint">
         Al {asOf ?? "—"}
@@ -249,14 +221,10 @@ function CurrencyToggle({ value, onChange }: { value: Currency; onChange: (c: Cu
             "flex min-w-11 items-center justify-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-semibold transition",
             TOUCH_TARGET_HIT_AREA,
             value === c
-              ? CURRENCY_STYLE[c].solid
+              ? "bg-primary text-primary-foreground"
               : "text-muted-foreground hover:text-foreground active:scale-95",
           )}
         >
-          <Mark
-            c={c}
-            className={value === c && c === "UF" ? "bg-white dark:bg-white" : undefined}
-          />
           {c}
         </button>
       ))}
@@ -311,20 +279,15 @@ function ResultRow({
   const { value: v, unit } = formatParts(value, currency);
   return (
     <div className="flex min-w-0 items-baseline justify-between gap-2">
-      <span
-        className={cn(
-          "flex shrink-0 items-center gap-1 font-semibold uppercase tracking-wide",
-          primary ? "text-[11px]" : "text-[10px]",
-          CURRENCY_STYLE[currency].text,
-        )}
-      >
-        <Mark c={currency} />
+      <span className={cn(UNIT_LABEL, "shrink-0", primary && "text-foreground")}>
         {unit || currency}
       </span>
       <span
         className={cn(
           "min-w-0 truncate text-right font-bold tabular-nums tracking-tight",
-          primary ? "text-[30px] leading-none" : "text-[15px] leading-none",
+          primary
+            ? "font-display text-[30px] leading-none text-foreground"
+            : "text-[15px] leading-none text-muted-foreground",
         )}
         title={v}
       >
@@ -337,7 +300,7 @@ function ResultRow({
 interface KeyProps {
   label: React.ReactNode;
   onClick: () => void;
-  variant?: "num" | "ghost" | "danger";
+  variant?: "num" | "ghost";
 }
 
 function Key({ label, onClick, variant = "num" }: KeyProps) {
@@ -351,8 +314,10 @@ function Key({ label, onClick, variant = "num" }: KeyProps) {
         "h-10 select-none rounded-md text-base font-medium transition active:scale-95",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         variant === "num" && "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        // Nothing on this keypad is destructive: it edits a number nobody has
+        // saved. Backspace was painted brick, the same colour the rest of the
+        // app reserves for money leaving and for deleting a record.
         variant === "ghost" && "bg-muted text-[13px] text-muted-foreground hover:bg-muted/70",
-        variant === "danger" && "bg-destructive/15 text-destructive hover:bg-destructive/25",
       )}
     >
       {label}
@@ -468,17 +433,11 @@ export function UfDialog({ open, onOpenChange }: Props) {
           aria-label="Monto"
           value={display}
           onChange={(e) => setRaw(sanitizeTyped(e.target.value))}
-          className={cn(
-            "min-w-0 flex-1 bg-transparent text-right text-2xl font-semibold tabular-nums tracking-tight outline-none",
-            CURRENCY_STYLE[from].text,
-          )}
+          className="min-w-0 flex-1 bg-transparent text-right font-display text-2xl font-semibold tabular-nums tracking-tight text-foreground outline-none"
         />
       ) : (
         <span
-          className={cn(
-            "min-w-0 truncate text-right text-2xl font-semibold tabular-nums tracking-tight",
-            CURRENCY_STYLE[from].text,
-          )}
+          className="min-w-0 truncate text-right font-display text-2xl font-semibold tabular-nums tracking-tight text-foreground"
           title={display}
         >
           {display}
@@ -516,7 +475,7 @@ export function UfDialog({ open, onOpenChange }: Props) {
         <PctStepper pct={pct} onChange={setPct} />
       </span>
       <span className="flex min-w-0 flex-col items-end leading-tight">
-        <span className={cn("text-[15px] font-bold tabular-nums", CURRENCY_STYLE[from].text)}>
+        <span className="text-[15px] font-bold tabular-nums text-foreground">
           {formatCurrency(commissionFrom, from)}
         </span>
         {from !== "CLP" && (
@@ -532,7 +491,7 @@ export function UfDialog({ open, onOpenChange }: Props) {
     <div className="grid grid-cols-3 gap-1.5">
       <Key label="AC" variant="ghost" onClick={clear} />
       <Key label="000" variant="ghost" onClick={pushTriple} />
-      <Key label={<Delete className="mx-auto size-4" />} variant="danger" onClick={backspace} />
+      <Key label={<Delete className="mx-auto size-4" />} variant="ghost" onClick={backspace} />
 
       <Key label="7" onClick={() => pushDigit("7")} />
       <Key label="8" onClick={() => pushDigit("8")} />

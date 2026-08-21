@@ -28,7 +28,9 @@ export function UfButton({ variant = "chip" }: Props) {
         className={`h-7 gap-1.5 rounded-full px-2.5 text-[11px] font-medium ${TOUCH_TARGET_ROW_COARSE}`}
         title="Calculadora UF"
       >
-        <span className="text-primary">UF</span>
+        {/* The accent means "this workspace", not "this unit" — a tenant-coloured
+            UF read as brand chrome rather than as a rate. */}
+        <span className="font-mono font-semibold tracking-[0.08em] text-foreground">UF</span>
         {variant === "chip" && value != null && (
           <span className="text-muted-foreground">${CLP_COMPACT.format(value)}</span>
         )}
