@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
+import { useTopbarSlot } from "@layouts/topbar-slot";
 import { cn } from "@/lib/utils";
 import { TOUCH_TARGET_ROW_COARSE } from "./touch-target";
 
-export type TabBarVariant = "underline" | "pill";
+export type TabBarVariant = "underline" | "pill" | "header";
 
 export interface TabBarItem {
   id: string;
@@ -18,7 +20,8 @@ interface TabBarProps {
   onChange: (id: string) => void;
   /**
    * `underline` names a section (it is the page's identity, so it gets the
-   * accent bar); `pill` switches a filter inside one.
+   * accent bar); `pill` switches a filter inside one; `header` is `underline`
+   * shrunk to sit on the phone's top bar, without the rule beneath it.
    */
   variant?: TabBarVariant;
   /** Apply the page gutter. Off inside panes that already pad their content. */
@@ -50,7 +53,10 @@ export function TabBar({
 }: TabBarProps) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const { atStart, atEnd, sync } = useOverflowEdges(scrollerRef, items.length);
-  const underline = variant === "underline";
+  const header = variant === "header";
+  // `header` is `underline` with the chrome stripped: same accent bar, same
+  // metrics rules, no page gutter and no rule beneath (the bar has its own).
+  const underline = variant === "underline" || header;
 
   // Keep the active tab on screen. A deep link can select a tab that starts
   // scrolled out of view, which reads as "that tab is not there".
@@ -63,7 +69,8 @@ export function TabBar({
     <div
       className={cn(
         "relative",
-        underline && "border-b border-border",
+        underline && !header && "border-b border-border",
+        header && "min-w-0 flex-1",
         // The pill track is only as wide as its items, so the wrapper — which
         // anchors the fades — has to shrink with it or they float off the edge.
         !underline && "w-fit max-w-full",
@@ -96,9 +103,11 @@ export function TabBar({
               className={cn(
                 "relative flex shrink-0 items-center gap-2 whitespace-nowrap transition-colors",
                 TOUCH_TARGET_ROW_COARSE,
-                underline
-                  ? "h-12 rounded-t-lg px-3 text-[15px] font-semibold"
-                  : "h-10 rounded-full px-4 text-[14px] font-semibold",
+                header
+                  ? "h-11 rounded-lg px-2.5 text-[15px] font-semibold"
+                  : underline
+                    ? "h-12 rounded-t-lg px-3 text-[15px] font-semibold"
+                    : "h-10 rounded-full px-4 text-[14px] font-semibold",
                 underline && !active && "text-muted-foreground hover:bg-secondary/60",
                 underline && active && "text-foreground",
                 !underline && !active && "text-muted-foreground hover:text-foreground",
@@ -124,7 +133,12 @@ export function TabBar({
                   the page's identity, so it carries the tenant colour. Inset so
                   it tracks the label, not the hit target's padding. */}
               {underline && active && (
-                <span className="absolute inset-x-2 -bottom-px h-[3px] rounded-full bg-primary" />
+                <span
+                  className={cn(
+                    "absolute inset-x-2 h-[3px] rounded-full bg-primary",
+                    header ? "bottom-1" : "-bottom-px",
+                  )}
+                />
               )}
             </button>
           );
@@ -197,6 +211,17 @@ export interface SectionTab extends TabBarItem {
   /** Admin scope required to see this tab; undefined means always visible. */
   scope?: string;
   /**
+   * Reachable, but not one of the section's headline views.
+   *
+   * Clientes has four entities and only two questions a broker opens the app
+   * with — who is waiting on me, and what is in play. Personas and Propiedades
+   * are catalogues you go to *from* those, so they keep their tab id (bookmarks,
+   * push deep links and the "Propiedades" nav entry all point at one) but stay
+   * out of a four-item strip that no longer fits a phone once it lives on the
+   * header row. A secondary tab appears in the bar only while it is the open one.
+   */
+  secondary?: boolean;
+  /**
    * Retired ids that should still land here. Tab ids leak into bookmarks, the
    * sidebar and the router's legacy redirects, so renaming one without an alias
    * silently dumps every old link on the section's first tab.
@@ -224,28 +249,48 @@ interface SectionTabsProps {
  */
 export function SectionTabs({ tabs, param = "tab", className }: SectionTabsProps) {
   const barRef = useRef<HTMLDivElement>(null);
-  usePublishTabsHeight(barRef);
+  const topbarHost = useTopbarSlot();
+  usePublishTabsHeight(barRef, !topbarHost);
   const [params, setParams] = useSearchParams();
   const requested = params.get(param);
   const active =
     tabs.find((t) => t.id === requested) ??
     tabs.find((t) => t.aliases?.includes(requested ?? "")) ??
+    tabs.find((t) => !t.secondary) ??
     tabs[0];
   if (!active) return null;
 
+  // Secondary tabs are not in the strip unless one of them is what you are
+  // looking at — otherwise leaving it would mean navigating to a tab that has
+  // no button, and Back would be the only way out.
+  const visible = tabs.filter((t) => !t.secondary || t.id === active.id);
+
+  const bar = (
+    <TabBar
+      items={visible}
+      value={active.id}
+      // In the header the strip IS the bar, so it drops the page gutter (the
+      // header row already has one) and the divider under it (the header has
+      // its own edge). In place, it keeps both.
+      variant={topbarHost ? "header" : "underline"}
+      gutter={!topbarHost}
+      onChange={(id) => {
+        const next = new URLSearchParams(params);
+        next.set(param, id);
+        setParams(next, { replace: true });
+      }}
+    />
+  );
+
   return (
     <div className={cn("flex min-h-0 flex-1 flex-col", className)}>
-      <div ref={barRef} className="shrink-0">
-        <TabBar
-          items={tabs}
-          value={active.id}
-          onChange={(id) => {
-            const next = new URLSearchParams(params);
-            next.set(param, id);
-            setParams(next, { replace: true });
-          }}
-        />
-      </div>
+      {topbarHost ? (
+        createPortal(bar, topbarHost)
+      ) : (
+        <div ref={barRef} className="shrink-0">
+          {bar}
+        </div>
+      )}
       <div className="min-h-0 flex-1">{active.render()}</div>
     </div>
   );
@@ -256,10 +301,16 @@ export function SectionTabs({ tabs, param = "tab", className }: SectionTabsProps
  * unmount. Measured rather than hardcoded because the bar's height follows the
  * font scale and the coarse-pointer touch padding.
  */
-function usePublishTabsHeight(ref: React.RefObject<HTMLElement | null>) {
+function usePublishTabsHeight(ref: React.RefObject<HTMLElement | null>, enabled: boolean) {
   useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
+    const el = enabled ? ref.current : null;
+    if (!el) {
+      // Tabs living in the header occupy no strip of their own; leaving the last
+      // measured value behind would make every viewport-pinned surface subtract
+      // a bar that is not on screen.
+      document.documentElement.style.setProperty("--section-tabs-h", "0px");
+      return;
+    }
     const root = document.documentElement;
     const publish = () => root.style.setProperty("--section-tabs-h", `${el.offsetHeight}px`);
     publish();
@@ -269,5 +320,5 @@ function usePublishTabsHeight(ref: React.RefObject<HTMLElement | null>) {
       ro.disconnect();
       root.style.removeProperty("--section-tabs-h");
     };
-  }, [ref]);
+  }, [ref, enabled]);
 }

@@ -14,6 +14,7 @@ import {
 import { AppSidebar } from "@layouts/app-sidebar";
 import { MobileBottomNav } from "@layouts/mobile-bottom-nav";
 import { MobileTopBar, HEADER_CONTROL, HEADER_CONTROL_SQUARE } from "@layouts/app-topbar";
+import { TopbarSlotProvider } from "@layouts/topbar-slot";
 import { SidebarWidthProbe } from "@layouts/sidebar-width-probe";
 import { useNavGroups } from "@layouts/use-nav-groups";
 import { CommandBar } from "@shared/components/command-bar/command-bar";
@@ -177,6 +178,7 @@ export function AppLayout() {
       // viewport-pinned primitives below subtract the real numbers. This shell
       // used to pin --app-header-h to 0 because it genuinely had no header.
       <AgentOverlayProvider>
+        <TopbarSlotProvider>
         <div className="flex min-h-dvh flex-col bg-background">
           <SkipToContent />
           {/* The shell's own sticky chrome. It publishes its measured height to
@@ -203,6 +205,7 @@ export function AppLayout() {
           <MobileBottomNav />
           <InstallNudge />
         </div>
+        </TopbarSlotProvider>
       </AgentOverlayProvider>
     );
   }
