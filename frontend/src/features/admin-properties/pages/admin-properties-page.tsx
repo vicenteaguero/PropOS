@@ -161,7 +161,8 @@ export function AdminPropertiesPage() {
       />
 
       <ListShell
-        title="Propiedades"
+        // The section tab already reads "Propiedades"; see ListShell.titleSr.
+        titleSr="Propiedades"
         // Search hits the server, so it reaches the whole portfolio rather than
         // filtering the 100 rows the list endpoint already returned.
         search={{
