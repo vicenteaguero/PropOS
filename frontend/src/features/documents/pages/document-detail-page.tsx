@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useShellMode } from "@shared/hooks/use-shell-mode";
 import { label } from "@shared/lib/labels";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -62,6 +63,7 @@ import { formatDateTime } from "@shared/utils/format";
 export function DocumentDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const shellOwnsBack = useShellMode() === "bottom-nav";
   const { user } = useAuth();
   const role = user?.role.toLowerCase() ?? "agent";
 
@@ -270,10 +272,14 @@ export function DocumentDetailPage() {
 
   return (
     <PageLayout width="lg">
+      {/* Back is hidden in the phone shell, whose top bar carries one on every
+          route below a section root. See useShellMode. */}
       <div className="mb-4 flex items-start gap-3">
-        <RoundButton tone="muted" onClick={() => navigate(-1)} aria-label="Volver">
-          <ArrowLeft className="size-[18px]" strokeWidth={1.8} />
-        </RoundButton>
+        {!shellOwnsBack && (
+          <RoundButton tone="muted" onClick={() => navigate(-1)} aria-label="Volver">
+            <ArrowLeft className="size-[18px]" strokeWidth={1.8} />
+          </RoundButton>
+        )}
         <div className="min-w-0 flex-1 pt-1">
           <h1 className="truncate text-[22px] font-bold leading-tight tracking-tight text-foreground">
             {doc.display_name}

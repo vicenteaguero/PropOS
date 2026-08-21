@@ -25,6 +25,7 @@ import { BuildingUnits } from "../components/building-units";
 import { PriceHistory } from "../components/price-history";
 import { PropertyLocationMap } from "../components/property-location-map";
 import { usePageTitle } from "@app/page-meta";
+import { useShellMode } from "@shared/hooks/use-shell-mode";
 import { formatClp } from "@shared/utils/currency";
 import { provenanceOf } from "../api/properties-api";
 import { PROVENANCE_TITLE, ProvenanceMark } from "../components/provenance-mark";
@@ -55,6 +56,7 @@ export function AdminPropertyDetailPage() {
 
   const propQ = useProperty(id);
   usePageTitle(propQ.data?.title);
+  const shellOwnsBack = useShellMode() === "bottom-nav";
   const grantsQ = usePropertyGrants(id);
   const update = useMutation({
     mutationFn: (body: Partial<PropertyInput>) => propertiesApi.update(id as string, body),
@@ -130,14 +132,20 @@ export function AdminPropertyDetailPage() {
 
   return (
     <PageLayout width="sm" noPadding className="pb-10 lg:max-w-none">
-      {/* Header bar */}
+      {/* Header bar. The breadcrumb is hidden in the phone shell, whose own top
+          bar now carries a back control on every route below a section root —
+          two arrows, one above the other, was the result of adding it. */}
       <div className="flex items-center justify-between px-5 pt-4 pb-2 lg:px-8 lg:pt-6">
-        <Link
-          to={`/${role}/clientes?tab=propiedades`}
-          className="inline-flex items-center gap-1.5 text-[13px] font-medium text-muted-foreground transition hover:text-foreground"
-        >
-          <ArrowLeft className="size-4" strokeWidth={1.8} /> Propiedades
-        </Link>
+        {shellOwnsBack ? (
+          <span />
+        ) : (
+          <Link
+            to={`/${role}/clientes?tab=propiedades`}
+            className="inline-flex items-center gap-1.5 text-[13px] font-medium text-muted-foreground transition hover:text-foreground"
+          >
+            <ArrowLeft className="size-4" strokeWidth={1.8} /> Propiedades
+          </Link>
+        )}
         <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setEditOpen(true)}>
           <Pencil className="size-4" strokeWidth={1.8} /> Editar
         </Button>

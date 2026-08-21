@@ -1,4 +1,5 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { useShellMode } from "@shared/hooks/use-shell-mode";
 import { ArrowLeft, Building2, CheckCircle2, Circle, CircleDashed, User } from "lucide-react";
 import { PageLayout } from "@shared/components/page-layout";
 import { ErrorState, PageSkeleton, Pill, Row, RoundButton, SectionLabel } from "@shared/ui";
@@ -42,6 +43,7 @@ const ITEM_TONE: Record<ChecklistItem["status"], string> = {
 export function DealDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const shellOwnsBack = useShellMode() === "bottom-nav";
   const { user } = useAuth();
   const role = (user?.role ?? "ADMIN").toLowerCase();
   const { data, isLoading, error, refetch } = useDeal(id);
@@ -59,14 +61,20 @@ export function DealDetailPage() {
 
   return (
     <PageLayout width="md">
+      {/* Back is hidden in the phone shell, whose top bar carries one on every
+          route below a section root. See useShellMode. */}
       <div className="flex items-center justify-between px-[var(--page-x)] pt-4 pb-2">
-        <RoundButton
-          tone="ghost"
-          aria-label="Volver"
-          onClick={() => navigate(`/${role}/clientes?tab=negocios`)}
-        >
-          <ArrowLeft className="size-5" strokeWidth={1.8} />
-        </RoundButton>
+        {shellOwnsBack ? (
+          <span />
+        ) : (
+          <RoundButton
+            tone="ghost"
+            aria-label="Volver"
+            onClick={() => navigate(`/${role}/clientes?tab=negocios`)}
+          >
+            <ArrowLeft className="size-5" strokeWidth={1.8} />
+          </RoundButton>
+        )}
         <Pill dot={stageDot(stage)}>{STAGE_LABELS[stage] ?? stage}</Pill>
       </div>
 

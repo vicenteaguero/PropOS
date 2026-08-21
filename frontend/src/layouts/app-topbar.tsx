@@ -100,6 +100,11 @@ export function MobileTopBar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { pathname } = location;
+  // The page's own name, override included — `titleForPath` only knows the nav
+  // tree, so a contact's page was labelled "Personas" and a property's had no
+  // label at all (`/propiedades/:id` is not a nav path). Detail routes name
+  // themselves through usePageTitle; this is the same value the browser tab
+  // shows.
   const pageTitle = useCurrentPageTitle() ?? "";
   const setTabsHost = useTopbarSlotHost();
   const tabsInBar = useTopbarSlotOccupied();
