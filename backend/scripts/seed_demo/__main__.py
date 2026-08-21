@@ -16,6 +16,7 @@ import sys
 from scripts.seed_demo import context as ctx
 from scripts.seed_demo.core import seed_core
 from scripts.seed_demo.media import seed_media
+from scripts.seed_demo.relations import seed_relations
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -39,6 +40,8 @@ def main(argv: list[str] | None = None) -> int:
         seed_core(conn, state, rng_seed=args.seed)
         conn.commit()
         seed_media(conn, state, rng_seed=args.seed)
+        conn.commit()
+        seed_relations(conn, state, rng_seed=args.seed)
         conn.commit()
 
     width = max(len(k) for k in state.counts) if state.counts else 0

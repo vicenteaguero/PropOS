@@ -70,6 +70,27 @@ SEEDED_TABLES: tuple[str, ...] = (
     "email_threads",
     "email_messages",
     "contacts",
+    # --- relations.py ---------------------------------------------------
+    # Several of these were BACKFILLED by their migration from the singular
+    # columns they replace. A wipe deletes that backfill and the migration will
+    # not run twice, so the seed produces them from scratch — which is also why
+    # they belong on this list.
+    "contact_phones",
+    "contact_emails",
+    "property_stakeholders",
+    "opportunity_participants",
+    "opportunity_properties",
+    "pipeline_transitions",
+    "conversation_targets",
+    "message_targets",
+    "message_templates",
+    "buildings",
+    "checklist_templates",
+    "checklist_template_items",
+    "opportunity_checklists",
+    "opportunity_checklist_items",
+    "agent_sessions",
+    "pending_proposals",
 )
 
 
@@ -106,11 +127,18 @@ def insert_many(
     rows: Sequence[dict[str, Any]],
     *,
     conflict: str = "id",
+    conflict_where: str | None = None,
 ) -> int:
     """Bulk INSERT ... ON CONFLICT DO NOTHING. Returns the row count attempted.
 
     Idempotency comes from the deterministic ids the generators build, so a
     re-run is a no-op rather than a duplicate load.
+
+    ``conflict`` names the arbiter when the row's identity is not its id — which
+    is the case for every table a migration backfilled, because those rows carry
+    a ``gen_random_uuid`` id the seed cannot predict and would collide with on
+    their natural key instead. ``conflict_where`` supplies the predicate a
+    PARTIAL unique index needs before Postgres will infer it.
     """
     if not rows:
         return 0
@@ -120,7 +148,8 @@ def insert_many(
     cols = list(rows[0].keys())
     placeholders = ", ".join(["%s"] * len(cols))
     collist = ", ".join(f'"{c}"' for c in cols)
-    sql = f"INSERT INTO public.{table} ({collist}) VALUES ({placeholders}) ON CONFLICT ({conflict}) DO NOTHING"
+    arbiter = f"({conflict})" + (f" WHERE {conflict_where}" if conflict_where else "")
+    sql = f"INSERT INTO public.{table} ({collist}) VALUES ({placeholders}) ON CONFLICT {arbiter} DO NOTHING"
     with conn.cursor() as cur:
         cur.executemany(sql, [tuple(r.get(c) for c in cols) for r in rows])
     return len(rows)
