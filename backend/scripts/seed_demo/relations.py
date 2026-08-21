@@ -1065,15 +1065,40 @@ def _seed_buildings(
         return
 
     assert_safe_to_write(DEMO_TENANT_ID)
+    # A building has ONE address, so a flat can only belong to one whose comuna
+    # matches its own. Round-robin put a Recoleta flat inside a Providencia
+    # tower, which made the "otras unidades" list read as nonsense the moment
+    # anyone looked at it.
+    by_comuna: dict[str, dict[str, Any]] = {row["comuna"]: row for row in rows}
     assigned = 0
     with conn.cursor() as cursor:
-        for slot, prop in enumerate(apartments[:9]):
-            building = rows[slot % len(rows)]
+        for prop in apartments:
+            metadata = prop.get("metadata") or {}
+            building = by_comuna.get(metadata.get("comuna"))
+            if building is None:
+                continue
             floor = rng.randint(2, 18)
-            unit_label = f"Departamento {floor}{rng.choice('0123')}{rng.choice('ABCD')}"
+            # The designator only. "Departamento 181B" is what the TITLE says;
+            # repeating the noun in the label makes the column that exists to
+            # line units up unreadable, and it does not sort.
+            unit_label = f"{floor}{rng.choice('0123')}{rng.choice('ABCD')}"
             cursor.execute(
-                "UPDATE public.properties SET building_id = %s, unit_label = %s WHERE id = %s AND tenant_id = %s",
-                (building["id"], unit_label, prop["id"], DEMO_TENANT_ID),
+                "UPDATE public.properties "
+                # A unit cannot predate its own building. The two years were
+                # drawn independently, so a 1991 flat sat inside a 2014 tower.
+                "SET building_id = %s, unit_label = %s, address = %s, year_built = %s "
+                "WHERE id = %s AND tenant_id = %s",
+                (
+                    building["id"],
+                    unit_label,
+                    # The unit inherits the building's street address. Leaving
+                    # its own free-text address is what let forty spellings of
+                    # one street exist in the first place.
+                    f"{building['address']}, Depto. {unit_label}",
+                    building["year_built"],
+                    prop["id"],
+                    DEMO_TENANT_ID,
+                ),
             )
             assigned += 1
     state.record("properties.building_id", assigned)
