@@ -7,8 +7,11 @@ const NOW = new Date("2026-08-20T15:00:00Z");
 const at = (iso: string) => listTime(iso, NOW);
 
 describe("listTime", () => {
-  it("shows a clock time for today", () => {
-    expect(at("2026-08-20T09:30:00Z")).toMatch(/9:30/);
+  it("shows a clock time for today, on a 24-hour clock", () => {
+    // Chile writes 06:47, not "6:47 a. m." — and the list column is six
+    // characters wide, so the meridiem was both wrong and the widest part.
+    expect(at("2026-08-20T09:30:00Z")).toBe("09:30");
+    expect(at("2026-08-20T14:05:00Z")).toBe("14:05");
   });
 
   it("says Ayer rather than a date", () => {
