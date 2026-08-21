@@ -62,6 +62,7 @@ class PendingService:
         tenant_id: UUID,
         reviewer_user: UUID,
         reason: str | None,
+        review_reason: str | None = None,
     ) -> dict:
         client = get_supabase_client()
         from datetime import UTC, datetime
@@ -71,6 +72,7 @@ class PendingService:
             "reviewer_user": str(reviewer_user),
             "reviewed_at": datetime.now(UTC).isoformat(),
             "review_note": reason,
+            "review_reason": review_reason,
         }
         response = (
             client.table(PENDING_TABLE)
