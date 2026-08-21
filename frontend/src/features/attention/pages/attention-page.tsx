@@ -440,17 +440,6 @@ export function AttentionPage({ channels = ["whatsapp", "email"] }: AttentionPag
           return { value: f.id, label: count ? `${f.label} (${count})` : f.label };
         })}
       />
-      {/* Personas is no longer a headline tab (see SectionTab.secondary), so the
-          view it was pulled out of carries the door to it. A conversation is
-          with a person; the catalogue of people is the natural next place. */}
-      <button
-        type="button"
-        onClick={() => navigate(`/${role}/clientes?tab=personas`)}
-        className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border px-3 py-2 text-[13px] font-medium text-muted-foreground transition hover:text-foreground [@media(pointer:coarse)]:py-2.5"
-      >
-        <Users className="size-4" strokeWidth={1.9} />
-        Contactos
-      </button>
     </div>
   );
 
@@ -471,17 +460,33 @@ export function AttentionPage({ channels = ["whatsapp", "email"] }: AttentionPag
       action={
         // Icon-only: a labelled button here took a third of the header row on a
         // phone to say what a pencil already says.
-        showEmail ? (
+        <>
+          {/* Personas is no longer a headline tab (see SectionTab.secondary), so
+              the view it was pulled out of carries the door to it. A
+              conversation is with a person; the catalogue of people is the
+              natural next place. */}
           <Button
             size="icon"
-            aria-label="Escribir correo"
-            title="Escribir correo"
+            variant="outline"
+            aria-label="Ver personas"
+            title="Ver personas"
             className="rounded-full"
-            onClick={() => setComposeOpen(true)}
+            onClick={() => navigate(`/${role}/clientes?tab=personas`)}
           >
-            <PenSquare className="size-4" strokeWidth={1.8} />
+            <Users className="size-4" strokeWidth={1.8} />
           </Button>
-        ) : undefined
+          {showEmail && (
+            <Button
+              size="icon"
+              aria-label="Escribir correo"
+              title="Escribir correo"
+              className="rounded-full"
+              onClick={() => setComposeOpen(true)}
+            >
+              <PenSquare className="size-4" strokeWidth={1.8} />
+            </Button>
+          )}
+        </>
       }
       filters={filters}
       isLoading={isLoading}
