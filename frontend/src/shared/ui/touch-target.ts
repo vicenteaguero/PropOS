@@ -44,3 +44,23 @@ export const TOUCH_TARGET_COARSE =
 
 /** Height-only variant, for controls that already span enough width. */
 export const TOUCH_TARGET_ROW_COARSE = "[@media(pointer:coarse)]:min-h-11";
+
+/**
+ * THE height of a control that sits in a list header or a filter row.
+ *
+ * Before this there were six, all inside one `items-center` row: the search
+ * field at 40, an icon button at 36, `size="icon-lg"` at 40, `size="sm"` at 32,
+ * a Chip at ~34, the channel switch at 40 — and `FilterSelect`, which carried
+ * **no height class at all** and was therefore sized by its 13px text at ~28.
+ * That is the "the Filter dropdown isn't the same height as the toggle" report,
+ * and it only shows on a mouse: a coarse pointer snaps everything to the 44px
+ * floor, which is why the row looks fine on a phone and ragged on a laptop.
+ *
+ * 40px on a pointer, 44 on a finger. Apply it to every control that shares a
+ * header row — not to buttons inside a card or a form, which have their own
+ * rhythm.
+ */
+export const CONTROL_H = "h-10 [@media(pointer:coarse)]:h-11";
+
+/** Square variant, for the round icon controls on the same row. */
+export const CONTROL_SQUARE = "size-10 [@media(pointer:coarse)]:size-11";

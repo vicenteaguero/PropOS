@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { CONTROL_H } from "./touch-target";
 
 export interface ViewToggleOption<T extends string> {
   value: T;
@@ -31,7 +32,16 @@ export function ViewToggle<T extends string>({
   className,
 }: ViewToggleProps<T>) {
   return (
-    <div className={cn("inline-flex shrink-0 rounded-full bg-muted p-0.5", className)}>
+    <div
+      // The height lives on the TRACK, not on the buttons: a `size-8` button
+      // inside a `p-0.5` track paints 36px, so the switch never matched the
+      // 40px controls beside it. Buttons now fill whatever the track is.
+      className={cn(
+        "inline-flex shrink-0 items-center rounded-full bg-muted p-0.5",
+        CONTROL_H,
+        className,
+      )}
+    >
       {options.map((o) => (
         <button
           key={o.value}
@@ -40,7 +50,7 @@ export function ViewToggle<T extends string>({
           aria-pressed={o.value === value}
           onClick={() => onChange(o.value)}
           className={cn(
-            "flex size-8 items-center justify-center rounded-full transition [@media(pointer:coarse)]:size-11",
+            "flex aspect-square h-full items-center justify-center rounded-full transition",
             o.value === value
               ? "bg-background text-foreground shadow-sm"
               : "text-muted-foreground hover:text-foreground",

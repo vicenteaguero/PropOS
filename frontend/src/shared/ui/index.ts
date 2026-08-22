@@ -4,6 +4,8 @@
 export { Pill, type PillTone } from "./pill";
 export { RoundButton, type RoundButtonTone } from "./round-button";
 export {
+  CONTROL_H,
+  CONTROL_SQUARE,
   TOUCH_TARGET,
   TOUCH_TARGET_COARSE,
   TOUCH_TARGET_ROW,
