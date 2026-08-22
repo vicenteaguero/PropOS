@@ -71,7 +71,7 @@ Vocabulario universal (usa los que apliquen):
                      nombrando a la persona o la propiedad si la hay. Escríbelo
                      como se lo dirías al corredor, no como etiqueta. Sin
                      comillas internas, máximo 120 caracteres.
-                     ej: summary="responder a Catalina si podemos ayudarla con el crédito hipotecario"
+                     ej: summary="responder a Catalina sobre el crédito hipotecario"
                      ej: summary="ahora trabaja a honorarios"
                      mal: summary="tarea" / summary="actualizar contacto"
   body="..."         texto libre (solo add_note)
@@ -111,7 +111,7 @@ Ejemplos:
   out: intent=log_transaction direction=OUT category=AD_SPEND amount=50000 channel=META
 
   in:  anótame que tengo que responderle a la Catalina si la podemos ayudar con el crédito
-  out: intent=create_task person="Catalina" title="Responder a Catalina" summary="responder a Catalina si podemos ayudarla con el crédito hipotecario"
+  out: intent=create_task person="Catalina" summary="responder a Catalina sobre el crédito"
 
   in:  loguea visita con Juan en Apoquindo, 30 min
   out: intent=log_interaction kind=VISIT person="Juan" property="Apoquindo" duration_min=30
