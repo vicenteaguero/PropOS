@@ -10,12 +10,13 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from contextlib import contextmanager
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID, uuid4
 
 from app.core.logging.logger import get_logger
 from app.core.supabase.client import get_supabase_client
+from app.core.windows import FREEFORM_HOURS
 
 logger = get_logger("AGENT_TOOLS")
 
@@ -23,6 +24,45 @@ PENDING_TABLE = "pending_proposals"
 
 
 # ---------- Propose: write to pending_proposals ----------
+
+
+def _deadline_for(evidence: dict[str, Any] | None, tenant_id: UUID) -> str | None:
+    """When acting on this proposal stops being possible in-channel.
+
+    A proposal extracted from a WhatsApp message inherits that conversation's
+    free-form window: past `last_inbound_at + 24h` the broker can only send an
+    approved template, so accepting it late genuinely costs something. Anything
+    else — the broker's own chat or voice turn — has no external clock, and
+    NULL is the honest answer. Printing "vence en 6 horas" on a note somebody
+    dictated to themselves would be an invented fact on the one screen whose
+    job is to be checkable.
+
+    Never fatal: a missing deadline loses a sort key, a raised exception loses
+    the proposal.
+    """
+    conversation_id = (evidence or {}).get("conversation_id")
+    if not conversation_id:
+        return None
+    try:
+        rows = (
+            get_supabase_client()
+            .table("client_conversations")
+            .select("last_inbound_at")
+            .eq("tenant_id", str(tenant_id))
+            .eq("id", str(conversation_id))
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+        last_inbound = rows[0].get("last_inbound_at") if rows else None
+        if not last_inbound:
+            return None
+        at = datetime.fromisoformat(str(last_inbound).replace("Z", "+00:00"))
+        return (at + timedelta(hours=FREEFORM_HOURS)).isoformat()
+    except Exception:  # noqa: BLE001 - a deadline is a nicety, the proposal is not
+        logger.warning("proposal_deadline_failed", extra={"conversation_id": str(conversation_id)})
+        return None
 
 
 def _create_proposal(
@@ -56,6 +96,10 @@ def _create_proposal(
         # quote has to guess whether the AI understood; these three columns were
         # declared from day one and the live path wrote none of them.
         "evidence": evidence,
+        # See _deadline_for. This is the single insert path for every proposal
+        # in the system, so setting it here covers the extraction pipeline, the
+        # SUGGEST branch of the dispatcher and its EXECUTE-failure fallback.
+        "expires_at": _deadline_for(evidence, tenant_id),
         "message_id": message_id,
     }
     response = client.table(PENDING_TABLE).insert(row).execute().data[0]

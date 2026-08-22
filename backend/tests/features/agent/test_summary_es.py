@@ -113,3 +113,18 @@ def test_the_spanish_labels_match_the_frontend_registry() -> None:
     for kind, mapping in _ES.items():
         for value, spanish in mapping.items():
             assert f'{value}: "{spanish}"' in ts, f"{kind}.{value} drifted from labels.ts"
+
+
+def test_the_deadline_lookup_is_scoped_to_the_tenant() -> None:
+    """The service-role client bypasses RLS.
+
+    `_deadline_for` reads `client_conversations` by the id it finds in a
+    proposal's evidence. Without a tenant predicate that is a cross-tenant read
+    — the repo's own `test_tenant_predicate` guard caught it, and this pins the
+    signature so it cannot be dropped again.
+    """
+    import inspect
+
+    from app.features.agent.tools.executors import _deadline_for
+
+    assert "tenant_id" in inspect.signature(_deadline_for).parameters

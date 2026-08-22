@@ -55,6 +55,11 @@ class PendingProposalResponse(BaseModel):
     #: Absent on every proposal created before the evidence trail existed.
     evidence: dict[str, Any] | None = None
     created_row_id: UUID | None = None
+    #: When acting on this stops being possible in-channel — the source
+    #: conversation's WhatsApp free-form window. NULL when the proposal came
+    #: from the broker's own turn, which has no external clock. Drives the
+    #: queue's order; it does NOT expire anything.
+    expires_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
 
