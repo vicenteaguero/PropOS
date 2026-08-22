@@ -61,9 +61,22 @@ export function TabBar({
 
   // Keep the active tab on screen. A deep link can select a tab that starts
   // scrolled out of view, which reads as "that tab is not there".
+  //
+  // Done by hand rather than with `scrollIntoView`, which scrolls EVERY
+  // scrollable ancestor — the document included, even with `block: "nearest"`.
+  // A `Segmented` sitting below the fold therefore yanked the whole page down
+  // to itself on mount: Configuración opened ~1000px scrolled, past its first
+  // three sections, because a dev-only switch at the bottom is a TabBar too.
   useEffect(() => {
-    const el = scrollerRef.current?.querySelector<HTMLElement>(`[data-tab-id="${value}"]`);
-    el?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    const scroller = scrollerRef.current;
+    const el = scroller?.querySelector<HTMLElement>(`[data-tab-id="${value}"]`);
+    if (!scroller || !el) return;
+    const left = el.offsetLeft;
+    const right = left + el.offsetWidth;
+    if (left < scroller.scrollLeft) scroller.scrollLeft = left;
+    else if (right > scroller.scrollLeft + scroller.clientWidth) {
+      scroller.scrollLeft = right - scroller.clientWidth;
+    }
   }, [value]);
 
   return (
