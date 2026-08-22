@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useImmersive } from "@layouts/immersive";
+import { useKeyboardInset } from "@shared/hooks/use-keyboard-inset";
 import { ArrowLeft, Loader2, Mail, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Pill, type PillTone, RoundButton, FOCUS_RING } from "@shared/ui";
@@ -26,7 +27,10 @@ function ReplyBox({ threadId }: { threadId: string }) {
     toast.success("Respuesta enviada");
   };
   return (
-    <div className="border-t border-border p-3">
+    // `.pb-composer` for the same reason the WhatsApp thread has it: this box
+    // sits directly above the on-screen keyboard, and without the inset iOS
+    // draws the keys over it.
+    <div className="pb-composer border-t border-border px-3 pt-3">
       <div className="flex items-end gap-2">
         <textarea
           aria-label="Respuesta"
@@ -70,6 +74,10 @@ export function EmailThreadView({ threadId, onBack }: Props) {
   // the whole screen right now" — same contract as MessageThread, so both
   // channels behave identically once opened.
   useImmersive(!!onBack);
+  // Publishes --kb-inset / --kb-open, which the composer's `.pb-composer`
+  // padding reads. Without a caller in this tree those properties are unset and
+  // the reply box goes behind the keyboard.
+  useKeyboardInset();
   const { data: thread, isLoading, error, refetch } = useEmailThread(threadId);
 
   if (isLoading) {
