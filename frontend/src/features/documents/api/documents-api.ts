@@ -23,6 +23,9 @@ export const documentsApi = {
    * repair one tile without touching the list cache, and a grid where every
    * thumbnail loads must not call it at all.
    */
+  /** Records that the document was opened; drives the "recently used" sort. */
+  markOpened: (id: string) => apiRequest<void>(`/v1/documents/${id}/opened`, { method: "POST" }),
+
   thumbnail: (id: string) =>
     apiRequest<{ url: string | null; state: ThumbnailState }>(`/v1/documents/${id}/thumbnail`),
 
@@ -50,8 +53,16 @@ export const documentsApi = {
     return apiRequest<DocumentItem>("/v1/documents", { method: "POST", formData: fd });
   },
 
-  update: (id: string, body: { display_name?: string; sort_order?: number }) =>
-    apiRequest<DocumentItem>(`/v1/documents/${id}`, { method: "PATCH", body }),
+  update: (
+    id: string,
+    body: {
+      display_name?: string;
+      sort_order?: number;
+      tag?: string | null;
+      pin_offline?: boolean;
+      is_priority?: boolean;
+    },
+  ) => apiRequest<DocumentItem>(`/v1/documents/${id}`, { method: "PATCH", body }),
 
   remove: (id: string) => apiRequest<void>(`/v1/documents/${id}`, { method: "DELETE" }),
 
