@@ -38,6 +38,21 @@ function applyThemeColor(theme: Theme): void {
   if (meta) meta.content = THEME_COLOR[theme];
 }
 
+/**
+ * Paints the window chrome in a surface's own colour for as long as it is open.
+ *
+ * A full-screen overlay that forces its own palette — Propo is a dark panel
+ * whatever the app theme is — leaves the installed PWA's status bar and its
+ * bottom safe area on the *app's* colour, so a light-theme user got a white
+ * band above and below a black panel. Pass null to restore the theme's colour.
+ */
+export function overrideThemeColor(color: string | null): void {
+  if (typeof document === "undefined") return;
+  const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+  if (!meta) return;
+  meta.content = color ?? THEME_COLOR[getStoredTheme()];
+}
+
 export function applyTheme(theme: Theme): void {
   if (typeof document === "undefined") return;
   document.documentElement.classList.toggle("dark", theme === "dark");
