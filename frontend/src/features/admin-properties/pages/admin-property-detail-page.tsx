@@ -27,6 +27,7 @@ import { PropertyLocationMap } from "../components/property-location-map";
 import { usePageTitle } from "@app/page-meta";
 import { useShellMode } from "@shared/hooks/use-shell-mode";
 import { WatchButton } from "@features/attention/components/watch-button";
+import { navHref } from "@shared/lib/nav-app";
 import { useAutoResize } from "@shared/hooks/use-auto-resize";
 import { formatClp } from "@shared/utils/currency";
 import { provenanceOf } from "../api/properties-api";
@@ -131,12 +132,11 @@ export function AdminPropertyDetailPage() {
     { icon: CalendarClock, label: "Año", value: p.year_built ?? "—", field: "year_built" },
   ];
 
-  const wazeHref = p.address
-    ? `waze://?q=${encodeURIComponent(p.address)}&navigate=yes`
-    : undefined;
-  const mapsHref = p.address
-    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.address)}`
-    : undefined;
+  // Through the shared helper, so this page and the home agenda widget cannot
+  // drift — these two were inline template strings, and the Waze anchor had
+  // already lost the `target`/`rel` the Maps one carries.
+  const wazeHref = navHref(p.address, "waze") ?? undefined;
+  const mapsHref = navHref(p.address, "maps") ?? undefined;
 
   return (
     <PageLayout width="sm" noPadding className="pb-10 lg:max-w-none">
@@ -249,6 +249,8 @@ export function AdminPropertyDetailPage() {
             <div className="mt-3 grid grid-cols-2 gap-3">
               <a
                 href={wazeHref}
+                target="_blank"
+                rel="noreferrer"
                 className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 transition active:scale-[0.99]"
               >
                 <NavMark app="waze" size={32} />
