@@ -37,8 +37,6 @@ import { ChannelSwitch, type ChannelFilter } from "../components/channel-switch"
  * options that could never match anything here.
  */
 const CONVERSATION_KINDS: AttentionKind[] = ["unanswered", "lead"];
-import { useContacts } from "@features/contacts/hooks/use-contacts";
-import { useOpportunities } from "@features/opportunities/hooks/use-opportunities";
 import { useProperties } from "@features/documents/hooks/use-entities";
 import {
   useArchiveConversation,
@@ -240,46 +238,21 @@ export function AttentionPage({ channels = ["whatsapp", "email"] }: AttentionPag
     unidentifiedView ? { unidentified: true } : {},
   );
   const emails = useEmailThreads({});
-  // Contacts resolve a role (comprador / propietario / …) per row. One fetch,
-  // joined by contact_id; TanStack dedupes it with the Personas tab's copy.
-  const contacts = useContacts({ limit: 500 });
-  const opportunities = useOpportunities({ status: "OPEN", limit: 500 });
+  // Only the property list, and only for the context rail's `titleFor`. The
+  // NAMES and the property each thread is about now arrive on the conversation
+  // rows themselves (`contact_name`, `property_title`, resolved by the list
+  // endpoint). This page used to fetch 500 contacts and 500 opportunities to
+  // build those two lookups in the browser — a thousand rows over the wire to
+  // label at most 200, on the section a broker opens first.
   const properties = useProperties();
   const archiveConversation = useArchiveConversation();
   const archiveThread = useArchiveEmailThread();
 
-  const namesById = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const c of contacts.data ?? []) if (c.full_name) m.set(c.id, c.full_name);
-    return m;
-  }, [contacts.data]);
-
-  /**
-   * contact → the property they are currently dealing on.
-   *
-   * This is the join the inbox was missing, and the reason it felt disconnected
-   * from the database: a thread is always ABOUT something, and until the row
-   * says which property, the broker has to open it to find out. Resolved from
-   * the person's open opportunity; both queries are already in cache from the
-   * Personas and Pipeline tabs, so this costs nothing extra in practice.
-   */
   const propertyTitles = useMemo(() => {
     const titles = new Map<string, string>();
     for (const p of properties.data ?? []) if (p.title) titles.set(p.id, p.title);
     return titles;
   }, [properties.data]);
-
-  const propertyByContact = useMemo(() => {
-    const titles = new Map<string, string>();
-    for (const p of properties.data ?? []) if (p.title) titles.set(p.id, p.title);
-    const m = new Map<string, string>();
-    for (const o of opportunities.data ?? []) {
-      if (!o.person_id || !o.property_id) continue;
-      const title = titles.get(o.property_id);
-      if (title && !m.has(o.person_id)) m.set(o.person_id, title);
-    }
-    return m;
-  }, [opportunities.data, properties.data]);
 
   const conversationById = useMemo(() => {
     const m = new Map<string, ClientConversation>();
@@ -291,22 +264,16 @@ export function AttentionPage({ channels = ["whatsapp", "email"] }: AttentionPag
     const out: InboxEntry[] = [];
     if (showWhatsApp) {
       for (const c of convos.data ?? [])
-        out.push(
-          conversationEntry(
-            c,
-            c.contact_id ? namesById.get(c.contact_id) : undefined,
-            c.contact_id ? (propertyByContact.get(c.contact_id) ?? null) : null,
-          ),
-        );
+        out.push(conversationEntry(c, c.contact_name ?? undefined, c.property_title ?? null));
     }
     if (showEmail) {
-      for (const t of emails.data ?? [])
-        out.push(
-          threadEntry(t, t.contact_id ? (propertyByContact.get(t.contact_id) ?? null) : null),
-        );
+      // An e-mail thread carries its own subject, which is what the row falls
+      // back to — and for a portal lead ("Nuevo interesado en Depto 2D") the
+      // subject says more than the property title would.
+      for (const t of emails.data ?? []) out.push(threadEntry(t, null));
     }
     return out.sort((a, b) => b.time - a.time);
-  }, [convos.data, emails.data, namesById, propertyByContact, showWhatsApp, showEmail]);
+  }, [convos.data, emails.data, showWhatsApp, showEmail]);
 
   const kindFilter: AttentionKind | null = CONVERSATION_KINDS.includes(state as AttentionKind)
     ? (state as AttentionKind)
@@ -379,10 +346,7 @@ export function AttentionPage({ channels = ["whatsapp", "email"] }: AttentionPag
   ]);
 
   const isLoading =
-    (showWhatsApp && convos.isPending) ||
-    (showEmail && emails.isLoading) ||
-    contacts.isLoading ||
-    attention.isLoading;
+    (showWhatsApp && convos.isPending) || (showEmail && emails.isLoading) || attention.isLoading;
   // A failed fetch must not read as an empty inbox: real messages would go
   // unanswered inside WhatsApp's 24h freeform window and nobody would know.
   const error =
