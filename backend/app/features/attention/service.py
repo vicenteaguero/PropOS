@@ -19,6 +19,7 @@ from collections.abc import Callable
 from typing import Any
 from uuid import UUID
 
+from app.core.windows import FREEFORM_HOURS
 from app.core.supabase.client import get_thread_client
 from app.features.attention.schemas import AttentionFeed, AttentionItem, AttentionKind, Urgency
 
@@ -33,7 +34,8 @@ _LOOKUP_LIMIT = 5000
 #: WhatsApp only allows free-form replies within 24 h of the contact's last
 #: message. After that a reply needs an approved template, which is slower and
 #: costs money — so the closing window is the single most urgent thing here.
-_FREEFORM_HOURS = 24
+#: Re-exported under the old private name so the rules below read unchanged.
+_FREEFORM_HOURS = FREEFORM_HOURS
 _WINDOW_WARN_HOURS = 20
 
 #: Past this, a thread stopped being a reply we owe and became a lead we lost.
