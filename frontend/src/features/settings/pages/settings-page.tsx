@@ -519,11 +519,9 @@ export function SettingsPage() {
   return (
     // No bottom-nav pad here — the shell's <main> already clears --app-nav-h.
     <PageLayout width="md" noPadding className="pb-6">
-      <div className="px-5 pt-5 pb-1">
-        <h1 className="text-[17px] font-semibold leading-tight tracking-tight text-foreground">
-          Configuración
-        </h1>
-      </div>
+      {/* No painted title: the shell's top bar already reads "Configuración"
+          from usePageTitle above. This page printed it a second time, directly
+          underneath. */}
 
       {sections.map((sec) => (
         <div key={sec.key}>
