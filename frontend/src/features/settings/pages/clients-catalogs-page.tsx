@@ -131,7 +131,7 @@ function MessageTemplatesTab() {
   return (
     <>
       <ListShell
-        title="Plantillas"
+        titleSr="Plantillas"
         // Not a subtitle: the one number that decides whether this catalog is
         // any use, since only an approved template survives the 24 h window.
         meta={
@@ -284,7 +284,7 @@ function ChecklistTemplatesTab() {
   return (
     <>
       <ListShell
-        title="Listas de cierre"
+        titleSr="Listas de cierre"
         meta={all.length > 0 ? `${all.length} listas` : null}
         search={{ value: query, onChange: setQuery, placeholder: "Buscar lista..." }}
         action={
@@ -403,7 +403,7 @@ function PipelinesTab() {
   return (
     <>
       <ListShell
-        title="Pipelines"
+        titleSr="Pipelines"
         meta={
           unconstrained > 0
             ? `${unconstrained} sin reglas declaradas`
@@ -512,7 +512,7 @@ function TagsTab() {
   return (
     <>
       <ListShell
-        title="Etiquetas"
+        titleSr="Etiquetas"
         meta={
           all.length > 0
             ? unused > 0
