@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { useDismissOnBack } from "@shared/hooks/use-dismiss-on-back";
+import { useSheetDrag } from "@shared/hooks/use-sheet-drag";
 import { Sheet, SheetContent, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
@@ -14,7 +15,12 @@ interface BottomSheetProps {
   className?: string;
 }
 
-/** Rounded bottom sheet with a drag handle. Built on the shadcn Sheet (side=bottom). */
+/**
+ * Rounded bottom sheet. Built on the shadcn Sheet (side=bottom).
+ *
+ * Dismissed three ways, because a phone user will try all three: the system
+ * Back gesture, tapping the handle, and dragging it down.
+ */
 export function BottomSheet({
   open,
   onOpenChange,
@@ -27,20 +33,27 @@ export function BottomSheet({
   // Back dismisses the sheet instead of leaving the page — the behaviour a
   // phone user expects from anything that slides up over the content.
   useDismissOnBack(open, () => onOpenChange(false));
+  const drag = useSheetDrag(() => onOpenChange(false));
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
         showCloseButton={false}
+        {...drag.handlers}
+        style={drag.style}
         className={cn(
           "max-h-[92dvh] gap-0 overflow-y-auto rounded-t-3xl border-border px-5 pt-3 pb-[calc(var(--safe-bottom)+2rem)]",
+          // While a finger is on it the sheet must track the finger exactly;
+          // Radix's own `transition` would lag every frame behind.
+          drag.dragging && "transition-none",
           className,
         )}
       >
-        {/* A real button, not decoration. The grab handle looked draggable and
-            was not, the X was suppressed, and the backdrop is a sliver at
-            max-h-92dvh — so the sheet had no reliable way out on a phone. */}
+        {/* Both a drag affordance and a button. It IS draggable now (see
+            useSheetDrag), and it stays tappable because a handle that only
+            responds to a gesture is invisible to anyone who does not try it —
+            and the backdrop is a sliver at max-h-92dvh. */}
         <button
           type="button"
           aria-label="Cerrar"
