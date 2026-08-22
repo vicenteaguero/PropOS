@@ -313,6 +313,26 @@ async def get_document_thumbnail(
     return {"url": url, "state": state}
 
 
+@router.post(
+    "/documents/{document_id}/opened",
+    status_code=204,
+    dependencies=[Depends(require_role(*OWNER_READ_ROLES))],
+)
+async def mark_document_opened(
+    document_id: UUID,
+    tenant_id: UUID = Depends(get_tenant_id),
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> None:
+    """Stamp `last_opened_at`, so the list can sort by what is actually in use.
+
+    Separate from PATCH because it is not an edit: it must not touch
+    `updated_at`, and it has to be callable by a reader who may not modify the
+    document at all.
+    """
+    assert_document_granted(current_user, tenant_id, document_id)
+    await DocumentService.mark_opened(document_id, tenant_id)
+
+
 @staff_router.get("/documents/{document_id}/versions/{version_id}/source-images")
 async def get_version_source_images(
     document_id: UUID,
