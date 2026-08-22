@@ -5,6 +5,7 @@ import { supabase } from "@core/supabase/client";
 import { createLogger } from "@core/logging/logger";
 import { apiRequest, getActiveTenantId, setActiveTenantId } from "@shared/api/http";
 import { clearPersistedQueries } from "@core/query/persister";
+import type { FeatureMap } from "@shared/feature/catalog";
 import type {
   AuthState,
   PropertyGrant,
@@ -28,6 +29,7 @@ const DEFAULT_AUTH_STATE: AuthContextValue = {
   user: null,
   memberships: [],
   grants: [],
+  features: {},
   isLoading: true,
   isAuthenticated: false,
   signOut: async () => {},
@@ -128,6 +130,17 @@ async function fetchMemberships(): Promise<TenantMembership[]> {
   }
 }
 
+async function fetchFeatures(): Promise<FeatureMap> {
+  try {
+    return await apiRequest<FeatureMap>("/v1/features");
+  } catch (err) {
+    // An empty map reads as "everything on" (see `entryFor`). That is the right
+    // failure direction: a fetch that broke must not black out the app.
+    logger.error("error", "Failed to fetch feature states", { err: String(err) });
+    return {};
+  }
+}
+
 async function fetchGrants(): Promise<PropertyGrant[]> {
   try {
     const rows = await apiRequest<GrantApiRow[]>("/v1/grants/me");
@@ -154,6 +167,7 @@ export function useAuthProvider(): AuthContextValue {
     user: null,
     memberships: [],
     grants: [],
+    features: {},
     isLoading: true,
     isAuthenticated: false,
   });
@@ -205,9 +219,10 @@ export function useAuthProvider(): AuthContextValue {
 
     // 3) Profile (now reflects the active tenant snapshot) + grants.
     const active = memberships.find((m) => m.tenantId === initialTenant) ?? null;
-    const [profile, grants] = await Promise.all([
+    const [profile, grants, features] = await Promise.all([
       fetchProfile(session.user.id, active),
       fetchGrants(),
+      fetchFeatures(),
     ]);
     if (profile) {
       logger.info("auth", "User authenticated", { role: profile.role, view: profile.view });
@@ -215,6 +230,7 @@ export function useAuthProvider(): AuthContextValue {
         user: profile,
         memberships,
         grants,
+        features,
         isLoading: false,
         isAuthenticated: true,
       });
@@ -223,6 +239,7 @@ export function useAuthProvider(): AuthContextValue {
         user: null,
         memberships: [],
         grants: [],
+        features: {},
         isLoading: false,
         isAuthenticated: false,
       });
@@ -237,6 +254,7 @@ export function useAuthProvider(): AuthContextValue {
           user: null,
           memberships: [],
           grants: [],
+          features: {},
           isLoading: false,
           isAuthenticated: false,
         });
@@ -279,7 +297,14 @@ export function useAuthProvider(): AuthContextValue {
     queryClient.clear();
     void clearPersistedQueries();
     await supabase.auth.signOut();
-    setState({ user: null, memberships: [], grants: [], isLoading: false, isAuthenticated: false });
+    setState({
+      user: null,
+      memberships: [],
+      grants: [],
+      features: {},
+      isLoading: false,
+      isAuthenticated: false,
+    });
   }, [queryClient]);
 
   const [isSwitchingTenant, setIsSwitchingTenant] = useState(false);
@@ -312,12 +337,15 @@ export function useAuthProvider(): AuthContextValue {
       if (data.session?.user) {
         const memberships = await fetchMemberships();
         const active = memberships.find((m) => m.tenantId === tenantId) ?? null;
-        const [profile, grants] = await Promise.all([
+        const [profile, grants, features] = await Promise.all([
           fetchProfile(data.session.user.id, active),
           fetchGrants(),
+          // Per tenant, so switching workspace changes the map: a feature the
+          // brokerage has locked may be wide open in the next one.
+          fetchFeatures(),
         ]);
         if (profile) {
-          setState((prev) => ({ ...prev, user: profile, memberships, grants }));
+          setState((prev) => ({ ...prev, user: profile, memberships, grants, features }));
         }
       }
       setIsSwitchingTenant(false);

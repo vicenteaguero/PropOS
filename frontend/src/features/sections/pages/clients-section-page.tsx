@@ -57,6 +57,7 @@ export function ClientsSectionPage() {
           {
             id: "conversaciones",
             label: "Conversaciones",
+            feature: "conversaciones",
             // Every path this tab has ever had. The inbox was `whatsapp` and
             // `correos` before it merged, `bandeja` before it grew the ranked
             // queue, and `atencion` while it held one; push notifications and
@@ -70,6 +71,7 @@ export function ClientsSectionPage() {
       id: "personas",
       label: "Personas",
       scope: "crm",
+      feature: "crm",
       secondary: true,
       // Interacciones lived here as its own tab; its links now open the person.
       aliases: ["interacciones"],
@@ -79,12 +81,14 @@ export function ClientsSectionPage() {
       id: "negocios",
       label: "Negocios",
       scope: "crm",
+      feature: "crm",
       aliases: ["pipeline", "oportunidades"],
       render: () => <OpportunitiesPage />,
     },
     {
       id: "propiedades",
       label: "Propiedades",
+      feature: "propiedades",
       secondary: true,
       render: () => <AdminPropertiesPage />,
     },

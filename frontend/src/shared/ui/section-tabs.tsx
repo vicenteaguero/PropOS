@@ -3,6 +3,9 @@ import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
 import { useTopbarSlot } from "@layouts/topbar-slot";
 import { useIsImmersive } from "@layouts/immersive";
+import { useAuth } from "@shared/hooks/use-auth";
+import { entryFor, isVisible } from "@shared/feature/catalog";
+import { FeatureLockedScreen } from "@shared/feature/feature-gate";
 import { cn } from "@/lib/utils";
 import { TOUCH_TARGET_ROW_COARSE } from "./touch-target";
 
@@ -225,6 +228,13 @@ export interface SectionTab extends TabBarItem {
   /** Admin scope required to see this tab; undefined means always visible. */
   scope?: string;
   /**
+   * Feature key from `shared/feature/catalog`. `hidden` drops the tab, `locked`
+   * keeps it and swaps the content for the locked screen, `wip` renders as
+   * normal. Filtering here rather than in each section page means turning
+   * Conversaciones off is a database row, not a deploy.
+   */
+  feature?: string;
+  /**
    * Reachable, but not one of the section's headline views.
    *
    * Clientes has four entities and only two questions a broker opens the app
@@ -261,7 +271,9 @@ interface SectionTabsProps {
  * from its siblings, and the tab lives in a query param so a link still points
  * at exactly what the sender was looking at.
  */
-export function SectionTabs({ tabs, param = "tab", className }: SectionTabsProps) {
+export function SectionTabs({ tabs: allTabs, param = "tab", className }: SectionTabsProps) {
+  const { features } = useAuth();
+  const tabs = allTabs.filter((t) => isVisible(features, t.feature));
   const barRef = useRef<HTMLDivElement>(null);
   const topbarHost = useTopbarSlot();
   // A surface inside a tab can take the whole screen (an open conversation).
@@ -278,6 +290,10 @@ export function SectionTabs({ tabs, param = "tab", className }: SectionTabsProps
     tabs.find((t) => !t.secondary) ??
     tabs[0];
   if (!active) return null;
+
+  const gate = entryFor(features, active.feature);
+  const renderActive = () =>
+    gate.state === "locked" ? <FeatureLockedScreen note={gate.note} /> : active.render();
 
   // Secondary tabs are not in the strip unless one of them is what you are
   // looking at — otherwise leaving it would mean navigating to a tab that has
@@ -310,7 +326,7 @@ export function SectionTabs({ tabs, param = "tab", className }: SectionTabsProps
           {bar}
         </div>
       )}
-      <div className="min-h-0 flex-1">{active.render()}</div>
+      <div className="min-h-0 flex-1">{renderActive()}</div>
     </div>
   );
 }

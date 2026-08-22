@@ -3,6 +3,7 @@ import {
   buildGroups,
   buildSettingsShortcuts,
   filterByDev,
+  filterByFeature,
   filterByScope,
   SETTINGS_PATH,
   type NavGroup,
@@ -101,5 +102,35 @@ describe("navigation tree", () => {
     expect(paths(filterByScope(buildGroups("admin", "Propo", false), ["crm"]))).toContain(
       "/admin/clientes?tab=propiedades",
     );
+  });
+
+  it("hides a nav entry whose feature is hidden for the tenant", () => {
+    const groups = buildGroups("admin", "Propo", false);
+    const hidden = filterByFeature(groups, { finanzas: { state: "hidden", note: null } });
+    expect(paths(hidden)).not.toContain("/admin/finanzas");
+    expect(paths(hidden)).toContain("/admin/clientes");
+  });
+
+  it("keeps a locked entry in the nav — locked is not hidden", () => {
+    // The entry stays and the route it points at renders the locked screen.
+    // Dropping it here would collapse two states into one.
+    const locked = filterByFeature(buildGroups("admin", "Propo", false), {
+      finanzas: { state: "locked", note: "Falta cerrar el mes" },
+    });
+    expect(paths(locked)).toContain("/admin/finanzas");
+  });
+
+  it("shows everything when the feature map is empty", () => {
+    const all = buildGroups("admin", "Propo", true);
+    expect(paths(filterByFeature(all, {}))).toEqual(paths(all));
+  });
+
+  it("drops a group once its every item is hidden", () => {
+    const groups = filterByFeature(buildGroups("admin", "Propo", false), {
+      agent: { state: "hidden", note: null },
+      pendientes: { state: "hidden", note: null },
+    });
+    expect(groups.every((g) => g.items.length > 0)).toBe(true);
+    expect(paths(groups)).not.toContain("/admin/agent");
   });
 });

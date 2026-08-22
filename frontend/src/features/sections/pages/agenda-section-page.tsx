@@ -17,9 +17,14 @@ const NotesPage = lazy(() =>
  */
 export function AgendaSectionPage() {
   const tabs: SectionTab[] = [
-    { id: "calendario", label: "Calendario", render: () => <CalendarPage /> },
-    { id: "tareas", label: "Tareas", render: () => <TasksPage /> },
-    { id: "notas", label: "Notas", render: () => <NotesPage /> },
+    {
+      id: "calendario",
+      label: "Calendario",
+      feature: "productividad",
+      render: () => <CalendarPage />,
+    },
+    { id: "tareas", label: "Tareas", feature: "productividad", render: () => <TasksPage /> },
+    { id: "notas", label: "Notas", feature: "productividad", render: () => <NotesPage /> },
   ];
   return (
     <Suspense fallback={<PageSkeleton variant="list" />}>

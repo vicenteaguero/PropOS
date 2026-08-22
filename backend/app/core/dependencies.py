@@ -102,6 +102,36 @@ def require_scope(scope: str) -> Callable:
     return scope_checker
 
 
+def require_feature(key: str) -> Callable:
+    """Refuse when the tenant has the feature locked or hidden.
+
+    The second half of the visibility rule, orthogonal to `require_scope`: the
+    scope says who may use a feature, this says whether the feature is open at
+    all for this brokerage. Both are evaluated; either can refuse.
+
+    423 rather than 403 on purpose. A 403 means "not you", and the frontend
+    treats it as a permission problem worth telling the user about. This is "not
+    yet, for anybody here", and the note travels with it so the screen can say
+    why. `wip` passes -- the point of a work-in-progress feature is that it gets
+    exercised.
+    """
+
+    async def feature_checker(
+        current_user: dict[str, Any] = Depends(get_current_user),
+    ) -> dict[str, Any]:
+        from app.core.features import BLOCKING_STATES, resolve_states
+
+        entry = resolve_states(current_user["tenant_id"]).get(key)
+        if entry and entry["state"] in {s.value for s in BLOCKING_STATES}:
+            raise HTTPException(
+                status_code=status.HTTP_423_LOCKED,
+                detail=entry.get("note") or "Esta función no está disponible por ahora.",
+            )
+        return current_user
+
+    return feature_checker
+
+
 async def require_dev_admin(
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> dict[str, Any]:

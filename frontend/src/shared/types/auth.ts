@@ -1,3 +1,5 @@
+import type { FeatureMap } from "@shared/feature/catalog";
+
 export type UserRole = "ADMIN" | "AGENT" | "LANDOWNER" | "BUYER" | "CONTENT";
 
 export type UserView = "admin" | "admin-dev" | "agent" | "owner" | "buyer" | "content";
@@ -48,6 +50,12 @@ export interface AuthState {
   user: UserProfile | null;
   memberships: TenantMembership[];
   grants: PropertyGrant[];
+  /**
+   * Per-tenant feature maturity, resolved by the backend. Orthogonal to
+   * `adminScope`: the map says what is ready here, the scope says who may use
+   * it, and a surface needs both.
+   */
+  features: FeatureMap;
   isLoading: boolean;
   isAuthenticated: boolean;
 }

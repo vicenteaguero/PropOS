@@ -112,6 +112,9 @@ const AgentPoliciesPage = lazy(() =>
     default: m.AgentPoliciesPage,
   })),
 );
+const FeaturesPage = lazy(() =>
+  import("@features/settings/pages/features-page").then((m) => ({ default: m.FeaturesPage })),
+);
 const ClientsCatalogsPage = lazy(() =>
   import("@features/settings/pages/clients-catalogs-page").then((m) => ({
     default: m.ClientsCatalogsPage,
@@ -236,7 +239,7 @@ export function AppRouter() {
                 <Route
                   path="agent"
                   element={
-                    <ProtectedRoute requiredScope="agent">
+                    <ProtectedRoute requiredScope="agent" requiredFeature="agent">
                       <AgentChatPage />
                     </ProtectedRoute>
                   }
@@ -247,7 +250,7 @@ export function AppRouter() {
                 <Route
                   path="pendientes"
                   element={
-                    <ProtectedRoute requiredScope="pendientes">
+                    <ProtectedRoute requiredScope="pendientes" requiredFeature="pendientes">
                       <PendingPage />
                     </ProtectedRoute>
                   }
@@ -267,7 +270,7 @@ export function AppRouter() {
                   <Route
                     path="personas/:id"
                     element={
-                      <ProtectedRoute requiredScope="crm">
+                      <ProtectedRoute requiredScope="crm" requiredFeature="crm">
                         <ContactDetailPage />
                       </ProtectedRoute>
                     }
@@ -276,7 +279,7 @@ export function AppRouter() {
                   <Route
                     path="negocios/:id"
                     element={
-                      <ProtectedRoute requiredScope="crm">
+                      <ProtectedRoute requiredScope="crm" requiredFeature="crm">
                         <DealDetailPage />
                       </ProtectedRoute>
                     }
@@ -301,7 +304,7 @@ export function AppRouter() {
                 <Route
                   path="client-inbox"
                   element={
-                    <ProtectedRoute requiredScope="inbox">
+                    <ProtectedRoute requiredScope="inbox" requiredFeature="conversaciones">
                       <ClientInboxPage />
                     </ProtectedRoute>
                   }
@@ -311,7 +314,7 @@ export function AppRouter() {
               <Route
                 path="documentos"
                 element={
-                  <ProtectedRoute requiredScope="documents">
+                  <ProtectedRoute requiredScope="documents" requiredFeature="documents">
                     <DocumentsSectionPage />
                   </ProtectedRoute>
                 }
@@ -327,7 +330,7 @@ export function AppRouter() {
               <Route
                 path="documents/:id"
                 element={
-                  <ProtectedRoute requiredScope="documents">
+                  <ProtectedRoute requiredScope="documents" requiredFeature="documents">
                     <DocumentDetailPage />
                   </ProtectedRoute>
                 }
@@ -335,7 +338,7 @@ export function AppRouter() {
               <Route
                 path="documents/:id/edit"
                 element={
-                  <ProtectedRoute requiredScope="documents">
+                  <ProtectedRoute requiredScope="documents" requiredFeature="documents">
                     <DocumentEditorPage />
                   </ProtectedRoute>
                 }
@@ -344,7 +347,7 @@ export function AppRouter() {
               <Route
                 path="workflows"
                 element={
-                  <ProtectedRoute requiredScope="workflows">
+                  <ProtectedRoute requiredScope="workflows" requiredFeature="workflows">
                     <WorkflowsPage />
                   </ProtectedRoute>
                 }
@@ -359,13 +362,23 @@ export function AppRouter() {
               {role === "ADMIN" && (
                 <Route path="settings/clientes" element={<ClientsCatalogsPage />} />
               )}
+              {/* The feature switchboard. Dev admin only -- it decides what a
+                  whole brokerage can see, so it is not an ADMIN-level control. */}
+              <Route
+                path="settings/funcionalidades"
+                element={
+                  <ProtectedRoute requiredDevAdmin>
+                    <FeaturesPage />
+                  </ProtectedRoute>
+                }
+              />
 
               {role === "ADMIN" && (
                 <>
                   <Route
                     path="finanzas"
                     element={
-                      <ProtectedRoute requiredScope="finanzas">
+                      <ProtectedRoute requiredScope="finanzas" requiredFeature="finanzas">
                         <FinanceSectionPage />
                       </ProtectedRoute>
                     }
@@ -381,7 +394,7 @@ export function AppRouter() {
                   <Route
                     path="phones"
                     element={
-                      <ProtectedRoute requiredScope="phones">
+                      <ProtectedRoute requiredScope="phones" requiredFeature="phones">
                         <AdminPhonesPage />
                       </ProtectedRoute>
                     }
@@ -389,7 +402,7 @@ export function AppRouter() {
                   <Route
                     path="datos/importar"
                     element={
-                      <ProtectedRoute requiredScope="datos">
+                      <ProtectedRoute requiredScope="datos" requiredFeature="datos">
                         <ImportPage />
                       </ProtectedRoute>
                     }
