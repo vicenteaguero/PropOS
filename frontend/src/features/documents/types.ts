@@ -34,6 +34,8 @@ export interface DocumentVersion {
   created_at: string;
 }
 
+export type ThumbnailState = "PENDING" | "READY" | "UNSUPPORTED" | "FAILED";
+
 export interface Assignment {
   id: string;
   document_id: string;
@@ -41,6 +43,14 @@ export interface Assignment {
   contact_id: string | null;
   property_id: string | null;
   internal_area_id: string | null;
+  /**
+   * Name of the linked property / contact / area, resolved server-side.
+   *
+   * The client used to join these against `/v1/properties` and `/v1/contacts`,
+   * both of which cap at 100 rows, so anything past the first hundred showed as
+   * "(desconocido)". Null only when the target row is gone.
+   */
+  label?: string | null;
   created_at: string;
 }
 
@@ -54,6 +64,10 @@ export interface DocumentItem {
   current_version_id: string | null;
   sort_order: number;
   pin_offline?: boolean;
+  /** Highlighted in the grid and the list. */
+  is_priority?: boolean;
+  /** Stamped by `POST /documents/:id/opened`; drives the default sort. */
+  last_opened_at?: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;

@@ -1,8 +1,8 @@
-import { useState } from "react";
-import { FileText, FileImage, FileType2, FileQuestion, WifiOff } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
-import { formatBytes } from "@shared/lib/format";
+import { WifiOff } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { DocumentKindPill } from "./document-kind-pill";
+import { DocumentThumb } from "./document-thumb";
+import { primaryAssignmentLabel } from "../lib/assignment-label";
 import type { DocumentItem } from "../types";
 
 interface Props {
@@ -10,77 +10,44 @@ interface Props {
   onOpen: (doc: DocumentItem) => void;
 }
 
-function iconFor(kind: DocumentItem["kind"]) {
-  switch (kind) {
-    case "PDF":
-      return FileText;
-    case "DOCX":
-      return FileType2;
-    case "IMAGE_PDF":
-      return FileImage;
-    default:
-      return FileQuestion;
-  }
-}
-
 export function DocumentCard({ doc, onOpen }: Props) {
-  const Icon = iconFor(doc.kind);
-  const v = doc.current_version;
-  const thumbUrl = v?.thumbnail_url ?? null;
-  const [thumbLoaded, setThumbLoaded] = useState(false);
-  const [thumbFailed, setThumbFailed] = useState(false);
-  const showThumb = Boolean(thumbUrl) && !thumbFailed;
-
+  const where = primaryAssignmentLabel(doc);
   return (
     <button
       type="button"
       onClick={() => onOpen(doc)}
-      className="group flex flex-col overflow-hidden rounded-xl bg-card text-left transition active:scale-[0.98]"
+      className={cn(
+        "group flex flex-col overflow-hidden rounded-xl text-left transition active:scale-[0.98]",
+        // A priority document is marked by its whole card, not by one more badge
+        // in a corner full of badges.
+        doc.is_priority ? "bg-warning/10 ring-1 ring-warning/40" : "bg-card",
+      )}
     >
-      <div className="relative flex aspect-[3/4] items-center justify-center overflow-hidden bg-secondary">
-        {showThumb ? (
-          <>
-            {!thumbLoaded && <Skeleton className="absolute inset-0 h-full w-full" />}
-            <img
-              src={thumbUrl ?? undefined}
-              alt={doc.display_name}
-              loading="lazy"
-              decoding="async"
-              onLoad={() => setThumbLoaded(true)}
-              onError={() => setThumbFailed(true)}
-              className={`h-full w-full object-cover transition-opacity ${
-                thumbLoaded ? "opacity-100" : "opacity-0"
-              }`}
-            />
-          </>
-        ) : (
-          <Icon className="size-12 text-muted-foreground" strokeWidth={1.4} />
-        )}
-        {v?.size_bytes ? (
-          <span className="absolute bottom-2 right-2 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur-sm">
-            {formatBytes(v.size_bytes)}
-          </span>
-        ) : null}
+      <div className="relative">
+        <DocumentThumb doc={doc} variant="tile" />
         {doc.pin_offline && (
           <span
-            className="absolute right-2 top-2 inline-flex items-center rounded-full bg-primary p-1.5 text-primary-foreground"
+            className="absolute right-1.5 top-1.5 inline-flex items-center rounded-full bg-primary p-1 text-primary-foreground"
             title="Disponible sin conexión"
           >
-            <WifiOff className="size-3" strokeWidth={2} />
+            <WifiOff className="size-2.5" strokeWidth={2} />
           </span>
         )}
       </div>
-      <div className="space-y-2 p-3">
-        <div className="line-clamp-2 text-[15px] font-semibold leading-tight text-foreground">
+      {/* Three per row on a phone leaves ~110px of width, so the footer carries
+          the name, where it belongs, and the kind — and nothing else. The
+          version number and the link count were noise at any width: neither is
+          why anyone is scanning a wall of documents. */}
+      <div className="space-y-1 p-2">
+        <div className="line-clamp-2 text-[12px] font-semibold leading-tight text-foreground">
           {doc.display_name}
         </div>
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex items-center gap-1">
           <DocumentKindPill doc={doc} />
-          {v && <span className="text-xs text-muted-foreground">v{v.version_number}</span>}
-          {doc.assignments && doc.assignments.length > 0 && (
-            <span className="text-xs text-muted-foreground">· {doc.assignments.length} vínc.</span>
-          )}
         </div>
+        {where && (
+          <div className="truncate text-[11px] leading-tight text-muted-foreground">{where}</div>
+        )}
       </div>
     </button>
   );
