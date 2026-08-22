@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { CONTROL_H } from "@shared/ui/touch-target";
 import { Search, X } from "lucide-react";
 import { FOCUS_RING } from "@shared/ui";
 import { cn } from "@/lib/utils";
@@ -91,9 +92,13 @@ export function SearchInput({
         className={cn(
           "w-full rounded-full border border-border bg-secondary text-foreground placeholder:text-muted-foreground",
           // 16px on phones so iOS doesn't zoom the viewport on focus.
-          pill
-            ? "h-12 pl-11 pr-11 text-base md:text-[15px]"
-            : "h-10 pl-9 pr-9 text-base md:text-sm",
+          // One height for both variants, from the shared header-row token.
+          // `pill` was 48 and `inline` 40, so the same field appeared at two
+          // sizes on two list pages — and neither matched the buttons beside it.
+          // The variants still differ in what they should: the magnifier's
+          // inset and the type scale.
+          CONTROL_H,
+          pill ? "pl-11 pr-11 text-base md:text-[15px]" : "pl-9 pr-9 text-base md:text-sm",
           FOCUS_RING,
         )}
       />

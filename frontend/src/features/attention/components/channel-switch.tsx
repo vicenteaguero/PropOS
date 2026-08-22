@@ -1,5 +1,5 @@
 import { Inbox } from "lucide-react";
-import { EmailMark, WhatsAppMark } from "@shared/ui";
+import { CONTROL_H, EmailMark, WhatsAppMark } from "@shared/ui";
 import { cn } from "@/lib/utils";
 
 export type ChannelFilter = "todos" | "whatsapp" | "email";
@@ -32,7 +32,7 @@ export function ChannelSwitch({
         aria-pressed={active}
         onClick={() => onChange(id)}
         className={cn(
-          "flex size-9 items-center justify-center rounded-full transition [@media(pointer:coarse)]:size-11",
+          "flex aspect-square h-full items-center justify-center rounded-full transition",
           active
             ? `${activeClass} shadow-sm`
             : "text-muted-foreground hover:text-foreground [&>span]:opacity-60",
@@ -44,7 +44,11 @@ export function ChannelSwitch({
   };
 
   return (
-    <div className="inline-flex shrink-0 rounded-full bg-secondary p-0.5">
+    <div
+      // Height on the track, buttons fill it — same rule as ViewToggle, so the
+      // two switches and the filter beside them agree.
+      className={cn("inline-flex shrink-0 items-center rounded-full bg-secondary p-0.5", CONTROL_H)}
+    >
       {item(
         "todos",
         "Todo",

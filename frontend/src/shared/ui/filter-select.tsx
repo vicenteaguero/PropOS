@@ -9,7 +9,7 @@ import {
 import { useIsDesktop } from "@/hooks/use-mobile";
 import { BottomSheet } from "./bottom-sheet";
 import { cn } from "@/lib/utils";
-import { TOUCH_TARGET_ROW_COARSE } from "./touch-target";
+import { CONTROL_H } from "./touch-target";
 
 export interface FilterOption {
   value: string;
@@ -63,7 +63,10 @@ export function FilterSelect({
       onClick={isDesktop ? undefined : () => setSheetOpen(true)}
       className={cn(
         "inline-flex max-w-full items-center gap-1.5 rounded-full border px-3 text-[13px] font-medium transition",
-        TOUCH_TARGET_ROW_COARSE,
+        // The shared header-row height. This control used to carry none at all,
+        // so it was sized by its 13px text — ~28px next to a 40px channel
+        // switch, in the same `items-center` row.
+        CONTROL_H,
         active
           ? "border-foreground bg-ink text-ink-foreground"
           : "border-border text-muted-foreground hover:text-foreground",
