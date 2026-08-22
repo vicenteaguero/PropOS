@@ -112,3 +112,41 @@ export function dueText(iso: string | null | undefined, now: Date = new Date()):
   const unit = months === 1 ? "mes" : "meses";
   return overdue ? `Venció hace ${months} ${unit}` : `Vence en ${months} ${unit}`;
 }
+
+/**
+ * Time left before a deadline: `Vence en 45 min` · `Vence en 6 h` · `Vencida`.
+ *
+ * The counterpart of `dueText`, which is written for a task's own wording. This
+ * one is for a proposal's window — the thing that decides which of two cards to
+ * open first — so it leads with the number and never says "Vence ahora", which
+ * reads as "act now" and "already gone" at the same time.
+ */
+export function timeLeft(iso: string | null | undefined, now: Date = new Date()): string {
+  if (!iso) return "";
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return "";
+
+  const ms = at.getTime() - now.getTime();
+  if (ms <= 0) return "Vencida";
+
+  const minutes = Math.round(ms / 60_000);
+  if (minutes < 60) return `Vence en ${minutes} min`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `Vence en ${hours} h`;
+  const days = Math.round(hours / 24);
+  return days === 1 ? "Vence mañana" : `Vence en ${days} días`;
+}
+
+/** How loud a deadline should be. Drives the card's border, nothing else. */
+export function deadlineTone(
+  iso: string | null | undefined,
+  now: Date = new Date(),
+): "danger" | "warn" | "none" {
+  if (!iso) return "none";
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return "none";
+  const hours = (at.getTime() - now.getTime()) / 3_600_000;
+  if (hours <= 2) return "danger";
+  if (hours <= 6) return "warn";
+  return "none";
+}
