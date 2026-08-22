@@ -36,10 +36,18 @@
 # client (plus a blocking 30s Whisper request) straight from the event loop. At
 # --max-instances=1 a single audio transcription or email-sync run queues every
 # other request behind it, including webhooks that Kapso retries and then drops.
-# Three instances of 1Gi cost nothing while idle -- Cloud Run bills per request,
-# and --min-instances stays 0 -- but they stop one slow handler from taking the
-# whole service down. Change this file, not the live service: a
-# `gcloud run services update` is overwritten by the next deploy.
+# Three instances of 1Gi cost nothing while idle -- Cloud Run bills per request
+# -- but they stop one slow handler from taking the whole service down. Change
+# this file, not the live service: a `gcloud run services update` is overwritten
+# by the next deploy.
+#
+# The one exception is the instance FLOOR. `--min-instances` is immutable per
+# revision, so passing it here pinned the floor to whatever this file said and
+# silently undid the working-hours schedule on every deploy. The floor is now
+# service-level state (`gcloud run services update --min`, driven by the
+# propos-scale-up / propos-scale-down Cloud Scheduler jobs), which survives
+# deploys and can change without cutting a revision. Do not reintroduce
+# `--min-instances` below.
 #
 # --concurrency=8 is the important number, and it is deliberately far below the
 # platform default of 80. That default assumes handlers that yield while they
@@ -51,7 +59,7 @@
 # turns a queue into a scale-out. Revisit it once the read paths stop blocking.
 #
 # --cpu-boost costs nothing and shortens cold starts, which every user pays for
-# while --min-instances is 0.
+# during the hours the instance floor is 0.
 steps:
   # python:3.12-slim rather than the gcloud builder: the gate is pure stdlib and
   # this image is ~45MB, so it starts before docker has finished pulling layers.
@@ -157,7 +165,6 @@ steps:
           --platform=managed \
           --allow-unauthenticated \
           --port=8000 \
-          --min-instances=0 \
           --max-instances=3 \
           --memory=1Gi \
           --cpu=2 \

@@ -1,7 +1,7 @@
 include .env
 export
 
-.PHONY: seed-demo seed-demo-wipe setup dev dev-frontend dev-hmr dev-pwa dev-pwa-hmr dev-pwa-hmr-kapso dev-docker-hmr dev-docker-pwa-hmr dev-docker-pwa-hmr-kapso stop build migrate seed format lint test clean logs backend-shell db-studio gcloud-auth deploy-setup deploy-secrets-sync deploy-trigger-setup deploy-trigger-list deploy-backend deploy-verify deploy-frontend-edge deploy-rollback kapso-templates-sync kapso-webhook-tunnel query query-write test-schema-rebuild backfill-thumbnails jupyter
+.PHONY: seed-demo seed-demo-wipe setup dev dev-frontend dev-hmr dev-pwa dev-pwa-hmr dev-pwa-hmr-kapso dev-docker-hmr dev-docker-pwa-hmr dev-docker-pwa-hmr-kapso stop build migrate seed format lint test clean logs backend-shell db-studio gcloud-auth deploy-setup deploy-secrets-sync deploy-trigger-setup deploy-trigger-list deploy-backend deploy-verify deploy-frontend-edge deploy-rollback kapso-templates-sync kapso-webhook-tunnel query query-write test-schema-rebuild backfill-thumbnails jupyter scale-up scale-down scale-status
 
 setup:
 	@bash scripts/setup.sh
@@ -293,6 +293,37 @@ deploy-rollback: gcloud-auth
 		exit 1; \
 	fi
 	gcloud run services update-traffic propos-api --region $(GCP_REGION) --to-revisions=$(REV)=100
+
+# Instance floor. Two Cloud Scheduler jobs move it on a working-hours schedule
+# (propos-scale-up 08:00, propos-scale-down 00:00, America/Santiago); these
+# targets are the manual override.
+#
+# `--min` is service-level state and changes in place. `--min-instances` is
+# immutable per revision and would cut a new one on every flip, which is why the
+# deploy no longer passes it -- see config/docker/cloudbuild.yaml.
+#
+# Cost at the current shape (2 vCPU, 1Gi) using the us-central1 min-instance
+# SKUs, $0.0000025 per vCPU-second and per GiB-second:
+#   24/7    -> $13.14 CPU + $6.57 memory = $19.71 / month
+#   08h-00h -> 16 of 24 hours            = $13.14 / month
+scale-up: gcloud-auth
+	gcloud run services update propos-api --region $(GCP_REGION) --min=1
+	@$(MAKE) --no-print-directory scale-status
+
+scale-down: gcloud-auth
+	gcloud run services update propos-api --region $(GCP_REGION) --min=0
+	@$(MAKE) --no-print-directory scale-status
+
+scale-status: gcloud-auth
+	@# The service-level floor surfaces as a metadata annotation in the v1 shape
+	@# `gcloud run services describe` returns -- `scaling.minInstanceCount` is
+	@# the v2 field name and reads back empty here.
+	@gcloud run services describe propos-api --region $(GCP_REGION) \
+		--format='value[separator="  "](metadata.annotations."run.googleapis.com/minScale",metadata.annotations."run.googleapis.com/maxScale")' \
+		| awk '{printf "instance floor: %s   ceiling: %s\n", ($$1==""?"0":$$1), ($$2==""?"-":$$2)}'
+	@gcloud scheduler jobs list --location=$(GCP_REGION) \
+		--filter='name~propos-scale' \
+		--format='table(name.basename(),schedule,timeZone,state)'
 
 kapso-templates-sync:
 	@bash scripts/log.sh KAPSO "📨" "Syncing WhatsApp HSM templates to Kapso"
