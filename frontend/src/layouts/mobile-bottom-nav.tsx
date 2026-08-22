@@ -3,10 +3,12 @@ import { NavLink, useNavigate } from "react-router-dom";
 import {
   CalendarDays,
   Check,
+  FileText,
   Home,
   LayoutGrid,
   LogOut,
   Moon,
+  Receipt,
   Settings,
   Sparkles,
   Sun,
@@ -48,7 +50,7 @@ function NavTab({
           />
           <span
             className={cn(
-              "max-w-full truncate text-[10.5px] leading-tight",
+              "max-w-full truncate text-[10px] leading-tight",
               isActive ? "font-bold text-foreground" : "font-medium text-muted-foreground",
             )}
           >
@@ -118,11 +120,22 @@ export function MobileBottomNav() {
   // centimetres below the sheet's own edge; and Configuración is the gear in
   // this sheet's header. A twelve-button grid where a third of the buttons are
   // duplicates is what made every entry look equally (un)important.
+  // Documentos and Finanzas are driven off the nav tree rather than a second
+  // copy of the guard logic: `useNavGroups` has already dropped what this role
+  // may not open, what this person's scope excludes, and what the tenant has
+  // switched off. Asking "is this path in the tree" answers all three at once,
+  // and cannot drift from the sidebar the way a hand-written `allow()` would.
+  const reachable = new Set(groups.flatMap((g) => g.items.map((i) => i.path)));
+  const docsPath = `${base}/documentos`;
+  const financePath = `${base}/finanzas`;
+
   const chromePaths = new Set([
     base,
     `${base}/clientes`,
     `${base}/agenda`,
     `${base}/agent`,
+    docsPath,
+    financePath,
     SETTINGS_PATH,
   ]);
   const sheetGroups = groups
@@ -153,13 +166,23 @@ export function MobileBottomNav() {
       >
         {/* A floating pill, not a bar. It used to span the full frame, which on a
             phone reads as a wall across the bottom of every screen and pins the
-            thumb to the extreme corners; at ~19rem the five targets sit inside
-            the natural sweep of one thumb and the content keeps its edges.
+            thumb to the extreme corners.
+
+            It held five targets at ~19rem; it now holds seven — three, the FAB,
+            three — so the cap moves to 26rem. That is still short of the frame
+            on any phone, so the pill keeps reading as a floating object, but it
+            gives each of the seven ~3.4rem instead of ~2.7rem, which is what
+            "Finanzas" needs at 10px before it truncates.
+
             Translucent over a blur so the page scrolling underneath stays
             legible as motion instead of disappearing behind an opaque slab. */}
-        <div className="mx-auto flex w-full max-w-[19rem] items-center justify-around rounded-[var(--radius-4xl)] border border-border/70 bg-card/90 px-1.5 py-1.5 shadow-[0_18px_44px_-10px_rgb(0_0_0/0.72),0_6px_16px_-4px_rgb(0_0_0/0.45),0_0_0_0.5px_rgb(0_0_0/0.35)] backdrop-blur-2xl backdrop-saturate-150 supports-[backdrop-filter]:bg-card/72">
+        <div className="mx-auto flex w-full max-w-[26rem] items-center justify-around rounded-[var(--radius-4xl)] border border-border/70 bg-card/90 px-1 py-1.5 shadow-[0_18px_44px_-10px_rgb(0_0_0/0.72),0_6px_16px_-4px_rgb(0_0_0/0.45),0_0_0_0.5px_rgb(0_0_0/0.35)] backdrop-blur-2xl backdrop-saturate-150 supports-[backdrop-filter]:bg-card/72">
           <NavTab to={base} end icon={Home} label="Inicio" />
           {allow("crm") && <NavTab to={`${base}/clientes`} icon={Users} label="Clientes" />}
+          {/* "Docs", not "Documentos": at seven slots the label box is ~3.4rem
+              and the full word truncates to "Documen…", which is uglier than
+              the short form and no more informative next to a file glyph. */}
+          {reachable.has(docsPath) && <NavTab to={docsPath} icon={FileText} label="Docs" />}
           {canPropo && (
             <div className="flex flex-1 flex-col items-center gap-0.5">
               <button
@@ -170,13 +193,16 @@ export function MobileBottomNav() {
               >
                 <Sparkles className="size-6" />
               </button>
-              <span className="-mt-1 text-[10.5px] font-bold leading-tight text-foreground">
+              <span className="-mt-1 text-[10px] font-bold leading-tight text-foreground">
                 Propo
               </span>
             </div>
           )}
           {allow("productividad") && (
             <NavTab to={`${base}/agenda`} icon={CalendarDays} label="Agenda" />
+          )}
+          {reachable.has(financePath) && (
+            <NavTab to={financePath} icon={Receipt} label="Finanzas" />
           )}
           {/* Everything the sidebar can reach lives behind this tab. Without
               it the phone shell could only open whatever the four tabs and the
@@ -201,7 +227,7 @@ export function MobileBottomNav() {
                 className="absolute right-[calc(50%-16px)] top-0 size-2 rounded-full bg-primary"
               />
             )}
-            <span className="text-[10.5px] font-medium leading-tight">Más</span>
+            <span className="text-[10px] font-medium leading-tight">Más</span>
           </button>
         </div>
       </nav>
