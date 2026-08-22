@@ -32,6 +32,22 @@ export function QueryWarmup() {
   const { isAuthenticated, user } = useAuth();
   const tenantId = user?.tenantId;
 
+  // Wake the backend the moment there is a session, ahead of everything else.
+  //
+  // Cloud Run runs this service at `--min-instances=0` (a deliberate cost
+  // choice, see config/docker/cloudbuild.yaml), so the first request after a
+  // few idle minutes pays a container start — measured at 1.43 s against 0.21 s
+  // warm. Spending it on `/health`, while the broker is still reading Inicio,
+  // means the first request they actually wait on arrives warm. Not on the idle
+  // callback: the whole point is to be first.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    void fetch("/health").catch(() => {
+      // A cold instance can refuse the very first connection. The next real
+      // request will start it; there is nothing to report here.
+    });
+  }, [isAuthenticated]);
+
   useEffect(() => {
     if (!isAuthenticated || !tenantId) return;
     // requestIdleCallback so warming never competes with the first paint.
@@ -86,6 +102,20 @@ export function QueryWarmup() {
       // and simply populate the module cache while the machine is idle.
       void import("@features/sections/pages/clients-section-page");
       void import("@features/sections/pages/agenda-section-page");
+      void import("@features/settings/pages/settings-page");
+
+      // Configuración's own two requests. It is reached from the "Más" sheet in
+      // two taps and used to open with a full-page skeleton behind a cold
+      // chunk AND two serial round trips.
+      void queryClient.prefetchQuery({
+        queryKey: ["tenant", "me"],
+        queryFn: () => apiRequest("/v1/tenants/me"),
+        staleTime: 5 * 60_000,
+      });
+      void queryClient.prefetchQuery({
+        queryKey: ["settings", "me"],
+        queryFn: () => apiRequest("/v1/users/me"),
+      });
     });
 
     return () => {

@@ -52,6 +52,17 @@ export function useUsdToday() {
  * + kicks off a backfill in the background. Concurrent calls are safe
  * (DB upsert), but this guard avoids unnecessary network hits.
  */
+/**
+ * The refresh currently in flight, module-scoped.
+ *
+ * The localStorage flag below is only written once the POST resolves, so two
+ * effect runs in the same tick — StrictMode in development, two mounted
+ * consumers in production — both saw "not done today" and both fired. The
+ * request is idempotent, so this was waste rather than a bug, but it is waste
+ * against an external rate-limited service on every cold load.
+ */
+let inFlight: Promise<unknown> | null = null;
+
 export function useUfDailyRefresh(): void {
   const { isAuthenticated } = useAuth();
   const qc = useQueryClient();
@@ -64,7 +75,10 @@ export function useUfDailyRefresh(): void {
     let cancelled = false;
     (async () => {
       try {
-        await ufApi.refresh();
+        inFlight ??= ufApi.refresh().finally(() => {
+          inFlight = null;
+        });
+        await inFlight;
         if (cancelled) return;
         window.localStorage.setItem(REFRESH_FLAG, today);
         qc.invalidateQueries({ queryKey: ["uf"] });
