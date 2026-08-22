@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from "react";
+import { CONTROL_SQUARE } from "@shared/ui";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Camera, FilePlus2, Plus, Upload, X } from "lucide-react";
@@ -485,19 +486,48 @@ export function NewDocumentButton() {
  * hook too, and if two of them were ever mounted at once the param would open
  * two sheets.
  */
-export function NewDocumentActions() {
+export function NewDocumentActions({ compact = false }: { compact?: boolean } = {}) {
   const state = useFastAdd();
   useOpenOnParam("nuevo", () => state.setOpen(true));
   return (
     <>
-      <div className="grid grid-cols-2 gap-3">
-        <Button variant="ink" size="block" onClick={() => state.setCameraOpen(true)}>
-          <Camera className="size-5" strokeWidth={1.8} /> Escanear
-        </Button>
-        <Button variant="outline" size="block" onClick={() => state.setOpen(true)}>
-          <Upload className="size-5" strokeWidth={1.8} /> Subir
-        </Button>
-      </div>
+      {compact ? (
+        // Two round buttons on the header row instead of two full-width blocks
+        // stacked above the search. On a phone that block spent a whole band of
+        // the screen before a single document appeared, and it was the only
+        // list in the app that opened with its actions rather than its content.
+        <div className="flex shrink-0 items-center gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label="Escanear documento"
+            title="Escanear"
+            className={cn("rounded-full", CONTROL_SQUARE)}
+            onClick={() => state.setCameraOpen(true)}
+          >
+            <Camera className="size-4" strokeWidth={1.8} />
+          </Button>
+          <Button
+            variant="ink"
+            size="icon"
+            aria-label="Subir documento"
+            title="Subir"
+            className={cn("rounded-full", CONTROL_SQUARE)}
+            onClick={() => state.setOpen(true)}
+          >
+            <Upload className="size-4" strokeWidth={1.8} />
+          </Button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-3">
+          <Button variant="ink" size="block" onClick={() => state.setCameraOpen(true)}>
+            <Camera className="size-5" strokeWidth={1.8} /> Escanear
+          </Button>
+          <Button variant="outline" size="block" onClick={() => state.setOpen(true)}>
+            <Upload className="size-5" strokeWidth={1.8} /> Subir
+          </Button>
+        </div>
+      )}
       <FastAddDialogBody {...state} />
     </>
   );

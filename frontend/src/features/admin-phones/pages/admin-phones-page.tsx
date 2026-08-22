@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { PageHeader } from "@shared/components/page-header";
 import { label } from "@shared/lib/labels";
 import { Loader2, Phone, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -122,13 +123,9 @@ export function AdminPhonesPage() {
     return u?.full_name ?? u?.email ?? id.slice(0, 8);
   };
 
-  const header = (
-    <div>
-      <h1 className="text-[17px] font-semibold leading-tight tracking-tight text-foreground">
-        Usuarios y teléfonos
-      </h1>
-    </div>
-  );
+  // No painted title on a phone: the shell bar already reads it. `PageHeader`
+  // owns that rule in one place, so this page stops carrying its own <h1>.
+  const header = <PageHeader title="Usuarios y teléfonos" className="mb-0" />;
 
   const createUserSection = (
     <section className="space-y-4 rounded-xl border border-border bg-card p-5">

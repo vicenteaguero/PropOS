@@ -1,10 +1,19 @@
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Copy, Loader2, RefreshCw, UserPlus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageLayout } from "@shared/components/page-layout";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
-import { ErrorState, PageSkeleton, Pill, Row, type PillTone } from "@shared/ui";
+import {
+  CONTROL_SQUARE,
+  ListShell,
+  ErrorState,
+  PageSkeleton,
+  Pill,
+  Row,
+  type PillTone,
+} from "@shared/ui";
 import { useIsDesktop } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import {
@@ -122,25 +131,22 @@ export function AdminVisitorInvitationsPage() {
   return (
     <PageLayout width="md" noPadding className="pb-6 lg:max-w-none">
       {/* Header */}
-      <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-3 lg:px-8 lg:pt-7">
-        <div>
-          <h1 className="text-[17px] font-semibold leading-tight tracking-tight text-foreground">
-            Visitantes
-          </h1>
-        </div>
-        <Button
-          variant="ink"
-          size="icon-lg"
-          className="rounded-full lg:hidden"
-          aria-label="Invitar visitante"
-          onClick={() => setOpen(true)}
-        >
-          <UserPlus className="size-5" strokeWidth={1.8} />
-        </Button>
-        <Button variant="ink" className="hidden gap-2 lg:inline-flex" onClick={() => setOpen(true)}>
-          <UserPlus className="size-4" strokeWidth={1.8} /> Invitar visitante
-        </Button>
-      </div>
+      {/* The shared list header. The title it painted repeated the shell bar. */}
+      <ListShell
+        titleSr="Visitantes"
+        primaryAction={
+          <Button
+            variant="ink"
+            size="icon"
+            className={cn("rounded-full", CONTROL_SQUARE)}
+            aria-label="Invitar visitante"
+            title="Invitar visitante"
+            onClick={() => setOpen(true)}
+          >
+            <UserPlus className="size-4" strokeWidth={1.8} />
+          </Button>
+        }
+      />
 
       {isLoading && <PageSkeleton variant={isDesktop ? "table" : "list"} />}
 

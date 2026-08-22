@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { cn } from "@/lib/utils";
 import { useOpenOnParam } from "@shared/hooks/use-open-on-param";
 import {
   ArrowDownLeft,
@@ -19,7 +20,9 @@ import { PageLayout } from "@shared/components/page-layout";
 import {
   Chip,
   Chips,
+  CONTROL_SQUARE,
   ErrorState,
+  ListShell,
   FieldGroup,
   PageSkeleton,
   Pill,
@@ -405,26 +408,33 @@ export function FinancePage() {
           Mobile: stacked (calculator, then filter + list) — unchanged. */}
       <div className="lg:grid lg:grid-cols-[1fr_20rem] lg:items-start lg:gap-6 lg:px-8">
         <div className="min-w-0">
-          {/* Filter and the primary action share one row. The "+" used to sit
-              alone above the KPIs, costing a whole band of empty header before
-              any content. */}
-          <div className="flex items-center gap-2 px-5 pb-4 lg:px-0">
-            <Chips className="min-w-0 flex-1">
-              {KIND_FILTERS.map((f) => (
-                <Chip key={f.id} active={kind === f.id} onClick={() => setKind(f.id)}>
-                  {f.label}
-                </Chip>
-              ))}
-            </Chips>
-            <Button
-              size="icon"
-              className="shrink-0 rounded-full"
-              aria-label="Nueva transacción"
-              onClick={openCreate}
-            >
-              <Plus className="size-4" strokeWidth={1.8} />
-            </Button>
-          </div>
+          {/* The shared list header: the chips are this page's filters and the
+              "+" is its primary action, which on a phone rides in the top bar
+              like every other list. There is no search here — a ledger is read
+              by filtering, not by typing — and ListShell handles that. */}
+          <ListShell
+            titleSr="Movimientos"
+            primaryAction={
+              <Button
+                size="icon"
+                className={cn("rounded-full", CONTROL_SQUARE)}
+                aria-label="Nueva transacción"
+                title="Nueva transacción"
+                onClick={openCreate}
+              >
+                <Plus className="size-4" strokeWidth={1.8} />
+              </Button>
+            }
+            filters={
+              <Chips className="min-w-0 flex-1">
+                {KIND_FILTERS.map((f) => (
+                  <Chip key={f.id} active={kind === f.id} onClick={() => setKind(f.id)}>
+                    {f.label}
+                  </Chip>
+                ))}
+              </Chips>
+            }
+          />
           {transactionsBlock}
         </div>
 
