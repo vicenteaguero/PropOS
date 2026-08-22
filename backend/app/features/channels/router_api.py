@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 from app.core.dependencies import (
     get_current_user,
     get_tenant_id,
+    require_feature,
     require_role,
     require_scope,
 )
@@ -32,6 +33,7 @@ router = APIRouter(
     dependencies=[
         Depends(require_role("ADMIN", "AGENT")),
         Depends(require_scope("inbox")),
+        Depends(require_feature("conversaciones")),
     ],
 )
 

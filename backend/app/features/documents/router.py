@@ -19,6 +19,7 @@ from app.core.rate_limit import by_ip, by_path_param, rate_limit
 from app.core.dependencies import (
     get_current_user,
     get_tenant_id,
+    require_feature,
     require_role,
     require_scope,
 )
@@ -57,7 +58,7 @@ from app.features.documents.share_service import ShareService
 # inherits the scope gate and `main.py` still mounts a single `router`.
 router = APIRouter(
     tags=["documents"],
-    dependencies=[Depends(require_scope("documents"))],
+    dependencies=[Depends(require_scope("documents")), Depends(require_feature("documents"))],
 )
 staff_router = APIRouter(
     dependencies=[Depends(require_role(*STAFF_ROLES))],

@@ -6,13 +6,17 @@ from uuid import UUID
 from fastapi import APIRouter, Depends
 
 from app.core.db import gather_blocking, run_blocking
-from app.core.dependencies import get_tenant_id, require_role, require_scope
+from app.core.dependencies import get_tenant_id, require_feature, require_role, require_scope
 from app.core.supabase.client import get_supabase_client
 
 router = APIRouter(
     prefix="/analytics",
     tags=["analytics"],
-    dependencies=[Depends(require_role("ADMIN")), Depends(require_scope("analytics"))],
+    dependencies=[
+        Depends(require_role("ADMIN")),
+        Depends(require_scope("analytics")),
+        Depends(require_feature("analytics")),
+    ],
 )
 
 
@@ -211,7 +215,11 @@ async def agent_cost(tenant_id: UUID = Depends(get_tenant_id)) -> dict[str, Any]
 timeline_router = APIRouter(
     prefix="/analytics",
     tags=["timeline"],
-    dependencies=[Depends(require_role("ADMIN", "AGENT")), Depends(require_scope("crm"))],
+    dependencies=[
+        Depends(require_role("ADMIN", "AGENT")),
+        Depends(require_scope("crm")),
+        Depends(require_feature("crm")),
+    ],
 )
 
 

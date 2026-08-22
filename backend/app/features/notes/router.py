@@ -5,7 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 
-from app.core.dependencies import get_current_user, get_tenant_id, require_role, require_scope
+from app.core.dependencies import get_current_user, get_tenant_id, require_feature, require_role, require_scope
 from app.features.notes.attachments import (
     MAX_ATTACHMENT_BYTES,
     MAX_ATTACHMENTS_PER_REQUEST,
@@ -31,6 +31,7 @@ router = APIRouter(
     dependencies=[
         Depends(require_role("ADMIN", "AGENT")),
         Depends(require_scope("productividad")),
+        Depends(require_feature("productividad")),
     ],
 )
 

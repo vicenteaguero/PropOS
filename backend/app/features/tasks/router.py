@@ -5,7 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 
-from app.core.dependencies import get_current_user, get_tenant_id, require_role, require_scope
+from app.core.dependencies import get_current_user, get_tenant_id, require_feature, require_role, require_scope
 from app.features.tasks.schemas import TaskCreate, TaskResponse, TaskUpdate
 from app.features.tasks.service import TaskService
 
@@ -15,6 +15,7 @@ router = APIRouter(
     dependencies=[
         Depends(require_role("ADMIN", "AGENT")),
         Depends(require_scope("productividad")),
+        Depends(require_feature("productividad")),
     ],
 )
 

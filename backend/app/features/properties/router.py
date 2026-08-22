@@ -5,7 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 
-from app.core.dependencies import get_current_user, get_tenant_id, require_dev_admin, require_role
+from app.core.dependencies import get_current_user, get_tenant_id, require_dev_admin, require_feature, require_role
 from app.features.grants.schemas import PropertyGrantResponse
 from app.features.grants.service import GrantService
 from app.features.properties.describe import generate_description
@@ -29,7 +29,11 @@ from app.features.properties.schemas import (
 )
 from app.features.properties.service import PropertyService
 
-router = APIRouter(prefix="/properties", tags=["properties"])
+router = APIRouter(
+    prefix="/properties",
+    tags=["properties"],
+    dependencies=[Depends(require_feature("propiedades"))],
+)
 
 
 @router.get(

@@ -12,6 +12,8 @@ scope they pair with so a caller can ask both questions at once.
 
 from __future__ import annotations
 
+import threading
+import time
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any
@@ -70,17 +72,40 @@ BY_KEY: dict[str, Feature] = {f.key: f for f in CATALOG}
 KEYS: tuple[str, ...] = tuple(f.key for f in CATALOG)
 
 
+#: `require_feature` sits on most routers, so an uncached resolve would add a
+#: query to EVERY request -- the same mistake as the per-request profile write
+#: the last performance pass had to undo. Feature state changes by hand, from one
+#: dev-admin screen, so a short TTL is invisible to the person flipping it and
+#: removes the query from the hot path. `set_state` clears the entry anyway, so
+#: the only stale window is another process's cache.
+_CACHE_TTL_SECONDS = 30.0
+_cache: dict[str, tuple[float, dict[str, dict[str, Any]]]] = {}
+_cache_lock = threading.Lock()
+
+
+def reset_cache() -> None:
+    """Drop every cached tenant. Used by tests and after a write."""
+    with _cache_lock:
+        _cache.clear()
+
+
 def _client():
     return get_supabase_client()
 
 
 def resolve_states(tenant_id: UUID | str) -> dict[str, dict[str, Any]]:
-    """Every key's effective state for one tenant.
+    """Every key's effective state for one tenant, cached for a few seconds.
 
     Precedence: the tenant's own row, then the global default row, then the
     catalog default. A key with no row anywhere is `on` -- a feature nobody has
     ever touched should behave exactly as it did before this table existed.
     """
+    key = str(tenant_id)
+    now = time.monotonic()
+    with _cache_lock:
+        hit = _cache.get(key)
+        if hit and now - hit[0] < _CACHE_TTL_SECONDS:
+            return hit[1]
     resolved: dict[str, dict[str, Any]] = {f.key: {"state": f.default_state.value, "note": None} for f in CATALOG}
 
     rows = (
@@ -95,10 +120,13 @@ def resolve_states(tenant_id: UUID | str) -> dict[str, dict[str, Any]]:
 
     # Globals first so a tenant row lands on top of one.
     for row in sorted(rows, key=lambda r: r.get("tenant_id") is not None):
-        key = row["key"]
-        if key not in resolved:
+        row_key = row["key"]
+        if row_key not in resolved:
             continue  # a key retired from the catalog; the row is inert
-        resolved[key] = {"state": row["state"], "note": row.get("note")}
+        resolved[row_key] = {"state": row["state"], "note": row.get("note")}
+
+    with _cache_lock:
+        _cache[key] = (now, resolved)
     return resolved
 
 
@@ -129,6 +157,9 @@ def set_state(
     existing = _client().table(TABLE).select("id").eq("key", key)
     existing = existing.is_("tenant_id", "null") if tenant_id is None else existing.eq("tenant_id", str(tenant_id))
     found = existing.limit(1).execute().data
+    # The write must be visible to the next request from this process, not in
+    # thirty seconds -- the dev admin flipping a switch reloads immediately.
+    reset_cache()
     if found:
         # Not `upsert(on_conflict=...)`: the uniqueness lives in a functional
         # index over COALESCE(tenant_id, sentinel), and PostgREST can only name

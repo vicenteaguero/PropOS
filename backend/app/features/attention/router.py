@@ -4,11 +4,15 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 
-from app.core.dependencies import get_tenant_id
+from app.core.dependencies import get_tenant_id, require_feature
 from app.features.attention.schemas import AttentionFeed, AttentionKind
 from app.features.attention.service import build_feed
 
-router = APIRouter(prefix="/attention", tags=["attention"])
+router = APIRouter(
+    prefix="/attention",
+    tags=["attention"],
+    dependencies=[Depends(require_feature("conversaciones"))],
+)
 
 
 @router.get("", response_model=AttentionFeed)
