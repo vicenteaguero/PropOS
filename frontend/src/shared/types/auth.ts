@@ -12,6 +12,12 @@ export interface UserProfile {
   adminScope: string[];
   isDevAdmin: boolean;
   view: UserView;
+  /**
+   * Set when an admin created the account with a temporary password. Every
+   * protected route sends the user to the change-password screen until they
+   * rotate it -- a handed-over password nobody changes is a shared password.
+   */
+  mustChangePassword: boolean;
 }
 
 export interface TenantMembership {

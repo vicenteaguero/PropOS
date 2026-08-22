@@ -38,6 +38,13 @@ export function ProtectedRoute({
     return <Navigate to="/login" replace />;
   }
 
+  // A temporary password handed over in person is a shared password until it is
+  // rotated. Every protected route funnels through here, so this one check is
+  // the whole enforcement -- there is no route that skips it.
+  if (user?.mustChangePassword) {
+    return <Navigate to="/auth/cambiar-clave" replace />;
+  }
+
   if (requiredRole && user?.role !== requiredRole) {
     return <Forbidden />;
   }

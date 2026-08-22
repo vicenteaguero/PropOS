@@ -9,9 +9,26 @@ import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@shared/components/loading-spinner/loading-spinner";
 import { toast } from "sonner";
 import { usePageTitle } from "@app/page-meta";
+import { apiRequest } from "@shared/api/http";
 
-export function AuthSetupPage() {
-  usePageTitle("Configurar cuenta");
+/**
+ * `setup` is the invite/recovery link landing: the session comes from the link
+ * itself, and failing to find one means the link is dead.
+ *
+ * `rotate` is the forced rotation an admin-created account lands on. The session
+ * is a normal signed-in session, there is no way back out of the screen, and on
+ * success it has to tell the server the demand is satisfied -- otherwise
+ * `ProtectedRoute` bounces the user straight back here.
+ */
+type SetupMode = "setup" | "rotate";
+
+interface AuthSetupPageProps {
+  mode?: SetupMode;
+}
+
+export function AuthSetupPage({ mode = "setup" }: AuthSetupPageProps) {
+  const isRotate = mode === "rotate";
+  usePageTitle(isRotate ? "Cambiar contraseña" : "Configurar cuenta");
   const navigate = useNavigate();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -22,12 +39,16 @@ export function AuthSetupPage() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data, error }) => {
       if (error || !data.session) {
-        setError("Link inválido o expirado. Pedile a un admin que te reenvíe la invitación.");
+        setError(
+          isRotate
+            ? "Tu sesión expiró. Volvé a iniciar sesión para cambiar tu contraseña."
+            : "Link inválido o expirado. Pedile a un admin que te reenvíe la invitación.",
+        );
         return;
       }
       setIsReady(true);
     });
-  }, []);
+  }, [isRotate]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -50,12 +71,37 @@ export function AuthSetupPage() {
       setError(updateError.message);
       return;
     }
+
+    if (isRotate) {
+      try {
+        await apiRequest("/v1/users/me/password-changed", { method: "POST" });
+      } catch {
+        // The password IS changed at this point -- Supabase already accepted it.
+        // Only the flag failed to clear, so the user lands back here and can
+        // set it again. Saying "no se pudo" would be a lie about the password.
+        setError("Contraseña actualizada, pero no pudimos confirmarlo. Intentá de nuevo.");
+        return;
+      }
+      toast.success("Contraseña actualizada.");
+      // Full reload rather than navigate: the profile in the auth context still
+      // carries must_change_password = true, and re-entering the app with the
+      // stale value would bounce straight back to this screen.
+      window.location.replace("/");
+      return;
+    }
+
     toast.success("Contraseña creada. Bienvenido a PropOS.");
     navigate("/", { replace: true });
   }
 
   return (
-    <AuthShell subtitle="Activa tu cuenta creando una contraseña">
+    <AuthShell
+      subtitle={
+        isRotate
+          ? "Elegí una contraseña propia para continuar"
+          : "Activa tu cuenta creando una contraseña"
+      }
+    >
       {!isReady && !error && (
         <div className="flex justify-center py-8">
           <LoadingSpinner size="md" />
@@ -101,7 +147,13 @@ export function AuthSetupPage() {
           {error && <AuthError message={error} />}
 
           <Button type="submit" variant="ink" size="block" disabled={isSubmitting} className="mt-1">
-            {isSubmitting ? <LoadingSpinner size="sm" /> : "Activar cuenta"}
+            {isSubmitting ? (
+              <LoadingSpinner size="sm" />
+            ) : isRotate ? (
+              "Cambiar contraseña"
+            ) : (
+              "Activar cuenta"
+            )}
           </Button>
         </form>
       )}

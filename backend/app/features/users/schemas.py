@@ -39,6 +39,7 @@ class UserBase(BaseModel):
     admin_scope: list[str] = []
     is_dev_admin: bool = False
     view: UserView = UserView.AGENT
+    must_change_password: bool = False
 
 
 class AvatarUpdate(BaseModel):
@@ -78,6 +79,9 @@ class UserCreate(BaseModel):
     is_active: bool = True
     memberships: list[TenantMembershipSpec] = []
     additional_emails: list[AdditionalEmail] = []
+    #: The password handed over is temporary; make the app demand a rotation on
+    #: the first sign-in instead of trusting that it happens.
+    must_change_password: bool = False
 
 
 class UserInvite(BaseModel):

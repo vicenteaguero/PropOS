@@ -251,6 +251,7 @@ class UserService:
                 "is_active": payload.is_active,
                 "email": email,
                 "rut": rut,
+                "must_change_password": bool(getattr(payload, "must_change_password", False)),
             }
         )
         try:
@@ -441,6 +442,19 @@ class UserService:
             client.auth.admin.update_user_by_id(str(user_id), {"password": new_password})
         except Exception as exc:
             raise HTTPException(status_code=400, detail=f"set_password failed: {exc}") from exc
+        return {"ok": True}
+
+    @staticmethod
+    async def clear_must_change_password(user_id: UUID) -> dict:
+        """Called by the user right after they rotate a temporary password.
+
+        The rotation itself happens client-side against Supabase Auth, which is
+        the only party that can verify the session. All this does is drop the
+        demand, so the worst a forged call achieves is dismissing a prompt for
+        the caller's own account.
+        """
+        client = get_supabase_client()
+        client.table(PROFILES_TABLE).update({"must_change_password": False}).eq("id", str(user_id)).execute()
         return {"ok": True}
 
     @staticmethod
