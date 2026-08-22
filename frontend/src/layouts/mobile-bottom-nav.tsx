@@ -156,7 +156,7 @@ export function MobileBottomNav() {
             the natural sweep of one thumb and the content keeps its edges.
             Translucent over a blur so the page scrolling underneath stays
             legible as motion instead of disappearing behind an opaque slab. */}
-        <div className="mx-auto flex w-full max-w-[19rem] items-center justify-around rounded-[var(--radius-4xl)] border border-border/70 bg-card/85 px-1.5 py-1.5 shadow-[0_12px_32px_-8px_rgb(0_0_0/0.5),0_2px_10px_rgb(0_0_0/0.28)] backdrop-blur-xl supports-[backdrop-filter]:bg-card/70">
+        <div className="mx-auto flex w-full max-w-[19rem] items-center justify-around rounded-[var(--radius-4xl)] border border-border/70 bg-card/90 px-1.5 py-1.5 shadow-[0_18px_44px_-10px_rgb(0_0_0/0.72),0_6px_16px_-4px_rgb(0_0_0/0.45),0_0_0_0.5px_rgb(0_0_0/0.35)] backdrop-blur-2xl backdrop-saturate-150 supports-[backdrop-filter]:bg-card/72">
           <NavTab to={base} end icon={Home} label="Inicio" />
           {allow("crm") && <NavTab to={`${base}/clientes`} icon={Users} label="Clientes" />}
           {canPropo && (
