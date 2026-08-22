@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.core.dependencies import get_current_user, get_tenant_id, require_feature, require_role, require_scope
 from app.features.opportunities.schemas import (
@@ -13,6 +13,7 @@ from app.features.opportunities.schemas import (
     StageHistoryResponse,
 )
 from app.features.opportunities.detail import build_detail
+from app.features.opportunities.overview import build_overview
 from app.features.opportunities.service import OpportunityService
 
 router = APIRouter(
@@ -55,6 +56,24 @@ async def get_detail(
     six stages. The reads run concurrently off the event loop.
     """
     return await build_detail(tenant_id, opp_id)
+
+
+@router.get("/{opp_id}/overview")
+async def get_opportunity_overview(
+    opp_id: UUID,
+    tenant_id: UUID = Depends(get_tenant_id),
+) -> dict:
+    """Everything hanging off a deal, in one round trip.
+
+    Separate from `/detail`, which returns the deal's own shape (participants,
+    properties, stage history, checklist). This adds what a deal is usually
+    opened to find out: what is booked next, what is still open, what is owed,
+    how much has been written down. Reusable surfaces render from this.
+    """
+    data = await build_overview(tenant_id, opp_id)
+    if not data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Opportunity not found")
+    return data
 
 
 @router.get("/{opp_id}/history", response_model=list[StageHistoryResponse])
