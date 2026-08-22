@@ -167,26 +167,31 @@ export function AdminHomePage() {
     },
     {
       to: `${base}/clientes?tab=personas&nuevo=1`,
-      label: "Persona",
+      label: "Nuevo contacto",
       icon: UserPlus,
       scope: "crm",
     },
     {
       to: `${base}/clientes?tab=propiedades&nuevo=1`,
-      label: "Propiedad",
+      label: "Agregar propiedad",
       icon: Building2,
     },
-    { to: `${base}/documentos?nuevo=1`, label: "Documento", icon: Upload, scope: "documents" },
+    {
+      to: `${base}/documentos?nuevo=1`,
+      label: "Subir documento",
+      icon: Upload,
+      scope: "documents",
+    },
     {
       to: "/admin/finanzas?nuevo=1",
-      label: "Gasto",
+      label: "Agregar gasto",
       icon: Receipt,
       scope: "finanzas",
       adminOnly: true,
     },
     {
       to: `${base}/agenda?tab=notas&nuevo=1`,
-      label: "Nota",
+      label: "Nueva nota",
       icon: StickyNote,
       scope: "productividad",
     },
@@ -526,16 +531,20 @@ export function AdminHomePage() {
           {/* auto-fill instead of a fixed column count: three tiles on a phone,
               as many as fit on a tablet or a wide window, with no breakpoint to
               keep in sync with the tile list. */}
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(84px,1fr))] gap-2">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(104px,1fr))] gap-2">
             {tiles.map((t) => (
               <button
                 key={t.to}
                 type="button"
                 onClick={() => navigate(t.to)}
-                className="flex flex-col items-center justify-center gap-2 rounded-xl bg-secondary px-2 py-3.5 transition hover:bg-muted active:scale-[0.97]"
+                // Fixed height, not padding-derived: the labels became verbs
+                // ("Agregar propiedad") and wrap to two lines on a 390px phone,
+                // which would otherwise leave the one-line tiles short and the
+                // grid ragged.
+                className="flex h-[5.25rem] flex-col items-center justify-center gap-1.5 rounded-xl bg-secondary px-1.5 transition hover:bg-muted active:scale-[0.97]"
               >
-                <t.icon className="size-[22px] text-foreground" strokeWidth={1.8} />
-                <span className="w-full truncate text-center text-[12px] font-medium text-foreground">
+                <t.icon className="size-[22px] shrink-0 text-foreground" strokeWidth={1.8} />
+                <span className="line-clamp-2 w-full text-center text-[11.5px] font-medium leading-tight text-foreground">
                   {t.label}
                 </span>
               </button>
