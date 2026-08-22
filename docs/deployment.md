@@ -75,6 +75,30 @@ excludes `/scripts/*` and then negates that one file — excluding `/scripts/`
 outright makes the negation impossible and the gate fails with
 `can't open file '/workspace/scripts/check_ci_status.py'`.
 
+### The trigger can be disabled, and a disabled trigger is silent
+
+`propos-api-deploy` was found **disabled** on 2026-08-22. Nothing warns about
+this: pushes to `main` simply produce no build, and the last successful deploy
+(2026-08-19) keeps serving. Every backend change merged in between was live in
+the database — migrations are applied by hand — and absent from the API.
+
+Check it with:
+
+```bash
+gcloud builds triggers describe propos-api-deploy --region=us-central1 \
+  --format='value(disabled)'
+```
+
+`gcloud builds triggers run <name> --branch=main` still works while disabled, so
+a manual build is the escape hatch. Re-enable with a PATCH on `disabled`:
+
+```bash
+curl -s -X PATCH \
+  "https://cloudbuild.googleapis.com/v1/projects/propos-489401/locations/us-central1/triggers/propos-api-deploy?updateMask=disabled" \
+  -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+  -H "Content-Type: application/json" -d '{"disabled":false}'
+```
+
 ### CI gates the backend deploy
 
 Cloud Build fires on the push, not on the CI result, so for a long time a commit
@@ -218,10 +242,32 @@ publishes to staging whatever the flag says. Production ships by pushing `main`.
 
 ## Cron jobs
 
-Two Cloud Scheduler jobs are specified in `docs/cron-jobs.md` and **neither
-exists yet**. The API is enabled and the endpoints are live, but they answer 503
-until `internal-jobs-secret` is provisioned. Creating the jobs is part of
-turning production on, tracked separately from this deployment wiring.
+Five Cloud Scheduler jobs exist in `us-central1`, all verified running:
+`propos-reminders`, `propos-refresh-analytics`, `propos-rollup-usage`,
+`propos-scale-up` and `propos-scale-down`. See `docs/cron-jobs.md` for cadence,
+the two authentication schemes, and the manual overrides.
+
+## Instance floor
+
+`--min-instances` is **immutable per revision**: passing it in the deploy pins
+the floor to whatever `cloudbuild.yaml` says and silently undoes any schedule.
+The deploy therefore does not pass it, and the floor lives as service-level
+state (`gcloud run services update --min`, which changes in place without
+cutting a revision).
+
+Two Cloud Scheduler jobs move it: up at 08:00, down at 00:00, America/Santiago.
+
+Cost at the deployed shape (2 vCPU, 1 GiB), using the us-central1 min-instance
+SKUs — `$0.0000025` per vCPU-second and per GiB-second, read from the Cloud
+Billing catalog (service `152E-C115-5142`), not from memory:
+
+```
+24/7      2 x 2,628,000s x 0.0000025 = $13.14  +  1 x ... = $6.57  ->  $19.71/mo
+08h-00h   16 of 24 hours                                          ->  $13.14/mo
+```
+
+The Uso tab (`/admin/finanzas?tab=uso`) prints the same estimate from the same
+constants, so the number is visible in the app rather than only in a console.
 
 ## Health
 

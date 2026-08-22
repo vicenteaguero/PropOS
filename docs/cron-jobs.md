@@ -12,24 +12,41 @@ the API — this document used to instruct exactly that.
 
 ## Endpoints
 
-| Job | Method + path | Cadence | Endpoint | Scheduler job |
-|-----|---------------|---------|----------|---------------|
-| Due reminders | `POST /api/v1/internal/jobs/run-due-reminders` | every 5 min | live | **not created** |
-| Refresh analytics MVs | `POST /api/v1/internal/jobs/refresh-analytics` | every 15 min | live | **not created** |
-| Email sync | `POST /api/v1/internal/jobs/email-sync` | every 5 min | live | **out of scope for v0.1.0** |
+| Job | Method + path | Cadence | Scheduler job |
+|-----|---------------|---------|---------------|
+| Due reminders | `POST /api/v1/internal/jobs/run-due-reminders` | `*/5 * * * *` UTC | `propos-reminders` |
+| Refresh analytics MVs | `POST /api/v1/internal/jobs/refresh-analytics` | `*/15 * * * *` UTC | `propos-refresh-analytics` |
+| Roll up usage | `POST /api/v1/internal/jobs/rollup-usage` | `30 0 * * *` America/Santiago | `propos-rollup-usage` |
+| Email sync | `POST /api/v1/internal/jobs/email-sync` | — | **not created** (Titan out of scope) |
 
-> **Production state (verified 2026-08-18): no Cloud Scheduler job exists** in
-> `us-central1` or `us-east1`. The wiring is done — `INTERNAL_JOBS_SECRET` is in
-> the `SECRETS` array of `scripts/sync_cloud_env.sh` and in the `--set-secrets`
-> list of `config/docker/cloudbuild.yaml` — but the secret has no value in `.env`
-> yet, so Secret Manager has nothing to mount and the endpoints answer `503`.
-> Consequence today: reminders never fire and the analytics materialized views
-> only refresh when an admin presses the manual button.
->
-> Email sync is a separate matter: the Titan mailbox is out of scope for
-> v0.1.0, and `scripts/sync_cloud_env.sh` pins `EMAIL_SYNC_ENABLED=false` in the
-> generated Cloud Run env. Do not create that job until the mailbox is back in
-> scope.
+The usage rollup recomputes the last two days of `usage_daily` from
+`usage_events` and purges raw events older than 90 days. It recomputes rather
+than accumulates, so a duplicate delivery produces the same rows.
+
+## Jobs that are not internal endpoints
+
+The instance floor is moved by two jobs that call the **Cloud Run Admin API**
+directly — no application code is involved, and they authenticate with an OAuth
+token for `propos-scaler@propos-489401.iam.gserviceaccount.com` rather than with
+`X-Internal-Key`.
+
+| Job | Cadence (America/Santiago) | Effect |
+|-----|---------------------------|--------|
+| `propos-scale-up` | `0 8 * * *` | `scaling.minInstanceCount = 1` |
+| `propos-scale-down` | `0 0 * * *` | `scaling.minInstanceCount = 0` |
+
+Two details that are easy to get wrong:
+
+- **Cloud Scheduler cannot send `PATCH`.** Its `--http-method` accepts only
+  delete/get/head/post/put. The jobs POST with `X-HTTP-Method-Override: PATCH`,
+  which the Google JSON API honours.
+- **The scaler needs `actAs` on the runtime service account.** `roles/run.admin`
+  on the service alone returns `PERMISSION_DENIED` (status code 7), because
+  updating a service implies acting as the identity it runs under. The scaler
+  also holds `roles/iam.serviceAccountUser` on
+  `694860045239-compute@developer.gserviceaccount.com`.
+
+Manual override: `make scale-up`, `make scale-down`, `make scale-status`.
 
 All internal endpoints return:
 - `503` if `INTERNAL_JOBS_SECRET` is unset (feature disabled)
