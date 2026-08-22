@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Suspense } from "react";
 import { Outlet } from "react-router-dom";
 import { Check, Loader2, LogOut, Moon, Sun } from "lucide-react";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
@@ -28,7 +29,7 @@ import { AgentOverlayProvider } from "@features/agent/components/agent-overlay-h
 import { InstallNudge } from "@shared/components/install-nudge/install-nudge";
 import { useUfDailyRefresh } from "@features/uf/hooks/use-uf";
 import { UfButton } from "@features/uf/components/uf-button";
-import { WorkspacePill } from "@shared/ui";
+import { PageSkeleton, WorkspacePill } from "@shared/ui";
 import { initials } from "@shared/utils/format";
 import { cn } from "@/lib/utils";
 
@@ -131,6 +132,28 @@ function TenantSwitchGate() {
   );
 }
 
+/**
+ * The lazy-route boundary, INSIDE the shell.
+ *
+ * It used to sit outside `<Routes>` in the router, so a navigation to a chunk
+ * that was not in memory suspended the entire tree: the sidebar, the header and
+ * the bottom nav all unmounted, a full-screen home-shaped skeleton took their
+ * place, and then the whole shell was rebuilt. That is why moving between
+ * sections felt like a page load in 2009 rather than a tab switch — the latency
+ * was real, but most of what it *felt* like was the chrome disappearing.
+ *
+ * Here the shell stays mounted and only the content area waits. `PageSkeleton`
+ * rather than `AppSkeleton` for the same reason: the placeholder should look
+ * like where you are going.
+ */
+function RouteSuspense() {
+  return (
+    <Suspense fallback={<PageSkeleton variant="list" className="px-[var(--page-x)] py-4" />}>
+      <Outlet />
+    </Suspense>
+  );
+}
+
 export function AppLayout() {
   const { user, signOut } = useAuth();
   const shellMode = useShellMode();
@@ -201,7 +224,7 @@ export function AppLayout() {
                 tabIndex={-1}
                 className="flex-1 outline-none pr-[var(--safe-right)] pb-[var(--app-nav-h,0px)] pl-[var(--safe-left)]"
               >
-                <Outlet />
+                <RouteSuspense />
               </main>
               <TenantSwitchGate />
               <MobileBottomNav />
@@ -281,7 +304,7 @@ export function AppLayout() {
             tabIndex={-1}
             className="min-h-0 flex-1 overflow-y-auto outline-none"
           >
-            <Outlet />
+            <RouteSuspense />
           </main>
           {/* FAB only where the header command bar is hidden (below md). */}
           <div className="md:hidden">
