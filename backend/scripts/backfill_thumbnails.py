@@ -11,6 +11,12 @@ Usage:
     poetry run python -m scripts.backfill_thumbnails --limit 50
     poetry run python -m scripts.backfill_thumbnails --mime image
     poetry run python -m scripts.backfill_thumbnails --mime pdf
+    poetry run python -m scripts.backfill_thumbnails --all-versions
+
+By default only each document's CURRENT version is rendered. Historical
+versions are reachable only from the version drawer, which does not show
+thumbnails, so rendering v1..v6 of every document costs storage and minutes
+for pixels nothing displays.
 
 Run interactively. Prints progress per row, summary at end. Uses the same
 Supabase admin client + storage helpers as the documents service so storage
@@ -36,35 +42,114 @@ VERSIONS_TABLE = "document_versions"
 DOCUMENTS_TABLE = "documents"
 
 
-def _iter_versions(mime_filter: str, limit: int | None) -> list[dict]:
+# PostgREST caps a response at 1000 rows and reports no error when it truncates,
+# so every unbounded read here is a silent partial result. Paging explicitly is
+# the only way a backfill can claim it covered the table.
+PAGE = 1000
+# `in_` is a URL filter, so a chunk that is too large is rejected by the proxy
+# long before PostgREST sees it.
+CHUNK = 200
+
+
+def _page_all(build_query, limit: int | None) -> list[dict]:
+    """Read a query to exhaustion, `PAGE` rows at a time."""
+    out: list[dict] = []
+    offset = 0
+    while True:
+        want = PAGE if limit is None else min(PAGE, limit - len(out))
+        if want <= 0:
+            break
+        rows = build_query().range(offset, offset + want - 1).execute().data or []
+        out.extend(rows)
+        if len(rows) < want:
+            break
+        offset += len(rows)
+    return out
+
+
+def _chunked(values: list, size: int = CHUNK):
+    for i in range(0, len(values), size):
+        yield values[i : i + size]
+
+
+def _mime_filtered(q, mime_filter: str):
+    if mime_filter == "pdf":
+        return q.eq("mime_type", "application/pdf")
+    if mime_filter == "image":
+        return q.like("mime_type", "image/%")
+    # mime == "all": no filter; we skip unknown mimes per row.
+    return q
+
+
+def _iter_versions(mime_filter: str, limit: int | None, current_only: bool) -> list[dict]:
     """Return rows {id, version_number, mime_type, raw_path, document_id, tenant_id} needing thumbnails."""
     client = get_supabase_client()
-    # Pull versions without thumbnail; resolve tenant via documents.
-    q = (
-        client.table(VERSIONS_TABLE)
-        .select("id, version_number, mime_type, raw_path, document_id, thumbnail_path")
-        .is_("thumbnail_path", "null")
-    )
-    if mime_filter == "pdf":
-        q = q.eq("mime_type", "application/pdf")
-    elif mime_filter == "image":
-        q = q.like("mime_type", "image/%")
-    # mime == "all": no filter; we'll skip unknown mimes per row.
-    if limit:
-        q = q.limit(limit)
-    versions = q.execute().data or []
+
+    if current_only:
+        docs = _page_all(
+            lambda: client.table(DOCUMENTS_TABLE)
+            .select("id, tenant_id, current_version_id")
+            .not_.is_("current_version_id", "null")
+            .is_("deleted_at", "null")
+            .order("id"),
+            None,
+        )
+        tenant_by_doc = {d["id"]: d["tenant_id"] for d in docs}
+        current_ids = [d["current_version_id"] for d in docs if d.get("current_version_id")]
+        versions: list[dict] = []
+        for chunk in _chunked(current_ids):
+            versions.extend(
+                _mime_filtered(
+                    client.table(VERSIONS_TABLE)
+                    .select("id, version_number, mime_type, raw_path, document_id, thumbnail_path")
+                    .is_("thumbnail_path", "null")
+                    .in_("id", chunk),
+                    mime_filter,
+                )
+                .execute()
+                .data
+                or []
+            )
+            if limit and len(versions) >= limit:
+                versions = versions[:limit]
+                break
+    else:
+        versions = _page_all(
+            lambda: _mime_filtered(
+                client.table(VERSIONS_TABLE)
+                .select("id, version_number, mime_type, raw_path, document_id, thumbnail_path")
+                .is_("thumbnail_path", "null"),
+                mime_filter,
+            ).order("id"),
+            limit,
+        )
+        doc_ids = list({v["document_id"] for v in versions})
+        tenant_by_doc = {}
+        for chunk in _chunked(doc_ids):
+            rows = (
+                client.table(DOCUMENTS_TABLE)
+                .select("id, tenant_id")
+                .in_("id", chunk)
+                .execute()
+                .data
+                or []
+            )
+            tenant_by_doc.update({d["id"]: d["tenant_id"] for d in rows})
+
     if not versions:
         return []
 
-    doc_ids = list({v["document_id"] for v in versions})
-    docs = client.table(DOCUMENTS_TABLE).select("id, tenant_id").in_("id", doc_ids).execute().data or []
-    tenant_by_doc = {d["id"]: d["tenant_id"] for d in docs}
     out: list[dict] = []
+    orphaned = 0
     for v in versions:
         tenant_id = tenant_by_doc.get(v["document_id"])
         if not tenant_id:
+            orphaned += 1
             continue
         out.append({**v, "tenant_id": tenant_id})
+    if orphaned:
+        # Loud, because this used to be how a truncated tenant lookup disappeared.
+        print(f"WARNING: {orphaned} version(s) skipped, no parent document row resolved")
     return out
 
 
@@ -146,14 +231,20 @@ def main(argv: list[str] | None = None) -> int:
         default="all",
         help="Filter by mime category (default: all)",
     )
+    parser.add_argument(
+        "--all-versions",
+        action="store_true",
+        help="Also render historical versions (default: current version only)",
+    )
     args = parser.parse_args(argv)
 
-    rows = _iter_versions(args.mime, args.limit)
+    rows = _iter_versions(args.mime, args.limit, current_only=not args.all_versions)
     if not rows:
         print("No versions need thumbnails for filter:", args.mime)
         return 0
 
-    print(f"Processing {len(rows)} version(s) (dry_run={args.dry_run}, mime={args.mime})")
+    scope = "all versions" if args.all_versions else "current versions"
+    print(f"Processing {len(rows)} version(s) (dry_run={args.dry_run}, mime={args.mime}, scope={scope})")
     ok, failed, skipped = _process(rows, dry_run=args.dry_run)
     print()
     print(f"Done. ok={ok} failed={failed} skipped={skipped} total={ok + failed + skipped}")
