@@ -14,6 +14,7 @@ import { apiRequest } from "@shared/api/http";
 import { contactsApi } from "@features/contacts/api/contacts-api";
 import { contactsKeys } from "@features/contacts/hooks/use-contacts";
 import { calendarApi } from "@features/calendar/api/calendar-api";
+import { propertiesApi } from "@features/admin-properties/api/properties-api";
 
 /**
  * Warms the queries the broker is about to need.
@@ -94,6 +95,13 @@ export function QueryWarmup() {
       void queryClient.prefetchQuery({
         queryKey: ["analytics", "pending-count"],
         queryFn: () => apiRequest("/v1/analytics/pending-count"),
+      });
+      // The home screen's property strip. Photos are the slowest thing on that
+      // page to arrive and the fastest to recognise, so they are worth having
+      // before the broker looks — in the background, never ahead of the paint.
+      void queryClient.prefetchQuery({
+        queryKey: ["properties", "list", { limit: 6 }],
+        queryFn: () => propertiesApi.list({ limit: 6 }),
       });
 
       // Warm the route chunks too. Prefetched data is wasted if the user then

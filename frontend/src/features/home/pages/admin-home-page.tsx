@@ -20,6 +20,7 @@ import { es } from "date-fns/locale";
 import { useAuth } from "@shared/hooks/use-auth";
 import { useAgentName } from "@core/branding/agent-branding";
 import { useContacts } from "@features/contacts/hooks/use-contacts";
+import { propertiesApi } from "@features/admin-properties/api/properties-api";
 import type { Contact } from "@features/contacts/types";
 import { useOpportunities } from "@features/opportunities/hooks/use-opportunities";
 import { useCalendarFeed } from "@features/calendar/hooks/use-calendar";
@@ -28,12 +29,20 @@ import { interactionsApi } from "@features/interactions/api/interactions-api";
 import { INTERACTION_KIND_LABELS } from "@features/interactions/types";
 import { apiRequest } from "@shared/api/http";
 import { useAgentOverlay } from "@features/agent/components/agent-overlay-host";
-import { ErrorState, PageSkeleton, SectionLabel, WhatsAppMark, type PillTone } from "@shared/ui";
+import {
+  ErrorState,
+  NavMark,
+  PageSkeleton,
+  SectionLabel,
+  WhatsAppMark,
+  type PillTone,
+} from "@shared/ui";
 import { cn } from "@/lib/utils";
 import { initials } from "@shared/utils/format";
 import { DataHealthCard } from "../components/data-health-card";
 import { AttentionCard } from "@features/attention/components/attention-card";
 import { timeAgo } from "@shared/utils/relative-time";
+import { getNavApp, navHref, NAV_APP_LABEL } from "@shared/lib/nav-app";
 
 interface Tile {
   to: string;
@@ -126,6 +135,10 @@ export function AdminHomePage() {
   // better. The home screen answers "what is next", not "what is today".
   const nextThree = upcoming.slice(0, 3);
   const [nextItem, ...restOfNext] = nextThree;
+  // The calendar feed carries the address now (see v_calendar_feed), so offering
+  // directions costs nothing extra here — no request per item, no detail fetch.
+  const navApp = getNavApp();
+  const nextHref = navHref(nextItem?.location, navApp);
 
   const pendingQuery = useQuery<{ pending_count: number }>({
     queryKey: ["analytics", "pending-count"],
@@ -235,42 +248,62 @@ export function AdminHomePage() {
    */
   const agendaWidget = (
     <div className="overflow-hidden rounded-xl bg-ink text-ink-foreground">
-      <button
-        type="button"
-        onClick={() => navigate(`${base}/agenda`)}
-        className={cn("flex w-full items-center gap-3 py-3 text-left", CARD_X)}
-      >
-        {nextItem ? (
-          <>
-            <span className="min-w-[52px] rounded-lg bg-background px-2 py-1.5 text-center text-foreground">
-              <span className="block text-[15px] font-bold leading-none tabular-nums">
-                {timeLabel(nextItem)}
+      {/* The row is a flex container so the directions button can sit beside
+          the main target rather than inside it — a link inside a button is
+          invalid and unreachable by keyboard. */}
+      <div className="flex items-center">
+        <button
+          type="button"
+          onClick={() => navigate(`${base}/agenda`)}
+          className={cn("flex min-w-0 flex-1 items-center gap-3 py-3 text-left", CARD_X)}
+        >
+          {nextItem ? (
+            <>
+              <span className="min-w-[52px] rounded-lg bg-background px-2 py-1.5 text-center text-foreground">
+                <span className="block text-[15px] font-bold leading-none tabular-nums">
+                  {timeLabel(nextItem)}
+                </span>
+                <span className="mt-0.5 block text-[10px] font-semibold text-muted-foreground">
+                  {TYPE_META[nextItem.item_type].label.toLowerCase()}
+                </span>
               </span>
-              <span className="mt-0.5 block text-[10px] font-semibold text-muted-foreground">
-                {TYPE_META[nextItem.item_type].label.toLowerCase()}
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[15px] font-semibold">
+                  {nextItem.title ?? "Sin título"}
+                </span>
+                <span className="mt-0.5 block text-[12.5px] opacity-60">
+                  {upcoming.length > 1 ? "Lo que viene hoy" : "Último de hoy"}
+                </span>
               </span>
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-[15px] font-semibold">
-                {nextItem.title ?? "Sin título"}
+            </>
+          ) : (
+            <>
+              <CalendarDays className="size-[18px] shrink-0 opacity-70" strokeWidth={1.9} />
+              <span className="min-w-0 flex-1 truncate text-[15px] font-semibold">
+                {todayItems.length > 0
+                  ? `Día cerrado · ${todayItems.length} ${todayItems.length === 1 ? "evento" : "eventos"}`
+                  : "Nada agendado hoy"}
               </span>
-              <span className="mt-0.5 block text-[12.5px] opacity-60">
-                {upcoming.length > 1 ? "Lo que viene hoy" : "Último de hoy"}
-              </span>
-            </span>
-          </>
-        ) : (
-          <>
-            <CalendarDays className="size-[18px] shrink-0 opacity-70" strokeWidth={1.9} />
-            <span className="min-w-0 flex-1 truncate text-[15px] font-semibold">
-              {todayItems.length > 0
-                ? `Día cerrado · ${todayItems.length} ${todayItems.length === 1 ? "evento" : "eventos"}`
-                : "Nada agendado hoy"}
-            </span>
-          </>
+            </>
+          )}
+          <ChevronRight className="size-[18px] shrink-0 opacity-50" />
+        </button>
+        {/* The one thing a broker does with the next appointment, from the
+            screen they are already on. Which app opens it is theirs to pick
+            (Configuración → Cómo llegar); the button only exists when the feed
+            actually knows an address. */}
+        {nextHref && (
+          <a
+            href={nextHref}
+            target="_blank"
+            rel="noreferrer"
+            aria-label={`Cómo llegar con ${NAV_APP_LABEL[navApp]}`}
+            className="mr-[var(--page-x)] flex size-11 shrink-0 items-center justify-center rounded-full bg-background/10 transition active:scale-90"
+          >
+            <NavMark app={navApp} size={26} />
+          </a>
         )}
-        <ChevronRight className="size-[18px] shrink-0 opacity-50" />
-      </button>
+      </div>
 
       {restOfNext.map((it) => (
         <button
@@ -439,6 +472,75 @@ export function AdminHomePage() {
    * and disappears entirely when it is, so it never becomes a permanent fixture
    * the eye learns to skip.
    */
+  /**
+   * Propiedades, as a strip of photos.
+   *
+   * The people widget beside it works because a broker recognises a name. They
+   * recognise a property by its FACE — the photo does in a glance what a title
+   * cannot, and "Departamento 2D/2B en venta en Ñuñoa" is four of those in a
+   * column that all read the same. Three covers, the address underneath, and
+   * the layout in the corner: enough to pick one out and open it.
+   *
+   * Warmed in the background by `core/query/warmup.tsx`, so tapping through is
+   * instant and the fetch never competes with the first paint.
+   */
+  const propertiesQ = useQuery({
+    queryKey: ["properties", "list", { limit: 6 }],
+    queryFn: () => propertiesApi.list({ limit: 6 }),
+    staleTime: 60_000,
+    enabled: allow("crm"),
+  });
+  const recentProperties = (propertiesQ.data ?? []).slice(0, 3);
+
+  const propertiesWidget = recentProperties.length > 0 && (
+    <section className="flex min-w-0 flex-col gap-2">
+      <SectionLabel
+        action="Ver todas"
+        onAction={() => navigate(`${base}/clientes?tab=propiedades`)}
+      >
+        Propiedades
+      </SectionLabel>
+      <div className="grid grid-cols-3 gap-2">
+        {recentProperties.map((p) => {
+          const layout = [p.bedrooms, p.bathrooms].every((n) => n == null)
+            ? null
+            : `${p.bedrooms ?? "–"}D/${p.bathrooms ?? "–"}B`;
+          return (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => navigate(`${base}/propiedades/${p.id}`)}
+              className="min-w-0 text-left transition active:scale-[0.98]"
+            >
+              <span className="relative block aspect-square w-full overflow-hidden rounded-xl bg-secondary">
+                {p.cover_url && (
+                  <img
+                    src={p.cover_url}
+                    // The 400px derivative is plenty at a third of a phone.
+                    srcSet={p.cover_thumb_url ? `${p.cover_thumb_url} 400w` : undefined}
+                    sizes="33vw"
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    className="size-full object-cover"
+                  />
+                )}
+                {layout && (
+                  <span className="absolute bottom-1 left-1 rounded-md bg-background/80 px-1.5 py-0.5 text-[10.5px] font-semibold tabular-nums text-foreground backdrop-blur-sm">
+                    {layout}
+                  </span>
+                )}
+              </span>
+              <span className="mt-1 block truncate text-[11.5px] text-muted-foreground">
+                {p.address ?? p.title}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+
   const pendingCard = pendingCount > 0 && (
     <button
       type="button"
@@ -571,6 +673,7 @@ export function AdminHomePage() {
           {/* Data problems belong where the day starts, not buried in settings:
               nobody goes looking for inconsistencies they do not know exist. */}
           {allow("crm") && <DataHealthCard />}
+          {allow("crm") && propertiesWidget}
           {allow("crm") &&
             (quickPeople.length > 0 || contactsQ.isPending || contactsQ.isError) &&
             peopleWidget}
