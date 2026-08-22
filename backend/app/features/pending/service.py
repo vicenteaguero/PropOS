@@ -7,6 +7,7 @@ from uuid import UUID
 from app.core.logging.logger import get_logger
 from app.core.supabase.client import get_supabase_client
 from app.features.agent.attribution import agent_attribution
+from app.features.pending.overrides import sanitize_overrides
 
 PENDING_TABLE = "pending_proposals"
 
@@ -114,8 +115,10 @@ class PendingService:
             )
 
         payload: dict[str, Any] = dict(proposal["resolved_payload"] or proposal["payload"])
-        if overrides:
-            payload.update(overrides)
+        # Whitelisted against the intent's own declaration. This was a bare
+        # `payload.update(overrides)`, so a hand-made request body wrote any
+        # column it liked into the row the executor inserts. See overrides.py.
+        payload.update(sanitize_overrides(kind, overrides))
         if disambiguation:
             for key, chosen_id in disambiguation.items():
                 payload[key] = str(chosen_id)

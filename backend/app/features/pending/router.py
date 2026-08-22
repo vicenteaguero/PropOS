@@ -11,6 +11,7 @@ from app.core.dependencies import (
     require_role,
     require_scope,
 )
+from app.features.pending.overrides import OverrideError
 from app.features.pending.schemas import (
     AcceptProposalRequest,
     BulkAcceptRequest,
@@ -66,6 +67,12 @@ async def accept_pending(
         )
     except NotImplementedError as exc:
         raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail=str(exc)) from exc
+    # Before the ValueError clause: OverrideError subclasses it, and a bad
+    # correction is the caller's mistake (422), not a conflicting state (409).
+    except OverrideError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        ) from exc
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
