@@ -90,13 +90,20 @@ gcloud builds triggers describe propos-api-deploy --region=us-central1 \
 ```
 
 `gcloud builds triggers run <name> --branch=main` still works while disabled, so
-a manual build is the escape hatch. Re-enable with a PATCH on `disabled`:
+a manual build is the escape hatch.
+
+Re-enabling has a trap. `PATCH ?updateMask=disabled` with `{"disabled":false}`
+returns 200 and a body showing `disabled: false` — and changes nothing, because
+`false` is the proto3 default for a bool and the server reads the field as
+unset. What works is sending the whole trigger back with the key **removed**:
 
 ```bash
-curl -s -X PATCH \
-  "https://cloudbuild.googleapis.com/v1/projects/propos-489401/locations/us-central1/triggers/propos-api-deploy?updateMask=disabled" \
-  -H "Authorization: Bearer $(gcloud auth print-access-token)" \
-  -H "Content-Type: application/json" -d '{"disabled":false}'
+U="https://cloudbuild.googleapis.com/v1/projects/propos-489401/locations/us-central1/triggers/propos-api-deploy"
+T=$(gcloud auth print-access-token)
+curl -s "$U" -H "Authorization: Bearer $T" \
+  | python3 -c "import json,sys; d=json.load(sys.stdin); [d.pop(k,None) for k in ('disabled','createTime','resourceName')]; print(json.dumps(d))" \
+  | curl -s -X PATCH "$U" -H "Authorization: Bearer $T" -H "Content-Type: application/json" -d @- > /dev/null
+gcloud builds triggers describe propos-api-deploy --region=us-central1 --format='value(disabled)'  # empty = enabled
 ```
 
 ### CI gates the backend deploy
