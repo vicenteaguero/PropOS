@@ -4,6 +4,17 @@ Multi-tenant real estate operations platform. PWA-first, Spanish UI, dark theme 
 
 > ⚠️ **This repo is PUBLIC** (`github.com/vicenteaguero/PropOS`) while the deployment is live. Never commit `.env`, service-role keys, mailbox credentials, customer data, or security findings that are still unpatched. Gitignored on purpose: `docs/audits/*`, `docs/research/`, `docs/internal*/`, `docs/versions/*.pdf`, `notebooks/`, `backend/notebooks/`, `data/`, `.mcp.json`.
 
+**First real users**: 2026-08-23 — Jaime and Ana on their phones, in the
+`ANAIDA` tenant, which was emptied of test data (`make query` shows zero rows
+outside the catalogs). Accounts are created by
+`backend/scripts/seed_anaida_users.py` with a temporary password and
+`profiles.must_change_password = true`, which `ProtectedRoute` enforces before
+any route renders. Self-signup is **off** (`disable_signup`), the auth email
+rate limit is 30/h (was 2) and the password floor is 8. The mailboxes on
+`anaida.cl` do not exist yet — the domain is verified in Resend for *sending*
+only — so a forgotten password is reset by an admin, not by email, until a
+mail provider is bought.
+
 **Current state**: the R3 audit (2026-08-16) and its full remediation (2026-08-18) are done — 123 of 124 findings closed and re-verified against the live system, plus three defects the audit had missed. Production is on: 13 secrets mounted, two Cloud Scheduler jobs running, outbound email verified, free-form analytics returning rows. See `docs/audits/v0.1.0-r3/R3-CLOSURE.md` for what changed and `docs/versions/v0.1.0.md` for per-feature status. Re-run the verification any time with `cd backend && poetry run python -m scripts.audit_r3_verify`.
 
 Two things are deliberately still off: **Titan/IMAP email-sync** (owner's call — delicate production mailbox, `EMAIL_SYNC_ENABLED=false`, no credentials provisioned) and **WhatsApp inbound**, which needs the webhook URL pasted into the Kapso dashboard — there is no API for it.
@@ -123,7 +134,17 @@ make query-write SQL="..." # mutations
 make seed-demo             # large `PropOS Demo` tenant (WIPE=1 to rebuild)
 make seed-demo-wipe        # remove it again
 make migrate               # supabase db push via percent-encoded pooler URL
+make scale-up / scale-down / scale-status   # Cloud Run instance floor
 ```
+
+**Emptying a tenant.** `poetry run python -m scripts.reset_tenant_data <uuid>`
+prints what it would delete; `CONFIRM=1` performs it. It walks every base table
+carrying `tenant_id`, retrying the ones a foreign key blocks until a pass makes
+no progress, and sweeps the tenant's objects out of the `media` and `documents`
+buckets. It protects identity and the configurable catalogs (templates,
+checklists, pipelines, tags, internal areas, feature states) and keeps
+`audit_log` unless `--with-audit` is passed — the ledger is what
+`docs/disaster-recovery.md` replays.
 
 **Demo data.** `make seed-demo` builds the `PropOS Demo` tenant
 (`dededede-0000-4000-8000-000000000001`) — ~250 personas, 40 propiedades con fotos reales en
@@ -226,6 +247,45 @@ Design rules that came out of the same pass: no page subtitles and no explanator
 (`PageHeader` has no `description` slot on purpose), `--radius` is 8px with every radius going
 through a token, and the page gutter is `--page-x` on the container — never `px-5` repeated per
 section.
+
+## Feature states (the kill switch)
+
+Two independent gates decide whether a surface appears, and they answer
+different questions:
+
+| Gate | Where | Question | Storage |
+|---|---|---|---|
+| `admin_scope` | `require_scope` · `filterByScope` | may THIS PERSON? | `tenant_memberships.admin_scope` (empty = all) |
+| feature state | `require_feature` · `filterByFeature` | is this READY here? | `feature_states`, per tenant |
+
+Four states: `on` · `wip` (usable, labelled "En desarrollo") · `locked` (drawn
+greyed, tap explains why, API 423) · `hidden` (absent, API 423). A row with
+`tenant_id IS NULL` is the global default; a tenant row overrides it; no row
+means `on`.
+
+Catalog lives in `backend/app/core/features.py` and is mirrored in
+`frontend/src/shared/feature/catalog.ts` — `catalog.test.ts` reads the Python
+file and fails if they drift. Adding a key = one entry each side, then hang
+`requiredFeature` / `feature:` on the route, nav item or tab.
+
+Dev-admin switchboard: `/admin/settings/funcionalidades`. Built for a phone —
+picking a state is the write, no save button.
+
+## Usage telemetry
+
+`usage_events` is written by the CLIENT (`core/telemetry/usage.ts`), buffered and
+flushed every 20 s and on `visibilitychange` with `fetch(keepalive)` — not
+`sendBeacon`, which cannot set headers and would put the access token in a query
+string. Page-view keys are canonicalised (`/admin/personas/:id`), so no customer
+id enters a telemetry key.
+
+`propos-rollup-usage` (00:30 Santiago) calls `rollup_usage_daily()`, which
+recomputes the last two days of `usage_daily` and purges events older than 90
+days. `active_minutes` counts distinct one-minute buckets — attention, not
+session length.
+
+Read it at `/admin/finanzas?tab=uso` (dev admin): minutes per person, top
+screens, named actions, and the Cloud Run instance-floor cost.
 
 ## Disaster recovery
 
