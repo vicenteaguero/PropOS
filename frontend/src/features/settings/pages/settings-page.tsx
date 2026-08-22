@@ -11,6 +11,7 @@ import {
   Shield,
   ShieldCheck,
   Sparkles,
+  MapPin,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -38,9 +39,15 @@ import { AvatarUploader } from "../components/avatar-uploader";
 import { NotificationsCard } from "../components/notifications-card";
 import { usePageTitle } from "@app/page-meta";
 import { prefetchRoute } from "@shared/lib/route-chunks";
+import { getNavApp, setNavApp as setNavAppPref, type NavApp } from "@shared/lib/nav-app";
 import { useAuth } from "@shared/hooks/use-auth";
 import { useAgentName } from "@core/branding/agent-branding";
 import { buildSettingsShortcuts, filterByDev, filterByScope } from "@layouts/nav-items";
+
+const NAV_APPS = [
+  { id: "maps", label: "Maps" },
+  { id: "waze", label: "Waze" },
+];
 
 const PAPER_OPTIONS = [
   { value: "A4", label: "A4", detail: "210×297 mm" },
@@ -221,6 +228,7 @@ export function SettingsPage() {
   // together. It shipped hard-coded at 0%, which is why the palette machinery
   // existed but the app looked grey whatever brand colour was picked.
   const [brandTint, setBrandTint] = useState(0);
+  const [navApp, setNavApp] = useState<NavApp>(getNavApp);
 
   useEffect(() => {
     if (tenantQ.data) {
@@ -454,6 +462,31 @@ export function SettingsPage() {
       key: "notificaciones",
       title: "Notificaciones",
       body: <NotificationsCard />,
+    },
+    {
+      key: "navegacion",
+      title: "Cómo llegar",
+      body: (
+        // Per broker, in localStorage — it is a property of the phone in their
+        // hand, and two people in the same office will not agree.
+        <SettingLine
+          icon={MapPin}
+          title="App de navegación"
+          sub="La que se abre desde una visita o una propiedad."
+          right={
+            <Segmented
+              items={NAV_APPS}
+              value={navApp}
+              onChange={(id) => {
+                setNavAppPref(id as NavApp);
+                setNavApp(id as NavApp);
+              }}
+              variant="pill"
+              gutter={false}
+            />
+          }
+        />
+      ),
     },
     {
       key: "documentos",
