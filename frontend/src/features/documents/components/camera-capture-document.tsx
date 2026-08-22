@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   Ban,
   Camera,
@@ -928,10 +929,25 @@ export function CameraCaptureDocument({
   if (!open) return null;
 
   // -------------------- CAPTURE MODE --------------------
+  //
+  // Portalled to <body> and z-[60].
+  //
+  // Both halves matter. This component is rendered by `NewDocumentActions`,
+  // which `ListShell` portals into the top bar — and the top bar is
+  // `sticky z-40`, which opens a stacking context. A `position: fixed` child
+  // cannot escape one, so the scanner was pinned below the z-50 bottom nav no
+  // matter what z-index it asked for: that is the half-drawn viewfinder with
+  // the Documentos tab bar showing through it. Portalling to <body> gets it out
+  // of that context; z-[60] then puts it over the nav.
+  //
+  // It deliberately does NOT call `useImmersive`. Hiding the shell re-renders
+  // the top bar, which recreates the very portal host this component's owner
+  // lives in — remounting `useFastAdd` and resetting `cameraOpen` to false, so
+  // the scanner closed itself a few frames after opening.
   if (mode === "capture") {
     const idHint = shots.length === 0 ? "Frente" : shots.length === 1 ? "Reverso" : "Listo";
-    return (
-      <div className="fixed inset-0 z-50 flex flex-col bg-background text-foreground">
+    return createPortal(
+      <div className="fixed inset-0 z-[60] flex flex-col bg-background text-foreground">
         <div className="flex items-center justify-between border-b border-border/40 bg-card/40 px-4 py-3">
           <div className="text-sm font-medium">Cámara · {shots.length} pág.</div>
           <Button variant="ghost" size="icon" onClick={closeWithGuard}>
@@ -1084,7 +1100,8 @@ export function CameraCaptureDocument({
             Continuar ({shots.length})
           </Button>
         </div>
-      </div>
+      </div>,
+      document.body,
     );
   }
 
@@ -1095,8 +1112,8 @@ export function CameraCaptureDocument({
     saving: "Guardando…",
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-background text-foreground md:flex-row">
+  return createPortal(
+    <div className="fixed inset-0 z-[60] flex flex-col bg-background text-foreground md:flex-row">
       {/* Header (mobile) */}
       <div className="flex items-center justify-between border-b border-border/40 bg-card/40 px-4 py-3 md:hidden">
         <div className="text-sm font-medium">Editar · {shots.length} pág.</div>
@@ -1459,7 +1476,8 @@ export function CameraCaptureDocument({
           onOpenChange(false);
         }}
       />
-    </div>
+    </div>,
+    document.body,
   );
 }
 

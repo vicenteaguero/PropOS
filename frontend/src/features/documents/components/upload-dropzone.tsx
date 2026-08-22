@@ -48,20 +48,22 @@ export function UploadDropzone({ onFile, disabled, compact }: Props) {
           setHover(false);
           handle(e.dataTransfer.files?.[0]);
         }}
-        className={`group flex aspect-[5/4] flex-col items-center justify-center gap-2 rounded-xl border p-5 text-center transition ${
+        className={`group flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left transition ${
           hover
             ? "border-primary bg-primary/5"
             : "border-dashed border-border bg-card hover:border-primary/60 hover:bg-card/70"
         }`}
       >
         <span
-          className={`grid size-12 place-items-center rounded-full bg-primary/15 text-primary transition group-hover:bg-primary/25 ${hover ? "scale-110" : ""}`}
+          className={`grid size-10 shrink-0 place-items-center rounded-full bg-primary/15 text-primary transition group-hover:bg-primary/25 ${hover ? "scale-110" : ""}`}
         >
-          <Upload className="size-6" strokeWidth={1.6} />
+          <Upload className="size-5" strokeWidth={1.7} />
         </span>
-        <span className="text-sm font-semibold text-foreground">Subir archivo</span>
-        <span className="text-[11px] leading-tight text-muted-foreground">
-          Arrastra o selecciona
+        <span className="min-w-0 flex-1">
+          <span className="block text-[15px] font-semibold text-foreground">Subir archivo</span>
+          <span className="block text-[12px] leading-tight text-muted-foreground">
+            Arrastra o selecciona
+          </span>
         </span>
         <input
           aria-label="Seleccionar archivo"

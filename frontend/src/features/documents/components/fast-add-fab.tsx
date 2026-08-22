@@ -302,31 +302,37 @@ function FastAddDialogBody(state: ReturnType<typeof useFastAdd>) {
         desktopClassName="max-w-lg"
       >
         {!pendingFile && (
-          <div className="grid gap-3 sm:grid-cols-2">
+          // Two rows, not two `aspect-[5/4]` tiles. Those tiles were square-ish
+          // cards roughly 150px tall each, so two choices ate most of the sheet
+          // and sat flush against the title with no breathing room. A choice
+          // between two things does not need half a screen.
+          <div className="mt-3 space-y-2">
             <button
               type="button"
               onClick={() => {
                 setOpen(false);
                 setCameraOpen(true);
               }}
-              className="group flex aspect-[5/4] flex-col items-center justify-center gap-2 rounded-xl border border-border bg-card p-5 text-center transition hover:border-primary/60 hover:bg-card/70"
+              className="group flex w-full items-center gap-3 rounded-xl border border-border bg-card px-3 py-3 text-left transition hover:border-primary/60 hover:bg-card/70"
             >
-              <span className="grid size-12 place-items-center rounded-full bg-primary/15 text-primary transition group-hover:bg-primary/25">
-                <Camera className="size-6" strokeWidth={1.6} />
+              <span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary/15 text-primary transition group-hover:bg-primary/25">
+                <Camera className="size-5" strokeWidth={1.7} />
               </span>
-              <span className="text-sm font-semibold text-foreground">Escanear</span>
-              <span className="text-[11px] leading-tight text-muted-foreground">
-                Cámara · ID · varias páginas
+              <span className="min-w-0 flex-1">
+                <span className="block text-[15px] font-semibold text-foreground">Escanear</span>
+                <span className="block text-[12px] leading-tight text-muted-foreground">
+                  Cámara · ID · varias páginas
+                </span>
               </span>
             </button>
             <Suspense
               fallback={
-                <div className="aspect-[5/4] animate-pulse rounded-xl border border-dashed border-border/60 bg-card/30" />
+                <div className="h-[68px] animate-pulse rounded-xl border border-dashed border-border/60 bg-card/30" />
               }
             >
               <UploadDropzone onFile={handleSelectFile} compact />
             </Suspense>
-            <p className="col-span-full text-center text-[11px] text-muted-foreground">
+            <p className="pt-1 text-center text-[11px] text-muted-foreground">
               <Upload className="-mt-0.5 mr-1 inline-block size-3" /> PDF · DOCX · JPG · PNG · WebP
               · HEIC — hasta 50 MB
             </p>
