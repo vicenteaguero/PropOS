@@ -128,12 +128,29 @@ export interface AnonymousUpload {
   created_at: string;
 }
 
+/**
+ * A property as the pickers and lists read it.
+ *
+ * "Lite" is about what callers USE, not about what arrives: this hits the same
+ * `GET /v1/properties` as the full `Property`, which returns every column. The
+ * fields below were the ones anybody had needed so far, so anything else looked
+ * absent to TypeScript while being on the wire all along — the deal board could
+ * not group by comuna, and the home widget could not show a cover, for a value
+ * that was already in the response.
+ */
 export interface PropertyLite {
   id: string;
   title: string;
   address: string | null;
   status: string;
   is_draft: boolean;
+  comuna?: string | null;
+  /** Signed ~800px derivative of the first photo; null when there are none. */
+  cover_url?: string | null;
+  /** 400px derivative of the same cover, for a grid's srcSet. */
+  cover_thumb_url?: string | null;
+  bedrooms?: number | null;
+  bathrooms?: number | null;
 }
 
 export interface ContactLite {

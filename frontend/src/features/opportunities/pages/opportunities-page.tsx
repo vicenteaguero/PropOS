@@ -63,6 +63,18 @@ export function OpportunitiesPage() {
   const propertyFor = (propertyId: string | null) =>
     propertyId ? (propertyMap.get(propertyId) ?? null) : null;
 
+  // `properties.comuna` has existed since the property-truth migration and
+  // nothing read it. The list is already in cache on this screen, so grouping
+  // the board by neighbourhood costs one map.
+  const comunaMap = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const p of properties.data ?? []) if (p.comuna) m.set(p.id, p.comuna);
+    return m;
+  }, [properties.data]);
+
+  const comunaFor = (propertyId: string | null) =>
+    propertyId ? (comunaMap.get(propertyId) ?? null) : null;
+
   // Filtering the board rather than a list: with 100+ open deals, finding one
   // by eye means scanning six columns. The lanes stay, they just get shorter.
   const shown = useMemo(() => {
@@ -163,6 +175,7 @@ export function OpportunitiesPage() {
               opportunities={shown}
               nameFor={nameFor}
               propertyFor={propertyFor}
+              comunaFor={comunaFor}
               onMove={move}
               onWon={won}
               onLost={lost}
