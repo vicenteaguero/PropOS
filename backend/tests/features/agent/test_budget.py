@@ -15,8 +15,16 @@ from app.features.agent.budget import BudgetExceededError, check_daily_budget, r
 TENANT = uuid4()
 
 
+#: The cap these tests assert against. Pinned rather than inherited: the suite
+#: was reading whatever `AGENT_DAILY_BUDGET_USD` happened to be in the
+#: developer's `.env`, so raising the real budget turned five passing tests red
+#: without a line of production code changing.
+TEST_BUDGET_USD = 0.50
+
+
 @pytest.fixture(autouse=True)
-def _clean():
+def _clean(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(budget.settings, "agent_daily_budget_usd", TEST_BUDGET_USD)
     budget.reset_cache()
     yield
     budget.reset_cache()
@@ -50,7 +58,7 @@ def test_at_or_over_budget_raises(db):
     db.cents = 50.0  # exactly $0.50
     with pytest.raises(BudgetExceededError) as excinfo:
         check_daily_budget(TENANT)
-    assert excinfo.value.budget_usd == pytest.approx(0.50)
+    assert excinfo.value.budget_usd == pytest.approx(TEST_BUDGET_USD)
     assert excinfo.value.spent_usd == pytest.approx(0.50)
 
 
