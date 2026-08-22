@@ -16,14 +16,18 @@ const URGENCY_TEXT: Record<Urgency, string> = {
  * These read "Ahora · Hoy · Cuando puedas", which sounds like elapsed time and
  * therefore contradicted the row beneath it on sight: a portal lead from 19
  * hours ago sat under "Ahora" while a thread from six days ago sat under "Hoy".
- * Both placements are correct — urgency here tracks the deadline (WhatsApp's
+ * Both placements are correct — urgency here tracks the DEADLINE (WhatsApp's
  * 24h free-form window, a portal enquiry every other broker also received), not
- * age — but the words claimed otherwise. Ordinal words cannot contradict a
- * timestamp.
+ * age — but the words claimed otherwise.
+ *
+ * "Urgente" is a priority, not a clock, so nothing under it can contradict it.
+ * And to answer the question this naming keeps provoking: none of this is AI.
+ * `backend/app/features/attention/service.py` is five deterministic rules over
+ * timestamps, plus whatever a human has flagged for the next 48 h.
  */
 export const URGENCY_LABEL: Record<Urgency, string> = {
-  now: "Primero",
-  today: "Después",
+  now: "Urgente",
+  today: "Hoy",
   soon: "Cuando puedas",
 };
 
