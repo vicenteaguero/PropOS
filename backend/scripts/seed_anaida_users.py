@@ -104,17 +104,11 @@ def _assert_membership(client, user_id: str, spec: UserSpec) -> None:
     client.table("tenant_memberships").upsert(row, on_conflict="user_id,tenant_id").execute()
 
     others = (
-        client.table("tenant_memberships")
-        .select("tenant_id")
-        .eq("user_id", user_id)
-        .neq("tenant_id", ANAIDA)
-        .execute()
+        client.table("tenant_memberships").select("tenant_id").eq("user_id", user_id).neq("tenant_id", ANAIDA).execute()
     )
     for extra in others.data or []:
         print(f"  removing membership in {extra['tenant_id']}")
-        client.table("tenant_memberships").delete().eq("user_id", user_id).eq(
-            "tenant_id", extra["tenant_id"]
-        ).execute()
+        client.table("tenant_memberships").delete().eq("user_id", user_id).eq("tenant_id", extra["tenant_id"]).execute()
 
 
 def seed_user(client, spec: UserSpec) -> str | None:
@@ -193,12 +187,7 @@ def repoint_dev_admin(client) -> None:
     It was pointing at `PropOS Demo` because that seed ran last, so signing in
     landed on the demo brokerage's data.
     """
-    resp = (
-        client.table("profiles")
-        .update({"tenant_id": ANAIDA})
-        .ilike("email", "vicenteaguero@uc.cl")
-        .execute()
-    )
+    resp = client.table("profiles").update({"tenant_id": ANAIDA}).ilike("email", "vicenteaguero@uc.cl").execute()
     if resp.data:
         print("dev admin vicenteaguero@uc.cl active tenant -> ANAIDA")
 
