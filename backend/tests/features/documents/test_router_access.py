@@ -108,3 +108,52 @@ def test_public_share_routes_carry_no_auth_gate():
     for path, deps in found.items():
         names = {getattr(dep.dependency, "__qualname__", "").split(".")[0] for dep in deps}
         assert names <= {"rate_limit"}, path
+
+
+# --------------------------------------------------------------------------
+# Response-model completeness.
+#
+# A FastAPI response model silently drops any key it does not declare, so a
+# column added to the table and hydrated by the service still arrives as
+# undefined on the client with nothing failing anywhere. That is exactly how
+# `location` went missing from the calendar feed, so the columns the documents
+# list now sorts and groups by get pinned here.
+# --------------------------------------------------------------------------
+
+
+def test_document_response_carries_priority_and_last_opened() -> None:
+    from datetime import UTC, datetime
+    from uuid import uuid4
+
+    from app.features.documents.schemas import DocumentResponse
+
+    now = datetime.now(UTC)
+    dumped = DocumentResponse(
+        id=uuid4(),
+        tenant_id=uuid4(),
+        display_name="Mandato",
+        sort_order=0,
+        is_priority=True,
+        last_opened_at=now,
+        created_at=now,
+        updated_at=now,
+    ).model_dump()
+    assert dumped["is_priority"] is True
+    assert dumped["last_opened_at"] == now
+
+
+def test_assignment_response_carries_the_resolved_label() -> None:
+    from datetime import UTC, datetime
+    from uuid import uuid4
+
+    from app.features.documents.schemas import AssignmentResponse
+
+    dumped = AssignmentResponse(
+        id=uuid4(),
+        document_id=uuid4(),
+        target_kind="PROPERTY",
+        property_id=uuid4(),
+        label="Depto Macul 1234",
+        created_at=datetime.now(UTC),
+    ).model_dump()
+    assert dumped["label"] == "Depto Macul 1234"

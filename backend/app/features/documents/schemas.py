@@ -77,6 +77,10 @@ class AssignmentCreate(BaseModel):
 class AssignmentResponse(AssignmentCreate):
     id: UUID
     document_id: UUID
+    # Name of the linked property / contact / area, resolved server-side. The
+    # client used to join these against the entity list endpoints, which cap at
+    # 100 rows, so anything past the first hundred showed as "(desconocido)".
+    label: str | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -94,6 +98,7 @@ class DocumentUpdate(BaseModel):
     sort_order: int | None = None
     tag: str | None = None
     pin_offline: bool | None = None
+    is_priority: bool | None = None
 
 
 class DocumentResponse(DocumentBase):
@@ -102,6 +107,8 @@ class DocumentResponse(DocumentBase):
     current_version_id: UUID | None = None
     sort_order: int
     pin_offline: bool = False
+    is_priority: bool = False
+    last_opened_at: datetime | None = None
     created_by: UUID | None = None
     created_at: datetime
     updated_at: datetime

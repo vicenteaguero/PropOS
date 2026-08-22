@@ -24,7 +24,7 @@ from app.features.documents.validation import (
     kind_from_mime,
     validate_upload,
 )
-from datetime import UTC
+from datetime import UTC, datetime
 
 DOCUMENTS_TABLE = "documents"
 VERSIONS_TABLE = "document_versions"
@@ -233,6 +233,63 @@ def _mark_attempt(client, version_id: str, attempts: int) -> None:
         logger.warning("thumbnail attempt bump failed", version_id=version_id, error=str(exc))
 
 
+PROPERTIES_TABLE = "properties"
+CONTACTS_TABLE = "contacts"
+AREAS_TABLE = "internal_areas"
+# `in_` is a URL filter; a chunk much larger than this is rejected by the proxy.
+_LABEL_CHUNK = 200
+
+
+def _hydrate_assignment_labels(client, assignments: list[dict]) -> None:
+    """Attach a human label to each assignment, in place.
+
+    The frontend used to resolve these by fetching `/v1/properties` and
+    `/v1/contacts` and joining by id. Both endpoints default to `limit=100`, so
+    on a tenant with more contacts than that every assignment past the first
+    hundred rendered as "(desconocido)" and its documents fell into a bogus
+    group. Resolving by exact id here cannot truncate, and it saves the two
+    list requests.
+    """
+    if not assignments:
+        return
+    wanted: dict[str, set[str]] = {"property": set(), "contact": set(), "area": set()}
+    for a in assignments:
+        if a.get("property_id"):
+            wanted["property"].add(a["property_id"])
+        elif a.get("contact_id"):
+            wanted["contact"].add(a["contact_id"])
+        elif a.get("internal_area_id"):
+            wanted["area"].add(a["internal_area_id"])
+
+    def _fetch(table: str, ids: set[str], field: str) -> dict[str, str]:
+        out: dict[str, str] = {}
+        id_list = list(ids)
+        for i in range(0, len(id_list), _LABEL_CHUNK):
+            chunk = id_list[i : i + _LABEL_CHUNK]
+            try:
+                rows = client.table(table).select(f"id, {field}").in_("id", chunk).execute().data or []
+            except Exception as exc:  # noqa: BLE001 — a label is not worth a 500
+                logger.warning("assignment label lookup failed", table=table, error=str(exc))
+                continue
+            out.update({r["id"]: r.get(field) for r in rows if r.get(field)})
+        return out
+
+    labels = {
+        "property": _fetch(PROPERTIES_TABLE, wanted["property"], "title"),
+        "contact": _fetch(CONTACTS_TABLE, wanted["contact"], "full_name"),
+        "area": _fetch(AREAS_TABLE, wanted["area"], "name"),
+    }
+    for a in assignments:
+        if a.get("property_id"):
+            a["label"] = labels["property"].get(a["property_id"])
+        elif a.get("contact_id"):
+            a["label"] = labels["contact"].get(a["contact_id"])
+        elif a.get("internal_area_id"):
+            a["label"] = labels["area"].get(a["internal_area_id"])
+        else:
+            a["label"] = None
+
+
 class DocumentService:
     @staticmethod
     async def ensure_thumbnail(document_id: UUID, tenant_id: UUID) -> tuple[str | None, str]:
@@ -245,6 +302,26 @@ class DocumentService:
         request on the instance.
         """
         return await run_blocking(_render_current_thumbnail, str(document_id), str(tenant_id))
+
+    @staticmethod
+    async def mark_opened(document_id: UUID, tenant_id: UUID) -> None:
+        """Record that someone opened this document.
+
+        Deliberately not a PATCH of `updated_at`: "last touched by a human" and
+        "last modified" are different questions, and the list sorts on the first.
+        Best-effort — failing to stamp a read must never break the read.
+        """
+
+        def _stamp() -> None:
+            client = get_supabase_client()
+            client.table(DOCUMENTS_TABLE).update({"last_opened_at": datetime.now(UTC).isoformat()}).eq(
+                "id", str(document_id)
+            ).eq("tenant_id", str(tenant_id)).execute()
+
+        try:
+            await run_blocking(_stamp)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("last_opened stamp failed", document_id=str(document_id), error=str(exc))
 
     @staticmethod
     async def list_documents(
@@ -307,6 +384,7 @@ class DocumentService:
                 .execute()
                 .data
             )
+            _hydrate_assignment_labels(client, assigns)
             grouped: dict[str, list[dict]] = {}
             for a in assigns:
                 grouped.setdefault(a["document_id"], []).append(a)
@@ -358,6 +436,7 @@ class DocumentService:
                 except Exception:
                     logger.warning("thumbnail signed url failed", path=thumb)
                     v["thumbnail_url"] = None
+        _hydrate_assignment_labels(client, assignments)
         doc["versions"] = versions
         doc["assignments"] = assignments
         doc["current_version"] = next(
