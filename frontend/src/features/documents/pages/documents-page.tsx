@@ -12,6 +12,8 @@ import { DocumentsGrid } from "../components/documents-grid";
 import { DocumentsList } from "../components/documents-list";
 import { DocumentsGrouped } from "../components/documents-grouped";
 import { GroupByToggle, type GroupByMode } from "../components/group-by-toggle";
+import { SortControl } from "../components/sort-control";
+import { sortDocuments, type SortMode } from "../lib/document-sort";
 import { DocumentKindPill } from "../components/document-kind-pill";
 import { NewDocumentActions } from "../components/fast-add-fab";
 import { useDocuments } from "../hooks/use-documents";
@@ -23,6 +25,7 @@ import { formatDate } from "@shared/utils/format";
 
 const VIEW_MODE_KEY = "documents:view-mode";
 const GROUP_BY_KEY = "propos:documents-view";
+const SORT_KEY = "documents:sort";
 
 function loadViewMode(): ViewMode {
   // List, not grid. Contracts and mandates are text: as tiles they became a
@@ -40,6 +43,13 @@ function loadGroupBy(): GroupByMode {
   return "all";
 }
 
+function loadSort(): SortMode {
+  if (typeof window === "undefined") return "recent";
+  const raw = localStorage.getItem(SORT_KEY);
+  if (raw === "recent" || raw === "created" || raw === "name" || raw === "priority") return raw;
+  return "recent";
+}
+
 export function DocumentsPage() {
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
@@ -49,6 +59,7 @@ export function DocumentsPage() {
 
   const [viewMode, setViewMode] = useState<ViewMode>(loadViewMode);
   const [groupBy, setGroupBy] = useState<GroupByMode>(loadGroupBy);
+  const [sort, setSort] = useState<SortMode>(loadSort);
   // Desktop master-detail selection — drives the right-hand preview pane.
   // Unused on mobile, where tapping a card navigates straight to the detail page.
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -65,9 +76,14 @@ export function DocumentsPage() {
     q: q || undefined,
   });
 
+  // Sorting happens here rather than on the server: the whole tenant's
+  // documents are already in hand, and a `sort=` param would fragment the query
+  // cache into one entry per ordering of the same rows.
+  const documents = useMemo(() => (data ? sortDocuments(data, sort) : undefined), [data, sort]);
+
   const selectedDoc = useMemo(
-    () => data?.find((d) => d.id === selectedId) ?? null,
-    [data, selectedId],
+    () => documents?.find((d) => d.id === selectedId) ?? null,
+    [documents, selectedId],
   );
 
   const setViewModePersist = (mode: ViewMode) => {
@@ -78,6 +94,11 @@ export function DocumentsPage() {
   const setGroupByPersist = (mode: GroupByMode) => {
     setGroupBy(mode);
     localStorage.setItem(GROUP_BY_KEY, mode);
+  };
+
+  const setSortPersist = (mode: SortMode) => {
+    setSort(mode);
+    localStorage.setItem(SORT_KEY, mode);
   };
 
   // Mobile: tapping a card opens the full detail page (unchanged behavior).
@@ -130,11 +151,13 @@ export function DocumentsPage() {
   // States + the grid/list/grouped body, shared by mobile flow and desktop pane.
   const contentBody = (
     <>
+      {/* Same columns and aspect as the real grid: they disagreed, so the
+          layout jumped the moment the data landed. */}
       {isLoading && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
           {Array.from({ length: 12 }).map((_, i) => (
-            <div key={i} className="space-y-3">
-              <Skeleton className="aspect-[3/4] w-full rounded-xl" />
+            <div key={i} className="space-y-2">
+              <Skeleton className="aspect-[4/5] w-full rounded-xl" />
               <Skeleton className="h-4 w-3/4" />
               <Skeleton className="h-3 w-1/2" />
             </div>
@@ -144,7 +167,7 @@ export function DocumentsPage() {
 
       {error && <ErrorState error={error} onRetry={() => refetch()} />}
 
-      {!isLoading && !error && data && data.length === 0 && (
+      {!isLoading && !error && documents && documents.length === 0 && (
         <EmptyState
           title="Sin documentos"
           description="Toca «Escanear» para capturar con la cámara o «Subir» para agregar un archivo."
@@ -152,14 +175,19 @@ export function DocumentsPage() {
       )}
 
       {!isLoading &&
-        data &&
-        data.length > 0 &&
-        (viewMode === "list" ? (
-          <DocumentsList documents={data} onOpen={openDocument} />
-        ) : groupBy === "all" ? (
-          <DocumentsGrid documents={data} onOpen={openDocument} />
+        documents &&
+        documents.length > 0 &&
+        (groupBy !== "all" ? (
+          <DocumentsGrouped
+            documents={documents}
+            groupBy={groupBy}
+            onOpen={openDocument}
+            viewMode={viewMode}
+          />
+        ) : viewMode === "list" ? (
+          <DocumentsList documents={documents} onOpen={openDocument} />
         ) : (
-          <DocumentsGrouped documents={data} groupBy={groupBy} onOpen={openDocument} />
+          <DocumentsGrid documents={documents} onOpen={openDocument} />
         ))}
     </>
   );
@@ -184,8 +212,9 @@ export function DocumentsPage() {
           primaryAction={<NewDocumentActions compact />}
           filters={
             <div className="flex items-center gap-2">
+              <GroupByToggle value={groupBy} onChange={setGroupByPersist} />
               <div className="min-w-0 flex-1">
-                <GroupByToggle value={groupBy} onChange={setGroupByPersist} />
+                <SortControl value={sort} onChange={setSortPersist} />
               </div>
               <ViewModeToggle value={viewMode} onChange={setViewModePersist} />
             </div>
@@ -210,6 +239,7 @@ export function DocumentsPage() {
         <div className="flex flex-wrap items-center gap-2 border-b border-border px-6 py-3">
           <div className="min-w-[12rem] flex-1">{searchField}</div>
           <GroupByToggle value={groupBy} onChange={setGroupByPersist} />
+          <SortControl value={sort} onChange={setSortPersist} />
           <ViewModeToggle value={viewMode} onChange={setViewModePersist} />
           <NewDocumentActions />
         </div>
