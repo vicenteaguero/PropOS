@@ -1,4 +1,4 @@
-import type { Assignment, AssignmentTarget, DocumentItem } from "../types";
+import type { Assignment, AssignmentTarget, DocumentItem, ThumbnailState } from "../types";
 import { apiRequest } from "@shared/api/http";
 import { qs } from "@shared/lib/query-string";
 
@@ -14,6 +14,17 @@ export const documentsApi = {
     apiRequest<DocumentItem[]>(`/v1/documents${qs(params)}`),
 
   get: (id: string) => apiRequest<DocumentItem>(`/v1/documents/${id}`),
+
+  /**
+   * A fresh signed URL for the first-page preview, generating it if this
+   * document has never had one.
+   *
+   * Called imperatively from a broken <img>, never through `useQuery`: it must
+   * repair one tile without touching the list cache, and a grid where every
+   * thumbnail loads must not call it at all.
+   */
+  thumbnail: (id: string) =>
+    apiRequest<{ url: string | null; state: ThumbnailState }>(`/v1/documents/${id}/thumbnail`),
 
   create: (
     file: File,
