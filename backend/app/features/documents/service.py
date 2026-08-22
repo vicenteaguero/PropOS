@@ -13,7 +13,9 @@ from app.features.documents.hashing import sha256_hex
 from app.features.documents.metadata import extract_pdf_metadata, strip_pdf_metadata
 from app.features.documents.stubs.scan import scan_file
 from app.features.documents.thumbnails import (
+    DOCX_MIME,
     THUMBNAIL_MIME,
+    generate_docx_card,
     generate_first_page_png,
     generate_image_thumbnail,
     thumbnail_path as build_thumbnail_path,
@@ -66,6 +68,9 @@ def _maybe_generate_thumbnail(
             png = generate_first_page_png(pdf_bytes)
         elif mime and mime.startswith("image/"):
             png = generate_image_thumbnail(pdf_bytes, mime)
+        elif mime == DOCX_MIME:
+            # Not a render of page one — see `generate_docx_card`.
+            png = generate_docx_card(pdf_bytes)
         else:
             return None, THUMB_UNSUPPORTED
     except Exception as exc:  # noqa: BLE001 — best-effort, never block upload

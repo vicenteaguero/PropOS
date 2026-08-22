@@ -33,9 +33,11 @@ callers — thumbnails are best-effort UX, never block a successful upload.
 from __future__ import annotations
 
 import io
+import re
+import zipfile
 
 import pypdfium2 as pdfium
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 
 from app.core.logging.logger import get_logger
 
@@ -167,6 +169,162 @@ def generate_image_thumbnail(image_bytes: bytes, mime: str) -> bytes:
         raise ValueError(f"Could not decode image: {exc}") from exc
 
     return _quantize_to_png(pil_image)
+
+
+DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+
+# Enough to tell one mandate from another at tile size; more would not be legible.
+DOCX_PREVIEW_CHARS = 200
+_W_T = re.compile(rb"<w:t[^>]*>(.*?)</w:t>", re.DOTALL)
+_XML_TAG = re.compile(rb"<[^>]+>")
+# The three that actually appear in Chilean contract text.
+_ENTITIES = ((b"&amp;", b"&"), (b"&lt;", b"<"), (b"&gt;", b">"), (b"&quot;", b'"'))
+
+
+def extract_docx_text(docx_bytes: bytes, limit: int = DOCX_PREVIEW_CHARS) -> str:
+    """First `limit` characters of a .docx body, using only the stdlib.
+
+    A .docx is a zip whose `word/document.xml` holds the runs of text in `<w:t>`
+    elements. Pulling those out is a regex over one member, which costs a few
+    milliseconds; the alternative (python-docx) is a dependency, and the real
+    alternative (LibreOffice) is half a gigabyte in the API image.
+
+    Returns "" when the file is not a readable docx — the caller treats that as
+    "no preview" rather than an error.
+    """
+    try:
+        with zipfile.ZipFile(io.BytesIO(docx_bytes)) as zf:
+            xml = zf.read("word/document.xml")
+    except (zipfile.BadZipFile, KeyError, OSError):
+        return ""
+    parts: list[bytes] = []
+    total = 0
+    for match in _W_T.finditer(xml):
+        chunk = _XML_TAG.sub(b"", match.group(1))
+        for token, char in _ENTITIES:
+            chunk = chunk.replace(token, char)
+        if not chunk:
+            continue
+        parts.append(chunk)
+        total += len(chunk)
+        if total >= limit * 2:
+            break
+    text = b" ".join(parts).decode("utf-8", errors="replace")
+    text = " ".join(text.split())
+    return text[:limit]
+
+
+def _preview_font(size: int) -> ImageFont.ImageFont | ImageFont.FreeTypeFont:
+    """A font that exists both on a developer's Mac and in python:3.12-slim.
+
+    The slim image ships no system fonts at all, so the bundled bitmap font is
+    the only guaranteed one; Pillow can scale it since 10.1.
+    """
+    for path in (
+        "/System/Library/Fonts/Supplemental/Arial.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    ):
+        try:
+            return ImageFont.truetype(path, size)
+        except OSError:
+            continue
+    try:
+        return ImageFont.load_default(size=size)
+    except TypeError:  # Pillow < 10.1
+        return ImageFont.load_default()
+
+
+def _wrap(draw: ImageDraw.ImageDraw, text: str, font, max_width: int) -> list[str]:
+    lines: list[str] = []
+    line = ""
+    for word in text.split(" "):
+        candidate = f"{line} {word}".strip()
+        if draw.textlength(candidate, font=font) <= max_width or not line:
+            line = candidate
+        else:
+            lines.append(line)
+            line = word
+    if line:
+        lines.append(line)
+    return lines
+
+
+def _split_heading(text: str, max_head: int = 52) -> tuple[str, str]:
+    """Split the extracted text into a title-ish opening and the rest.
+
+    Prefers a sentence break, then a run of capitals (contract headings are
+    shouted), and otherwise just takes the first words.
+    """
+    for stop in (". ", " — ", ": "):
+        idx = text.find(stop)
+        if 0 < idx <= max_head:
+            return text[:idx].strip(), text[idx + len(stop) :].strip()
+    words = text.split(" ")
+    head: list[str] = []
+    for word in words:
+        if head and len(" ".join(head + [word])) > max_head:
+            break
+        # A shouted heading ends where normal case begins.
+        if head and word[:1].isupper() and not word.isupper() and head[-1].isupper():
+            break
+        head.append(word)
+    if not head:
+        head = words[:1]
+    return " ".join(head), " ".join(words[len(head) :])
+
+
+def generate_docx_card(docx_bytes: bytes) -> bytes:
+    """A legible stand-in for a .docx first page.
+
+    THIS IS NOT THE DOCUMENT'S FIRST PAGE, and it is not trying to be. Rendering
+    a real one means a Word-compatible layout engine — LibreOffice — which is
+    450-600MB in the image and a 3-8s warm-up paid by whichever user happens to
+    hit a cold instance. So instead: the opening line or two of the body, drawn
+    on a neutral card.
+
+    A document whose page one is a letterhead image will show the text
+    underneath it, and the layout is ours rather than Word's. That is an
+    acceptable trade for the job this actually does, which is letting a broker
+    tell which mandate a tile is without opening it.
+    """
+    width = int(TARGET_HEIGHT_PX * 0.72)  # roughly A4 proportions at tile size
+    card = Image.new("RGB", (width, TARGET_HEIGHT_PX), (250, 250, 250))
+    draw = ImageDraw.Draw(card)
+
+    accent = (74, 96, 130)
+    draw.rectangle([0, 0, width, 6], fill=accent)
+
+    pad = 18
+    draw.text((pad, 20), "DOCX", font=_preview_font(15), fill=accent)
+
+    text = extract_docx_text(docx_bytes)
+    if text:
+        # The opening words carry almost all of the identifying information
+        # ("CONTRATO DE ARRENDAMIENTO"), and at tile size they are the only part
+        # still resolvable, so they get their own weight and size.
+        head, body = _split_heading(text)
+        y = 50
+        head_font = _preview_font(19)
+        for line in _wrap(draw, head, head_font, width - pad * 2)[:3]:
+            draw.text((pad, y), line, font=head_font, fill=(38, 38, 44))
+            y += 24
+        y += 6
+        font = _preview_font(13)
+        for line in _wrap(draw, body, font, width - pad * 2):
+            if y > TARGET_HEIGHT_PX - 24:
+                break
+            draw.text((pad, y), line, font=font, fill=(110, 110, 118))
+            y += 19
+    else:
+        # Ruled lines: says "a document" without pretending to quote one.
+        for i in range(14):
+            y = 60 + i * 22
+            draw.rectangle(
+                [pad, y, pad + (width - pad * 2) * (0.55 if i % 5 == 4 else 0.92), y + 6],
+                fill=(226, 226, 230),
+            )
+
+    return _encode_webp(card)
 
 
 def thumbnail_path(tenant_id: str, document_id: str, version_number: int, ext: str = THUMBNAIL_EXT) -> str:
