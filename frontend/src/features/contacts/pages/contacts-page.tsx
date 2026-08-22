@@ -27,6 +27,7 @@ import { CONTACT_TYPE_LABELS, CONTACT_TYPES, type ContactType } from "../types";
 import { CONTACT_TYPE_TONES } from "@shared/lib/tones";
 import { initials } from "@shared/utils/format";
 import { DuplicateContacts } from "../components/duplicate-contacts";
+import { trackAction } from "@core/telemetry/usage";
 
 /**
  * Personas — the CRM's centre of gravity.
@@ -218,6 +219,7 @@ export function ContactsPage() {
         onSubmit={async (input) => {
           const created = await create.mutateAsync(input);
           toast.success("Contacto creado");
+          trackAction("persona_creada");
           select(created.id);
         }}
         pending={create.isPending}

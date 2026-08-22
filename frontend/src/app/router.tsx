@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import { Routes, Route, Navigate, useParams } from "react-router-dom";
 import { ProtectedRoute } from "@shared/components/protected-route/protected-route";
+import { useUsageTelemetry } from "@core/telemetry/use-usage-telemetry";
 import { useAuth } from "@shared/hooks/use-auth";
 import { LoginPage } from "@features/auth/pages/login-page";
 import { AuthSetupPage } from "@features/auth/pages/auth-setup-page";
@@ -195,6 +196,9 @@ function PropertyDetailRedirect() {
 const ROLE_ROUTES: UserRole[] = ["ADMIN", "AGENT", "BUYER", "CONTENT"];
 
 export function AppRouter() {
+  // Inside the Router (it reads the location) and inside Providers (it reads the
+  // session), which is why it lives here rather than in app.tsx.
+  useUsageTelemetry();
   return (
     // A lazy page resolves in a tick from cache, so the fallback is only ever
     // seen on a cold chunk fetch. AppSkeleton is the same shell ProtectedRoute

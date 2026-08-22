@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { agentApi, streamMessage } from "../api/agent-api";
 import type { ChatStreamEvent } from "../types";
 import type { PendingAudioMessage } from "../components/agent-message-list";
+import { trackAction } from "@core/telemetry/usage";
 
 interface AgentChatState {
   isStreaming: boolean;
@@ -149,6 +150,9 @@ export function useAgentChat(sessionId: string | undefined) {
           ),
         }));
         if (result.text.trim()) {
+          // Counted after the transcript comes back, so a tap that recorded
+          // silence is not counted as talking to Propo.
+          trackAction("propo_voz");
           await send(result.text.trim(), { silent: true });
         }
       } catch (err) {
