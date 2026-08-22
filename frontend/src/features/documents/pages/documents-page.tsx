@@ -17,7 +17,7 @@ import { NewDocumentActions } from "../components/fast-add-fab";
 import { useDocuments } from "../hooks/use-documents";
 import { formatBytes } from "@shared/lib/format";
 import type { DocumentItem, ViewMode } from "../types";
-import { ErrorState } from "@shared/ui";
+import { ErrorState, ListShell } from "@shared/ui";
 import { SearchInput } from "@shared/components/search-input/search-input";
 import { formatDate } from "@shared/utils/format";
 
@@ -92,19 +92,20 @@ export function DocumentsPage() {
 
   const goToDocument = (id: string) => navigate(`/${role}/documents/${id}`);
 
+  // Functional update: reading `params` from the closure would drop any other
+  // query param changed while the debounce was in flight.
+  const onSearchChange = (next: string) =>
+    setParams((prev) => {
+      const sp = new URLSearchParams(prev);
+      if (next) sp.set("q", next);
+      else sp.delete("q");
+      return sp;
+    });
+
   const searchField = (
     <SearchInput
       value={q}
-      onChange={(next) => {
-        // Functional update: reading `params` from the closure would drop any
-        // other query param changed while the debounce was in flight.
-        setParams((prev) => {
-          const sp = new URLSearchParams(prev);
-          if (next) sp.set("q", next);
-          else sp.delete("q");
-          return sp;
-        });
-      }}
+      onChange={onSearchChange}
       className="lg:max-w-xl"
       ariaLabel="Buscar documentos"
       placeholder="Buscar por nombre..."
@@ -163,29 +164,37 @@ export function DocumentsPage() {
     </>
   );
 
-  // ---- Mobile (<lg): the original single-column layout, unchanged. ----
+  // ---- Mobile (<lg): the shared list header, like every other list. ----
+  //
+  // This page used to hand-roll the same three parts in its own order — two
+  // full-width action buttons, then the search, then the filters — which is
+  // why it looked like a different product from Personas or Propiedades two
+  // taps away. ListShell owns the geometry; the page supplies the parts.
   if (!isDesktop) {
     return (
-      <PageLayout width="md">
-        {/* Primary actions */}
-        <div className="mb-5">
-          <NewDocumentActions />
-        </div>
-
-        {/* Search */}
-        <div className="mb-4">{searchField}</div>
-
-        {/* Filters */}
-        <div className="mb-4 flex items-center gap-2">
-          <div className="min-w-0 flex-1">
-            <GroupByToggle value={groupBy} onChange={setGroupByPersist} />
-          </div>
-          <ViewModeToggle value={viewMode} onChange={setViewModePersist} />
-        </div>
-
-        {entityBanner && <div className="mb-3">{entityBanner}</div>}
-
-        {contentBody}
+      <PageLayout width="md" noPadding>
+        <ListShell
+          titleSr="Documentos"
+          search={{
+            value: q,
+            onChange: onSearchChange,
+            placeholder: "Buscar por nombre…",
+            ariaLabel: "Buscar documentos",
+          }}
+          primaryAction={<NewDocumentActions compact />}
+          filters={
+            <div className="flex items-center gap-2">
+              <div className="min-w-0 flex-1">
+                <GroupByToggle value={groupBy} onChange={setGroupByPersist} />
+              </div>
+              <ViewModeToggle value={viewMode} onChange={setViewModePersist} />
+            </div>
+          }
+          bodyPadding="page"
+        >
+          {entityBanner && <div className="mb-3">{entityBanner}</div>}
+          {contentBody}
+        </ListShell>
       </PageLayout>
     );
   }

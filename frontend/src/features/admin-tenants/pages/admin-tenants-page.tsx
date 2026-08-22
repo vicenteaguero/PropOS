@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { cn } from "@/lib/utils";
 import { Building2, Loader2, Plus } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { PageLayout } from "@shared/components/page-layout";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
 import {
+  CONTROL_SQUARE,
+  ListShell,
   ErrorState,
   PageSkeleton,
   Pill,
@@ -146,22 +149,21 @@ export function AdminTenantsPage() {
   return (
     <PageLayout width="app" noPadding className="mx-auto max-w-2xl pb-6 lg:max-w-none">
       {/* Header */}
-      <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-3 lg:px-8 lg:pt-7">
-        <div>
-          <h1 className="text-[17px] font-semibold leading-tight tracking-tight text-foreground">
-            Tenants
-          </h1>
-        </div>
-        <Button
-          variant="ink"
-          size="icon-lg"
-          className="rounded-full"
-          aria-label="Crear tenant"
-          onClick={() => setCreateOpen(true)}
-        >
-          <Plus className="size-5" strokeWidth={1.8} />
-        </Button>
-      </div>
+      <ListShell
+        titleSr="Tenants"
+        primaryAction={
+          <Button
+            variant="ink"
+            size="icon"
+            className={cn("rounded-full", CONTROL_SQUARE)}
+            aria-label="Crear tenant"
+            title="Crear tenant"
+            onClick={() => setCreateOpen(true)}
+          >
+            <Plus className="size-4" strokeWidth={1.8} />
+          </Button>
+        }
+      />
 
       {isLoading && <PageSkeleton variant={isDesktop ? "table" : "list"} />}
       {error && (

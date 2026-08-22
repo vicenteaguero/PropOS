@@ -1,11 +1,20 @@
 import { useMemo, useState } from "react";
+import { cn } from "@/lib/utils";
 import { label } from "@shared/lib/labels";
 import { useNavigate } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageLayout } from "@shared/components/page-layout";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
-import { ErrorState, PageSkeleton, Pill, ResponsiveTable, type ResponsiveColumn } from "@shared/ui";
+import {
+  CONTROL_SQUARE,
+  ErrorState,
+  ListShell,
+  PageSkeleton,
+  Pill,
+  ResponsiveTable,
+  type ResponsiveColumn,
+} from "@shared/ui";
 import { useIsDesktop } from "@/hooks/use-mobile";
 import {
   useAdminUsersList,
@@ -14,7 +23,6 @@ import {
 import { useAuth } from "@shared/hooks/use-auth";
 import { InviteUserDrawer } from "@features/admin-users/components/invite-user-drawer";
 import { initials } from "@shared/utils/format";
-import { SearchInput } from "@shared/components/search-input/search-input";
 
 export function AdminUsersPage() {
   const navigate = useNavigate();
@@ -53,44 +61,30 @@ export function AdminUsersPage() {
 
   return (
     <PageLayout width="md" noPadding className="pb-6 lg:max-w-none">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-3 lg:px-8 lg:pt-7">
-        <div>
-          <h1 className="text-[17px] font-semibold leading-tight tracking-tight text-foreground">
-            Usuarios
-          </h1>
-        </div>
-        {/* Mobile: round + button. Desktop: labeled button. */}
-        <Button
-          variant="ink"
-          size="icon-lg"
-          className="rounded-full lg:hidden"
-          aria-label="Invitar usuario"
-          onClick={() => setInviteOpen(true)}
-        >
-          <Plus className="size-5" strokeWidth={1.8} />
-        </Button>
-        <Button
-          variant="ink"
-          className="hidden gap-2 lg:inline-flex"
-          onClick={() => setInviteOpen(true)}
-        >
-          <Plus className="size-4" strokeWidth={1.8} />
-          Invitar usuario
-        </Button>
-      </div>
-
-      {/* Search */}
-      <div className="px-5 pb-4 lg:px-8 lg:pb-5">
-        <SearchInput
-          value={search}
-          onChange={setSearch}
-          ariaLabel="Buscar usuarios"
-          placeholder="Buscar por email, nombre o RUT"
-          debounceMs={0}
-          className="lg:max-w-md"
-        />
-      </div>
+      {/* The shared list header — this page used to stack its own title row on
+          top of its own search row, with the title repeating what the shell bar
+          already says. */}
+      <ListShell
+        titleSr="Usuarios"
+        search={{
+          value: search,
+          onChange: setSearch,
+          placeholder: "Buscar por email, nombre o RUT",
+          ariaLabel: "Buscar usuarios",
+        }}
+        primaryAction={
+          <Button
+            variant="ink"
+            size="icon"
+            className={cn("rounded-full", CONTROL_SQUARE)}
+            aria-label="Invitar usuario"
+            title="Invitar usuario"
+            onClick={() => setInviteOpen(true)}
+          >
+            <Plus className="size-4" strokeWidth={1.8} />
+          </Button>
+        }
+      />
 
       {loadingBlock}
       {errorBlock}
