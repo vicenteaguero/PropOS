@@ -1,11 +1,18 @@
 import { useMemo } from "react";
-import type { DocumentItem } from "../types";
+import type { DocumentItem, ViewMode } from "../types";
 import { DocumentCard } from "./document-card";
+import { DocumentRow } from "./document-row";
 
 interface Props {
   documents: DocumentItem[];
   groupBy: "property" | "contact";
   onOpen: (doc: DocumentItem) => void;
+  /**
+   * Grouping used to be wired into the grid only, so in list mode the
+   * "Agrupar" control was on screen and did nothing at all — which is most of
+   * why it read as broken.
+   */
+  viewMode?: ViewMode;
 }
 
 interface Group {
@@ -16,7 +23,7 @@ interface Group {
 
 const UNASSIGNED_KEY = "__unassigned__";
 
-export function DocumentsGrouped({ documents, groupBy, onOpen }: Props) {
+export function DocumentsGrouped({ documents, groupBy, onOpen, viewMode = "grid" }: Props) {
   // Labels ride along on each assignment now. They used to be looked up in
   // `/v1/properties` and `/v1/contacts`, which both default to 100 rows, so on
   // a tenant with 250 contacts every group past the first hundred was titled
@@ -71,11 +78,21 @@ export function DocumentsGrouped({ documents, groupBy, onOpen }: Props) {
             <h3 className="text-base font-bold tracking-tight text-foreground">{group.label}</h3>
             <span className="text-[13px] text-muted-foreground">{group.docs.length}</span>
           </div>
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
-            {group.docs.map((doc) => (
-              <DocumentCard key={`${group.key}-${doc.id}`} doc={doc} onOpen={onOpen} />
-            ))}
-          </div>
+          {viewMode === "list" ? (
+            // Not virtualized: a group is a handful of documents, and a
+            // virtualizer per section would each need its own scroll container.
+            <div className="overflow-hidden rounded-xl border border-border bg-card">
+              {group.docs.map((doc) => (
+                <DocumentRow key={`${group.key}-${doc.id}`} doc={doc} onOpen={onOpen} />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
+              {group.docs.map((doc) => (
+                <DocumentCard key={`${group.key}-${doc.id}`} doc={doc} onOpen={onOpen} />
+              ))}
+            </div>
+          )}
         </section>
       ))}
     </div>
