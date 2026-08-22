@@ -643,12 +643,10 @@ export function AdminHomePage() {
                 // ("Agregar propiedad") and wrap to two lines on a 390px phone,
                 // which would otherwise leave the one-line tiles short and the
                 // grid ragged.
-                className="flex h-[5.25rem] flex-col items-center justify-center gap-1.5 rounded-xl bg-secondary px-1.5 transition hover:bg-muted active:scale-[0.97]"
+                className="flex h-[4.75rem] flex-col items-center justify-center gap-1 rounded-xl bg-secondary px-1 transition hover:bg-muted active:scale-[0.97]"
               >
                 <t.icon className="size-[22px] shrink-0 text-foreground" strokeWidth={1.8} />
-                <span className="line-clamp-2 w-full text-center text-[11.5px] font-medium leading-tight text-foreground">
-                  {t.label}
-                </span>
+                <TileLabel label={t.label} />
               </button>
             ))}
           </div>
@@ -686,3 +684,31 @@ export function AdminHomePage() {
 
 // Default export so the router can code-split this page with React.lazy.
 export default AdminHomePage;
+
+/**
+ * A tile label that breaks on the space instead of wherever the box runs out.
+ *
+ * Every label here is a verb phrase, and left to wrap on its own "Agregar
+ * propiedad" and "Nuevo contacto" broke at different points, so a row of tiles
+ * read as ragged. Two words become two centred lines, always the same way.
+ *
+ * Only two-word labels are split. The tile height is fixed (so one- and
+ * two-line tiles stay flush), which means a three-word label rendered one word
+ * per line would overflow it -- those fall back to normal wrapping, clamped.
+ */
+function TileLabel({ label }: { label: string }) {
+  const words = label.split(" ");
+  return (
+    <span className="w-full text-center text-[11.5px] font-medium leading-tight text-foreground">
+      {words.length === 2 ? (
+        words.map((word) => (
+          <span key={word} className="block truncate">
+            {word}
+          </span>
+        ))
+      ) : (
+        <span className="line-clamp-2 block">{label}</span>
+      )}
+    </span>
+  );
+}
