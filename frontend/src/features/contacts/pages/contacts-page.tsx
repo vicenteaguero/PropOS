@@ -5,7 +5,9 @@ import { apiRequest } from "@shared/api/http";
 import { useSearchParams } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
+  CONTROL_SQUARE,
   FilterSelect,
   LoadMore,
   ListShell,
@@ -114,11 +116,11 @@ export function ContactsPage() {
         placeholder: "Nombre, teléfono o email",
         ariaLabel: "Buscar personas",
       }}
-      action={
+      primaryAction={
         <Button
           size="icon"
           aria-label="Nueva persona"
-          className="rounded-full"
+          className={cn("rounded-full", CONTROL_SQUARE)}
           onClick={() => setDialogOpen(true)}
         >
           <Plus className="size-4" strokeWidth={1.8} />
