@@ -23,6 +23,15 @@ export interface ClientConversation {
   waiting_on: "client" | "us" | "nobody" | null;
   first_response_at: string | null;
   first_response_due_at: string | null;
+  /**
+   * Resolved by the list endpoint, not stored on the row.
+   *
+   * The inbox is read by name and by property; the browser used to build both
+   * itself from a 500-contact and a 500-opportunity fetch on every visit. Null
+   * when the thread has no contact, or no open deal pointing at a property.
+   */
+  contact_name?: string | null;
+  property_title?: string | null;
 }
 
 /** What a thread is about. Mirrors `conversation_targets`. */

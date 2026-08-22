@@ -87,7 +87,77 @@ async def list_conversations(
         q = q.not_.is_("archived_at", "null")
     else:
         q = q.is_("archived_at", "null")
-    return q.execute().data or []
+    rows = q.execute().data or []
+    _decorate_conversations(db, tenant_id, rows)
+    return rows
+
+
+def _decorate_conversations(db, tenant_id: UUID, rows: list[dict]) -> None:
+    """Attach the contact's name and the property the thread is about.
+
+    Both are what the inbox row is READ by — a broker recognises "Rocío Vergara"
+    and "Depto 2D Ñuñoa", never a uuid or a phone number — and the browser used
+    to assemble them itself by fetching 500 contacts and 500 opportunities on
+    every visit to Conversaciones, purely to build two lookup maps. That is a
+    thousand rows over the wire to label at most 200, and it made the section
+    the slowest in the app.
+
+    Resolved here in two bounded queries against the ids actually present.
+    Failure is not fatal: an inbox that lists threads without names still works,
+    and it is a far better outcome than an inbox that does not load.
+    """
+    contact_ids = {r["contact_id"] for r in rows if r.get("contact_id")}
+    if not contact_ids:
+        return
+    try:
+        contacts = (
+            db.table("contacts")
+            .select("id,full_name")
+            .eq("tenant_id", str(tenant_id))
+            .in_("id", list(contact_ids))
+            .execute()
+            .data
+            or []
+        )
+        names = {c["id"]: c.get("full_name") for c in contacts}
+
+        # The property comes through the person's open deal, which is the same
+        # join the browser was doing — one hop, server side.
+        opps = (
+            db.table("opportunities")
+            .select("person_id,property_id")
+            .eq("tenant_id", str(tenant_id))
+            .eq("status", "OPEN")
+            .in_("person_id", list(contact_ids))
+            .not_.is_("property_id", "null")
+            .execute()
+            .data
+            or []
+        )
+        property_by_person: dict[str, str] = {}
+        for o in opps:
+            property_by_person.setdefault(o["person_id"], o["property_id"])
+
+        titles: dict[str, str] = {}
+        if property_by_person:
+            props = (
+                db.table("properties")
+                .select("id,title")
+                .eq("tenant_id", str(tenant_id))
+                .in_("id", list(set(property_by_person.values())))
+                .execute()
+                .data
+                or []
+            )
+            titles = {p["id"]: p.get("title") for p in props}
+    except Exception:  # noqa: BLE001 - labels are a nicety, the list is not
+        return
+
+    for row in rows:
+        cid = row.get("contact_id")
+        row["contact_name"] = names.get(cid) if cid else None
+        prop_id = property_by_person.get(cid) if cid else None
+        row["property_title"] = titles.get(prop_id) if prop_id else None
 
 
 @router.get("/conversations/{conversation_id}/messages")
