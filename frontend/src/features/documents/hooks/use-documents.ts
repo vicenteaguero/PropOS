@@ -62,6 +62,7 @@ export function useUpdateDocument(id: string) {
       sort_order?: number;
       tag?: string | null;
       pin_offline?: boolean;
+      is_priority?: boolean;
     }) => documentsApi.update(id, body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: documentsKeys.all });

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useShellMode } from "@shared/hooks/use-shell-mode";
 import { label } from "@shared/lib/labels";
 import { useNavigate, useParams } from "react-router-dom";
@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import {
   ArrowLeft,
   Camera,
+  ChevronRight,
   Cpu,
   Download,
   FileQuestion,
@@ -14,6 +15,7 @@ import {
   Loader2,
   MoreHorizontal,
   Pencil,
+  Star,
   PenSquare,
   ScanText,
   Share2,
@@ -58,6 +60,7 @@ import { VersionHistoryDrawer } from "../components/version-history-drawer";
 import { DocumentSharePanel } from "../components/share-panel";
 import { Users } from "lucide-react";
 import { usePageTitle } from "@app/page-meta";
+import { useTopbarOwnsSearch } from "@layouts/topbar-slot";
 import { formatDateTime } from "@shared/utils/format";
 
 export function DocumentDetailPage() {
@@ -68,9 +71,32 @@ export function DocumentDetailPage() {
   const role = user?.role.toLowerCase() ?? "agent";
 
   const { data: doc, isLoading, error } = useDocument(id);
-  usePageTitle(doc?.display_name);
+  // "Documento", not the file's name: the bar was printing the same string the
+  // page prints one line below it, both truncated, so the only place the full
+  // name appeared was a tooltip nobody can open on a phone.
+  usePageTitle("Documento");
+  // There is nothing to search on this screen, and the magnifier was occupying
+  // the one slot the overflow menu should have.
+  useTopbarOwnsSearch(true);
+  // Stamp the open so "Usados hace poco" in the list means something. Fire and
+  // forget: a document must still open if the stamp fails.
+  const openedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!id || openedFor.current === id) return;
+    openedFor.current = id;
+    void documentsApi.markOpened(id).catch(() => {});
+  }, [id]);
+
   const deleteMutation = useDeleteDocument();
   const updateMutation = useUpdateDocument(id ?? "");
+
+  const togglePriority = () => {
+    if (!doc) return;
+    updateMutation.mutate(
+      { is_priority: !doc.is_priority },
+      { onError: () => toast.error("No se pudo cambiar la prioridad") },
+    );
+  };
 
   const togglePinOffline = async () => {
     if (!doc) return;
@@ -281,81 +307,49 @@ export function DocumentDetailPage() {
           </RoundButton>
         )}
         <div className="min-w-0 flex-1 pt-1">
-          <h1 className="truncate text-[22px] font-bold leading-tight tracking-tight text-foreground">
+          {/* Wraps. It used to `truncate`, so a document whose name carries the
+              contract number AND the property — which is most of them — could
+              not be read in full anywhere in the app. */}
+          <h1 className="break-words text-[20px] font-bold leading-tight tracking-tight text-foreground">
             {doc.display_name}
           </h1>
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
             <Pill tone={doc.kind === "IMAGE_PDF" || doc.origin === "CAMERA" ? "accent" : "neutral"}>
               {label("documentKind", doc.kind)}
             </Pill>
-            {currentVersion && (
-              <>
-                <span>v{currentVersion.version_number}</span>
-                <span>·</span>
-                <span className="font-mono">{currentVersion.sha256.slice(0, 12)}</span>
-                <span>·</span>
-                <span>{(currentVersion.size_bytes / 1024).toFixed(0)} KB</span>
-                {currentVersion.page_count && (
-                  <>
-                    <span>·</span>
-                    <span>{currentVersion.page_count} pág.</span>
-                  </>
-                )}
-              </>
-            )}
+            {doc.is_priority && <Pill tone="warning">Prioritario</Pill>}
+            {currentVersion?.page_count ? <span>{currentVersion.page_count} pág.</span> : null}
           </div>
         </div>
       </div>
 
-      <div className="mb-3 flex flex-wrap items-center gap-2">
+      {/* One row, ordered by how often each is actually used. Sharing beats
+          downloading on a phone — the file is going to a client, a bank or a
+          notary, not to this device — so it takes the filled button, and
+          everything that is occasional lives behind the three dots instead of
+          spilling onto a second row of equal-looking pills. */}
+      <div className="mb-4 flex items-center gap-2">
         <Button
           size="sm"
           variant="ink"
-          className="rounded-full"
+          className="min-w-0 flex-1 rounded-full"
+          onClick={() => setShareViaOpen(true)}
+        >
+          <Share2 className="size-4 shrink-0" strokeWidth={1.8} /> Compartir
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="shrink-0 rounded-full"
           onClick={downloadCurrent}
           disabled={!blobState.blob}
+          aria-label="Descargar"
         >
           {blobState.loading && !blobState.blob ? (
             <Loader2 className="size-4 animate-spin" />
           ) : (
             <Download className="size-4" strokeWidth={1.8} />
-          )}{" "}
-          Descargar
-        </Button>
-        {hasSourceImages ? (
-          <Button
-            size="sm"
-            variant="outline"
-            className="rounded-full"
-            onClick={openScannerReedit}
-            disabled={scannerLoading}
-          >
-            {scannerLoading ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Camera className="size-4" strokeWidth={1.8} />
-            )}
-            {scannerLoading ? "Cargando…" : "Recortar"}
-          </Button>
-        ) : null}
-        <Button size="sm" variant="outline" className="rounded-full" onClick={goEditor}>
-          <Pencil className="size-4" strokeWidth={1.8} /> Editar
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          className="rounded-full"
-          onClick={() => setShareViaOpen(true)}
-        >
-          <Share2 className="size-4" strokeWidth={1.8} /> Compartir
-        </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          className="rounded-full"
-          onClick={() => setHistoryOpen(true)}
-        >
-          <History className="size-4" strokeWidth={1.8} /> Versiones
+          )}
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -363,7 +357,23 @@ export function DocumentDetailPage() {
               <MoreHorizontal className="size-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="min-w-48">
+          <DropdownMenuContent align="end" className="min-w-52">
+            <DropdownMenuItem onClick={goEditor}>
+              <Pencil className="size-4" /> Editar
+            </DropdownMenuItem>
+            {hasSourceImages && (
+              <DropdownMenuItem onClick={openScannerReedit} disabled={scannerLoading}>
+                <Camera className="size-4" /> {scannerLoading ? "Cargando…" : "Recortar"}
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem onClick={() => setHistoryOpen(true)}>
+              <History className="size-4" /> Versiones
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={togglePriority} disabled={updateMutation.isPending}>
+              <Star className="size-4" />
+              {doc.is_priority ? "Quitar prioridad" : "Marcar prioritario"}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => setShareLinkOpen(true)}>
               <LinkIcon className="size-4" /> Shortlink
             </DropdownMenuItem>
@@ -409,45 +419,63 @@ export function DocumentDetailPage() {
         </div>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-[3fr_1fr]">
-        <div className="overflow-hidden rounded-xl bg-secondary/40 p-2">
-          <DocumentPreview
-            blob={blobState.blob}
-            mimeType={currentVersion?.mime_type}
-            loading={blobState.loading}
-          />
+      {/* What this belongs to, before the document itself.
+          A contract is almost never opened to read it — it is opened to get to
+          the flat or the person it concerns. Those links used to sit in a right
+          rail, which on a phone is *below* a full-page PDF preview: reachable
+          only by scrolling past the entire thing you were not trying to read. */}
+      <section className="mb-4">
+        <SectionLabel action="+ Vincular" onAction={() => setPickerOpen(true)}>
+          Relacionado con
+        </SectionLabel>
+        <div className="mt-3">
+          <AssignmentList documentId={doc.id} assignments={doc.assignments ?? []} />
         </div>
-        <aside className="space-y-6">
-          <section>
-            <SectionLabel action="+ Vincular" onAction={() => setPickerOpen(true)}>
-              Asignado a
-            </SectionLabel>
-            <div className="mt-3">
-              <AssignmentList documentId={doc.id} assignments={doc.assignments ?? []} />
-            </div>
-          </section>
-          <section>
-            <SectionLabel>Información</SectionLabel>
-            <dl className="mt-3 divide-y divide-border overflow-hidden rounded-xl bg-card">
-              <InfoRow label="Origen" value={doc.origin} />
-              <InfoRow label="Creado" value={formatDateTime(doc.created_at)} />
-              <InfoRow label="Actualizado" value={formatDateTime(doc.updated_at)} />
-              {currentVersion && (
-                <>
-                  <InfoRow label="MIME" value={currentVersion.mime_type} />
-                  <InfoRow label="Antivirus" value={currentVersion.scan_status} />
-                </>
-              )}
-              {blobState.source && (
-                <InfoRow
-                  label="Fuente"
-                  value={blobState.source === "cache" ? "caché local" : "red"}
-                />
-              )}
-            </dl>
-          </section>
-        </aside>
+      </section>
+
+      <div className="overflow-hidden rounded-xl bg-secondary/40 p-2">
+        <DocumentPreview
+          blob={blobState.blob}
+          mimeType={currentVersion?.mime_type}
+          loading={blobState.loading}
+        />
       </div>
+
+      {/* Collapsed. Every row here is a fact about the file rather than about
+          the deal — the checksum, the mime type, the antivirus verdict — and
+          they were taking the same vertical space as the links above. */}
+      <details className="group mt-4 overflow-hidden rounded-xl bg-card">
+        <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-[14px] font-medium text-muted-foreground">
+          <ChevronRight
+            className="size-4 shrink-0 transition-transform group-open:rotate-90"
+            strokeWidth={2}
+          />
+          Detalles del archivo
+        </summary>
+        <dl className="divide-y divide-border border-t border-border">
+          <InfoRow label="Origen" value={doc.origin} />
+          <InfoRow label="Creado" value={formatDateTime(doc.created_at)} />
+          <InfoRow label="Actualizado" value={formatDateTime(doc.updated_at)} />
+          {doc.last_opened_at && (
+            <InfoRow label="Abierto" value={formatDateTime(doc.last_opened_at)} />
+          )}
+          {currentVersion && (
+            <>
+              <InfoRow label="Versión" value={`v${currentVersion.version_number}`} />
+              <InfoRow
+                label="Tamaño"
+                value={`${(currentVersion.size_bytes / 1024).toFixed(0)} KB`}
+              />
+              <InfoRow label="MIME" value={currentVersion.mime_type} />
+              <InfoRow label="SHA-256" value={currentVersion.sha256.slice(0, 16)} />
+              <InfoRow label="Antivirus" value={currentVersion.scan_status} />
+            </>
+          )}
+          {blobState.source && (
+            <InfoRow label="Fuente" value={blobState.source === "cache" ? "caché local" : "red"} />
+          )}
+        </dl>
+      </details>
 
       <AssignmentPicker documentId={doc.id} open={pickerOpen} onOpenChange={setPickerOpen} />
       <VersionHistoryDrawer
