@@ -11,6 +11,7 @@ from app.features.documents.hashing import sha256_hex
 from app.features.documents.metadata import extract_pdf_metadata, strip_pdf_metadata
 from app.features.documents.stubs.scan import scan_file
 from app.features.documents.thumbnails import (
+    THUMBNAIL_MIME,
     generate_first_page_png,
     generate_image_thumbnail,
     thumbnail_path as build_thumbnail_path,
@@ -37,7 +38,7 @@ def _maybe_generate_thumbnail(
     version_id: str,
     version_number: int,
 ) -> str | None:
-    """Render + upload PNG thumb (PDF first page or raster image). Best-effort; logs and swallows failures.
+    """Render + upload a WebP thumb (PDF first page or raster image). Best-effort; logs and swallows failures.
 
     The ``pdf_bytes`` parameter holds the raw bytes regardless of mime — the name is kept
     for backwards compatibility with existing call sites.
@@ -63,7 +64,7 @@ def _maybe_generate_thumbnail(
         return None
     path = build_thumbnail_path(tenant_id, document_id, version_number)
     try:
-        storage.upload_object(path, png, "image/png")
+        storage.upload_object(path, png, THUMBNAIL_MIME)
     except Exception as exc:  # noqa: BLE001
         logger.warning(
             "thumbnail upload failed",
@@ -123,7 +124,9 @@ class DocumentService:
                     continue
                 if v.get("thumbnail_path"):
                     try:
-                        v["thumbnail_url"] = storage.signed_url(v["thumbnail_path"])
+                        v["thumbnail_url"] = storage.signed_url(
+                            v["thumbnail_path"], storage.THUMBNAIL_SIGNED_URL_TTL
+                        )
                     except Exception:
                         v["thumbnail_url"] = None
                 d["current_version"] = v
@@ -185,7 +188,7 @@ class DocumentService:
             thumb = v.get("thumbnail_path")
             if thumb:
                 try:
-                    v["thumbnail_url"] = storage.signed_url(thumb)
+                    v["thumbnail_url"] = storage.signed_url(thumb, storage.THUMBNAIL_SIGNED_URL_TTL)
                 except Exception:
                     logger.warning("thumbnail signed url failed", path=thumb)
                     v["thumbnail_url"] = None

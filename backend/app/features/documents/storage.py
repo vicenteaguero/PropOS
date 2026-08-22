@@ -5,6 +5,19 @@ from app.core.supabase.client import get_supabase_client
 
 BUCKET = "documents"
 DEFAULT_SIGNED_URL_TTL = 3600
+# Thumbnails get a much longer token than the documents they depict.
+#
+# A list response is cached by TanStack Query and this feature turns
+# `refetchOnWindowFocus` off, so a tab left open past the TTL holds URLs minted
+# on first load and every tile 403s at once. Shortening `staleTime` does not fix
+# that, and refetching the whole list from an <img> onError would fire once per
+# broken tile.
+#
+# The exposure is not comparable to the one-hour token on the document bytes: a
+# 400px palette-scale render of page one is not the mandate, and the path is
+# still unguessable. Seven days outlives any realistic session and the PWA's
+# offline cache window.
+THUMBNAIL_SIGNED_URL_TTL = 7 * 24 * 3600
 
 logger = get_logger("DOCS_STORAGE")
 

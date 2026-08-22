@@ -1,8 +1,8 @@
 """Backfill thumbnails for existing document_versions rows that lack one.
 
 Iterates document_versions joined to documents, downloads the raw blob,
-renders a PNG thumbnail (PDF first page or resized raster image), uploads
-to the same `{tenant}/4_thumbnails/{doc_id}/v{n}.png` scheme, and writes
+renders a WebP thumbnail (PDF first page or resized raster image), uploads
+to the same `{tenant}/4_thumbnails/{doc_id}/v{n}.webp` scheme, and writes
 `document_versions.thumbnail_path`.
 
 Usage:
@@ -33,6 +33,7 @@ from app.core.supabase.client import get_supabase_client
 from app.features.documents import storage
 from app.features.documents.thumbnails import (
     SUPPORTED_IMAGE_MIMES,
+    THUMBNAIL_MIME,
     generate_first_page_png,
     generate_image_thumbnail,
     thumbnail_path as build_thumbnail_path,
@@ -204,7 +205,7 @@ def _process(rows: Iterable[dict], dry_run: bool) -> tuple[int, int, int]:
             print(f"{prefix} OK (dry-run, {len(png)}B → {target})")
             continue
         try:
-            storage.upload_object(target, png, "image/png")
+            storage.upload_object(target, png, THUMBNAIL_MIME)
         except Exception as exc:  # noqa: BLE001
             failed += 1
             print(f"{prefix} - upload FAILED: {exc}")
