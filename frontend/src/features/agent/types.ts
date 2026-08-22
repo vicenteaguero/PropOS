@@ -97,6 +97,13 @@ export interface PendingProposal {
   // new column in, so an older backend simply omits them.
   review_reason?: ProposalRejectReason | null;
   evidence?: ProposalEvidence | null;
+  /**
+   * When acting on this stops being possible in the channel it came from —
+   * the source conversation's WhatsApp free-form window. Null for a proposal
+   * from the broker's own turn, which has no external clock. Drives the queue's
+   * order and the card's colour; it does not expire anything.
+   */
+  expires_at?: string | null;
   created_row_id: string | null;
   created_at: string;
   updated_at: string;

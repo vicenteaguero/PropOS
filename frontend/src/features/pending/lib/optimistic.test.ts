@@ -34,3 +34,36 @@ describe("withoutProposal", () => {
     expect(withoutProposal(undefined, "a")).toBeUndefined();
   });
 });
+
+describe("withoutProposal on a paged list", () => {
+  const infinite = {
+    pages: [
+      [
+        { id: "a", status: "pending" },
+        { id: "b", status: "pending" },
+      ],
+      [{ id: "c", status: "pending" }],
+    ],
+    pageParams: [0, 5],
+  };
+
+  it("removes the proposal from whichever page holds it", () => {
+    // "Ver antiguos" pages five at a time, so its cache is `{pages, pageParams}`
+    // rather than an array. Treating that as "not a list" left an accepted card
+    // on screen with no refetch coming to clear it.
+    const out = withoutProposal(infinite, "b");
+    expect(out.pages[0]).toEqual([{ id: "a", status: "pending" }]);
+    expect(out.pages[1]).toEqual([{ id: "c", status: "pending" }]);
+  });
+
+  it("leaves the page structure alone", () => {
+    const out = withoutProposal(infinite, "c");
+    expect(out.pages).toHaveLength(2);
+    expect(out.pageParams).toEqual([0, 5]);
+  });
+
+  it("still ignores a single cached proposal object", () => {
+    const detail = { id: "a", status: "pending" };
+    expect(withoutProposal(detail, "a")).toBe(detail);
+  });
+});

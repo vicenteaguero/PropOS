@@ -2,15 +2,19 @@ import { useState } from "react";
 import { formatDate, formatDateTime } from "@shared/utils/format";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Check, X, Pencil, Loader2 } from "lucide-react";
+import { Check, Loader2, Pencil, Trash2 } from "lucide-react";
 import { useAcceptProposal, useRejectProposal } from "@features/pending/hooks/use-pending";
 import { useQuery } from "@tanstack/react-query";
 import { pendingApi } from "@features/pending/api/pending-api";
 import { ProposalDisambiguationPicker } from "@features/pending/components/proposal-disambiguation-picker";
 import { ProposalEvidenceQuote } from "@features/pending/components/proposal-evidence";
 import { RejectProposalSheet } from "@features/pending/components/reject-proposal-sheet";
+import { RectifyProposalSheet } from "@features/pending/components/rectify-proposal-sheet";
+import { proposalHeadline } from "@features/pending/lib/headline";
+import { SourceMark } from "@features/pending/components/source-mark";
+import { deadlineTone, timeLeft } from "@shared/utils/relative-time";
 import type { RejectBody } from "@features/pending/api/pending-api";
-import { agentActionLabel, label, type LabelKind } from "@shared/lib/labels";
+import { label, type LabelKind } from "@shared/lib/labels";
 import type { PendingProposal } from "@features/agent/types";
 
 interface Props {
@@ -27,56 +31,7 @@ interface Props {
   proposal?: PendingProposal;
 }
 
-// Spanish labels for payload keys so the card never leaks raw English field names.
-const FIELD_LABELS_ES: Record<string, string> = {
-  full_name: "Nombre",
-  first_name: "Nombre",
-  last_name: "Apellido",
-  phone: "Teléfono",
-  email: "Email",
-  rut: "RUT",
-  address: "Dirección",
-  type: "Tipo",
-  role: "Rol",
-  stage: "Etapa",
-  status: "Estado",
-  title: "Título",
-  body: "Detalle",
-  note: "Nota",
-  notes: "Notas",
-  occurred_at: "Fecha",
-  starts_at: "Inicio",
-  ends_at: "Fin",
-  due_at: "Vence",
-  due_date: "Vence",
-  amount: "Monto",
-  amount_cents: "Monto",
-  currency: "Moneda",
-  direction: "Tipo",
-  category: "Categoría",
-  channel: "Canal",
-  subject: "Asunto",
-  interaction_type: "Tipo",
-  comuna: "Comuna",
-  price_clp: "Precio",
-  bedrooms: "Dormitorios",
-  bathrooms: "Baños",
-  area_m2: "m²",
-  area_sqm: "m²",
-  listing_kind: "Operación",
-  year_built: "Año",
-  description: "Descripción",
-  contact_name: "Contacto",
-  property_title: "Propiedad",
-  // Keys the resolver adds after matching, which reached the card raw.
-  due: "Vence",
-  kind: "Tipo",
-  person: "Persona",
-  summary: "Resumen",
-  property: "Propiedad",
-  organization: "Organización",
-};
-const fieldLabel = (k: string) => FIELD_LABELS_ES[k] ?? k;
+import { fieldLabel } from "@features/pending/lib/field-labels";
 
 /**
  * Whether a payload entry means anything to the person reading the card.
@@ -138,7 +93,7 @@ function fieldValue(key: string, value: unknown): string {
 }
 
 export function AgentInlineProposalCard({ proposalId, proposal: given }: Props) {
-  const [editing, setEditing] = useState(false);
+  const [rectifying, setRectifying] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [picks, setPicks] = useState<Record<string, string>>({});
   const accept = useAcceptProposal();
@@ -160,8 +115,7 @@ export function AgentInlineProposalCard({ proposalId, proposal: given }: Props) 
     );
   }
 
-  const kindLabel = agentActionLabel(proposal.kind);
-  const summary = (proposal.payload?.summary_es as string) || kindLabel;
+  const summary = proposalHeadline(proposal);
   const isPending = proposal.status === "pending";
   const accepted = proposal.status === "accepted";
   const rejected = proposal.status === "rejected";
@@ -197,12 +151,20 @@ export function AgentInlineProposalCard({ proposalId, proposal: given }: Props) 
     .filter(([, v]) => !echoesTheQuote(v, proposal.evidence?.quote as string | undefined))
     .slice(0, 3);
 
+  const tone = isPending ? deadlineTone(proposal.expires_at) : "none";
+  const left = timeLeft(proposal.expires_at);
+  const source = proposal.evidence?.source as string | undefined;
+
   return (
     /* A plain surface, not shadcn's <Card>. That component ships `gap-6` between
        header and content and `py-6`/`px-6` around them — 24px of air in three
        places on a card whose whole content is a title, a quote and three short
        lines, so four proposals filled a phone screen and the queue could not be
-       scanned. Same tokens, a third of the padding. */
+       scanned. Same tokens, a third of the padding.
+
+       Urgency is on the BORDER, not a fill: the card already carries a quote
+       block and a field list, and a tinted background behind those makes the
+       text the loser. */
     <div
       className={cn(
         "rounded-xl border px-3.5 py-3",
@@ -210,11 +172,37 @@ export function AgentInlineProposalCard({ proposalId, proposal: given }: Props) 
           ? "border-success/30 bg-success/5"
           : rejected
             ? "border-destructive/30 bg-destructive/5"
-            : "border-border bg-card",
+            : tone === "danger"
+              ? "border-destructive/50 bg-card"
+              : tone === "warn"
+                ? "border-warning/50 bg-card"
+                : "border-border bg-card",
       )}
     >
+      {/* What is running out, and where it came from. The deadline is the
+          reason one card outranks another, so it leads. */}
+      {(left || source) && (
+        <div className="mb-1.5 flex items-center gap-2">
+          {left && (
+            <span
+              className={cn(
+                "text-[12px] font-semibold",
+                tone === "danger"
+                  ? "text-destructive"
+                  : tone === "warn"
+                    ? "text-warning"
+                    : "text-muted-foreground",
+              )}
+            >
+              {left}
+            </span>
+          )}
+          {source && <SourceMark source={source} className="ml-auto" />}
+        </div>
+      )}
+
       <div className="flex items-baseline gap-2">
-        <h3 className="min-w-0 flex-1 truncate text-[15px] font-semibold text-foreground">
+        <h3 className="min-w-0 flex-1 text-[15px] font-semibold leading-snug text-foreground">
           {summary}
         </h3>
         {(accepted || rejected) && (
@@ -237,17 +225,6 @@ export function AgentInlineProposalCard({ proposalId, proposal: given }: Props) 
             <div key={k} className="flex gap-1.5">
               <dt className="shrink-0 text-muted-foreground">{fieldLabel(k)}</dt>
               <dd className="min-w-0 flex-1 truncate text-foreground">{fieldValue(k, v)}</dd>
-            </div>
-          ))}
-        </dl>
-      )}
-
-      {editing && (
-        <dl className="mt-2 space-y-0.5 border-t border-border pt-2 text-[12.5px] leading-snug">
-          {allFields.map(([k, v]) => (
-            <div key={k} className="flex gap-1.5">
-              <dt className="shrink-0 text-muted-foreground">{fieldLabel(k)}</dt>
-              <dd className="min-w-0 flex-1 text-foreground">{fieldValue(k, v)}</dd>
             </div>
           ))}
         </dl>
@@ -281,24 +258,30 @@ export function AgentInlineProposalCard({ proposalId, proposal: given }: Props) 
             )}
             Aceptar
           </Button>
+          {/* The widest target, because "almost right" is the common case and
+              until now the only way to fix one field was to reject the whole
+              proposal and retype it somewhere else. */}
           <Button
             size="sm"
-            variant="ghost"
-            onClick={() => setEditing((e) => !e)}
-            className="gap-1 text-muted-foreground"
+            variant="outline"
+            onClick={() => setRectifying(true)}
+            className="flex-1 gap-1.5"
           >
             <Pencil className="size-3.5" />
-            {editing ? "Ocultar" : "Detalle"}
+            Rectificar
           </Button>
+          {/* A bin, alone on the far side. Rejecting is the rare answer and the
+              one nobody should be able to give by accident. */}
           <Button
             size="icon"
             variant="ghost"
             aria-label="Rechazar"
+            title="Rechazar"
             onClick={() => setRejecting(true)}
             disabled={reject.isPending}
-            className="ml-auto text-muted-foreground hover:text-destructive"
+            className="shrink-0 text-muted-foreground hover:text-destructive"
           >
-            <X className="size-4" strokeWidth={2.2} />
+            <Trash2 className="size-4" strokeWidth={2} />
           </Button>
         </div>
       )}
@@ -307,6 +290,24 @@ export function AgentInlineProposalCard({ proposalId, proposal: given }: Props) 
           {label("rejectReason", proposal.review_reason)}
         </p>
       )}
+
+      <RectifyProposalSheet
+        open={rectifying}
+        onOpenChange={setRectifying}
+        proposal={proposal}
+        submitting={accept.isPending}
+        error={accept.error instanceof Error ? accept.error.message : null}
+        onConfirm={async (overrides) => {
+          await accept.mutateAsync({
+            id: proposalId,
+            body: {
+              ...(Object.keys(overrides).length > 0 ? { overrides } : null),
+              ...(Object.keys(picks).length > 0 ? { disambiguation: picks } : null),
+            },
+          });
+          setRectifying(false);
+        }}
+      />
 
       <RejectProposalSheet
         open={rejecting}
