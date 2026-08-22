@@ -35,6 +35,12 @@ async def update_my_avatar(
     return await UserService.update_avatar(UUID(current_user["id"]), payload.avatar_url)
 
 
+@router.post("/me/password-changed")
+async def password_changed(current_user: dict[str, Any] = Depends(get_current_user)) -> dict:
+    """Drop the forced-rotation demand after the user set their own password."""
+    return await UserService.clear_must_change_password(UUID(current_user["id"]))
+
+
 @router.get("", response_model=list[UserResponse], dependencies=[Depends(require_role("ADMIN"))])
 async def list_users(
     tenant_id: UUID = Depends(get_tenant_id),

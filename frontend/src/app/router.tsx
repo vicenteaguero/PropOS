@@ -203,6 +203,10 @@ export function AppRouter() {
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/auth/setup" element={<AuthSetupPage />} />
           <Route path="/auth/recovery" element={<AuthSetupPage />} />
+          {/* Forced rotation of an admin-issued temporary password. Deliberately
+              outside ProtectedRoute -- that is the component sending users here,
+              so wrapping it would loop. */}
+          <Route path="/auth/cambiar-clave" element={<AuthSetupPage mode="rotate" />} />
           <Route path="/" element={<ViewRedirect />} />
 
           <Route path="/r/:slug" element={<SharePublicPage />} />
