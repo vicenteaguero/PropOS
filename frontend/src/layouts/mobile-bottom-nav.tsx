@@ -21,6 +21,7 @@ import { BottomSheet, Pill } from "@shared/ui";
 import { useNavGroups, usePendingCount } from "@layouts/use-nav-groups";
 import { useIsImmersive } from "@layouts/immersive";
 import { SETTINGS_PATH } from "@layouts/nav-items";
+import { prefetchRoute } from "@shared/lib/route-chunks";
 import { cn } from "@/lib/utils";
 import type { UserView } from "@shared/types/auth";
 import { shortName } from "./short-name";
@@ -182,7 +183,14 @@ export function MobileBottomNav() {
               home tiles hardcoded, stranding 13 routes at URL-only. */}
           <button
             type="button"
-            onClick={() => setMoreOpen(true)}
+            onClick={() => {
+              // Opening the sheet is the signal: whatever is tapped next is one
+              // of these, and every one of them is a lazy chunk that would
+              // otherwise download only after the tap.
+              sheetGroups.forEach((g) => g.items.forEach((i) => prefetchRoute(i.path)));
+              prefetchRoute(SETTINGS_PATH);
+              setMoreOpen(true);
+            }}
             aria-label={pendingCount > 0 ? `Más · ${pendingCount} pendientes` : "Más"}
             className="relative flex min-w-0 flex-1 flex-col items-center gap-0.5 py-1 text-muted-foreground"
           >

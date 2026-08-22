@@ -37,6 +37,7 @@ import { settingsApi } from "../api/settings-api";
 import { AvatarUploader } from "../components/avatar-uploader";
 import { NotificationsCard } from "../components/notifications-card";
 import { usePageTitle } from "@app/page-meta";
+import { prefetchRoute } from "@shared/lib/route-chunks";
 import { useAuth } from "@shared/hooks/use-auth";
 import { useAgentName } from "@core/branding/agent-branding";
 import { buildSettingsShortcuts, filterByDev, filterByScope } from "@layouts/nav-items";
@@ -143,11 +144,20 @@ function AdminShortcuts() {
   if (items.length === 0) return null;
 
   return (
-    <div className="grid grid-cols-[repeat(auto-fill,minmax(190px,1fr))] gap-1">
+    // Every destination here is a lazy chunk, and this grid IS the moment of
+    // intent — a broker looking at it is about to open one. Warming on mount
+    // rather than on hover, because on a phone there is no hover and these are
+    // the six slowest destinations in the app.
+    <div
+      ref={() => items.forEach((i) => prefetchRoute(i.path))}
+      className="grid grid-cols-[repeat(auto-fill,minmax(190px,1fr))] gap-1"
+    >
       {items.map((item) => (
         <button
           key={item.path}
           type="button"
+          onMouseEnter={() => prefetchRoute(item.path)}
+          onFocus={() => prefetchRoute(item.path)}
           onClick={() => navigate(item.path)}
           className={cn(
             "flex items-center gap-3 rounded-xl px-2 py-2.5 text-left transition hover:bg-secondary active:scale-[0.98]",
@@ -177,9 +187,15 @@ export function SettingsPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const isDesktop = useIsDesktop();
+  // The SAME key the branding provider uses, not a second one for the same
+  // endpoint. `["settings","tenant"]` and `["tenant","me"]` both called
+  // `GET /v1/tenants/me`, and React Query cannot dedupe two keys — so opening
+  // Configuración fetched the tenant twice, in a shell that has already fetched
+  // it once. The save mutation invalidating both was the tell.
   const tenantQ = useQuery({
-    queryKey: ["settings", "tenant"],
+    queryKey: ["tenant", "me"],
     queryFn: () => settingsApi.getTenant(),
+    staleTime: 5 * 60_000,
   });
   const meQ = useQuery({
     queryKey: ["settings", "me"],
@@ -215,14 +231,17 @@ export function SettingsPage() {
         brand_tint: brandTint,
       }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["settings", "tenant"] });
       qc.invalidateQueries({ queryKey: ["tenant", "me"] });
       toast.success("Configuración guardada");
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : "No se pudo guardar"),
   });
 
-  if (tenantQ.isPending || meQ.isPending) {
+  // Gated on the tenant only. `meQ` feeds one card (the profile), and blocking
+  // the whole page on it meant Configuración showed a full-page skeleton until
+  // BOTH requests landed — two serial round trips behind a cold chunk, which is
+  // the "se congela como 5 segundos" report.
+  if (tenantQ.isPending) {
     return (
       <PageLayout width="md" noPadding>
         <PageSkeleton variant="list" count={5} className="pt-6" />
@@ -354,8 +373,12 @@ export function SettingsPage() {
     {
       key: "perfil",
       title: "Perfil",
+      // Three states, not two: the page no longer waits for this request, so
+      // "no data yet" now genuinely happens and must not read as a failure.
       body: meQ.data ? (
         <AvatarUploader user={meQ.data} />
+      ) : meQ.isPending ? (
+        <PageSkeleton variant="list" count={1} />
       ) : (
         <ErrorState
           compact
