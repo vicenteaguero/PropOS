@@ -42,7 +42,12 @@ import { prefetchRoute } from "@shared/lib/route-chunks";
 import { getNavApp, setNavApp as setNavAppPref, type NavApp } from "@shared/lib/nav-app";
 import { useAuth } from "@shared/hooks/use-auth";
 import { useAgentName } from "@core/branding/agent-branding";
-import { buildSettingsShortcuts, filterByDev, filterByScope } from "@layouts/nav-items";
+import {
+  buildSettingsShortcuts,
+  filterByDev,
+  filterByFeature,
+  filterByScope,
+} from "@layouts/nav-items";
 
 const NAV_APPS = [
   { id: "maps", label: "Maps" },
@@ -146,11 +151,14 @@ function DesktopCard({
  */
 function AdminShortcuts() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, features } = useAuth();
   const agentName = useAgentName();
-  const items = filterByDev(
-    filterByScope([{ items: buildSettingsShortcuts(agentName) }], user?.adminScope ?? []),
-    !!user?.isDevAdmin,
+  const items = filterByFeature(
+    filterByDev(
+      filterByScope([{ items: buildSettingsShortcuts(agentName) }], user?.adminScope ?? []),
+      !!user?.isDevAdmin,
+    ),
+    features,
   ).flatMap((g) => g.items);
 
   if (items.length === 0) return null;

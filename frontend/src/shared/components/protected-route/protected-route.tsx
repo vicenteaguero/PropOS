@@ -2,12 +2,20 @@ import type { ReactNode } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@shared/hooks/use-auth";
 import { AppSkeleton } from "@shared/components/app-skeleton/app-skeleton";
+import { entryFor } from "@shared/feature/catalog";
+import { FeatureLockedScreen } from "@shared/feature/feature-gate";
 import type { UserRole, UserView } from "@shared/types/auth";
 
 interface ProtectedRouteProps {
   children: ReactNode;
   requiredRole?: UserRole;
   requiredScope?: string;
+  /**
+   * Feature key. `hidden` sends the user home as if the route did not exist,
+   * `locked` renders the locked screen with the tenant's note. Separate from
+   * `requiredScope`, which is about the person rather than the feature.
+   */
+  requiredFeature?: string;
   requiredView?: UserView | UserView[];
   requiredDevAdmin?: boolean;
 }
@@ -25,10 +33,11 @@ export function ProtectedRoute({
   children,
   requiredRole,
   requiredScope,
+  requiredFeature,
   requiredView,
   requiredDevAdmin,
 }: ProtectedRouteProps) {
-  const { isAuthenticated, isLoading, user } = useAuth();
+  const { isAuthenticated, isLoading, user, features } = useAuth();
 
   if (isLoading) {
     return <AppSkeleton />;
@@ -64,6 +73,16 @@ export function ProtectedRoute({
     const scope = user.adminScope ?? [];
     if (scope.length > 0 && !scope.includes(requiredScope)) {
       return <Forbidden />;
+    }
+  }
+
+  if (requiredFeature) {
+    const gate = entryFor(features, requiredFeature);
+    if (gate.state === "hidden") {
+      return <Navigate to="/" replace />;
+    }
+    if (gate.state === "locked") {
+      return <FeatureLockedScreen note={gate.note} />;
     }
   }
 

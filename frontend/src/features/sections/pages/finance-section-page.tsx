@@ -20,14 +20,27 @@ export function FinanceSectionPage() {
   const isDevAdmin = user?.view === "admin-dev";
 
   const tabs: SectionTab[] = [
-    { id: "movimientos", label: "Movimientos", scope: "finanzas", render: () => <FinancePage /> },
-    { id: "analitica", label: "Analítica", scope: "analytics", render: () => <AnalyticsPage /> },
+    {
+      id: "movimientos",
+      label: "Movimientos",
+      scope: "finanzas",
+      feature: "finanzas",
+      render: () => <FinancePage />,
+    },
+    {
+      id: "analitica",
+      label: "Analítica",
+      scope: "analytics",
+      feature: "analytics",
+      render: () => <AnalyticsPage />,
+    },
     ...(isDevAdmin
       ? [
           {
             id: "costo-propo",
             label: "Costo Propo",
             scope: "analytics",
+            feature: "analytics",
             render: () => <AgentCostPage />,
           },
         ]

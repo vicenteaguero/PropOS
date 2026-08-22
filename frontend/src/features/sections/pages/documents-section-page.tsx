@@ -13,8 +13,8 @@ const PortalAdminPage = lazy(() =>
 /** Files and the public links used to collect them. */
 export function DocumentsSectionPage() {
   const tabs: SectionTab[] = [
-    { id: "archivos", label: "Archivos", render: () => <DocumentsPage /> },
-    { id: "enlaces", label: "Enlaces", render: () => <PortalAdminPage /> },
+    { id: "archivos", label: "Archivos", feature: "documents", render: () => <DocumentsPage /> },
+    { id: "enlaces", label: "Enlaces", feature: "portales", render: () => <PortalAdminPage /> },
   ];
   return (
     <Suspense fallback={<PageSkeleton variant="list" />}>

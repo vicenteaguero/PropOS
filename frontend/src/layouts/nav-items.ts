@@ -11,12 +11,14 @@ import {
   Shield,
   Settings,
   Sparkles,
+  ToggleLeft,
   Upload,
   UserPlus,
   Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { UserView } from "@shared/types/auth";
+import { isVisible, type FeatureMap } from "@shared/feature/catalog";
 
 /**
  * The single navigation tree, shared by the desktop sidebar and the mobile
@@ -35,6 +37,12 @@ export interface NavItem {
   end?: boolean;
   badge?: "pending";
   scope?: string;
+  /**
+   * Feature key from `shared/feature/catalog`. Orthogonal to `scope`: the scope
+   * asks whether this person may, the feature asks whether the brokerage has it
+   * turned on. An entry needs to clear both.
+   */
+  feature?: string;
   devOnly?: boolean;
 }
 
@@ -49,6 +57,19 @@ export function filterByScope(groups: NavGroup[], adminScope: string[]): NavGrou
   const visible = (item: NavItem) => !item.scope || allowed.has(item.scope);
   return groups
     .map((g) => ({ ...g, items: g.items.filter(visible) }))
+    .filter((g) => g.items.length > 0);
+}
+
+/**
+ * Drop entries whose feature is hidden for this tenant.
+ *
+ * `locked` deliberately survives: the nav entry stays, and the route it points
+ * at renders the locked screen. Hiding a locked feature from the nav would make
+ * "locked" and "hidden" the same state.
+ */
+export function filterByFeature(groups: NavGroup[], features: FeatureMap): NavGroup[] {
+  return groups
+    .map((g) => ({ ...g, items: g.items.filter((i) => isVisible(features, i.feature)) }))
     .filter((g) => g.items.length > 0);
 }
 
@@ -76,24 +97,54 @@ export function buildAdminGroups(agentName: string): NavGroup[] {
     {
       label: agentName,
       items: [
-        { label: agentName, path: "/admin/agent", icon: Sparkles, scope: "agent" },
+        {
+          label: agentName,
+          path: "/admin/agent",
+          icon: Sparkles,
+          scope: "agent",
+          feature: "agent",
+        },
         {
           label: "Pendientes",
           path: "/admin/pendientes",
           icon: Inbox,
           badge: "pending",
           scope: "pendientes",
+          feature: "pendientes",
         },
       ],
     },
     {
       label: "Trabajo",
       items: [
-        { label: "Clientes", path: "/admin/clientes", icon: Users, scope: "crm" },
-        { label: "Agenda", path: "/admin/agenda", icon: CalendarDays, scope: "productividad" },
-        { label: "Propiedades", path: "/admin/clientes?tab=propiedades", icon: Building2 },
-        { label: "Documentos", path: "/admin/documentos", icon: FileText, scope: "documents" },
-        { label: "Finanzas", path: "/admin/finanzas", icon: Receipt, scope: "finanzas" },
+        { label: "Clientes", path: "/admin/clientes", icon: Users, scope: "crm", feature: "crm" },
+        {
+          label: "Agenda",
+          path: "/admin/agenda",
+          icon: CalendarDays,
+          scope: "productividad",
+          feature: "productividad",
+        },
+        {
+          label: "Propiedades",
+          path: "/admin/clientes?tab=propiedades",
+          icon: Building2,
+          feature: "propiedades",
+        },
+        {
+          label: "Documentos",
+          path: "/admin/documentos",
+          icon: FileText,
+          scope: "documents",
+          feature: "documents",
+        },
+        {
+          label: "Finanzas",
+          path: "/admin/finanzas",
+          icon: Receipt,
+          scope: "finanzas",
+          feature: "finanzas",
+        },
       ],
     },
     // Stays in the tree so the title index, the mobile sheet and the desktop
@@ -116,9 +167,21 @@ export function buildSettingsShortcuts(agentName: string): NavItem[] {
     // as unreachable as the constants they replaced.
     { label: "Clientes", path: "/admin/settings/clientes", icon: MessageSquareText },
     { label: "Visitantes", path: "/admin/visitantes", icon: UserPlus },
-    { label: "Teléfonos", path: "/admin/phones", icon: Phone, scope: "phones" },
-    { label: "Importar datos", path: "/admin/datos/importar", icon: Upload, scope: "datos" },
-    { label: "Workflows", path: "/admin/workflows", icon: ListChecks, scope: "workflows" },
+    { label: "Teléfonos", path: "/admin/phones", icon: Phone, scope: "phones", feature: "phones" },
+    {
+      label: "Importar datos",
+      path: "/admin/datos/importar",
+      icon: Upload,
+      scope: "datos",
+      feature: "datos",
+    },
+    {
+      label: "Workflows",
+      path: "/admin/workflows",
+      icon: ListChecks,
+      scope: "workflows",
+      feature: "workflows",
+    },
     {
       label: `Costo ${agentName}`,
       path: "/admin/finanzas?tab=costo-propo",
@@ -127,6 +190,12 @@ export function buildSettingsShortcuts(agentName: string): NavItem[] {
       devOnly: true,
     },
     { label: "Tenants", path: "/admin/tenants", icon: Shield, devOnly: true },
+    {
+      label: "Funcionalidades",
+      path: "/admin/settings/funcionalidades",
+      icon: ToggleLeft,
+      devOnly: true,
+    },
   ];
 }
 
@@ -149,12 +218,38 @@ export function buildGroups(view: UserView, agentName: string, isDevAdmin: boole
         {
           label: "Trabajo",
           items: [
-            { label: "Pendientes", path: "/agent/pendientes", icon: Inbox, badge: "pending" },
-            { label: "Clientes", path: "/agent/clientes", icon: Users },
-            { label: "Agenda", path: "/agent/agenda", icon: CalendarDays },
-            { label: "Propiedades", path: "/agent/clientes?tab=propiedades", icon: Building2 },
-            { label: "Documentos", path: "/agent/documentos", icon: FileText },
-            { label: "Workflows", path: "/agent/workflows", icon: ListChecks },
+            {
+              label: "Pendientes",
+              path: "/agent/pendientes",
+              icon: Inbox,
+              badge: "pending",
+              feature: "pendientes",
+            },
+            { label: "Clientes", path: "/agent/clientes", icon: Users, feature: "crm" },
+            {
+              label: "Agenda",
+              path: "/agent/agenda",
+              icon: CalendarDays,
+              feature: "productividad",
+            },
+            {
+              label: "Propiedades",
+              path: "/agent/clientes?tab=propiedades",
+              icon: Building2,
+              feature: "propiedades",
+            },
+            {
+              label: "Documentos",
+              path: "/agent/documentos",
+              icon: FileText,
+              feature: "documents",
+            },
+            {
+              label: "Workflows",
+              path: "/agent/workflows",
+              icon: ListChecks,
+              feature: "workflows",
+            },
           ],
         },
       ];
@@ -165,7 +260,12 @@ export function buildGroups(view: UserView, agentName: string, isDevAdmin: boole
         {
           items: [
             { label: "Inicio", path: "/buyer", icon: Home, end: true },
-            { label: "Documentos", path: "/buyer/documentos", icon: FileText },
+            {
+              label: "Documentos",
+              path: "/buyer/documentos",
+              icon: FileText,
+              feature: "documents",
+            },
           ],
         },
       ];
