@@ -3,6 +3,8 @@ import { AlertTriangle, ChevronRight, Globe, Lock, Plus, UserRound } from "lucid
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
+  CONTROL_SQUARE,
+  AppShellScroll,
   FilterSelect,
   FOCUS_RING,
   ListShell,
@@ -55,8 +57,24 @@ const STATUS_TONE: Record<ApprovalStatus, PillTone> = {
 
 const STATUS_OPTIONS: ApprovalStatus[] = ["approved", "submitted", "rejected", "draft"];
 
-/** A row's own gutter matches `Row`'s, so both tabs align with every other list. */
-const ROW = "w-full px-[var(--page-x)] py-3 text-left border-b border-border";
+/**
+ * A row's own gutter matches `Row`'s, so both tabs align with every other list.
+ *
+ * `flex flex-col` is not decoration — it is the fix for this page rendering
+ * badly in Chrome and unusably in Safari. These rows are `<button>`s with
+ * several block children, and WebKit lays a button's content out inside an
+ * ANONYMOUS FLEX BOX with `align-items: center`. Block children therefore stop
+ * stretching to the button's width and shrink-wrap around their text instead,
+ * so every `min-w-0 flex-1 truncate` inside them resolves against nothing.
+ * Blink treats the same markup as ordinary block flow, which is why the two
+ * engines disagreed so violently. Naming the container explicitly makes both
+ * engines do the same thing.
+ *
+ * The tell was that Etiquetas — the one tab whose row adds its own `flex` —
+ * was the one tab that looked right.
+ */
+const ROW =
+  "flex w-full flex-col items-stretch px-[var(--page-x)] py-3 text-left border-b border-border";
 
 function TemplateRow({ template, onOpen }: { template: MessageTemplate; onOpen: () => void }) {
   const sendable = isSendable(template);
@@ -72,7 +90,7 @@ function TemplateRow({ template, onOpen }: { template: MessageTemplate; onOpen: 
         "transition hover:bg-secondary/50 active:scale-[0.995]",
       )}
     >
-      <div className="flex items-center gap-2">
+      <span className="flex items-center gap-2">
         <span className="min-w-0 flex-1 truncate font-mono text-[14px] font-semibold text-foreground">
           {template.name}
         </span>
@@ -80,11 +98,17 @@ function TemplateRow({ template, onOpen }: { template: MessageTemplate; onOpen: 
           {label("templateApprovalStatus", template.approval_status)}
         </Pill>
         <ChevronRight className="size-4 shrink-0 text-faint" strokeWidth={1.8} />
-      </div>
+      </span>
 
-      <TemplateBody body={template.body} variables={template.variables} clamp className="mt-1.5" />
+      <TemplateBody
+        asSpan
+        body={template.body}
+        variables={template.variables}
+        clamp
+        className="mt-1.5"
+      />
 
-      <div className="mt-1.5 flex flex-wrap items-center gap-x-2 text-[12px] text-faint">
+      <span className="mt-1.5 flex flex-wrap items-center gap-x-2 text-[12px] text-faint">
         <span>{label("channel", template.channel)}</span>
         <span aria-hidden>·</span>
         <span>{label("templateCategory", template.category)}</span>
@@ -98,7 +122,7 @@ function TemplateRow({ template, onOpen }: { template: MessageTemplate; onOpen: 
             <span className="font-medium text-warning">sólo dentro de las 24 h</span>
           </>
         )}
-      </div>
+      </span>
     </button>
   );
 }
@@ -138,10 +162,15 @@ function MessageTemplatesTab() {
           all.length > 0 ? `${sendable} de ${all.length} se pueden enviar fuera de las 24 h` : null
         }
         search={{ value: query, onChange: setQuery, placeholder: "Buscar plantilla..." }}
-        action={
-          <Button size="sm" onClick={() => openSheet(null)}>
+        primaryAction={
+          <Button
+            size="icon"
+            aria-label="Nueva plantilla"
+            title="Nueva plantilla"
+            className={cn("rounded-full", CONTROL_SQUARE)}
+            onClick={() => openSheet(null)}
+          >
             <Plus className="size-4" strokeWidth={2} />
-            Nueva
           </Button>
         }
         filters={
@@ -221,15 +250,15 @@ function ChecklistRow({ template, onOpen }: { template: ChecklistTemplate; onOpe
         "transition hover:bg-secondary/50 active:scale-[0.995]",
       )}
     >
-      <div className="flex items-center gap-2">
+      <span className="flex items-center gap-2">
         <span className="min-w-0 flex-1 truncate text-[15px] font-semibold text-foreground">
           {template.name}
         </span>
         {template.is_default && <Pill tone="accent">Se abre sola</Pill>}
         <ChevronRight className="size-4 shrink-0 text-faint" strokeWidth={1.8} />
-      </div>
+      </span>
 
-      <div className="mt-1 flex flex-wrap items-center gap-x-2 text-[13px] text-muted-foreground">
+      <span className="mt-1 flex flex-wrap items-center gap-x-2 text-[13px] text-muted-foreground">
         <span>{label("operationKind", template.operation_kind)}</span>
         <span aria-hidden>·</span>
         <span>{template.items.length} pasos</span>
@@ -239,10 +268,10 @@ function ChecklistRow({ template, onOpen }: { template: ChecklistTemplate; onOpe
             <span>hasta el día {horizon}</span>
           </>
         )}
-      </div>
+      </span>
 
       {blocking.length > 0 && (
-        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        <span className="mt-2 flex flex-wrap items-center gap-1.5">
           <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-destructive">
             <Lock className="size-3.5" strokeWidth={2} />
             {blocking.length} frenan el cierre
@@ -258,7 +287,7 @@ function ChecklistRow({ template, onOpen }: { template: ChecklistTemplate; onOpe
           {blocking.length > shown.length && (
             <span className="text-[12px] text-faint">+{blocking.length - shown.length}</span>
           )}
-        </div>
+        </span>
       )}
     </button>
   );
@@ -287,10 +316,15 @@ function ChecklistTemplatesTab() {
         titleSr="Listas de cierre"
         meta={all.length > 0 ? `${all.length} listas` : null}
         search={{ value: query, onChange: setQuery, placeholder: "Buscar lista..." }}
-        action={
-          <Button size="sm" onClick={() => openSheet(null)}>
+        primaryAction={
+          <Button
+            size="icon"
+            aria-label="Nueva lista de cierre"
+            title="Nueva lista de cierre"
+            className={cn("rounded-full", CONTROL_SQUARE)}
+            onClick={() => openSheet(null)}
+          >
             <Plus className="size-4" strokeWidth={2} />
-            Nueva
           </Button>
         }
         isLoading={isPending}
@@ -339,19 +373,19 @@ function PipelineRow({ pipeline, onOpen }: { pipeline: Pipeline; onOpen: () => v
         "transition hover:bg-secondary/50 active:scale-[0.995]",
       )}
     >
-      <div className="flex items-center gap-2">
+      <span className="flex items-center gap-2">
         <span className="min-w-0 flex-1 truncate text-[15px] font-semibold text-foreground">
           {pipeline.name}
         </span>
         {pipeline.is_default && <Pill tone="accent">Por defecto</Pill>}
         <ChevronRight className="size-4 shrink-0 text-faint" strokeWidth={1.8} />
-      </div>
+      </span>
 
-      <div className="mt-1 flex flex-wrap items-center gap-x-2 text-[13px] text-muted-foreground">
+      <span className="mt-1 flex flex-wrap items-center gap-x-2 text-[13px] text-muted-foreground">
         <span>{pipeline.stages.length} etapas</span>
         <span aria-hidden>·</span>
         <span>{pipeline.deal_count} negocios</span>
-      </div>
+      </span>
 
       {/* A pipeline with no rules is not a tidy pipeline: `assert_allowed`
           treats it as unconstrained, so the row has to lead with that rather
@@ -362,7 +396,7 @@ function PipelineRow({ pipeline, onOpen }: { pipeline: Pipeline; onOpen: () => v
           Sin reglas: cualquier movimiento permitido
         </span>
       ) : (
-        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px]">
+        <span className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px]">
           <span className="text-faint">{summary.declared} movimientos</span>
           {summary.human > 0 && (
             <span className="inline-flex items-center gap-1.5 font-medium text-warning">
@@ -376,7 +410,7 @@ function PipelineRow({ pipeline, onOpen }: { pipeline: Pipeline; onOpen: () => v
               {summary.fromAny} desde cualquier etapa
             </span>
           )}
-        </div>
+        </span>
       )}
     </button>
   );
@@ -412,10 +446,15 @@ function PipelinesTab() {
               : null
         }
         search={{ value: query, onChange: setQuery, placeholder: "Buscar pipeline..." }}
-        action={
-          <Button size="sm" onClick={() => openSheet(null)}>
+        primaryAction={
+          <Button
+            size="icon"
+            aria-label="Nuevo pipeline"
+            title="Nuevo pipeline"
+            className={cn("rounded-full", CONTROL_SQUARE)}
+            onClick={() => openSheet(null)}
+          >
             <Plus className="size-4" strokeWidth={2} />
-            Nuevo
           </Button>
         }
         isLoading={isPending}
@@ -458,7 +497,9 @@ function TagRow({ tag, onOpen }: { tag: Tag; onOpen: () => void }) {
         ROW,
         TOUCH_TARGET_ROW,
         FOCUS_RING,
-        "flex items-center gap-3 transition hover:bg-secondary/50 active:scale-[0.995]",
+        // Explicitly row-direction: ROW is a column now (see its comment), and
+        // this is the one row whose children sit side by side.
+        "flex-row items-center gap-3 transition hover:bg-secondary/50 active:scale-[0.995]",
       )}
     >
       <span
@@ -521,10 +562,15 @@ function TagsTab() {
             : null
         }
         search={{ value: query, onChange: setQuery, placeholder: "Buscar etiqueta..." }}
-        action={
-          <Button size="sm" onClick={() => openSheet(null)}>
+        primaryAction={
+          <Button
+            size="icon"
+            aria-label="Nueva etiqueta"
+            title="Nueva etiqueta"
+            className={cn("rounded-full", CONTROL_SQUARE)}
+            onClick={() => openSheet(null)}
+          >
             <Plus className="size-4" strokeWidth={2} />
-            Nueva
           </Button>
         }
         isLoading={isPending}
@@ -578,13 +624,20 @@ export function ClientsCatalogsPage() {
     { id: "etiquetas", label: "Etiquetas", render: () => <TagsTab /> },
   ];
 
+  // `AppShellScroll`, like every other tabbed surface. This page asked for
+  // `min-h-0 flex-1` down its whole chain (PageLayout → SectionTabs → the tab's
+  // ListShell) without any ancestor establishing a definite height — `<main>`
+  // is `display: block`. Blink resolves such a chain from content; WebKit
+  // collapses it, which is the other half of "in Safari, WTF is that".
   return (
-    <PageLayout width="md" noPadding className="flex min-h-0 flex-col pb-16">
-      <div className="px-[var(--page-x)] pt-5">
-        <PageHeader title="Clientes" backTo="/admin/settings" className="mb-2" />
-      </div>
-      <SectionTabs tabs={tabs} />
-    </PageLayout>
+    <AppShellScroll>
+      <PageLayout width="md" noPadding className="flex flex-col pb-16 md:min-h-0 md:flex-1">
+        <div className="px-[var(--page-x)] pt-4">
+          <PageHeader title="Clientes" backTo="/admin/settings" className="mb-1" />
+        </div>
+        <SectionTabs tabs={tabs} />
+      </PageLayout>
+    </AppShellScroll>
   );
 }
 

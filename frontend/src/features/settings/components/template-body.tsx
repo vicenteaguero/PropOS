@@ -16,19 +16,31 @@ export function TemplateBody({
   variables,
   className,
   clamp = false,
+  asSpan = false,
 }: {
   body: string;
   variables: string[];
   className?: string;
   /** Two lines and an ellipsis, for a list row. */
   clamp?: boolean;
+  /**
+   * Render as a `<span class="block">` instead of a `<p>`.
+   *
+   * These rows are `<button>`s, whose content model is phrasing only — a `<p>`
+   * inside one is invalid, and WebKit in particular treats a button's children
+   * as an anonymous flex box, which is where the Clientes catalogue's layout
+   * came apart. Same paragraph, legal in that position.
+   */
+  asSpan?: boolean;
 }) {
   const segments = segmentBody(body, variables);
+  const Tag = asSpan ? "span" : "p";
 
   return (
-    <p
+    <Tag
       className={cn(
         "text-[13px] leading-relaxed break-words text-muted-foreground",
+        asSpan && "block",
         clamp && "line-clamp-2",
         className,
       )}
@@ -52,6 +64,6 @@ export function TemplateBody({
           </span>
         ),
       )}
-    </p>
+    </Tag>
   );
 }
