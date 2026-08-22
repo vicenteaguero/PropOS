@@ -50,6 +50,7 @@ import {
 import type { Quad, FilterMode } from "../services/scanner/types";
 import { useDocumentBlob } from "../hooks/use-document-blob";
 import { DocumentPreview } from "../components/document-preview";
+import { DocumentViewer } from "../components/document-viewer";
 import { IntegrityWarning } from "../components/integrity-warning";
 import { DeleteDocumentConfirm } from "../components/delete-confirm";
 import { AssignmentList } from "../components/assignment-list";
@@ -124,6 +125,7 @@ export function DocumentDetailPage() {
 
   const [pickerOpen, setPickerOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
   const [shareLinkOpen, setShareLinkOpen] = useState(false);
   const [shareViaOpen, setShareViaOpen] = useState(false);
   const [audienceShareOpen, setAudienceShareOpen] = useState(false);
@@ -433,13 +435,26 @@ export function DocumentDetailPage() {
         </div>
       </section>
 
-      <div className="overflow-hidden rounded-xl bg-secondary/40 p-2">
-        <DocumentPreview
-          blob={blobState.blob}
-          mimeType={currentVersion?.mime_type}
-          loading={blobState.loading}
-        />
-      </div>
+      {/* The inline preview is a thumbnail of the real thing: tapping it opens
+          the viewer, which is where zoom actually works. */}
+      <button
+        type="button"
+        onClick={() => setViewerOpen(true)}
+        aria-label="Abrir documento a pantalla completa"
+        className="block w-full overflow-hidden rounded-xl bg-secondary/40 p-2 text-left transition active:scale-[0.995]"
+      >
+        <div className="pointer-events-none max-h-[52dvh] overflow-hidden">
+          <DocumentPreview
+            blob={blobState.blob}
+            mimeType={currentVersion?.mime_type}
+            loading={blobState.loading}
+            maxPages={1}
+          />
+        </div>
+        <span className="mt-2 block text-center text-[13px] font-medium text-muted-foreground">
+          Toca para abrir y hacer zoom
+        </span>
+      </button>
 
       {/* Collapsed. Every row here is a fact about the file rather than about
           the deal — the checksum, the mime type, the antivirus verdict — and
@@ -476,6 +491,20 @@ export function DocumentDetailPage() {
           )}
         </dl>
       </details>
+
+      <DocumentViewer
+        open={viewerOpen}
+        onOpenChange={setViewerOpen}
+        blob={blobState.blob}
+        mimeType={currentVersion?.mime_type}
+        title={doc.display_name}
+        loading={blobState.loading}
+        onShare={() => {
+          setViewerOpen(false);
+          setShareViaOpen(true);
+        }}
+        onDownload={downloadCurrent}
+      />
 
       <AssignmentPicker documentId={doc.id} open={pickerOpen} onOpenChange={setPickerOpen} />
       <VersionHistoryDrawer
