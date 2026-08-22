@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
@@ -8,6 +9,7 @@ from app.core.logging.logger import get_logger
 from app.core.supabase.client import get_supabase_client
 from app.features.agent.attribution import agent_attribution
 from app.features.pending.overrides import sanitize_overrides
+from app.features.pending.undo import undo_accepted
 
 PENDING_TABLE = "pending_proposals"
 
@@ -29,20 +31,155 @@ def register_accept_dispatcher(
     ACCEPT_DISPATCHERS[kind] = fn
 
 
+#: Hard ceiling on one page. The queue is reviewed, not scrolled.
+_MAX_PAGE = 50
+
+#: Anything older than this with no deadline is backlog, not news.
+_RECENT_HOURS = 24
+
+
+def _cutoff(hours: int) -> str:
+    return (datetime.now(UTC) - timedelta(hours=hours)).isoformat()
+
+
+#: See `PendingService.list_proposals`. Each takes and returns a PostgREST
+#: builder, so the filter and its order travel together — splitting them is how
+#: a "recent" query ends up sorted by a column it excluded.
+_BUCKETS: dict[str, Callable[[Any], Any]] = {
+    "urgent": lambda q: q.not_.is_("expires_at", "null").order("expires_at"),
+    "recent": lambda q: q.is_("expires_at", "null")
+    .gte("created_at", _cutoff(_RECENT_HOURS))
+    .order("created_at", desc=True),
+    "old": lambda q: q.is_("expires_at", "null")
+    .lt("created_at", _cutoff(_RECENT_HOURS))
+    .order("created_at", desc=True),
+}
+
+
 class PendingService:
     @staticmethod
     async def list_proposals(
         tenant_id: UUID,
         status: str | None = None,
         kind: str | None = None,
+        bucket: str = "all",
+        limit: int = 50,
+        offset: int = 0,
     ) -> list[dict]:
+        """The queue, in three groups because one flat order buries the recent.
+
+        Sorting everything by `expires_at` alone puts a proposal made ten
+        minutes ago from a voice note (no deadline) below one that expires
+        tomorrow. Sorting everything by `created_at` is what the queue did
+        before, and it ignored the clock entirely. So:
+
+        - `urgent`  — has a deadline, soonest first. Something is running out.
+        - `recent`  — no deadline, made in the last 24 h, newest first.
+        - `old`     — no deadline and older than that. Paged behind a button;
+                      nothing about it changes if it waits another day.
+
+        `bucket` only means anything for pending proposals: an accepted one has
+        no deadline semantics, so those come back most-recently-decided first.
+        """
         client = get_supabase_client()
-        builder = client.table(PENDING_TABLE).select("*").eq("tenant_id", str(tenant_id)).order("created_at", desc=True)
+        builder = client.table(PENDING_TABLE).select("*").eq("tenant_id", str(tenant_id))
         if status:
             builder = builder.eq("status", status)
         if kind:
             builder = builder.eq("kind", kind)
-        return builder.execute().data
+
+        if status == "pending" and bucket in _BUCKETS:
+            builder = _BUCKETS[bucket](builder)
+        elif status in ("accepted", "rejected"):
+            builder = builder.order("reviewed_at", desc=True).order("created_at", desc=True)
+        else:
+            builder = builder.order("created_at", desc=True)
+
+        limit = max(1, min(limit, _MAX_PAGE))
+        offset = max(0, offset)
+        return builder.range(offset, offset + limit - 1).execute().data
+
+    @staticmethod
+    async def undo_proposal(proposal_id: UUID, tenant_id: UUID, reviewer_user: UUID) -> dict:
+        """Reverse an accepted proposal and put it back in the queue.
+
+        Destructive by design — see undo.py for the audit guard that decides
+        whether it is safe. The record is reversed FIRST: returning the proposal
+        to `pending` while the row it created still exists would let a second
+        accept duplicate it.
+        """
+        proposal = await PendingService.get_proposal(proposal_id, tenant_id)
+        if proposal["status"] != "accepted":
+            raise ValueError("Sólo se puede deshacer una propuesta aceptada.")
+
+        note = undo_accepted(proposal, tenant_id)
+
+        client = get_supabase_client()
+        updated = (
+            client.table(PENDING_TABLE)
+            .update(
+                {
+                    "status": "pending",
+                    "reviewer_user": str(reviewer_user),
+                    "reviewed_at": None,
+                    "review_note": None,
+                    "review_reason": None,
+                    "created_row_id": None,
+                    "target_row_id": None,
+                }
+            )
+            .eq("id", str(proposal_id))
+            .eq("tenant_id", str(tenant_id))
+            # Claim-first, like accept: two taps must not undo twice.
+            .eq("status", "accepted")
+            .execute()
+        )
+        if not updated.data:
+            raise ValueError("Esta propuesta ya se había deshecho.")
+        logger.info("proposal_undone", extra={"proposal_id": str(proposal_id), "note": note})
+        return updated.data[0]
+
+    @staticmethod
+    async def reopen_proposal(proposal_id: UUID, tenant_id: UUID) -> dict:
+        """Put a rejected proposal back in the queue.
+
+        Nothing was written when it was rejected, so this only clears the review
+        and there is nothing to reverse.
+        """
+        client = get_supabase_client()
+        updated = (
+            client.table(PENDING_TABLE)
+            .update(
+                {
+                    "status": "pending",
+                    "reviewer_user": None,
+                    "reviewed_at": None,
+                    "review_note": None,
+                    "review_reason": None,
+                }
+            )
+            .eq("id", str(proposal_id))
+            .eq("tenant_id", str(tenant_id))
+            .eq("status", "rejected")
+            .execute()
+        )
+        if not updated.data:
+            raise ValueError("Sólo se puede reabrir una propuesta rechazada.")
+        return updated.data[0]
+
+    @staticmethod
+    async def count_pending(tenant_id: UUID) -> int:
+        """Exact count, independent of any page size."""
+        res = (
+            get_supabase_client()
+            .table(PENDING_TABLE)
+            .select("id", count="exact")
+            .eq("tenant_id", str(tenant_id))
+            .eq("status", "pending")
+            .limit(1)
+            .execute()
+        )
+        return res.count or 0
 
     @staticmethod
     async def get_proposal(proposal_id: UUID, tenant_id: UUID) -> dict:

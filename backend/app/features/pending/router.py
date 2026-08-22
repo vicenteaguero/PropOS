@@ -12,6 +12,7 @@ from app.core.dependencies import (
     require_scope,
 )
 from app.features.pending.overrides import OverrideError
+from app.features.pending.undo import UndoError
 from app.features.pending.schemas import (
     AcceptProposalRequest,
     BulkAcceptRequest,
@@ -37,8 +38,25 @@ async def list_pending(
     tenant_id: UUID = Depends(get_tenant_id),
     proposal_status: str | None = Query(default=None, alias="status"),
     kind: str | None = Query(default=None),
+    # See PendingService.list_proposals. Only meaningful for `status=pending`.
+    bucket: str = Query(default="all", pattern="^(all|urgent|recent|old)$"),
+    limit: int = Query(default=50, ge=1, le=50),
+    offset: int = Query(default=0, ge=0),
 ) -> list[dict]:
-    return await PendingService.list_proposals(tenant_id, proposal_status, kind)
+    return await PendingService.list_proposals(
+        tenant_id, proposal_status, kind, bucket=bucket, limit=limit, offset=offset
+    )
+
+
+@router.get("/count")
+async def count_pending(tenant_id: UUID = Depends(get_tenant_id)) -> dict[str, int]:
+    """How many are waiting, uncapped.
+
+    The sidebar badge used to be `list().length`, which was honest only while
+    the list was unbounded. With a page size it would have silently become "at
+    most 50" — a badge that stops counting is worse than no badge.
+    """
+    return {"pending": await PendingService.count_pending(tenant_id)}
 
 
 @router.get("/{proposal_id}", response_model=PendingProposalResponse)
@@ -70,9 +88,7 @@ async def accept_pending(
     # Before the ValueError clause: OverrideError subclasses it, and a bad
     # correction is the caller's mistake (422), not a conflicting state (409).
     except OverrideError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
@@ -91,6 +107,38 @@ async def reject_pending(
         reason=payload.reason,
         review_reason=payload.review_reason.value if payload.review_reason else None,
     )
+
+
+@router.post("/{proposal_id}/undo", response_model=PendingProposalResponse)
+async def undo_pending(
+    proposal_id: UUID,
+    tenant_id: UUID = Depends(get_tenant_id),
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> dict:
+    """Reverse an accepted proposal and return it to the queue.
+
+    Destructive: it removes the record the accept created, or restores the one
+    it modified. `undo.py` refuses when a human has touched that record since.
+    """
+    try:
+        return await PendingService.undo_proposal(proposal_id, tenant_id, UUID(current_user["id"]))
+    except UndoError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+
+@router.post("/{proposal_id}/reopen", response_model=PendingProposalResponse)
+async def reopen_pending(
+    proposal_id: UUID,
+    tenant_id: UUID = Depends(get_tenant_id),
+) -> dict:
+    """Put a rejected proposal back in the queue. Nothing was written, so there
+    is nothing to reverse — only the review to clear."""
+    try:
+        return await PendingService.reopen_proposal(proposal_id, tenant_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
 
 @router.post("/bulk-accept", response_model=list[PendingProposalResponse])
