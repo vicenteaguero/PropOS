@@ -146,7 +146,14 @@ export function ListShell({
         >
           {title ?? titleSr}
         </h2>
-        {meta && <span className="shrink-0 text-[13px] text-muted-foreground">{meta}</span>}
+        {meta && (
+          // Shrinkable, and on a phone it drops to its own line. `shrink-0` on a
+          // sentence like "3 de 12 se pueden enviar fuera de las 24 h" ate the
+          // whole row and squeezed the search field down to its magnifier.
+          <span className="order-last min-w-0 basis-full truncate text-[13px] text-muted-foreground sm:order-none sm:basis-auto">
+            {meta}
+          </span>
+        )}
         {search && (
           // Grows into the free space but caps out, so on a 2560px monitor the
           // field ends where the action begins instead of a screen away.
