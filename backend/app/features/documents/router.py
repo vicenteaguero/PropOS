@@ -283,6 +283,36 @@ async def download_version(
     return {"url": url}
 
 
+@router.get(
+    "/documents/{document_id}/thumbnail",
+    dependencies=[
+        Depends(require_role(*OWNER_READ_ROLES)),
+        # Bounded per document, not per caller: the shape we are defending
+        # against is one grid mounting and asking for the same tile repeatedly,
+        # not one user being greedy across the catalogue.
+        Depends(rate_limit("doc_thumbnail", limit=10, window_seconds=60, key=by_path_param("document_id"))),
+    ],
+)
+async def get_document_thumbnail(
+    document_id: UUID,
+    tenant_id: UUID = Depends(get_tenant_id),
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> dict:
+    """A signed URL for the first-page preview, rendering it on demand.
+
+    Returns JSON rather than image bytes on purpose. An `<img>` cannot send an
+    Authorization header, so a byte-proxying route would need a token in the
+    query string — a worse secret than the storage one it replaces — and it
+    would push every tile through Cloud Run instead of the CDN.
+
+    `state` lets the caller stop asking: UNSUPPORTED and FAILED will not become
+    READY on a retry, so the tile should settle on its type glyph instead.
+    """
+    assert_document_granted(current_user, tenant_id, document_id)
+    url, state = await DocumentService.ensure_thumbnail(document_id, tenant_id)
+    return {"url": url, "state": state}
+
+
 @staff_router.get("/documents/{document_id}/versions/{version_id}/source-images")
 async def get_version_source_images(
     document_id: UUID,

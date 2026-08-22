@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import threading
 from uuid import UUID, uuid4
 
 from fastapi import HTTPException, status
 
+from app.core.db import run_blocking
 from app.core.logging.logger import get_logger
 from app.core.supabase.client import get_supabase_client
 from app.features.documents import storage
@@ -29,6 +31,17 @@ ASSIGNMENTS_TABLE = "document_assignments"
 logger = get_logger("DOCUMENTS")
 
 
+# `document_versions.thumbnail_state`. PENDING is the column default and means
+# "not attempted yet"; the other three are terminal for the on-demand path.
+THUMB_READY = "READY"
+THUMB_UNSUPPORTED = "UNSUPPORTED"
+THUMB_FAILED = "FAILED"
+THUMB_PENDING = "PENDING"
+# A render that has blown up three times is not going to work on the fourth. The
+# cap is what stops a corrupt PDF from being re-rendered on every grid paint.
+MAX_THUMB_ATTEMPTS = 3
+
+
 def _maybe_generate_thumbnail(
     *,
     mime: str,
@@ -37,14 +50,16 @@ def _maybe_generate_thumbnail(
     document_id: str,
     version_id: str,
     version_number: int,
-) -> str | None:
-    """Render + upload a WebP thumb (PDF first page or raster image). Best-effort; logs and swallows failures.
+) -> tuple[str | None, str]:
+    """Render + upload a WebP thumb (PDF first page or raster image).
 
     The ``pdf_bytes`` parameter holds the raw bytes regardless of mime — the name is kept
     for backwards compatibility with existing call sites.
 
-    Returns the storage path on success, None otherwise. Caller should persist
-    the path on the version row when non-None.
+    Best-effort: logs and swallows failures, never blocks an upload. Returns
+    ``(path, state)``. The state is what tells a later reader whether there is
+    work left to do here — without it, "no thumbnail" and "cannot have a
+    thumbnail" look identical and the second is retried forever.
     """
     try:
         if mime == "application/pdf":
@@ -52,7 +67,7 @@ def _maybe_generate_thumbnail(
         elif mime and mime.startswith("image/"):
             png = generate_image_thumbnail(pdf_bytes, mime)
         else:
-            return None
+            return None, THUMB_UNSUPPORTED
     except Exception as exc:  # noqa: BLE001 — best-effort, never block upload
         logger.warning(
             "thumbnail render failed",
@@ -61,7 +76,7 @@ def _maybe_generate_thumbnail(
             mime=mime,
             error=str(exc),
         )
-        return None
+        return None, THUMB_FAILED
     path = build_thumbnail_path(tenant_id, document_id, version_number)
     try:
         storage.upload_object(path, png, THUMBNAIL_MIME)
@@ -73,11 +88,159 @@ def _maybe_generate_thumbnail(
             path=path,
             error=str(exc),
         )
+        return None, THUMB_FAILED
+    return path, THUMB_READY
+
+
+def _persist_thumbnail_result(client, version_id: str, path: str | None, state: str) -> None:
+    """Write the render's outcome back to the version row.
+
+    The path update is conditional on `thumbnail_path` still being null so that
+    two workers racing on the same version converge on one stored path rather
+    than the last writer's. The render itself is idempotent (deterministic path,
+    upsert), so the loser having done the work twice costs nothing.
+    """
+    payload: dict = {"thumbnail_state": state}
+    try:
+        if path:
+            client.table(VERSIONS_TABLE).update({**payload, "thumbnail_path": path}).eq("id", version_id).is_(
+                "thumbnail_path", "null"
+            ).execute()
+            # The state still has to land even if another worker won the path race.
+            client.table(VERSIONS_TABLE).update(payload).eq("id", version_id).execute()
+        else:
+            client.table(VERSIONS_TABLE).update(payload).eq("id", version_id).execute()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("thumbnail state persist failed", version_id=version_id, error=str(exc))
+
+
+# One in-flight render per version, per process.
+#
+# Cloud Run runs several workers across several instances, so this does not make
+# the render globally exclusive — and it does not need to. The render writes a
+# deterministic path with upsert, so a duplicate is wasted CPU, not a wrong
+# result. What this does remove is the common case: a grid of 24 tiles mounting
+# at once, all missing, all firing at the same handler in the same worker.
+_thumb_locks: dict[str, threading.Lock] = {}
+_thumb_locks_guard = threading.Lock()
+
+
+def _lock_for(version_id: str) -> threading.Lock:
+    with _thumb_locks_guard:
+        lock = _thumb_locks.get(version_id)
+        if lock is None:
+            lock = threading.Lock()
+            _thumb_locks[version_id] = lock
+        return lock
+
+
+def _render_current_thumbnail(document_id: str, tenant_id: str) -> tuple[str | None, str]:
+    """Blocking half of `ensure_thumbnail`: runs on a worker thread.
+
+    Re-reads the version row inside the lock, so the second caller through the
+    gate sees the first one's result instead of rendering the same page again.
+    """
+    client = get_supabase_client()
+
+    def _current() -> dict | None:
+        doc = (
+            client.table(DOCUMENTS_TABLE)
+            .select("id, tenant_id, current_version_id")
+            .eq("id", document_id)
+            .eq("tenant_id", tenant_id)
+            .is_("deleted_at", "null")
+            .limit(1)
+            .execute()
+            .data
+        )
+        if not doc or not doc[0].get("current_version_id"):
+            return None
+        rows = (
+            client.table(VERSIONS_TABLE)
+            .select("id, version_number, mime_type, raw_path, thumbnail_path, thumbnail_state, thumbnail_attempts")
+            .eq("id", doc[0]["current_version_id"])
+            .limit(1)
+            .execute()
+            .data
+        )
+        return rows[0] if rows else None
+
+    row = _current()
+    if not row:
+        return None, THUMB_UNSUPPORTED
+
+    def _resolve(r: dict) -> tuple[str | None, str] | None:
+        """A terminal state needs no work. Returns None when there IS work."""
+        state = r.get("thumbnail_state") or THUMB_PENDING
+        if r.get("thumbnail_path"):
+            return storage.signed_url(r["thumbnail_path"], storage.THUMBNAIL_SIGNED_URL_TTL), THUMB_READY
+        if state in (THUMB_UNSUPPORTED, THUMB_FAILED):
+            return None, state
+        if (r.get("thumbnail_attempts") or 0) >= MAX_THUMB_ATTEMPTS:
+            return None, THUMB_FAILED
         return None
-    return path
+
+    settled = _resolve(row)
+    if settled is not None:
+        return settled
+
+    with _lock_for(row["id"]):
+        # Whoever held the lock may have finished the job while we waited.
+        fresh = _current() or row
+        settled = _resolve(fresh)
+        if settled is not None:
+            return settled
+
+        attempts = (fresh.get("thumbnail_attempts") or 0) + 1
+        raw = fresh.get("raw_path")
+        if not raw:
+            _persist_thumbnail_result(client, fresh["id"], None, THUMB_UNSUPPORTED)
+            return None, THUMB_UNSUPPORTED
+        try:
+            blob = storage.download_object(raw)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("thumbnail source download failed", version_id=fresh["id"], error=str(exc))
+            _mark_attempt(client, fresh["id"], attempts)
+            return None, THUMB_PENDING if attempts < MAX_THUMB_ATTEMPTS else THUMB_FAILED
+
+        path, state = _maybe_generate_thumbnail(
+            mime=fresh.get("mime_type") or "",
+            pdf_bytes=blob,
+            tenant_id=tenant_id,
+            document_id=document_id,
+            version_id=fresh["id"],
+            version_number=fresh["version_number"],
+        )
+        if state == THUMB_FAILED and attempts < MAX_THUMB_ATTEMPTS:
+            # Keep it retryable until the budget runs out, but remember the try.
+            _mark_attempt(client, fresh["id"], attempts)
+            return None, THUMB_PENDING
+        _persist_thumbnail_result(client, fresh["id"], path, state)
+        if path:
+            return storage.signed_url(path, storage.THUMBNAIL_SIGNED_URL_TTL), THUMB_READY
+        return None, state
+
+
+def _mark_attempt(client, version_id: str, attempts: int) -> None:
+    try:
+        client.table(VERSIONS_TABLE).update({"thumbnail_attempts": attempts}).eq("id", version_id).execute()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("thumbnail attempt bump failed", version_id=version_id, error=str(exc))
 
 
 class DocumentService:
+    @staticmethod
+    async def ensure_thumbnail(document_id: UUID, tenant_id: UUID) -> tuple[str | None, str]:
+        """Signed thumbnail URL for a document's current version, rendering if needed.
+
+        Called only when the client has no URL to try or the one it had failed,
+        so a grid where every tile is READY costs zero extra requests. Rendering
+        a PDF page is CPU work measured in hundreds of milliseconds, so it goes
+        to a worker thread rather than stalling the event loop for every other
+        request on the instance.
+        """
+        return await run_blocking(_render_current_thumbnail, str(document_id), str(tenant_id))
+
     @staticmethod
     async def list_documents(
         tenant_id: UUID,
@@ -124,9 +287,7 @@ class DocumentService:
                     continue
                 if v.get("thumbnail_path"):
                     try:
-                        v["thumbnail_url"] = storage.signed_url(
-                            v["thumbnail_path"], storage.THUMBNAIL_SIGNED_URL_TTL
-                        )
+                        v["thumbnail_url"] = storage.signed_url(v["thumbnail_path"], storage.THUMBNAIL_SIGNED_URL_TTL)
                     except Exception:
                         v["thumbnail_url"] = None
                 d["current_version"] = v
@@ -312,7 +473,7 @@ class DocumentService:
                     logger.error("orphan cleanup failed", path=path)
             raise
 
-        thumb_path = _maybe_generate_thumbnail(
+        thumb_path, thumb_state = _maybe_generate_thumbnail(
             mime=mime,
             pdf_bytes=normalized_content,
             tenant_id=str(tenant_id),
@@ -320,13 +481,7 @@ class DocumentService:
             version_id=version_row["id"],
             version_number=1,
         )
-        if thumb_path:
-            try:
-                client.table(VERSIONS_TABLE).update({"thumbnail_path": thumb_path}).eq(
-                    "id", version_row["id"]
-                ).execute()
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("thumbnail path persist failed", error=str(exc))
+        _persist_thumbnail_result(client, version_row["id"], thumb_path, thumb_state)
 
         return await DocumentService.get_document(UUID(document_id), tenant_id)
 
@@ -475,7 +630,7 @@ class DocumentService:
                     logger.error("orphan cleanup failed", path=path)
             raise
 
-        thumb_path = _maybe_generate_thumbnail(
+        thumb_path, thumb_state = _maybe_generate_thumbnail(
             mime=mime,
             pdf_bytes=normalized_content,
             tenant_id=str(tenant_id),
@@ -483,13 +638,7 @@ class DocumentService:
             version_id=version_row["id"],
             version_number=next_number,
         )
-        if thumb_path:
-            try:
-                client.table(VERSIONS_TABLE).update({"thumbnail_path": thumb_path}).eq(
-                    "id", version_row["id"]
-                ).execute()
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("thumbnail path persist failed", error=str(exc))
+        _persist_thumbnail_result(client, version_row["id"], thumb_path, thumb_state)
 
         return await DocumentService.get_document(document_id, tenant_id)
 
