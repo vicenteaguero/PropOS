@@ -400,18 +400,23 @@ class UserService:
 
     @staticmethod
     async def reset_password(user_id: UUID) -> dict:
-        """Send recovery email via Supabase SMTP."""
+        """Send a recovery email.
+
+        This used to call ``auth.admin.generate_link``, which MINTS a link and
+        hands it back to the caller -- it does not mail anything. The endpoint
+        answered ``{"sent_to": ...}`` either way, so the admin button reported
+        success while the user waited for a message that was never sent. The
+        self-service page (`forgot-password-page.tsx`) was never affected: it
+        calls ``resetPasswordForEmail``, which is what actually delivers.
+        """
         client = get_supabase_client()
         profile = client.table(PROFILES_TABLE).select("email").eq("id", str(user_id)).single().execute().data
         if not profile or not profile.get("email"):
             raise HTTPException(status_code=404, detail="User has no email on file")
         try:
-            client.auth.admin.generate_link(
-                {
-                    "type": "recovery",
-                    "email": profile["email"],
-                    "options": {"redirect_to": f"{settings.app_base_url}/auth/recovery"},
-                }
+            client.auth.reset_password_for_email(
+                profile["email"],
+                {"redirect_to": f"{settings.app_base_url}/auth/recovery"},
             )
         except Exception as exc:
             raise HTTPException(status_code=400, detail=f"reset_password failed: {exc}") from exc
@@ -423,13 +428,12 @@ class UserService:
         profile = client.table(PROFILES_TABLE).select("email").eq("id", str(user_id)).single().execute().data
         if not profile or not profile.get("email"):
             raise HTTPException(status_code=404, detail="User has no email on file")
+        # Same trap as reset_password: generate_link returns a link, it does not
+        # send one. invite_user_by_email is the call that mails.
         try:
-            client.auth.admin.generate_link(
-                {
-                    "type": "invite",
-                    "email": profile["email"],
-                    "options": {"redirect_to": f"{settings.app_base_url}/auth/setup"},
-                }
+            client.auth.admin.invite_user_by_email(
+                profile["email"],
+                {"redirect_to": f"{settings.app_base_url}/auth/setup"},
             )
         except Exception as exc:
             raise HTTPException(status_code=400, detail=f"resend_invite failed: {exc}") from exc
