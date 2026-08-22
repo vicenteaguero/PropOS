@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Archive, ArchiveRestore, PenSquare, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
+  CONTROL_SQUARE,
   EmailMark,
   FilterSelect,
   HOVER_REVEAL,
@@ -14,6 +15,7 @@ import {
   WhatsAppMark,
   type PillTone,
 } from "@shared/ui";
+import { cn } from "@/lib/utils";
 import { listTime } from "@shared/utils/relative-time";
 import { useAuth } from "@shared/hooks/use-auth";
 import { useAttention } from "../hooks/use-attention";
@@ -458,35 +460,32 @@ export function AttentionPage({ channels = ["whatsapp", "email"] }: AttentionPag
         ariaLabel: "Buscar conversaciones",
       }}
       action={
-        // Icon-only: a labelled button here took a third of the header row on a
-        // phone to say what a pencil already says.
-        <>
-          {/* Personas is no longer a headline tab (see SectionTab.secondary), so
-              the view it was pulled out of carries the door to it. A
-              conversation is with a person; the catalogue of people is the
-              natural next place. */}
+        // Personas is no longer a headline tab (see SectionTab.secondary), so
+        // the view it was pulled out of carries the door to it. A conversation
+        // is with a person; the catalogue of people is the natural next place.
+        <Button
+          size="icon"
+          variant="outline"
+          aria-label="Ver personas"
+          title="Ver personas"
+          className={cn("rounded-full", CONTROL_SQUARE)}
+          onClick={() => navigate(`/${role}/clientes?tab=personas`)}
+        >
+          <Users className="size-4" strokeWidth={1.8} />
+        </Button>
+      }
+      primaryAction={
+        showEmail ? (
           <Button
             size="icon"
-            variant="outline"
-            aria-label="Ver personas"
-            title="Ver personas"
-            className="rounded-full"
-            onClick={() => navigate(`/${role}/clientes?tab=personas`)}
+            aria-label="Escribir correo"
+            title="Escribir correo"
+            className={cn("rounded-full", CONTROL_SQUARE)}
+            onClick={() => setComposeOpen(true)}
           >
-            <Users className="size-4" strokeWidth={1.8} />
+            <PenSquare className="size-4" strokeWidth={1.8} />
           </Button>
-          {showEmail && (
-            <Button
-              size="icon"
-              aria-label="Escribir correo"
-              title="Escribir correo"
-              className="rounded-full"
-              onClick={() => setComposeOpen(true)}
-            >
-              <PenSquare className="size-4" strokeWidth={1.8} />
-            </Button>
-          )}
-        </>
+        ) : undefined
       }
       filters={filters}
       isLoading={isLoading}

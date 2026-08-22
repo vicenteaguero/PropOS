@@ -3,10 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { useProperties } from "@features/documents/hooks/use-entities";
 import { Building2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { AppShellScroll, ListCapNotice, ListShell } from "@shared/ui";
+import { AppShellScroll, CONTROL_SQUARE, ListCapNotice, ListShell } from "@shared/ui";
 import { toast } from "sonner";
 import { useAuth } from "@shared/hooks/use-auth";
 import { useIsDesktop } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 import { useContacts } from "@features/contacts/hooks/use-contacts";
 import {
   useCreateOpportunity,
@@ -113,20 +114,22 @@ export function OpportunitiesPage() {
               variant="outline"
               aria-label="Ver propiedades"
               title="Ver propiedades"
-              className="rounded-full"
+              className={cn("rounded-full", CONTROL_SQUARE)}
               onClick={() => navigate(`/${role}/clientes?tab=propiedades`)}
             >
               <Building2 className="size-4" strokeWidth={1.8} />
             </Button>
-            <Button
-              size="icon"
-              aria-label="Nuevo negocio"
-              className="rounded-full"
-              onClick={openNew}
-            >
-              <Plus className="size-4" strokeWidth={1.8} />
-            </Button>
           </>
+        }
+        primaryAction={
+          <Button
+            size="icon"
+            aria-label="Nuevo negocio"
+            className={cn("rounded-full", CONTROL_SQUARE)}
+            onClick={openNew}
+          >
+            <Plus className="size-4" strokeWidth={1.8} />
+          </Button>
         }
         skeleton="board"
         bodyPadding="page"

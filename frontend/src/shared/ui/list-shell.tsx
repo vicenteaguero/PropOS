@@ -1,4 +1,10 @@
 import type { ReactNode } from "react";
+import { createPortal } from "react-dom";
+import {
+  useTopbarActionsSlot,
+  useTopbarOwnsSearch,
+  useTopbarSlotOccupied,
+} from "@layouts/topbar-slot";
 import { cn } from "@/lib/utils";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
 import { SearchInput } from "@shared/components/search-input/search-input";
@@ -25,8 +31,22 @@ interface ListShellProps {
   titleSr?: string;
   /** Search field, on the title line. Omit for surfaces with nothing to search. */
   search?: ListShellSearch;
-  /** Primary action, on the title line, hard right. */
+  /**
+   * Secondary actions, on the search line — a door to a sibling catalogue, a
+   * view switch. The PRIMARY action goes to `primaryAction`.
+   */
   action?: ReactNode;
+  /**
+   * The one action this surface exists to start: new conversation, new deal,
+   * new person. On a phone it is portalled into the top bar, where it takes the
+   * place of the command-palette magnifier (see useTopbarOwnsSearch) — the most
+   * reachable corner of the screen, and the one that used to hold a second
+   * search affordance directly above this one's field.
+   *
+   * In the sidebar shell there is no such bar, so it renders here beside the
+   * secondary actions, exactly as before.
+   */
+  primaryAction?: ReactNode;
   /** Filter row under the header: chips, a pill TabBar, a date range. */
   filters?: ReactNode;
   /** Small trailing text on the title line — a result count, a sync time. */
@@ -81,6 +101,7 @@ export function ListShell({
   titleSr,
   search,
   action,
+  primaryAction,
   filters,
   meta,
   isLoading = false,
@@ -98,9 +119,25 @@ export function ListShell({
   children,
   className,
 }: ListShellProps) {
+  // Only when this surface actually renders a field — a list with no search
+  // must not steal the magnifier from the bar.
+  useTopbarOwnsSearch(!!search);
+  const actionsHost = useTopbarActionsSlot();
+  const tabsInBar = useTopbarSlotOccupied();
+  const inBar = !!primaryAction && !!actionsHost;
+
   const header = (
-    <div className={cn("shrink-0 px-[var(--page-x)] pt-4", filters ? "pb-3" : "pb-4")}>
-      <div className="flex flex-wrap items-center gap-3">
+    // `pt-2` when the section's tabs are in the bar: the bar closes with its own
+    // `py-2`, so the old `pt-4` stacked two paddings and left a gap between the
+    // tabs and the search wide enough to read as a mistake.
+    <div
+      className={cn(
+        "shrink-0 px-[var(--page-x)]",
+        tabsInBar ? "pt-2" : "pt-4",
+        filters ? "pb-3" : "pb-4",
+      )}
+    >
+      <div className="flex flex-wrap items-center gap-2">
         <h2
           className={cn(
             "shrink-0 text-[17px] font-semibold leading-tight tracking-tight text-foreground",
@@ -135,11 +172,20 @@ export function ListShell({
             )}
           />
         )}
-        {action && <div className={cn("flex shrink-0 gap-2", !search && "ml-auto")}>{action}</div>}
+        {(action || (primaryAction && !inBar)) && (
+          <div className={cn("flex shrink-0 items-center gap-2", !search && "ml-auto")}>
+            {action}
+            {/* Only when there is no bar to portal it into — otherwise it would
+                appear twice on the same screen. */}
+            {!inBar && primaryAction}
+          </div>
+        )}
       </div>
       {filters && <div className="mt-3">{filters}</div>}
     </div>
   );
+
+  const portalledAction = inBar ? createPortal(primaryAction, actionsHost) : null;
 
   const body = (
     <>
@@ -168,6 +214,7 @@ export function ListShell({
   if (!fill) {
     return (
       <div className={cn("pb-8", className)}>
+        {portalledAction}
         {header}
         <div className={bodyPadding === "page" ? "px-[var(--page-x)]" : undefined}>{body}</div>
       </div>
@@ -176,6 +223,7 @@ export function ListShell({
 
   return (
     <div className={cn("flex h-full min-h-0 flex-col bg-background", className)}>
+      {portalledAction}
       {header}
       <div
         className={cn(

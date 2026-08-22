@@ -12,7 +12,7 @@ import {
   useCommandPaletteHotkey,
 } from "@shared/components/command-palette/command-palette";
 import { useCurrentPageTitle } from "@app/page-meta";
-import { useTopbarSlotHost, useTopbarSlotOccupied } from "@layouts/topbar-slot";
+import { useTopbarHosts, useTopbarSearchOwned, useTopbarSlotOccupied } from "@layouts/topbar-slot";
 import { useIsImmersive } from "@layouts/immersive";
 import type { UserView } from "@shared/types/auth";
 import { cn } from "@/lib/utils";
@@ -106,8 +106,11 @@ export function MobileTopBar() {
   // themselves through usePageTitle; this is the same value the browser tab
   // shows.
   const pageTitle = useCurrentPageTitle() ?? "";
-  const setTabsHost = useTopbarSlotHost();
+  const { setTabsHost, setActionsHost } = useTopbarHosts();
   const tabsInBar = useTopbarSlotOccupied();
+  // A page with its own search field takes the magnifier's place with its
+  // primary action. See useTopbarOwnsSearch.
+  const pageOwnsSearch = useTopbarSearchOwned();
   const [wsOpen, setWsOpen] = useState(false);
   // The palette lives here rather than beside the shell so that the one visible
   // trigger and the surface it opens share state. On a phone ⌘K and `/` are not
@@ -187,21 +190,29 @@ export function MobileTopBar() {
             </span>
           )}
           <div className="ml-auto flex shrink-0 items-center gap-1.5">
-            {/* Deliberately NOT gated on `isHome`, unlike everything beside it.
-                Workspace, UF and the bell are home chrome; search is the one
-                control whose whole value is being reachable from wherever the
-                broker already is. */}
-            <button
-              type="button"
-              aria-label="Buscar"
-              onClick={() => setPaletteOpen(true)}
-              className={cn(
-                "flex items-center justify-center rounded-full bg-secondary text-foreground transition active:scale-90",
-                HEADER_CONTROL_SQUARE,
-              )}
-            >
-              <Search className="size-[18px]" strokeWidth={1.9} />
-            </button>
+            {/* The page's primary action, portalled in. It lands where the
+                magnifier used to be — the most reachable corner of the screen —
+                on exactly the pages that have their own search field. */}
+            <div ref={setActionsHost} className="flex shrink-0 items-center gap-1.5 empty:hidden" />
+            {/* Deliberately NOT gated on `isHome`, unlike everything beside it:
+                Workspace, UF and the bell are home chrome, while search is the
+                one control whose whole value is being reachable from wherever
+                the broker already is. It IS gated on the page not having its
+                own search, because two search affordances one above the other
+                is a question about which one searches what. */}
+            {!pageOwnsSearch && (
+              <button
+                type="button"
+                aria-label="Buscar"
+                onClick={() => setPaletteOpen(true)}
+                className={cn(
+                  "flex items-center justify-center rounded-full bg-secondary text-foreground transition active:scale-90",
+                  HEADER_CONTROL_SQUARE,
+                )}
+              >
+                <Search className="size-[18px]" strokeWidth={1.9} />
+              </button>
+            )}
             {/* UfButton belongs to the UF feature; sizing it from the outside
                 keeps this row's single height rule without reaching into it. */}
             {isHome && (

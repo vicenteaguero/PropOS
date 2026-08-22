@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { cn } from "@/lib/utils";
 import { useOpenOnParam } from "@shared/hooks/use-open-on-param";
 import { useIntentPrefetch } from "@shared/hooks/use-intent-prefetch";
 import { propertyQueries } from "../hooks/use-property-detail";
@@ -10,7 +11,7 @@ import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-q
 import { Button } from "@/components/ui/button";
 import { PageLayout } from "@shared/components/page-layout";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
-import { ListShell, LoadMore, PhotoCard, Pill, ViewToggle } from "@shared/ui";
+import { CONTROL_SQUARE, ListShell, LoadMore, PhotoCard, Pill, ViewToggle } from "@shared/ui";
 import { toast } from "sonner";
 import { propertiesApi, type Property, type PropertyInput } from "../api/properties-api";
 import { PropertyFormDialog } from "../components/property-form-dialog";
@@ -167,11 +168,11 @@ export function AdminPropertiesPage() {
           placeholder: "Buscar por título o dirección",
           ariaLabel: "Buscar propiedades",
         }}
-        action={
+        primaryAction={
           <Button
             variant="ink"
             size="icon-lg"
-            className="rounded-full"
+            className={cn("rounded-full", CONTROL_SQUARE)}
             aria-label="Crear propiedad"
             onClick={() => setDialogOpen(true)}
           >
