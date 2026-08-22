@@ -4,7 +4,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 
-from app.core.dependencies import get_tenant_id, require_role, require_scope
+from app.core.dependencies import get_tenant_id, require_feature, require_role, require_scope
 from app.features.finance.calc import DEFAULT_IVA_PCT, commission
 from app.features.finance.service import FinanceService
 
@@ -14,6 +14,7 @@ router = APIRouter(
     dependencies=[
         Depends(require_role("ADMIN")),
         Depends(require_scope("finanzas")),
+        Depends(require_feature("finanzas")),
     ],
 )
 

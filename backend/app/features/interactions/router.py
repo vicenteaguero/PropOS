@@ -5,7 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 
-from app.core.dependencies import get_current_user, get_tenant_id, require_role, require_scope
+from app.core.dependencies import get_current_user, get_tenant_id, require_feature, require_role, require_scope
 from app.features.grants.access import assert_property_granted, is_grant_scoped
 from app.features.interactions.schemas import (
     InteractionCreate,
@@ -23,7 +23,7 @@ from app.features.interactions.service import InteractionService
 router = APIRouter(
     prefix="/interactions",
     tags=["interactions"],
-    dependencies=[Depends(require_scope("crm"))],
+    dependencies=[Depends(require_scope("crm")), Depends(require_feature("crm"))],
 )
 STAFF_ONLY = Depends(require_role("ADMIN", "AGENT"))
 staff_router = APIRouter(dependencies=[STAFF_ONLY])

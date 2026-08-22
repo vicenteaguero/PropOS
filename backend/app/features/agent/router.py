@@ -13,6 +13,7 @@ from fastapi.responses import StreamingResponse
 from app.core.dependencies import (
     get_current_user,
     get_tenant_id,
+    require_feature,
     require_role,
     require_scope,
 )
@@ -38,7 +39,7 @@ from app.features.agent.transcribe import (
 # so phone access stays gated by user_phones, not by these dependencies.
 router = APIRouter(
     prefix="/agent",
-    dependencies=[Depends(require_role("ADMIN")), Depends(require_scope("agent"))],
+    dependencies=[Depends(require_role("ADMIN")), Depends(require_scope("agent")), Depends(require_feature("agent"))],
 )
 
 # ──────────────────────────── sessions ────────────────────────────

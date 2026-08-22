@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from app.core.dependencies import (
     get_current_user,
     get_tenant_id,
+    require_feature,
     require_role,
     require_scope,
 )
@@ -29,6 +30,7 @@ router = APIRouter(
     dependencies=[
         Depends(require_role("ADMIN", "AGENT", "CONTENT")),
         Depends(require_scope("pendientes")),
+        Depends(require_feature("pendientes")),
     ],
 )
 

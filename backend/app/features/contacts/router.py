@@ -5,7 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 
-from app.core.dependencies import get_current_user, get_tenant_id, require_role, require_scope
+from app.core.dependencies import get_current_user, get_tenant_id, require_feature, require_role, require_scope
 from app.features.contacts import identity
 from app.features.contacts.overview import build_overview
 from app.features.contacts.schemas import (
@@ -30,6 +30,7 @@ router = APIRouter(
     dependencies=[
         Depends(require_role("ADMIN", "AGENT")),
         Depends(require_scope("crm")),
+        Depends(require_feature("crm")),
     ],
 )
 

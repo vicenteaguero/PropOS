@@ -5,7 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.core.config.settings import settings
-from app.core.dependencies import get_tenant_id, require_role, require_scope
+from app.core.dependencies import get_tenant_id, require_feature, require_role, require_scope
 from app.features.compliance.service import ConsentDeniedError
 from app.features.email_sync.compose import EmailComposeService, SendEmailRequest
 from app.features.email_sync.schemas import (
@@ -18,7 +18,11 @@ from app.features.email_sync.service import EmailSyncService
 router = APIRouter(
     prefix="/email",
     tags=["email"],
-    dependencies=[Depends(require_role("ADMIN", "AGENT")), Depends(require_scope("email"))],
+    dependencies=[
+        Depends(require_role("ADMIN", "AGENT")),
+        Depends(require_scope("email")),
+        Depends(require_feature("email")),
+    ],
 )
 
 

@@ -41,11 +41,47 @@ class _Client:
         return _Query(self._rows)
 
 
+@pytest.fixture(autouse=True)
+def _clear_cache():
+    features.reset_cache()
+    yield
+    features.reset_cache()
+
+
 @pytest.fixture
 def rows(monkeypatch: pytest.MonkeyPatch):
     store: list[dict] = []
     monkeypatch.setattr(features, "_client", lambda: _Client(store))
     return store
+
+
+def test_a_second_resolve_does_not_hit_the_database(monkeypatch: pytest.MonkeyPatch):
+    """require_feature sits on most routers, so this must not be a query each time."""
+    calls = {"n": 0}
+
+    class _Counting(_Client):
+        def table(self, name):
+            calls["n"] += 1
+            return super().table(name)
+
+    monkeypatch.setattr(features, "_client", lambda: _Counting([]))
+    features.resolve_states(TENANT)
+    features.resolve_states(TENANT)
+    assert calls["n"] == 1
+
+
+def test_each_tenant_is_cached_separately(monkeypatch: pytest.MonkeyPatch):
+    calls = {"n": 0}
+
+    class _Counting(_Client):
+        def table(self, name):
+            calls["n"] += 1
+            return super().table(name)
+
+    monkeypatch.setattr(features, "_client", lambda: _Counting([]))
+    features.resolve_states(TENANT)
+    features.resolve_states(OTHER_TENANT)
+    assert calls["n"] == 2
 
 
 def test_an_unconfigured_key_is_on(rows):
