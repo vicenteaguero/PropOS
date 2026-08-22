@@ -20,6 +20,7 @@ from app.features.agent.attribution import agent_attribution
 from app.features.agent.intent_registry import _is_falsy
 from app.features.agent.intent_registry import get as get_intent_spec
 from app.features.agent.intent_registry import missing_required
+from app.features.agent.summaries import build_summary_es
 from app.features.agent.resolver import ResolvedFields
 from app.features.agent.policies import AutonomyLevel, level_for
 from app.features.agent.tools.executors import ACCEPTOR_BY_KIND, _create_proposal
@@ -48,9 +49,6 @@ def _build_payload(intent: str, resolved: ResolvedFields) -> dict[str, Any]:
     # Lower-case the keys we expect downstream (model sometimes capitalizes).
     payload = {k.lower() if k[:1].isupper() else k: v for k, v in payload.items()}
 
-    if "summary_es" not in payload and "summary" in payload:
-        payload["summary_es"] = payload["summary"]
-
     # Per-intent fallbacks + resolved IDs.
     if intent == "log_interaction":
         if resolved.person and resolved.person.resolved_id:
@@ -61,24 +59,20 @@ def _build_payload(intent: str, resolved: ResolvedFields) -> dict[str, Any]:
             payload["project_id"] = str(resolved.project.resolved_id)
         payload.setdefault("kind", "NOTE")
         payload.setdefault("summary", "interacción registrada")
-        payload.setdefault("summary_es", payload["summary"])
 
     elif intent == "create_person":
         if "full_name" not in payload:
             payload["full_name"] = resolved.person.raw if resolved.person else ""
         payload.setdefault("kind", "OTHER")
-        payload.setdefault("summary_es", f"crear contacto {payload.get('full_name', '?')}")
 
     elif intent == "update_person":
         if resolved.person and resolved.person.resolved_id:
             payload["id"] = str(resolved.person.resolved_id)
-        payload.setdefault("summary_es", f"actualizar {payload.get('full_name', 'contacto')}")
 
     elif intent == "create_task":
         title = payload.pop("task_title", None) or payload.pop("title", None) or extras.get("summary") or "tarea"
         payload["title"] = title
         payload.setdefault("kind", "TODO")
-        payload.setdefault("summary_es", title)
         # Wire resolved entities into the task's polymorphic `related` JSONB so a
         # task created for "la propiedad de Apoquindo" stays linked to it.
         related: dict[str, list[str]] = {}
@@ -103,11 +97,9 @@ def _build_payload(intent: str, resolved: ResolvedFields) -> dict[str, Any]:
             payload["property_id"] = str(resolved.property.resolved_id)
         if resolved.project and resolved.project.resolved_id:
             payload["project_id"] = str(resolved.project.resolved_id)
-        payload.setdefault("summary_es", f"agendar {payload.get('title', 'evento')}")
 
     elif intent == "log_transaction":
         payload.setdefault("currency", "CLP")
-        payload.setdefault("summary_es", f"transacción {payload.get('direction', '?')} {payload.get('amount', '?')}")
         if resolved.project and resolved.project.resolved_id:
             payload["related_project_id"] = str(resolved.project.resolved_id)
         if resolved.property and resolved.property.resolved_id:
@@ -116,11 +108,9 @@ def _build_payload(intent: str, resolved: ResolvedFields) -> dict[str, Any]:
     elif intent == "create_organization":
         payload.setdefault("name", payload.pop("name", "") or (resolved.org.raw if resolved.org else ""))
         payload.setdefault("kind", "OTHER")
-        payload.setdefault("summary_es", f"crear organización {payload.get('name', '?')}")
 
     elif intent == "add_note":
         payload.setdefault("body", payload.pop("body", None) or extras.get("summary") or "nota")
-        payload.setdefault("summary_es", payload["body"][:80])
         # Attach the note to the single resolved entity (property > person >
         # project), matching `notes.target_table`/`target_row_id`.
         if resolved.property and resolved.property.resolved_id:
@@ -137,23 +127,24 @@ def _build_payload(intent: str, resolved: ResolvedFields) -> dict[str, Any]:
         if "title" not in payload and resolved.property:
             payload["title"] = resolved.property.raw
         payload.setdefault("status", "AVAILABLE")
-        payload.setdefault("summary_es", f"crear propiedad {payload.get('title', '?')}")
 
     elif intent == "attach_photos_to_property":
         if resolved.property and resolved.property.resolved_id:
             payload["property_id"] = str(resolved.property.resolved_id)
         if "title" not in payload and resolved.property:
             payload["title"] = resolved.property.raw
-        payload.setdefault("summary_es", f"adjuntar fotos a {payload.get('title', '?')}")
 
     elif intent == "create_document_from_photos":
         if "title" not in payload:
             payload["title"] = extras.get("summary") or "documento sin título"
-        payload.setdefault("summary_es", f"crear documento {payload['title']} con fotos")
 
     elif intent == "create_campaign":
         payload.setdefault("currency", "CLP")
-        payload.setdefault("summary_es", f"crear campaña {payload.get('name', '?')}")
+
+    # The sentence the reviewer reads, composed once from the resolved payload.
+    # This used to be a per-intent f-string here, which is why a Pendientes card
+    # said "Crear tarea" and never who it was for. See summaries.py.
+    payload["summary_es"] = build_summary_es(intent, payload, resolved)
 
     return payload
 

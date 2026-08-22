@@ -67,7 +67,13 @@ Vocabulario universal (usa los que apliquen):
   amount=N           pesos enteros ("50 lucas"=50000, "2 palos"=2000000)
   duration_min=N     minutos
   due="..."          fecha relativa o ISO
-  summary="..."      resumen 1 línea
+  summary="..."      QUÉ hay que hacer y SOBRE QUÉ, en una frase en español,
+                     nombrando a la persona o la propiedad si la hay. Escríbelo
+                     como se lo dirías al corredor, no como etiqueta. Sin
+                     comillas internas, máximo 120 caracteres.
+                     ej: summary="responder a Catalina si podemos ayudarla con el crédito hipotecario"
+                     ej: summary="ahora trabaja a honorarios"
+                     mal: summary="tarea" / summary="actualizar contacto"
   body="..."         texto libre (solo add_note)
   rut="..."          RUT chileno formato 12.345.678-9
   phone="..."        teléfono formato +56...
@@ -103,6 +109,9 @@ Reglas:
 Ejemplos:
   in:  registra gasto 50 lucas / 50 mil pesos en publicidad de Meta
   out: intent=log_transaction direction=OUT category=AD_SPEND amount=50000 channel=META
+
+  in:  anótame que tengo que responderle a la Catalina si la podemos ayudar con el crédito
+  out: intent=create_task person="Catalina" title="Responder a Catalina" summary="responder a Catalina si podemos ayudarla con el crédito hipotecario"
 
   in:  loguea visita con Juan en Apoquindo, 30 min
   out: intent=log_interaction kind=VISIT person="Juan" property="Apoquindo" duration_min=30
