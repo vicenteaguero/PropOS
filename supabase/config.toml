@@ -14,6 +14,12 @@ port = 54323
 # SMTP must still be set in the Supabase Dashboard (CLI only pushes a
 # subset of auth config; SMTP secret is not safe in a tracked file).
 [auth]
+# Accounts are created by the service-role Admin API (UserService.create_user /
+# invite_user, visitor_invitations). Self-signup was on, and the anon key ships
+# inside the public JS bundle -- so anyone who opened devtools could register
+# themselves into the project. Nothing in the product uses the signup path.
+enable_signup = false
+minimum_password_length = 8
 site_url = "https://prop-os-delta.vercel.app"
 additional_redirect_urls = [
   "https://prop-os-delta.vercel.app/auth/setup",
@@ -28,6 +34,12 @@ additional_redirect_urls = [
 jwt_expiry = 3600
 enable_refresh_token_rotation = true
 refresh_token_reuse_interval = 10
+
+# Two mails per hour, project-wide, is the Supabase default for the built-in
+# SMTP and it survived the switch to Resend. Three people setting a password on
+# the same morning is enough to hit it.
+[auth.rate_limit]
+email_sent = 30
 
 [auth.email]
 enable_signup = true
