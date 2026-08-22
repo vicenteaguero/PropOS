@@ -90,7 +90,12 @@ function SettingLine({
   className?: string;
 }) {
   return (
-    <div className={cn("flex items-center gap-3", className)}>
+    // The row owns its own vertical rhythm. It used to carry none, so every
+    // caller invented one — `mt-3` here, `mt-4` there, `py-2.5` on the shortcut
+    // grid, `py-2` on the Permisos row, `py-3` on the notifications Row and
+    // `py-1` on the paper-size trigger. Five spacings for one idea, on one
+    // page. `min-h-11` keeps the 44px floor for the rows that carry a control.
+    <div className={cn("flex items-center gap-3 py-2.5", TOUCH_TARGET_ROW, className)}>
       <RowIcon>
         <Icon className="size-[18px]" strokeWidth={1.8} />
       </RowIcon>
@@ -160,7 +165,11 @@ function AdminShortcuts() {
           onFocus={() => prefetchRoute(item.path)}
           onClick={() => navigate(item.path)}
           className={cn(
-            "flex items-center gap-3 rounded-xl px-2 py-2.5 text-left transition hover:bg-secondary active:scale-[0.98]",
+            // `py-2` + the 44px floor: the row lands ON the floor instead of
+            // 8px above it. Nine of these stacked at py-2.5 was most of the
+            // "incredible vertical paddings" — the same list at 44px shows two
+            // more destinations without a scroll.
+            "flex items-center gap-3 rounded-xl px-2 py-2 text-left transition hover:bg-secondary active:scale-[0.98]",
             TOUCH_TARGET_ROW,
           )}
         >
@@ -405,7 +414,7 @@ export function SettingsPage() {
             type="button"
             onClick={() => navigate("/admin/settings/propo")}
             className={cn(
-              "-mx-2 mt-3 flex w-[calc(100%+1rem)] items-center rounded-xl px-2 py-2 text-left transition hover:bg-secondary active:scale-[0.99]",
+              "-mx-2 flex w-[calc(100%+1rem)] items-center rounded-xl px-2 py-2.5 text-left transition hover:bg-secondary active:scale-[0.99]",
               TOUCH_TARGET_ROW,
               FOCUS_RING,
             )}
@@ -459,7 +468,7 @@ export function SettingsPage() {
               type="button"
               onClick={() => setPaperOpen(true)}
               className={cn(
-                "flex items-center gap-1 rounded-lg px-2 py-1 text-[15px] font-semibold text-foreground",
+                "flex items-center gap-1 rounded-lg px-2 py-1.5 text-[15px] font-semibold text-foreground",
                 TOUCH_TARGET_COARSE,
                 FOCUS_RING,
               )}
@@ -546,9 +555,15 @@ export function SettingsPage() {
           from usePageTitle above. This page printed it a second time, directly
           underneath. */}
 
-      {sections.map((sec) => (
+      {/* `mt-6` between groups and `mt-3` on the first, rather than `mt-7`
+          everywhere including the top: with the page's own title gone, a 28px
+          gap under the shell bar read as the page having failed to load its
+          header. */}
+      {sections.map((sec, i) => (
         <div key={sec.key}>
-          <SectionLabel className="mb-2 mt-7 px-5 lg:px-0">{sec.title}</SectionLabel>
+          <SectionLabel className={cn("mb-2 px-5 lg:px-0", i === 0 ? "mt-3" : "mt-6")}>
+            {sec.title}
+          </SectionLabel>
           <div className={sec.key === "notificaciones" ? undefined : "px-5"}>{sec.body}</div>
         </div>
       ))}
