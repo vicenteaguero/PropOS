@@ -31,6 +31,7 @@ from collections.abc import Iterable
 
 from app.core.supabase.client import get_supabase_client
 from app.features.documents import storage
+from app.features.documents.service import THUMB_READY, THUMB_UNSUPPORTED, _persist_thumbnail_result
 from app.features.documents.thumbnails import (
     SUPPORTED_IMAGE_MIMES,
     THUMBNAIL_MIME,
@@ -127,14 +128,7 @@ def _iter_versions(mime_filter: str, limit: int | None, current_only: bool) -> l
         doc_ids = list({v["document_id"] for v in versions})
         tenant_by_doc = {}
         for chunk in _chunked(doc_ids):
-            rows = (
-                client.table(DOCUMENTS_TABLE)
-                .select("id, tenant_id")
-                .in_("id", chunk)
-                .execute()
-                .data
-                or []
-            )
+            rows = client.table(DOCUMENTS_TABLE).select("id, tenant_id").in_("id", chunk).execute().data or []
             tenant_by_doc.update({d["id"]: d["tenant_id"] for d in rows})
 
     if not versions:
@@ -179,6 +173,8 @@ def _process(rows: Iterable[dict], dry_run: bool) -> tuple[int, int, int]:
 
         if not _supported(mime):
             skipped += 1
+            if not dry_run:
+                _persist_thumbnail_result(client, row["id"], None, THUMB_UNSUPPORTED)
             print(f"{prefix} - skip (unsupported mime)")
             continue
         raw = row.get("raw_path")
@@ -211,11 +207,15 @@ def _process(rows: Iterable[dict], dry_run: bool) -> tuple[int, int, int]:
             print(f"{prefix} - upload FAILED: {exc}")
             continue
         try:
-            client.table(VERSIONS_TABLE).update({"thumbnail_path": target}).eq("id", row["id"]).execute()
+            # Through the service helper so `thumbnail_state` lands too. Writing
+            # only the path leaves every backfilled row reading PENDING, which
+            # makes the pending index useless and misreports coverage.
+            _persist_thumbnail_result(client, row["id"], target, THUMB_READY)
         except Exception as exc:  # noqa: BLE001
             failed += 1
             print(f"{prefix} - db update FAILED: {exc}")
             continue
+
         ok += 1
         print(f"{prefix} OK")
 
