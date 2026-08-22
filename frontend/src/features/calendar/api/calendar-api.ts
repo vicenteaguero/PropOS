@@ -14,6 +14,14 @@ export interface CalendarItem {
   property_id: string | null;
   contact_id: string | null;
   amount_cents: number | null;
+  /**
+   * Where it happens: the linked property's address, or the event's own free
+   * text when there is no property. Added to the feed view so the home screen
+   * can offer directions without a request per item — the reason the only
+   * Waze/Maps links in the product used to live on a property page nobody opens
+   * on their way out the door.
+   */
+  location?: string | null;
 }
 
 /** Mirrors the backend `EventKind` enum (events/schemas.py). */
