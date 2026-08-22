@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useShellMode } from "@shared/hooks/use-shell-mode";
+import { WatchButton } from "@features/attention/components/watch-button";
 import { usePageTitle } from "@app/page-meta";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -129,6 +130,9 @@ export function ContactDetail({ contactId, onBack, onDeleted }: ContactDetailPro
           <span />
         )}
         <div className="flex items-center gap-1.5">
+          {/* Everything about this person — their conversations, their deals,
+              their tasks — moves to the top of the queue for two days. */}
+          <WatchButton kind="CONTACT" id={contactId} className="min-h-9" />
           <Button variant="outline" size="sm" className="gap-2" onClick={() => setEditOpen(true)}>
             <Pencil className="size-4" strokeWidth={1.8} />
             Editar

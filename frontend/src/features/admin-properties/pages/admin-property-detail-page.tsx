@@ -26,6 +26,7 @@ import { PriceHistory } from "../components/price-history";
 import { PropertyLocationMap } from "../components/property-location-map";
 import { usePageTitle } from "@app/page-meta";
 import { useShellMode } from "@shared/hooks/use-shell-mode";
+import { WatchButton } from "@features/attention/components/watch-button";
 import { useAutoResize } from "@shared/hooks/use-auto-resize";
 import { formatClp } from "@shared/utils/currency";
 import { provenanceOf } from "../api/properties-api";
@@ -153,9 +154,14 @@ export function AdminPropertyDetailPage() {
             <ArrowLeft className="size-4" strokeWidth={1.8} /> Propiedades
           </Link>
         )}
-        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setEditOpen(true)}>
-          <Pencil className="size-4" strokeWidth={1.8} /> Editar
-        </Button>
+        <div className="flex items-center gap-1.5">
+          {/* Flagging a property reaches its deals, its conversations and its
+              tasks — the promotion happens against the queue, not per source. */}
+          <WatchButton kind="PROPERTY" id={p.id} className="min-h-9" />
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setEditOpen(true)}>
+            <Pencil className="size-4" strokeWidth={1.8} /> Editar
+          </Button>
+        </div>
       </div>
 
       {/* Desktop: 2-column (gallery/title/specs/tabs left · location/interesados right).
