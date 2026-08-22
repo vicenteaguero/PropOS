@@ -22,24 +22,24 @@ class _Result:
 class _Query:
     """Chainable stand-in for the PostgREST builder. Filters are recorded, not applied."""
 
-    def __init__(self, table: "_Table", rows: list[dict]) -> None:
+    def __init__(self, table: _Table, rows: list[dict]) -> None:
         self._table = table
         self._rows = rows
         self._update: dict | None = None
 
-    def select(self, *_: Any, **__: Any) -> "_Query":
+    def select(self, *_: Any, **__: Any) -> _Query:
         return self
 
-    def eq(self, *_: Any) -> "_Query":
+    def eq(self, *_: Any) -> _Query:
         return self
 
-    def is_(self, *_: Any) -> "_Query":
+    def is_(self, *_: Any) -> _Query:
         return self
 
-    def limit(self, *_: Any) -> "_Query":
+    def limit(self, *_: Any) -> _Query:
         return self
 
-    def update(self, payload: dict) -> "_Query":
+    def update(self, payload: dict) -> _Query:
         self._update = payload
         return self
 
