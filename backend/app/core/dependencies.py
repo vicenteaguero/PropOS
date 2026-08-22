@@ -7,8 +7,11 @@ from uuid import UUID
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from app.core.logging.logger import get_logger
 from app.core.supabase.auth import get_user_profile, verify_token
 from app.core.tenant import resolve_active_tenant
+
+logger = get_logger("DEPS")
 
 bearer_scheme = HTTPBearer()
 
@@ -121,7 +124,22 @@ def require_feature(key: str) -> Callable:
     ) -> dict[str, Any]:
         from app.core.features import BLOCKING_STATES, resolve_states
 
-        entry = resolve_states(current_user["tenant_id"]).get(key)
+        # Fails OPEN. This dependency hangs off most routers, so a database
+        # hiccup while reading a configuration table would otherwise refuse
+        # every request in the product -- turning a table nobody edits into a
+        # single point of failure for the whole API. A feature that stays
+        # reachable during an outage is the lesser wrong.
+        try:
+            entry = resolve_states(current_user["tenant_id"]).get(key)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "feature_state_unavailable",
+                event_type="error",
+                feature=key,
+                error=str(exc),
+            )
+            return current_user
+
         if entry and entry["state"] in {s.value for s in BLOCKING_STATES}:
             raise HTTPException(
                 status_code=status.HTTP_423_LOCKED,

@@ -164,3 +164,21 @@ async def test_an_unknown_key_never_blocks(rows):
     """
     user = {"id": "u", "tenant_id": TENANT}
     assert await require_feature("nolongerexists")(current_user=user) is user
+
+
+@pytest.mark.asyncio
+async def test_the_gate_fails_open_when_the_database_is_unreachable(monkeypatch: pytest.MonkeyPatch):
+    """A config table must not be able to refuse every request in the product.
+
+    `require_feature` hangs off most routers. If a failed read refused, one
+    unreachable table would take the whole API down -- and it did exactly that
+    in CI, where there is no database at all.
+    """
+
+    def _boom():
+        raise ConnectionError("Name or service not known")
+
+    monkeypatch.setattr(features, "_client", _boom)
+    features.reset_cache()
+    user = {"id": "u", "tenant_id": TENANT}
+    assert await require_feature("crm")(current_user=user) is user
