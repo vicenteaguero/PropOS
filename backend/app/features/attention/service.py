@@ -20,6 +20,7 @@ from typing import Any
 from uuid import UUID
 
 from app.core.windows import FREEFORM_HOURS
+from app.features.attention_flags.service import flagged_ids
 from app.core.supabase.client import get_thread_client
 from app.features.attention.schemas import AttentionFeed, AttentionItem, AttentionKind, Urgency
 
@@ -379,6 +380,33 @@ def _stalled(tenant_id: UUID, now: dt.datetime):
         )
 
 
+def _apply_flags(items: list[AttentionItem], tenant_id: UUID) -> None:
+    """Promote everything about a flagged person or property to the top.
+
+    The rules below rank by clocks, and a clock cannot know that a deal is about
+    to fall over. A flag is the broker saying so, for two days. It does not
+    replace the reason — the row still says why it surfaced — it prefixes it, so
+    the queue never becomes a list of items with no stated cause.
+
+    Never fatal: a queue without flags is the queue as it was last week.
+    """
+    try:
+        contacts, properties = flagged_ids(tenant_id)
+    except Exception:  # noqa: BLE001 - the flag is an overlay, the queue is not
+        return
+    if not contacts and not properties:
+        return
+
+    for item in items:
+        flagged = (item.contact_id and item.contact_id in contacts) or (
+            item.property_id and item.property_id in properties
+        )
+        if not flagged:
+            continue
+        item.urgency = Urgency.NOW
+        item.reason = f"En seguimiento · {item.reason}"
+
+
 def rank(items: list[AttentionItem], now: dt.datetime) -> None:
     """Order the queue in place: urgency, then time left before it is too late.
 
@@ -473,6 +501,12 @@ async def build_feed(
     counts: dict[str, int] = {kind.value: 0 for kind in AttentionKind}
     for item in items:
         counts[item.kind.value] += 1
+
+    # Before ranking, not after: a flag is an urgency, and `rank` sorts by
+    # urgency first. Applied here rather than inside each source so that ONE
+    # flag on a property reaches its conversations, its deals and its tasks —
+    # which is the point of flagging the property rather than each of them.
+    _apply_flags(items, tenant_id)
 
     rank(items, now)
     shown = [item for item in items if kinds is None or item.kind in kinds]
