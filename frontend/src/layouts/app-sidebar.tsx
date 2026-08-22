@@ -1,4 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
+import { prefetchRoute } from "@shared/lib/route-chunks";
 import { LogOut, Settings } from "lucide-react";
 import {
   Sidebar,
@@ -56,6 +57,10 @@ function NavItemRow({
         <NavLink
           to={item.path}
           end={item.end}
+          // Hover is the desktop signal that this page is about to be needed;
+          // its chunk downloads while the cursor is still travelling.
+          onMouseEnter={() => prefetchRoute(item.path)}
+          onFocus={() => prefetchRoute(item.path)}
           onClick={onNavigate}
           className={({ isActive }) => (isActive ? "bg-sidebar-accent text-sidebar-primary" : "")}
         >
