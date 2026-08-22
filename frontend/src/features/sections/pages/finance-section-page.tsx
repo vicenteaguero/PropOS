@@ -11,6 +11,9 @@ const AnalyticsPage = lazy(() =>
 const AgentCostPage = lazy(() =>
   import("@features/analytics/pages/agent-cost-page").then((m) => ({ default: m.AgentCostPage })),
 );
+const UsagePage = lazy(() =>
+  import("@features/analytics/pages/usage-page").then((m) => ({ default: m.UsagePage })),
+);
 
 /** Money in one place: movements, the numbers behind them, and what the AI costs. */
 export function FinanceSectionPage() {
@@ -42,6 +45,14 @@ export function FinanceSectionPage() {
             scope: "analytics",
             feature: "analytics",
             render: () => <AgentCostPage />,
+          },
+          {
+            // Who used the app, for how long, and what the always-warm instance
+            // cost while they did. Dev-admin only: it names people.
+            id: "uso",
+            label: "Uso",
+            feature: "uso",
+            render: () => <UsagePage />,
           },
         ]
       : []),

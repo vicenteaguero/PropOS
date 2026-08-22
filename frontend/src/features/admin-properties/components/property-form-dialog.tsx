@@ -7,6 +7,7 @@ import type { Property, PropertyInput } from "../api/properties-api";
 import { Field, FieldGroup, ResponsiveSheet, Segmented, SheetActions } from "@shared/ui";
 import { useUfToday } from "@features/uf/hooks/use-uf";
 import { cn } from "@/lib/utils";
+import { trackAction } from "@core/telemetry/usage";
 
 interface Props {
   open: boolean;
@@ -142,6 +143,7 @@ export function PropertyFormDialog({ open, onOpenChange, property, onSubmit, pen
       area_sqm: area ? Number(area) : null,
     });
     toast.success(property ? "Propiedad guardada" : "Propiedad creada");
+    trackAction(property ? "propiedad_editada" : "propiedad_creada");
     onOpenChange(false);
   };
 

@@ -65,6 +65,7 @@ from app.features.tenants.router import admin_router as tenants_admin_router
 from app.features.tenants.router import router as tenants_router
 from app.features.transactions.router import router as transactions_router
 from app.features.uf.router import router as uf_router
+from app.features.usage.router import router as usage_router
 from app.features.feature_flags.router import admin_router as features_admin_router
 from app.features.feature_flags.router import router as features_router
 from app.features.users.router import router as users_router
@@ -197,6 +198,7 @@ def create_app() -> FastAPI:
         application.add_middleware(DevSchemaMiddleware)
 
     versioned_prefix = f"{API_PREFIX}/{API_VERSION}"
+    application.include_router(usage_router, prefix=versioned_prefix)
     application.include_router(features_router, prefix=versioned_prefix)
     application.include_router(features_admin_router, prefix=versioned_prefix)
     application.include_router(users_router, prefix=versioned_prefix)

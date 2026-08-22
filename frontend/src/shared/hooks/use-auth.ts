@@ -5,6 +5,7 @@ import { supabase } from "@core/supabase/client";
 import { createLogger } from "@core/logging/logger";
 import { apiRequest, getActiveTenantId, setActiveTenantId } from "@shared/api/http";
 import { clearPersistedQueries } from "@core/query/persister";
+import { flush, resetUsageBuffer } from "@core/telemetry/usage";
 import type { FeatureMap } from "@shared/feature/catalog";
 import type {
   AuthState,
@@ -291,6 +292,10 @@ export function useAuthProvider(): AuthContextValue {
   const signOut = useCallback(async () => {
     logger.info("auth", "User signing out");
     bootRef.current = null;
+    // Send what this person did before their token goes away, then drop the
+    // rest -- an unsent event must never be attributed to the next sign-in.
+    await flush();
+    resetUsageBuffer();
     setActiveTenantId(null);
     // Business data cached for the outgoing user must not survive the sign-out —
     // in memory or on disk.

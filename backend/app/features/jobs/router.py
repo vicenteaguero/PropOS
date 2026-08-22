@@ -37,6 +37,14 @@ async def refresh_analytics(x_internal_key: str | None = Header(default=None)) -
     return await service.refresh_analytics()
 
 
+@router.post("/rollup-usage")
+async def rollup_usage(x_internal_key: str | None = Header(default=None)) -> dict[str, Any]:
+    _verify_internal_key(x_internal_key)
+    from app.features.usage.service import run_rollup
+
+    return run_rollup()
+
+
 @router.post("/email-sync")
 async def email_sync(x_internal_key: str | None = Header(default=None)) -> dict[str, Any]:
     _verify_internal_key(x_internal_key)

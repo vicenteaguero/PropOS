@@ -6,6 +6,7 @@ import {
   type RejectBody,
 } from "../api/pending-api";
 import { withoutProposal } from "../lib/optimistic";
+import { trackAction } from "@core/telemetry/usage";
 
 /**
  * One always-visible slice of the queue.
@@ -87,6 +88,9 @@ export function useAcceptProposal() {
         if (data) queryClient.setQueryData(key, data);
       });
     },
+    // On success, not onSettled: the mutation is optimistic, so onSettled also
+    // runs after a rollback and would count a failed accept as a use of Propo.
+    onSuccess: () => trackAction("propuesta_aceptada"),
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["pending"] });
       queryClient.invalidateQueries({ queryKey: ["analytics", "pending-count"] });

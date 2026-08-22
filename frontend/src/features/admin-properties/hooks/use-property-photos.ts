@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { propertiesApi } from "../api/properties-api";
+import { trackAction } from "@core/telemetry/usage";
 
 export const propertyPhotoKeys = {
   all: ["admin", "property-photos"] as const,
@@ -27,6 +28,7 @@ export function useUploadPropertyPhotos(propertyId: string | undefined) {
     onSuccess: (created) => {
       qc.invalidateQueries({ queryKey: propertyPhotoKeys.list(propertyId ?? "") });
       toast.success(created.length === 1 ? "Foto agregada" : `${created.length} fotos agregadas`);
+      trackAction("fotos_subidas", { count: created.length });
     },
     onError: (err) =>
       toast.error(err instanceof Error ? err.message : "No se pudieron subir las fotos"),
