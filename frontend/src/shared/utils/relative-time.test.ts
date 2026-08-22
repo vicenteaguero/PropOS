@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dueText, listTime, timeAgo, timeAgoInline } from "./relative-time";
+import { deadlineTone, dueText, listTime, timeAgo, timeAgoInline, timeLeft } from "./relative-time";
 
 // UTC throughout: the suite runs with TZ=UTC (see package.json), so anchoring
 // the fixtures to a Chilean offset moved them across day boundaries.
@@ -86,5 +86,40 @@ describe("dueText", () => {
 
   it("returns an empty string for a missing date", () => {
     expect(dueText(null, now)).toBe("");
+  });
+});
+
+describe("timeLeft", () => {
+  const NOW = new Date("2026-08-21T12:00:00Z");
+  const left = (iso: string) => timeLeft(iso, NOW);
+
+  it("counts the last hour in minutes", () => {
+    expect(left("2026-08-21T12:45:00Z")).toBe("Vence en 45 min");
+  });
+
+  it("counts hours inside the day", () => {
+    expect(left("2026-08-21T18:00:00Z")).toBe("Vence en 6 h");
+  });
+
+  it("says Vencida rather than a negative number", () => {
+    // A passed deadline still matters — the proposal is still actionable in the
+    // CRM, just not in the channel — so it reads as a state, not an error.
+    expect(left("2026-08-21T11:00:00Z")).toBe("Vencida");
+  });
+
+  it("is empty when there is no deadline at all", () => {
+    // A proposal from the broker's own voice note has no external clock, and
+    // inventing one would be a fabricated fact.
+    expect(timeLeft(null, NOW)).toBe("");
+  });
+});
+
+describe("deadlineTone", () => {
+  const NOW = new Date("2026-08-21T12:00:00Z");
+  it("goes red inside two hours and amber inside six", () => {
+    expect(deadlineTone("2026-08-21T13:00:00Z", NOW)).toBe("danger");
+    expect(deadlineTone("2026-08-21T17:00:00Z", NOW)).toBe("warn");
+    expect(deadlineTone("2026-08-22T12:00:00Z", NOW)).toBe("none");
+    expect(deadlineTone(null, NOW)).toBe("none");
   });
 });
