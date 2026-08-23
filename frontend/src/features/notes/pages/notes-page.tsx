@@ -1,10 +1,28 @@
 import { useRef, useState } from "react";
 import { useOpenOnParam } from "@shared/hooks/use-open-on-param";
-import { Link as LinkIcon, Loader2, Mic, Pin, Sparkles } from "lucide-react";
+import {
+  ArrowUpDown,
+  Link as LinkIcon,
+  Loader2,
+  Mic,
+  Pin,
+  SlidersHorizontal,
+  Sparkles,
+} from "lucide-react";
 import { toast } from "sonner";
 import { PageLayout } from "@shared/components/page-layout";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
-import { ActionIcon, AudioPlayer, ErrorState, FilterSelect, PageSkeleton, Pill } from "@shared/ui";
+import {
+  ActionIcon,
+  AudioPlayer,
+  CONTROL_H,
+  ErrorState,
+  FilterSelect,
+  LinkInput,
+  PageSkeleton,
+  Pill,
+} from "@shared/ui";
+import { listTime } from "@shared/utils/relative-time";
 import { createPortal } from "react-dom";
 import { useTopbarActionsSlot } from "@layouts/topbar-slot";
 import { NoteDetailSheet } from "../components/note-detail-sheet";
@@ -39,7 +57,6 @@ import { NoteBody } from "../components/note-body";
 import { NoteAttachmentPicker } from "../components/note-attachment-picker";
 import { NoteTargetChips } from "../components/note-target-chips";
 import type { Note } from "../api/notes-api";
-import { formatDayMonth } from "@shared/utils/format";
 
 // Friendly label for the linked record type, when a note is attached to one.
 
@@ -66,6 +83,8 @@ export function NotesPage() {
   // existed in the database and was never shown or editable here.
   const [targets, setTargets] = useState<DraftTarget[]>([]);
   const [linking, setLinking] = useState(false);
+  const [pastingLink, setPastingLink] = useState(false);
+  const [noteLinks, setNoteLinks] = useState<string[]>([]);
   const [files, setFiles] = useState<Blob[]>([]);
   const propo = useAgentOverlay();
   // Wrapper ref — shadcn's Textarea doesn't forward a ref, so we focus the
@@ -82,7 +101,9 @@ export function NotesPage() {
     if (!body.trim()) return;
     await create.mutateAsync({
       input: {
-        body: body.trim(),
+        body: [body.trim(), ...noteLinks].filter(Boolean).join("\n"),
+        // Links ride in the body: `notes` has no `related` column, and
+        // `NoteBody` already turns a bare URL into an anchor.
         targets: targets.map((t) => ({ kind: t.kind, row_id: t.row_id })),
       },
       files,
@@ -90,7 +111,13 @@ export function NotesPage() {
     setBody("");
     setTargets([]);
     setFiles([]);
+    setNoteLinks([]);
     setLinking(false);
+    // Collapse back to nothing. `composing` never returned to false and
+    // `expanded` never reset, so after one note the page kept a five-row empty
+    // box above the grid for the rest of the session.
+    setExpanded(false);
+    setComposing(false);
     toast.success("Nota agregada");
   };
 
@@ -122,6 +149,13 @@ export function NotesPage() {
         value={body}
         onChange={(e) => setBody(e.target.value)}
         onFocus={() => setExpanded(true)}
+        // Leaving an empty composer closes it. Otherwise the "cancel" for
+        // "Nueva nota" is navigating away and coming back.
+        onBlur={() => {
+          if (body.trim() || files.length || targets.length || noteLinks.length) return;
+          setExpanded(false);
+          setComposing(false);
+        }}
         rows={expanded ? 5 : 2}
         placeholder="Escribe una nota…"
         className="mb-2 resize-none border-0 bg-transparent px-1 shadow-none transition-all focus-visible:ring-0"
@@ -129,6 +163,11 @@ export function NotesPage() {
       {(linking || targets.length > 0) && (
         <div className="mb-2">
           <NoteTargetPicker value={targets} onChange={setTargets} disabled={create.isPending} />
+        </div>
+      )}
+      {(pastingLink || noteLinks.length > 0) && (
+        <div className="mb-2">
+          <LinkInput value={noteLinks} onChange={setNoteLinks} />
         </div>
       )}
       {/* One row: link, attachments, save. It used to be two bands — the
@@ -143,6 +182,18 @@ export function NotesPage() {
           onClick={() => setLinking((v) => !v)}
         >
           <LinkIcon className="size-4" />
+        </Button>
+        {/* Pasting a link is its own action, separate from linking a property:
+            one attaches a URL, the other attaches a record. They shared a
+            button, so a note could carry a property but never a portal link. */}
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Pegar un link"
+          className="shrink-0 rounded-full"
+          onClick={() => setPastingLink((v) => !v)}
+        >
+          <ActionIcon name="link" />
         </Button>
         <NoteAttachmentPicker value={files} onChange={setFiles} disabled={create.isPending} />
         {targets.length > 0 && (
@@ -174,20 +225,20 @@ export function NotesPage() {
     <button
       type="button"
       onClick={() => (canPropo ? propo.open("voice") : focusComposer())}
-      className="flex w-full items-center gap-3 rounded-xl border border-dashed border-line-strong p-3.5 text-left transition active:scale-[0.99]"
+      className={cn(
+        CONTROL_H,
+        "flex w-full items-center gap-2 rounded-full border border-dashed border-line-strong px-2.5 text-left transition active:scale-[0.99]",
+      )}
     >
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-ink text-ink-foreground">
-        <Sparkles className="size-[18px]" />
+      <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-ink text-ink-foreground">
+        <Sparkles className="size-4" />
       </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold text-foreground">
-          Nota rápida con {agentName}
-        </span>
-        <span className="block text-xs text-muted-foreground">
-          Dicta una idea y la asocia a una propiedad
-        </span>
+      {/* One line. The second line explained what dictation is, which is a
+          thing you learn once and then read forty more times. */}
+      <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-foreground">
+        Nota rápida con {agentName}
       </span>
-      <Mic className="size-[19px] text-foreground" strokeWidth={1.9} />
+      <Mic className="size-[18px] shrink-0 text-foreground" strokeWidth={1.9} />
     </button>
   );
 
@@ -258,9 +309,7 @@ export function NotesPage() {
         {/* Deleting lives in the detail sheet behind a confirm: it used to be a
           bin icon on the card itself, which on a touch screen is one mis-tap
           away from losing the note. */}
-        <span className="mt-auto pt-2 text-[11px] text-faint">
-          {formatDayMonth(note.created_at)}
-        </span>
+        <span className="mt-auto pt-2 text-[11px] text-faint">{listTime(note.created_at)}</span>
       </button>
     );
   };
@@ -302,37 +351,51 @@ export function NotesPage() {
           actionsHost,
         )}
 
-      <div className="mb-3">{propoCard}</div>
-      {composing && <div className="mb-4">{composer}</div>}
-
-      {!isLoading && !error && notes.length > 0 && (
-        <div className="mb-3 flex items-center gap-2">
-          <FilterSelect
-            label="Filtrar"
-            value={filter === "all" ? null : filter}
-            allLabel="Todas"
-            options={NOTE_FILTERS.filter((f) => f.value !== "all").map((f) => ({
-              value: f.value,
-              label: f.label,
-            }))}
-            onChange={(v: string | null) => setFilter((v as NoteFilter) ?? "all")}
-          />
-          <div className="min-w-0 flex-1">
+      {/* One row: the two filters as icons on the left, then the Propo card
+          taking the rest. They used to be a full row of their own directly
+          under a full-width card, so the first note started a third of the way
+          down the screen on a phone. */}
+      <div className="mb-2 flex items-center gap-2">
+        {!isLoading && !error && notes.length > 0 && (
+          <>
+            <FilterSelect
+              label="Filtrar"
+              iconOnly
+              icon={<SlidersHorizontal className="size-4" strokeWidth={1.9} />}
+              value={filter === "all" ? null : filter}
+              allLabel="Todas"
+              options={NOTE_FILTERS.filter((f) => f.value !== "all").map((f) => ({
+                value: f.value,
+                label: f.label,
+              }))}
+              onChange={(v: string | null) => setFilter((v as NoteFilter) ?? "all")}
+              className="shrink-0"
+            />
             <FilterSelect
               label="Ordenar"
+              iconOnly
+              icon={<ArrowUpDown className="size-4" strokeWidth={1.9} />}
               value={sort}
               options={NOTE_SORTS.map((o) => ({ value: o.value, label: o.label, sub: o.sub }))}
               onChange={(v: string | null) => setSort((v as NoteSort) ?? "recent")}
+              className="shrink-0"
             />
-          </div>
-          {!actionsHost && (
-            <Button variant="outline" className="gap-2" onClick={openComposer}>
-              <ActionIcon name="createNote" />
-              Nueva nota
-            </Button>
-          )}
-        </div>
-      )}
+          </>
+        )}
+        <div className="min-w-0 flex-1">{propoCard}</div>
+        {!actionsHost && (
+          <Button
+            variant="outline"
+            size="icon"
+            className="shrink-0 rounded-full"
+            aria-label="Nueva nota"
+            onClick={openComposer}
+          >
+            <ActionIcon name="createNote" />
+          </Button>
+        )}
+      </div>
+      {composing && <div className="mb-3">{composer}</div>}
 
       {isLoading && loading}
       {error && errorBox}
