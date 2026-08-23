@@ -50,7 +50,19 @@ docs/{architecture,api,api-conventions,roles,disaster-recovery}.md
     `documents` both existed as routes, as did `personas` and `properties`. English paths remain as
     `<Navigate>` redirects, listed in `frontend/src/app/legacy-routes.ts`; never delete one.
 - **Light + dark; default dark.** `<html class="dark">` is the static default (set in `index.html`); the toggle (`@core/theme/theme.ts` + `ThemeProvider`) only removes `.dark` for light. Light palette lives in `:root`, dark in `.dark` (see `src/index.css`).
-- **Tenant-driven accent.** The active workspace drives the brand accent via a hue injected on `<html>` by `ThemeController` (`@core/theme/tenant-accent.ts`); `--primary`/`--ring`/`--sidebar-primary` derive from it. The `[data-palette]` switcher (`PaletteSwitcher`) is now **dev-only**.
+- **One accent, three tokens, two owners.** Every colour in the app derives from
+  `--accent-brand`, `--accent-2` and `--tint`, written inline on `<html>`. Exactly one thing
+  owns them at a time: the **user's palette** (`@core/theme/palette.ts`, ~11 palettes, each
+  with a light tone and a dark tone) when they picked one, otherwise the **workspace accent**
+  (`@core/theme/tenant-accent.ts`, `settings.brand_color` or a hue hashed from the tenant id).
+  `applyTenantAccent` no-ops while a palette is chosen, so boot order cannot race.
+  A palette is per USER — stored in `profiles.preferences.palette`, mirrored to localStorage so
+  it paints before the first frame — and picked in Configuración → Apariencia.
+  The old hand-written `[data-palette="…"]` and `[data-tenant="…"]` CSS blocks are **gone**:
+  they hard-set `--background`/`--card`/`--border`, which beat any palette, and the dev ones
+  were scoped under `.dark` so they silently did nothing in the light theme. Don't add another.
+  Meaning-carrying colours (`--cat-*`, `--info`, `--success`, `--warning`, `--destructive`)
+  are deliberately outside the palette — otherwise "vencido" would be a different colour per user.
 - **New design kit** in `src/shared/ui/` (Pill, Chips, Segmented, Row, BottomSheet, RoundButton, WorkspacePill, brand marks) — keep shadcn's `src/components/ui/` regenerable. Mobile broker shell = floating bottom-nav + center Propo FAB (`mobile-bottom-nav.tsx`, chosen by `useShellMode`); desktop/other roles = restyled sidebar.
 - **API client**: thin `request()` helper with Supabase auth headers; `useQuery` wraps service functions.
 - **Pages must have**: loading skeleton + error-with-retry + empty state.
