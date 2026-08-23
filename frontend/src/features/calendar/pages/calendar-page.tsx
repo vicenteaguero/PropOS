@@ -221,7 +221,15 @@ export function CalendarPage() {
   // moving between days inside a week reuses the same cache entry instead of
   // refetching the feed on every tap.
   const { queryStart, queryEnd } = useMemo(() => {
-    if (isDesktop) return { queryStart: rangeStart, queryEnd: rangeEnd };
+    if (isDesktop) {
+      // The month view draws the upcoming list beside the grid, and its pages
+      // run past the end of the month.
+      const upcomingEnd = addDays(startOfDay(new Date()), upcomingDays);
+      return {
+        queryStart: rangeStart,
+        queryEnd: activeView === "month" && upcomingEnd > rangeEnd ? upcomingEnd : rangeEnd,
+      };
+    }
     const { start, end } = feedRange(selected, mobileView);
     if (mobileView !== "month") return { queryStart: start, queryEnd: end };
     // The month view also draws the upcoming list, whose pages extend past the
@@ -229,7 +237,7 @@ export function CalendarPage() {
     // paid to fetch — the reason for paging at all is the request, not the map.
     const upcomingEnd = addDays(startOfDay(new Date()), upcomingDays);
     return { queryStart: start, queryEnd: upcomingEnd > end ? upcomingEnd : end };
-  }, [isDesktop, rangeStart, rangeEnd, selected, mobileView, upcomingDays]);
+  }, [isDesktop, activeView, rangeStart, rangeEnd, selected, mobileView, upcomingDays]);
 
   const { data, isLoading, error, refetch } = useCalendarFeed(
     queryStart.toISOString(),
@@ -531,6 +539,18 @@ export function CalendarPage() {
                       {format(selected, "EEEE d 'de' MMMM", { locale: es })}
                     </SectionLabel>
                     <DayAgenda items={selectedItems} onOpen={setDetail} resolveType={resolveType} />
+                    {/* The same paginated "what is coming" list the phone gets.
+                        The laptop had the month grid and one day's agenda and
+                        no way to see the week ahead without clicking through
+                        seven days. */}
+                    <UpcomingList
+                      itemsByDay={itemsByDay}
+                      days={upcomingDays}
+                      onOpen={setDetail}
+                      onLoadMore={() => setUpcomingDays((d) => d + UPCOMING_PAGE_DAYS)}
+                      canLoadMore
+                      resolveType={resolveType}
+                    />
                   </div>
                 </div>
               )}
@@ -716,10 +736,14 @@ function DayAgenda({
     <div className="overflow-hidden">
       {items.map((it, i) => {
         const meta = itemMeta(it, resolveType);
+        // Already happened: quieter, but still readable and still tappable.
+        // A past event is context — hiding it would break the shape of the day.
+        const past = !!it.start_at && new Date(it.start_at) < new Date();
         return (
           <Row
             key={`${it.item_type}-${it.id}`}
             divider={i < items.length - 1}
+            className={past ? "py-1.5 opacity-55" : undefined}
             onClick={() => onOpen(it)}
             left={
               <div className="flex w-12 shrink-0 items-center gap-2">
@@ -889,7 +913,12 @@ function TimeGrid({
                         type="button"
                         onClick={() => onOpen(it)}
                         title={it.title ?? "Sin título"}
-                        className="absolute overflow-hidden rounded-lg border-l-2 px-1.5 py-0.5 text-left ring-1 ring-background transition hover:z-10 hover:brightness-110"
+                        className={cn(
+                          "absolute overflow-hidden rounded-lg border-l-2 px-1.5 py-0.5 text-left ring-1 ring-background transition hover:z-10 hover:brightness-110",
+                          // Same rule as the list views: what has happened
+                          // steps back so what has not can be seen.
+                          !!it.start_at && new Date(it.start_at) < new Date() && "opacity-55",
+                        )}
                         style={{
                           top: (startMinutes(it) / 60) * HOUR_PX,
                           height,
