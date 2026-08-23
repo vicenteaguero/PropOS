@@ -31,9 +31,15 @@ const KIND_ICON: Record<NoteTargetKind, LucideIcon> = {
 export function targetPath(target: NoteTarget, role: string): string {
   switch (target.kind) {
     case "PROPERTY":
-      return `/${role}/properties/${target.row_id}`;
+      // `/propiedades`, not `/properties`: the English path still resolves via
+      // a legacy redirect, so this worked — it just took the long way round.
+      return `/${role}/propiedades/${target.row_id}`;
     case "CONTACT":
       return `/${role}/personas/${target.row_id}`;
+    case "OPPORTUNITY":
+      // Deals have had their own page for a while; this was still sending them
+      // to the raw timeline view.
+      return `/${role}/negocios/${target.row_id}`;
     default:
       return `/${role}/timeline/${target.target_table}/${target.row_id}`;
   }
