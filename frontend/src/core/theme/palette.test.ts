@@ -28,9 +28,13 @@ describe("palette", () => {
     expect(PALETTE_DEFS.length).toBeGreaterThanOrEqual(8);
     for (const def of PALETTE_DEFS) {
       for (const tone of [def.light, def.dark]) {
-        expect(tone.accent).toMatch(/^#[0-9a-fA-F]{6}$/);
-        expect(tone.fg).toMatch(/^#[0-9a-fA-F]{6}$/);
-        expect(tone.support).toMatch(/^#[0-9a-fA-F]{6}$/);
+        // All four members of the source palette, not just the brand and one
+        // friend — the first pass carried two and dropped the rest.
+        for (const c of [tone.accent, tone.fg, tone.support, tone.third, tone.soft]) {
+          expect(c).toMatch(/^#[0-9a-fA-F]{6}$/);
+        }
+        // A hue used twice in one tone is a palette that ran out of colours.
+        expect(new Set([tone.accent, tone.support, tone.third, tone.soft]).size).toBe(4);
         expect(tone.tint).toBeGreaterThanOrEqual(0);
         expect(tone.tint).toBeLessThanOrEqual(12);
       }
@@ -45,6 +49,8 @@ describe("palette", () => {
     const tone = toneFor(getPalette("menta")!, "light");
     expect(html().style.getPropertyValue("--accent-brand")).toBe(tone.accent);
     expect(html().style.getPropertyValue("--accent-2")).toBe(tone.support);
+    expect(html().style.getPropertyValue("--accent-3")).toBe(tone.third);
+    expect(html().style.getPropertyValue("--accent-soft")).toBe(tone.soft);
     expect(html().style.getPropertyValue("--tint")).toBe(`${tone.tint}%`);
     expect(html().dataset.palette).toBe("menta");
   });
@@ -69,6 +75,8 @@ describe("palette", () => {
     setPalette("vice");
     setPalette(AUTO_PALETTE);
     expect(html().style.getPropertyValue("--accent-brand")).toBe("");
+    expect(html().style.getPropertyValue("--accent-3")).toBe("");
+    expect(html().style.getPropertyValue("--accent-soft")).toBe("");
     expect(html().style.getPropertyValue("--tint")).toBe("");
     expect(paletteOwnsAccent()).toBe(false);
   });
