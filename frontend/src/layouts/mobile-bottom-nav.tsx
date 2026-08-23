@@ -214,7 +214,7 @@ export function MobileBottomNav() {
         ref={navRef}
         aria-label="Navegación principal"
         aria-hidden={propo.isOpen}
-        className={`fixed inset-x-0 bottom-0 z-50 pt-1.5 ${propo.isOpen ? "invisible" : ""} pb-[calc(var(--safe-bottom)+0.75rem)] pl-[calc(var(--safe-left)+0.875rem)] pr-[calc(var(--safe-right)+0.875rem)]`}
+        className={`pinned-bottom-vv fixed inset-x-0 z-50 pt-1.5 ${propo.isOpen ? "invisible" : ""} pb-[calc(var(--safe-bottom)+0.75rem)] pl-[calc(var(--safe-left)+0.875rem)] pr-[calc(var(--safe-right)+0.875rem)]`}
       >
         {/* A floating pill, not a bar. It used to span the full frame, which on a
             phone reads as a wall across the bottom of every screen and pins the

@@ -723,6 +723,27 @@
   height: var(--vv-h, 100dvh);
 }
 
+/* A bottom-anchored bar pinned to the VISIBLE bottom, not the layout one.
+ *
+ * `position: fixed; bottom: 0` resolves against the layout viewport, which on
+ * iOS Safari is the LARGE viewport — the one you get with the URL bar
+ * collapsed. At rest the bar is expanded, so `bottom: 0` sits below what the
+ * user can see. On any page long enough to scroll, the first flick collapses
+ * the URL bar and the discrepancy disappears, which is why this only ever
+ * showed up on short pages: an almost-empty tenant, where the floating nav
+ * looked cut off at the bottom of Inicio and there was nothing to scroll to
+ * fix it.
+ *
+ * `--kb-inset` is exactly that distance — layout-viewport bottom minus the
+ * visible bottom — already published by the viewport store for the composer's
+ * benefit. Multiplied by `(1 - --kb-open)` so a real keyboard does NOT drag the
+ * nav up on top of it: with the keyboard up this collapses to `bottom: 0` and
+ * the nav stays where it always was, safely behind the keys.
+ */
+.pinned-bottom-vv {
+  bottom: calc((1 - var(--kb-open, 0)) * var(--kb-inset, 0px));
+}
+
 /* Bottom padding for a composer inside a `.fixed-vv` surface. The keyboard is
  * OUTSIDE that box, so --kb-inset must not be added again; the only inset left
  * is the home indicator, and only while the keyboard is down. */
