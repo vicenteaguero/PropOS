@@ -10,6 +10,7 @@ import {
   startOfWeek,
 } from "date-fns";
 import { es } from "date-fns/locale";
+import { dayLabel, dayLabelWithDate } from "@shared/utils/relative-time";
 
 /** Monday-first, everywhere. Chile reads a week that starts on Monday. */
 export const WEEK_OPTS = { weekStartsOn: 1 } as const;
@@ -57,21 +58,16 @@ export function feedRange(
   return { start: addWeeks(current, -1), end: addWeeks(current, 2) };
 }
 
-/** "Hoy" · "Mañana" · "Lunes, 17 de agosto" — one line, never the day twice. */
-export function dayHeading(day: Date, today = new Date()): string {
-  if (isSameDay(day, today)) return "Hoy";
-  if (isSameDay(day, addDays(today, 1))) return "Mañana";
-  const label = format(day, "EEEE, d 'de' MMMM", { locale: es });
-  return label.charAt(0).toLocaleUpperCase("es") + label.slice(1);
-}
+/**
+ * "Hoy" · "Ayer" · "Mañana" · "Lunes, 17 de agosto" — one line, never the day
+ * twice. Delegates to the shared ladder; this used to have its own copy that
+ * had never learned "Ayer", so yesterday's column was headed by its weekday
+ * while today's said "Hoy".
+ */
+export const dayHeading = dayLabel;
 
 /** The heading with the date always spelled out, for the week list. */
-export function dayHeadingWithDate(day: Date, today = new Date()): string {
-  const date = format(day, "d 'de' MMMM", { locale: es });
-  if (isSameDay(day, today)) return `Hoy, ${date}`;
-  if (isSameDay(day, addDays(today, 1))) return `Mañana, ${date}`;
-  return dayHeading(day, today);
-}
+export const dayHeadingWithDate = dayLabelWithDate;
 
 export function monthLabel(d: Date): string {
   const label = format(d, "MMMM yyyy", { locale: es });

@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { deadlineTone, dueText, listTime, timeAgo, timeAgoInline, timeLeft } from "./relative-time";
+import {
+  deadlineTone,
+  dueText,
+  listTime,
+  timeAgo,
+  timeAgoInline,
+  timeLeft,
+  whenLabel,
+} from "./relative-time";
 
 // UTC throughout: the suite runs with TZ=UTC (see package.json), so anchoring
 // the fixtures to a Chilean offset moved them across day boundaries.
@@ -7,20 +15,26 @@ const NOW = new Date("2026-08-20T15:00:00Z");
 const at = (iso: string) => listTime(iso, NOW);
 
 describe("listTime", () => {
-  it("shows a clock time for today, on a 24-hour clock", () => {
+  it("counts minutes for the last hour", () => {
+    // A row that says "14:05" makes you subtract; "55 min" is the answer.
+    expect(at("2026-08-20T14:05:00Z")).toBe("55 min");
+    expect(at("2026-08-20T14:59:45Z")).toBe("Recién");
+  });
+
+  it("counts hours up to six, then switches to the clock", () => {
     // Chile writes 06:47, not "6:47 a. m." — and the list column is six
     // characters wide, so the meridiem was both wrong and the widest part.
-    expect(at("2026-08-20T09:30:00Z")).toBe("09:30");
-    expect(at("2026-08-20T14:05:00Z")).toBe("14:05");
+    expect(at("2026-08-20T11:00:00Z")).toBe("4 h");
+    expect(at("2026-08-20T06:00:00Z")).toBe("06:00");
   });
 
   it("says Ayer rather than a date", () => {
     expect(at("2026-08-19T23:00:00Z")).toBe("Ayer");
   });
 
-  it("names the weekday inside the last week", () => {
+  it("abbreviates the weekday inside the last week", () => {
     // 2026-08-17 is a Monday.
-    expect(at("2026-08-17T10:00:00Z")).toBe("Lunes");
+    expect(at("2026-08-17T10:00:00Z")).toBe("Lun");
   });
 
   it("falls back to a date once a week has passed", () => {
@@ -34,6 +48,40 @@ describe("listTime", () => {
   it("returns an empty string rather than throwing on bad input", () => {
     for (const bad of [null, undefined, "", "no-soy-una-fecha"]) {
       expect(listTime(bad, NOW)).toBe("");
+    }
+  });
+});
+
+describe("whenLabel", () => {
+  const w = (iso: string) => whenLabel(iso, NOW);
+
+  it("walks the ladder from minutes to a full date", () => {
+    expect(w("2026-08-20T14:59:45Z")).toBe("Recién");
+    expect(w("2026-08-20T14:48:00Z")).toBe("Hace 12 minutos");
+    expect(w("2026-08-20T14:00:00Z")).toBe("Hace 1 hora");
+    expect(w("2026-08-20T09:00:00Z")).toBe("Hace 6 horas");
+    expect(w("2026-08-20T06:00:00Z")).toBe("Hoy a las 06:00");
+    expect(w("2026-08-19T15:45:00Z")).toBe("Ayer a las 15:45");
+    expect(w("2026-08-17T15:45:00Z")).toBe("Lunes a las 15:45");
+    expect(w("2026-08-04T10:00:00Z")).toBe("4 ago");
+    expect(w("2025-07-19T10:00:00Z")).toMatch(/2025/);
+  });
+
+  it("never calls today by its weekday", () => {
+    // The bug that started this: a conversation from this morning read
+    // "Domingo" while you were looking at it on a Sunday.
+    const sunday = new Date("2026-08-23T20:00:00Z");
+    expect(whenLabel("2026-08-23T08:00:00Z", sunday)).toBe("Hoy a las 08:00");
+  });
+
+  it("reads a future instant as a time, not as elapsed time", () => {
+    expect(w("2026-08-20T18:30:00Z")).toBe("Hoy a las 18:30");
+    expect(w("2026-08-22T09:00:00Z")).toBe("Sábado a las 09:00");
+  });
+
+  it("returns an empty string rather than throwing on bad input", () => {
+    for (const bad of [null, undefined, "", "no-soy-una-fecha"]) {
+      expect(whenLabel(bad, NOW)).toBe("");
     }
   });
 });
