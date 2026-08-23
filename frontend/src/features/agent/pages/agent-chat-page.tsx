@@ -218,7 +218,7 @@ export function AgentChatPage() {
                 Historial
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-full max-w-sm sm:max-w-sm">
+            <SheetContent side="right" className="w-full sm:max-w-sm">
               <SheetHeader>
                 <SheetTitle>Conversaciones</SheetTitle>
               </SheetHeader>
