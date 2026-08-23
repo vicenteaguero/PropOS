@@ -35,6 +35,48 @@ function buildVersion(): string {
 const APP_VERSION = buildVersion();
 
 /**
+ * The exact commit this bundle was built from, and when.
+ *
+ * Separate from APP_VERSION, which is a *gate* token: it only has to be unique
+ * per deploy, so locally it is a `git describe` string and on Vercel it is a
+ * truncated SHA. What the phone needs is something a human can compare against
+ * `git log` — "am I actually running what we just pushed?" is a question that
+ * came up because there was no way to answer it from the device.
+ */
+function buildCommit(): string {
+  const sha = process.env.VERCEL_GIT_COMMIT_SHA ?? gitCommit();
+  return sha ? sha.slice(0, 8) : "unknown";
+}
+
+function gitCommit(): string {
+  try {
+    return execSync("git rev-parse HEAD", { stdio: ["ignore", "pipe", "ignore"] })
+      .toString()
+      .trim();
+  } catch {
+    return "";
+  }
+}
+
+function buildBranch(): string {
+  const fromCi = process.env.VERCEL_GIT_COMMIT_REF;
+  if (fromCi) return fromCi;
+  try {
+    return execSync("git rev-parse --abbrev-ref HEAD", { stdio: ["ignore", "pipe", "ignore"] })
+      .toString()
+      .trim();
+  } catch {
+    return "";
+  }
+}
+
+const APP_COMMIT = buildCommit();
+const APP_BRANCH = buildBranch();
+// ISO, stamped at build time. Formatting is the client's job — it knows the
+// broker's locale and timezone and this file does not.
+const APP_BUILT_AT = new Date().toISOString();
+
+/**
  * Publishes the built commit at a fixed URL so a running tab can tell whether it
  * is still current. Deliberately NOT part of the precache (see `globPatterns`,
  * which lists no `.json`) — a precached manifest would answer with the very
@@ -48,7 +90,12 @@ function versionManifest(): Plugin {
       this.emitFile({
         type: "asset",
         fileName: "version.json",
-        source: JSON.stringify({ version: APP_VERSION }),
+        source: JSON.stringify({
+          version: APP_VERSION,
+          commit: APP_COMMIT,
+          branch: APP_BRANCH,
+          builtAt: APP_BUILT_AT,
+        }),
       });
     },
   };
@@ -124,6 +171,9 @@ export default defineConfig({
   envDir: "../",
   define: {
     "import.meta.env.VITE_APP_VERSION": JSON.stringify(APP_VERSION),
+    "import.meta.env.VITE_APP_COMMIT": JSON.stringify(APP_COMMIT),
+    "import.meta.env.VITE_APP_BRANCH": JSON.stringify(APP_BRANCH),
+    "import.meta.env.VITE_APP_BUILT_AT": JSON.stringify(APP_BUILT_AT),
   },
   plugins: [
     versionManifest(),

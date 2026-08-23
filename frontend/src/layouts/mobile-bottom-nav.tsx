@@ -26,6 +26,7 @@ import { SETTINGS_PATH } from "@layouts/nav-items";
 import { prefetchRoute } from "@shared/lib/route-chunks";
 import { cn } from "@/lib/utils";
 import type { UserView } from "@shared/types/auth";
+import { BuildStampRow } from "@core/version/build-stamp-row";
 import { shortName } from "@shared/utils/display-name";
 import { initials } from "@shared/utils/format";
 
@@ -398,6 +399,14 @@ export function MobileBottomNav() {
             })}
           </div>
         )}
+
+        {/* The build this phone is actually running. An installed PWA is
+            resumed rather than reloaded, so "I pushed a fix and it is not
+            there" is usually a stale service worker and there was no way to
+            tell that apart from a bug that was never fixed. */}
+        <div className="border-t border-border pt-2">
+          <BuildStampRow />
+        </div>
 
         <div className="border-t border-border pt-1">
           <SheetItem
