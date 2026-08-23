@@ -590,7 +590,8 @@ export function SettingsPage() {
   }
 
   return (
-    // No bottom-nav pad here — the shell's <main> already clears --app-nav-h.
+    // No bottom-nav pad here — PageLayout ends every page with a spacer the height
+    // of --app-nav-h, including under `noPadding`.
     <PageLayout width="md" noPadding className="pb-6">
       {/* No painted title: the shell's top bar already reads "Configuración"
           from usePageTitle above. This page printed it a second time, directly

@@ -1,3 +1,4 @@
+import { PageLayout } from "@shared/components/page-layout/page-layout";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -87,7 +88,9 @@ export function FeaturesPage() {
   const map = states.data ?? {};
 
   return (
-    <div className="flex flex-col gap-4">
+    // A bare route with no gutter and no clearance: the switchboard ran edge to
+    // edge on a phone and its last row sat under the floating nav.
+    <PageLayout width="md" noPadding className="flex flex-col gap-4 px-[var(--page-x)] pt-4">
       <PageHeader title="Funcionalidades" backTo="/admin/settings" />
 
       <Segmented
@@ -120,7 +123,7 @@ export function FeaturesPage() {
           />
         ))}
       </div>
-    </div>
+    </PageLayout>
   );
 }
 
