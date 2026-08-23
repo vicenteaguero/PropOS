@@ -58,6 +58,7 @@ class ConsentPayload(BaseModel):
 @router.get("/conversations")
 async def list_conversations(
     tenant_id: UUID = Depends(get_tenant_id),
+    current_user: dict = Depends(get_current_user),
     status: str | None = None,
     archived: bool = False,
     waiting_on: str | None = None,
@@ -91,7 +92,63 @@ async def list_conversations(
         q = q.is_("archived_at", "null")
     rows = q.execute().data or []
     _decorate_conversations(db, tenant_id, rows)
+    _decorate_unread(db, tenant_id, UUID(str(current_user["id"])), rows)
     return rows
+
+
+def _decorate_unread(db, tenant_id: UUID, user_id: UUID, rows: list[dict]) -> None:
+    """Attach `unread_count` and `last_preview` to every row, in place.
+
+    One RPC for the whole page. The alternative — a count per conversation —
+    is 200 round trips to draw 200 dots.
+
+    Best-effort, like the labels above it: an inbox with no unread badges is a
+    worse inbox, an inbox that 500s is no inbox.
+    """
+    if not rows:
+        return
+    try:
+        counts = (
+            db.rpc(
+                "conversation_unread_counts",
+                {"p_tenant": str(tenant_id), "p_user": str(user_id)},
+            )
+            .execute()
+            .data
+            or []
+        )
+    except Exception:  # noqa: BLE001
+        for row in rows:
+            row.setdefault("unread_count", 0)
+            row.setdefault("last_preview", None)
+        return
+
+    by_id = {c["conversation_id"]: c for c in counts}
+    for row in rows:
+        hit = by_id.get(row["id"]) or {}
+        row["unread_count"] = hit.get("unread_count") or 0
+        # The list endpoint never touched `client_messages`, so an inbox row
+        # carried the contact's name and nothing they had actually said.
+        row["last_preview"] = hit.get("last_preview")
+
+
+@router.post("/conversations/{conversation_id}/read", status_code=204)
+async def mark_conversation_read(
+    conversation_id: UUID,
+    tenant_id: UUID = Depends(get_tenant_id),
+    current_user: dict = Depends(get_current_user),
+) -> None:
+    """Mark everything up to now as read, for the calling user only."""
+    db = get_supabase_client()
+    db.table("conversation_reads").upsert(
+        {
+            "tenant_id": str(tenant_id),
+            "conversation_id": str(conversation_id),
+            "user_id": str(current_user["id"]),
+            "read_at": datetime.now(UTC).isoformat(),
+        },
+        on_conflict="conversation_id,user_id",
+    ).execute()
 
 
 def _decorate_conversations(db, tenant_id: UUID, rows: list[dict]) -> None:

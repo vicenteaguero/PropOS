@@ -113,7 +113,38 @@ def _humanize(delta: dt.timedelta) -> str:
     return f"hace {months} mes{'es' if months != 1 else ''}"
 
 
-def _unanswered(tenant_id: UUID, now: dt.datetime):
+def _conversation_extras(tenant_id: UUID, user_id: UUID | None, ids: list[str]) -> dict[str, dict]:
+    """`{conversation_id: {"unread": n, "preview": "..."}}` in one round trip.
+
+    Best-effort: a queue without previews is a worse queue, a queue that 500s
+    is no queue. `user_id` is None for callers with no user in context (a cron
+    job priming a cache), which yields unread counts of zero rather than a
+    crash.
+    """
+    if not ids:
+        return {}
+    try:
+        rows = (
+            _client()
+            .rpc(
+                "conversation_unread_counts",
+                {"p_tenant": str(tenant_id), "p_user": str(user_id) if user_id else str(UUID(int=0))},
+            )
+            .execute()
+            .data
+            or []
+        )
+    except Exception:  # noqa: BLE001
+        return {}
+    wanted = set(ids)
+    return {
+        r["conversation_id"]: {"unread": r.get("unread_count") or 0, "preview": r.get("last_preview")}
+        for r in rows
+        if r["conversation_id"] in wanted
+    }
+
+
+def _unanswered(tenant_id: UUID, now: dt.datetime, user_id: UUID | None = None):
     rows = (
         _client()
         .table("client_conversations")
@@ -126,6 +157,7 @@ def _unanswered(tenant_id: UUID, now: dt.datetime):
         .data
         or []
     )
+    extras = _conversation_extras(tenant_id, user_id, [r["id"] for r in rows])
     for row in rows:
         inbound = _parse(row.get("last_inbound_at"))
         last = _parse(row.get("last_message_at"))
@@ -172,6 +204,9 @@ def _unanswered(tenant_id: UUID, now: dt.datetime):
             subtitle=None,
             reason=reason,
             at=inbound,
+            last_at=last or inbound,
+            preview=(extras.get(row["id"]) or {}).get("preview"),
+            unread=(extras.get(row["id"]) or {}).get("unread") or 0,
             deadline=inbound + dt.timedelta(hours=_FREEFORM_HOURS),
             contact_id=contact_id,
             property_id=property_id,
@@ -469,6 +504,7 @@ async def build_feed(
     *,
     now: dt.datetime | None = None,
     kinds: set[AttentionKind] | None = None,
+    user_id: UUID | None = None,
 ) -> AttentionFeed:
     """Rank the queue, optionally narrowed to some kinds.
 
@@ -483,7 +519,7 @@ async def build_feed(
     # tables to build a name map — is gone; labels are resolved at the end, for
     # the handful of ids the queue actually references.
     unanswered, emails, visits, stalled = await _gather(
-        lambda: list(_unanswered(tenant_id, now)),
+        lambda: list(_unanswered(tenant_id, now, user_id)),
         lambda: list(_email_waiting(tenant_id, now)),
         lambda: list(_visits(tenant_id, now)),
         lambda: list(_stalled(tenant_id, now)),
