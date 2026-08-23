@@ -152,6 +152,7 @@ async def build_overview(tenant_id: UUID, opportunity_id: UUID) -> dict:
             _client()
             .table("contacts")
             .select("id, full_name, phone, email")
+            .eq("tenant_id", tid)
             .in_("id", contact_ids)
             .execute()
             .data
@@ -165,6 +166,7 @@ async def build_overview(tenant_id: UUID, opportunity_id: UUID) -> dict:
             _client()
             .table("properties")
             .select("id, title, address, status, list_price_cents, currency")
+            .eq("tenant_id", tid)
             .in_("id", property_ids)
             .execute()
             .data
