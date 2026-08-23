@@ -4,12 +4,19 @@ import { ImagePlus, Link as LinkIcon, Loader2, Pencil, Trash2, X } from "lucide-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Chip, Chips, LinkInput, Pill, ResponsiveSheet, SheetActions } from "@shared/ui";
+import {
+  Chip,
+  Chips,
+  FilterSelect,
+  LinkInput,
+  Pill,
+  ResponsiveSheet,
+  SheetActions,
+} from "@shared/ui";
 import { ConfirmDialog } from "@shared/components/confirm-dialog/confirm-dialog";
 import { PhotoViewer } from "@shared/components/photo-viewer/photo-viewer";
-import { initials } from "@shared/utils/format";
 import { shortName, shortPropertyTitle } from "@shared/utils/display-name";
+import { label } from "@shared/lib/labels";
 import { dueText } from "@shared/utils/relative-time";
 import { useTenantMembers } from "@shared/hooks/use-tenant-members";
 import { AudioPlayer, EntityLinkRow } from "@shared/ui";
@@ -341,25 +348,21 @@ export function TaskDetailSheet({
 
               {members && members.length > 1 && (
                 <div>
-                  <p className="mb-1.5 text-[13px] font-medium text-muted-foreground">
-                    Responsable
-                  </p>
-                  <Chips>
-                    <Chip active={!owner} onClick={() => setOwner(null)}>
-                      Sin asignar
-                    </Chip>
-                    {members.map((m) => (
-                      <Chip key={m.id} active={owner === m.id} onClick={() => setOwner(m.id)}>
-                        <Avatar size="sm" className="mr-1.5 size-4">
-                          {m.avatar_url && <AvatarImage src={m.avatar_url} alt="" />}
-                          <AvatarFallback className="text-[9px]">
-                            {initials(m.full_name ?? "?")}
-                          </AvatarFallback>
-                        </Avatar>
-                        {shortName(m.full_name, "Sin nombre")}
-                      </Chip>
-                    ))}
-                  </Chips>
+                  {/* A dropdown, not a chip per teammate. Each chip carried a 16px
+                      avatar, so a four-person team came to ~773px inside a
+                      328px sheet — and it gets worse as the brokerage grows,
+                      which is the wrong direction for a control to scale. */}
+                  <FilterSelect
+                    label="Responsable"
+                    value={owner}
+                    allLabel="Sin asignar"
+                    options={members.map((m) => ({
+                      value: m.id,
+                      label: shortName(m.full_name, "Sin nombre"),
+                      sub: label("role", m.role),
+                    }))}
+                    onChange={setOwner}
+                  />{" "}
                 </div>
               )}
             </>
