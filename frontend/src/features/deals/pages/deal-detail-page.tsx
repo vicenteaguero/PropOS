@@ -8,7 +8,8 @@ import { useAuth } from "@shared/hooks/use-auth";
 import { formatClp } from "@shared/utils/currency";
 import { label } from "@shared/lib/labels";
 import { stageDot, STAGE_LABELS } from "@features/opportunities/types";
-import { dueText, timeAgoInline } from "@shared/utils/relative-time";
+import { dayLabel, dueText, timeAgoInline, whenLabel } from "@shared/utils/relative-time";
+import { shortName } from "@shared/utils/display-name";
 import { Button } from "@/components/ui/button";
 import { useDeal, useSetDealStage } from "../hooks/use-deal";
 import type { ChecklistItem } from "../api/deals-api";
@@ -64,7 +65,7 @@ export function DealDetailPage() {
   const blocking = checklist.filter((i) => i.blocking && i.status !== "done");
 
   return (
-    <PageLayout width="md">
+    <PageLayout width="md" noPadding className="pb-6">
       {/* Back is hidden in the phone shell, whose top bar carries one on every
           route below a section root. See useShellMode. */}
       <div className="flex items-center justify-between px-[var(--page-x)] pt-4 pb-2">
@@ -82,13 +83,36 @@ export function DealDetailPage() {
         <Pill dot={stageDot(stage)}>{STAGE_LABELS[stage] ?? stage}</Pill>
       </div>
 
-      <div className="px-[var(--page-x)] pb-5">
-        <h1 className="text-[19px] leading-tight font-semibold tracking-tight text-foreground">
-          {participants[0]?.full_name || "Negocio sin participantes"}
+      <div className="px-[var(--page-x)] pb-4">
+        <h1 className="text-[21px] font-semibold leading-tight tracking-tight text-foreground">
+          {shortName(participants[0]?.full_name, "Negocio sin participantes")}
         </h1>
-        <p className="mt-1 font-mono text-[15px] tabular-nums text-foreground">
+        <p className="mt-1 font-mono text-[17px] tabular-nums text-foreground">
           {formatClp(deal.expected_value_cents)}
         </p>
+
+        {/* The four facts the model has always carried and the page has never
+            shown. A deal page that cannot tell you when it is expected to
+            close, or why it was lost, is a list of sections about a deal
+            rather than the deal. */}
+        <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2">
+          {deal.expected_close_at && (
+            <Fact label="Cierre estimado" value={dayLabel(new Date(deal.expected_close_at))} />
+          )}
+          {typeof deal.probability === "number" && (
+            <Fact label="Probabilidad" value={`${deal.probability}%`} />
+          )}
+          <Fact label="Creado" value={whenLabel(deal.created_at)} />
+          {deal.lost_reason && (
+            <Fact label="Motivo de pérdida" value={deal.lost_reason} tone="bad" />
+          )}
+        </dl>
+
+        {deal.notes && (
+          <p className="mt-3 whitespace-pre-wrap text-[13.5px] leading-relaxed text-muted-foreground">
+            {deal.notes}
+          </p>
+        )}
       </div>
 
       {/* The moves that are legal from here. The server declares them, so the
@@ -99,7 +123,7 @@ export function DealDetailPage() {
           filter or as the deal's current state — not as "press this and the
           deal moves". */}
       {data.allowed_transitions.length > 0 && (
-        <div className="mb-6 px-[var(--page-x)]">
+        <div className="mb-5 px-[var(--page-x)]">
           <SectionLabel>Mover a</SectionLabel>
           <div className="mt-2 flex flex-wrap gap-2">
             {data.allowed_transitions.map((t) => (
@@ -130,7 +154,7 @@ export function DealDetailPage() {
       )}
 
       {hasFile && (
-        <section className="mb-6">
+        <section className="mb-5">
           <div className="px-[var(--page-x)]">
             <SectionLabel>
               Expediente
@@ -170,7 +194,7 @@ export function DealDetailPage() {
         </section>
       )}
 
-      <section className="mb-6">
+      <section className="mb-5">
         <div className="px-[var(--page-x)]">
           <SectionLabel>Participantes</SectionLabel>
         </div>
@@ -194,7 +218,7 @@ export function DealDetailPage() {
         </div>
       </section>
 
-      <section className="mb-6">
+      <section className="mb-5">
         <div className="px-[var(--page-x)]">
           <SectionLabel>Propiedades</SectionLabel>
         </div>
@@ -226,7 +250,7 @@ export function DealDetailPage() {
       </section>
 
       {history.length > 0 && (
-        <section className="mb-6">
+        <section className="mb-5">
           <div className="px-[var(--page-x)]">
             <SectionLabel>Historial</SectionLabel>
           </div>
@@ -260,3 +284,21 @@ export function DealDetailPage() {
 }
 
 export default DealDetailPage;
+
+/** One label/value pair in the deal's header block. */
+function Fact({ label, value, tone }: { label: string; value: string; tone?: "bad" }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-[11px] font-semibold uppercase tracking-wide text-faint">{label}</dt>
+      <dd
+        className={
+          tone === "bad"
+            ? "truncate text-[13.5px] font-medium text-destructive"
+            : "truncate text-[13.5px] font-medium text-foreground"
+        }
+      >
+        {value}
+      </dd>
+    </div>
+  );
+}

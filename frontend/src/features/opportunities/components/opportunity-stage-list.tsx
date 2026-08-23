@@ -12,7 +12,7 @@ interface Props {
   nameFor: (personId: string | null) => string;
   propertyFor: (propertyId: string | null) => string | null;
   /** The deal's comuna, for the optional grouping. Null when unknown. */
-  comunaFor: (propertyId: string | null) => string | null;
+  comunaFor: (opp: Opportunity) => string | null;
   onMove: (id: string, stage: string) => void;
   onWon: (opp: Opportunity) => void;
   onLost: (opp: Opportunity) => void;
@@ -71,7 +71,7 @@ export function OpportunityStageList({
     ? [
         ...shown
           .reduce((map, o) => {
-            const key = comunaFor(o.property_id) ?? "Sin comuna";
+            const key = comunaFor(o) ?? "Sin comuna";
             map.set(key, [...(map.get(key) ?? []), o]);
             return map;
           }, new Map<string, Opportunity[]>())

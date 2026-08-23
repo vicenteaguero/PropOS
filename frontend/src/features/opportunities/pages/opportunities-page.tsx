@@ -1,9 +1,16 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useProperties } from "@features/documents/hooks/use-entities";
-import { Building2 } from "lucide-react";
+import { ArrowUpDown, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ActionIcon, AppShellScroll, CONTROL_SQUARE, ListCapNotice, ListShell } from "@shared/ui";
+import {
+  ActionIcon,
+  AppShellScroll,
+  CONTROL_SQUARE,
+  ListCapNotice,
+  ListShell,
+  FilterSelect,
+} from "@shared/ui";
 import { toast } from "sonner";
 import { useAuth } from "@shared/hooks/use-auth";
 import { useIsDesktop } from "@/hooks/use-mobile";
@@ -28,6 +35,14 @@ import type { Opportunity } from "../types";
  * the header now names it and carries the search and the create button on one
  * line with it.
  */
+type DealOrder = "stage" | "value" | "age";
+
+const DEAL_ORDERS: { value: DealOrder; label: string; sub: string }[] = [
+  { value: "stage", label: "Por etapa", sub: "El orden del pipeline" },
+  { value: "value", label: "Monto", sub: "Los más grandes primero" },
+  { value: "age", label: "Antigüedad", sub: "Los que llevan más tiempo sin moverse" },
+];
+
 export function OpportunitiesPage() {
   const { data, isLoading, error, refetch } = useOpportunities({ status: "OPEN", limit: 500 });
   const { data: contacts } = useContacts({ limit: 500 });
@@ -38,6 +53,8 @@ export function OpportunitiesPage() {
   // surface with room for its people, its properties and its file.
   const [dialogOpen, setDialogOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [comuna, setComuna] = useState<string | null>(null);
+  const [order, setOrder] = useState<DealOrder>("stage");
 
   const properties = useProperties();
   const navigate = useNavigate();
@@ -63,30 +80,44 @@ export function OpportunitiesPage() {
   const propertyFor = (propertyId: string | null) =>
     propertyId ? (propertyMap.get(propertyId) ?? null) : null;
 
-  // `properties.comuna` has existed since the property-truth migration and
-  // nothing read it. The list is already in cache on this screen, so grouping
-  // the board by neighbourhood costs one map.
-  const comunaMap = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const p of properties.data ?? []) if (p.comuna) m.set(p.id, p.comuna);
-    return m;
-  }, [properties.data]);
+  // Straight off the row. This used to be built from `useProperties()`, which
+  // returns 100 properties against 500 deals — so `comunaMap` was mostly empty
+  // and every deal fell into "Sin comuna", which is indistinguishable from a
+  // broken filter, because it was one.
+  const comunaFor = (opp: Opportunity) => opp.comunas?.[0] ?? null;
 
-  const comunaFor = (propertyId: string | null) =>
-    propertyId ? (comunaMap.get(propertyId) ?? null) : null;
+  /** Every comuna present in the current book, for the filter's options. */
+  const comunas = useMemo(() => {
+    const seen = new Set<string>();
+    for (const o of data ?? []) for (const c of o.comunas ?? []) seen.add(c);
+    return [...seen].sort((a, b) => a.localeCompare(b, "es"));
+  }, [data]);
 
   // Filtering the board rather than a list: with 100+ open deals, finding one
   // by eye means scanning six columns. The lanes stay, they just get shorter.
   const shown = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return data ?? [];
-    return (data ?? []).filter((o) =>
-      `${nameFor(o.person_id)} ${propertyFor(o.property_id) ?? ""} ${o.notes ?? ""}`
-        .toLowerCase()
-        .includes(q),
-    );
+    let rows = data ?? [];
+    if (comuna) rows = rows.filter((o) => (o.comunas ?? []).includes(comuna));
+    if (q) {
+      rows = rows.filter((o) =>
+        `${nameFor(o.person_id)} ${propertyFor(o.property_id) ?? ""} ${o.notes ?? ""}`
+          .toLowerCase()
+          .includes(q),
+      );
+    }
+    if (order === "value") {
+      rows = [...rows].sort(
+        (a, b) => (b.expected_value_cents ?? 0) - (a.expected_value_cents ?? 0),
+      );
+    } else if (order === "age") {
+      // Oldest first: the point of ordering by age is to surface what has been
+      // sitting untouched, not to re-show what you created this morning.
+      rows = [...rows].sort((a, b) => a.created_at.localeCompare(b.created_at));
+    }
+    return rows;
     // eslint-disable-next-line react-hooks/exhaustive-deps -- nameFor is derived from nameMap
-  }, [data, search, nameMap, propertyMap]);
+  }, [data, search, comuna, order, nameMap, propertyMap]);
 
   const move = (id: string, stage: string) =>
     update.mutate({ id, body: { pipeline_stage: stage } });
@@ -112,7 +143,7 @@ export function OpportunitiesPage() {
         search={{
           value: search,
           onChange: setSearch,
-          placeholder: "Buscar por persona, propiedad o nota",
+          placeholder: "Buscar negocio…",
           ariaLabel: "Buscar oportunidades",
         }}
         action={
@@ -127,11 +158,33 @@ export function OpportunitiesPage() {
               aria-label="Ver propiedades"
               title="Ver propiedades"
               className={cn("rounded-full", CONTROL_SQUARE)}
-              onClick={() => navigate(`/${role}/clientes?tab=propiedades`)}
+              onClick={() => navigate(`/${role}/propiedades`)}
             >
               <Building2 className="size-4" strokeWidth={1.8} />
             </Button>
           </>
+        }
+        filters={
+          // On BOTH branches. The comuna control existed only in the phone's
+          // stage list, so the laptop — where the board is widest and the
+          // filter most useful — did not have it at all.
+          <div className="flex items-center gap-2">
+            <FilterSelect
+              label="Comuna"
+              value={comuna}
+              allLabel="Todas"
+              options={comunas.map((c) => ({ value: c, label: c }))}
+              onChange={setComuna}
+            />
+            <FilterSelect
+              iconOnly
+              icon={<ArrowUpDown className="size-4" strokeWidth={1.9} />}
+              label="Ordenar"
+              value={order}
+              options={DEAL_ORDERS.map((o) => ({ value: o.value, label: o.label, sub: o.sub }))}
+              onChange={(v) => setOrder((v as DealOrder) ?? "stage")}
+            />
+          </div>
         }
         primaryAction={
           <Button
