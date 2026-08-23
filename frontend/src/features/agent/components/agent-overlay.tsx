@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Sparkles, X, Mic, MessageSquare, PlusCircle, Loader2, ArrowRight } from "lucide-react";
+import { X, Mic, MessageSquare, PlusCircle, Loader2, ArrowRight } from "lucide-react";
+import { PropoMark } from "@shared/ui";
 import { useAgentSession, useAgentMessages } from "../hooks/use-agent-session";
 import { useAgentChat } from "../hooks/use-agent-chat";
 import { agentApi } from "../api/agent-api";
@@ -139,8 +140,14 @@ export function AgentOverlay({ onClose, initialMode = "chat" }: Props) {
             }`}
           >
             <div className="flex items-center gap-2.5">
+              {/* The mark's own state: it plays its opening flourish once when
+                  the overlay mounts, then accelerates for as long as Propo is
+                  actually working. That is the whole reason it animates. */}
               <span className="flex size-9 items-center justify-center rounded-full bg-white">
-                <Sparkles className="size-5 text-black" />
+                <PropoMark
+                  state={chat.isThinking ? "thinking" : "open"}
+                  className="size-5 text-black"
+                />
               </span>
               <div>
                 <div className="text-[16px] font-bold leading-none">{agentName}</div>
@@ -213,7 +220,7 @@ export function AgentOverlay({ onClose, initialMode = "chat" }: Props) {
                         onClick={() => chat.send(s)}
                         className="flex items-center gap-2.5 rounded-xl border border-white/12 bg-white/[0.03] px-4 py-3 text-left text-[13.5px] text-white transition active:scale-[0.99]"
                       >
-                        <Sparkles className="size-4 shrink-0 text-white/60" />
+                        <PropoMark className="size-4 shrink-0 text-white/60" />
                         <span className="flex-1">{s}</span>
                         <ArrowRight className="size-4 shrink-0 text-white/40" />
                       </button>
