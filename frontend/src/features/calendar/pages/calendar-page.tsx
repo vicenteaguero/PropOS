@@ -15,24 +15,20 @@ import {
   startOfWeek,
 } from "date-fns";
 import { es } from "date-fns/locale";
-import { Banknote, CalendarDays, type LucideIcon, ListTodo, Loader2, MapPin } from "lucide-react";
+import { CalendarDays, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { PageLayout } from "@shared/components/page-layout";
 import { ConfirmDialog } from "@shared/components/confirm-dialog/confirm-dialog";
 import {
   ActionIcon,
   AppShellScroll,
-  Chip,
-  Chips,
   ErrorState,
-  FieldGroup,
+  FOCUS_RING,
   PageSkeleton,
-  Pill,
   ResponsiveSheet,
   Row,
   SectionLabel,
+  SheetActions,
 } from "@shared/ui";
 import { useIsDesktop } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
@@ -46,7 +42,7 @@ import {
   useEvent,
   useUpdateEvent,
 } from "../hooks/use-calendar";
-import type { CalendarItem, EventKind } from "../api/calendar-api";
+import type { CalendarItem } from "../api/calendar-api";
 import { CalendarToolbar, type MobileView as ToolbarView } from "../components/calendar-toolbar";
 import { WeekCarousel } from "../components/week-carousel";
 import { EventRow as DenseEventRow } from "../components/event-row";
@@ -57,39 +53,19 @@ import { placeOverlapping } from "../lib/overlap";
 import {
   filterFromParam,
   isImminentVisit,
+  itemMeta,
   matchesFilter,
   paramForFilter,
+  timeLabel,
   type CalFilter,
+  type TypeResolver,
 } from "../lib/calendar-item";
+import { dayKey } from "../lib/calendar-range";
+import { EventForm, emptyEventForm, type EventFormState } from "../components/event-form";
+import { useEventTypes } from "../hooks/use-event-types";
 import { useTopbarActionsSlot } from "@layouts/topbar-slot";
 import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
-import type { PillTone } from "@shared/ui";
-
-/** Per-type tone + dot color + kind icon (semantic tokens only). */
-const TYPE_META: Record<
-  CalendarItem["item_type"],
-  { tone: PillTone; dot: string; label: string; icon: LucideIcon }
-> = {
-  EVENT: { tone: "accent", dot: "var(--color-accent-brand)", label: "Evento", icon: MapPin },
-  TASK: { tone: "warning", dot: "var(--color-warning)", label: "Tarea", icon: ListTodo },
-  PAYMENT: { tone: "success", dot: "var(--color-success)", label: "Pago", icon: Banknote },
-};
-
-/** Event kinds in picker order, with their Spanish labels. */
-const KIND_ITEMS: { id: EventKind; label: string }[] = [
-  { id: "VISIT", label: "Visita" },
-  { id: "MEETING", label: "Reunión" },
-  { id: "CALL", label: "Llamada" },
-  { id: "DEADLINE", label: "Vencimiento" },
-  { id: "OTHER", label: "Otro" },
-];
-
-/** Narrows an arbitrary feed/API string to a known kind (falls back to OTHER). */
-function asKind(value: string | null | undefined): EventKind {
-  const hit = KIND_ITEMS.find((k) => k.id === value);
-  return hit ? hit.id : "OTHER";
-}
 
 const WEEKDAYS = ["L", "M", "M", "J", "V", "S", "D"];
 
@@ -101,51 +77,12 @@ type MobileView = "day" | "week" | "month";
 const HOUR_PX = 48;
 const HOURS = Array.from({ length: 24 }, (_, h) => h);
 
-function dayKey(d: Date): string {
-  return format(d, "yyyy-MM-dd");
-}
-
-function timeLabel(it: CalendarItem): string {
-  if (it.all_day || !it.start_at) return "Todo";
-  return format(new Date(it.start_at), "HH:mm");
-}
-
 /** Minutes from midnight for a timed item (0 when missing). */
 function startMinutes(it: CalendarItem): number {
   if (!it.start_at) return 0;
   const d = new Date(it.start_at);
   return d.getHours() * 60 + d.getMinutes();
 }
-
-/** `datetime-local` value for an ISO string (empty when absent). */
-function toLocalInput(iso: string | null | undefined): string {
-  if (!iso) return "";
-  return format(new Date(iso), "yyyy-MM-dd'T'HH:mm");
-}
-
-/** ISO string for a `datetime-local` value (null when empty). */
-function toIso(local: string): string | null {
-  return local ? new Date(local).toISOString() : null;
-}
-
-/** Shared shape of the create + edit event forms. */
-interface EventFormState {
-  title: string;
-  kind: EventKind;
-  startsAt: string;
-  endsAt: string;
-  location: string;
-  remindAt: string;
-}
-
-const EMPTY_EVENT_FORM: EventFormState = {
-  title: "",
-  kind: "VISIT",
-  startsAt: "",
-  endsAt: "",
-  location: "",
-  remindAt: "",
-};
 
 /** Block height in px for an item, floored to a readable minimum. */
 function durationPx(it: CalendarItem): number {
@@ -156,16 +93,34 @@ function durationPx(it: CalendarItem): number {
   return (minutes / 60) * HOUR_PX;
 }
 
+/**
+ * A sensible start for a brand-new event: the next half hour, today.
+ *
+ * Not "now": an event that starts at 14:37 is nobody's intention, and the old
+ * form's empty date field made the first thing you did on every event be
+ * typing a date you already knew.
+ */
+function defaultStart(): Date {
+  const at = new Date();
+  at.setSeconds(0, 0);
+  at.setMinutes(at.getMinutes() > 30 ? 60 : 30);
+  return at;
+}
+
 export function CalendarPage() {
   const { user } = useAuth();
   const isDesktop = useIsDesktop();
+  const { resolve: resolveType } = useEventTypes();
+  // Days shown in the month view's upcoming list. Widens the FEED window, not
+  // just the render — the whole point is not to fetch a year of events.
+  const [upcomingDays, setUpcomingDays] = useState(UPCOMING_PAGE_DAYS);
   const [view, setView] = useState<View>("month");
   // Mobile drives Día/Semana/Mes independently from the desktop time-grid view.
   const [mobileView, setMobileView] = useState<MobileView>("day");
   const [cursor, setCursor] = useState(() => new Date());
   const [selected, setSelected] = useState(() => new Date());
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState<EventFormState>(EMPTY_EVENT_FORM);
+  const [form, setForm] = useState<EventFormState>(() => emptyEventForm(defaultStart()));
   const [detail, setDetail] = useState<CalendarItem | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -207,6 +162,20 @@ export function CalendarPage() {
     userPickedView.current = true;
     setView(v);
   };
+
+  // Coming back to the tab re-anchors the Día view on today. Leaving it parked
+  // on whatever day you last tapped means the calendar opens showing a
+  // Thursday in three weeks, with nothing on screen saying why.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      const today = new Date();
+      setSelected((current) => (isSameDay(current, today) ? current : today));
+      setUpcomingDays(UPCOMING_PAGE_DAYS);
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, []);
 
   // Desktop drives the time-grid / month-grid view; mobile has its own
   // `mobileView` state, so the desktop view is parked on month off-desktop.
@@ -254,8 +223,13 @@ export function CalendarPage() {
   const { queryStart, queryEnd } = useMemo(() => {
     if (isDesktop) return { queryStart: rangeStart, queryEnd: rangeEnd };
     const { start, end } = feedRange(selected, mobileView);
-    return { queryStart: start, queryEnd: end };
-  }, [isDesktop, rangeStart, rangeEnd, selected, mobileView]);
+    if (mobileView !== "month") return { queryStart: start, queryEnd: end };
+    // The month view also draws the upcoming list, whose pages extend past the
+    // month grid. Widen the window rather than paginating an array we already
+    // paid to fetch — the reason for paging at all is the request, not the map.
+    const upcomingEnd = addDays(startOfDay(new Date()), upcomingDays);
+    return { queryStart: start, queryEnd: upcomingEnd > end ? upcomingEnd : end };
+  }, [isDesktop, rangeStart, rangeEnd, selected, mobileView, upcomingDays]);
 
   const { data, isLoading, error, refetch } = useCalendarFeed(
     queryStart.toISOString(),
@@ -340,38 +314,53 @@ export function CalendarPage() {
 
   // Open the create sheet, optionally prefilled to a clicked day at 09:00.
   const openCreate = (day?: Date) => {
-    const at = new Date(day ?? new Date());
+    const at = day ? new Date(day) : defaultStart();
     if (day) at.setHours(9, 0, 0, 0);
-    setForm({ ...EMPTY_EVENT_FORM, startsAt: day ? format(at, "yyyy-MM-dd'T'HH:mm") : "" });
+    setForm(emptyEventForm(at));
     setOpen(true);
   };
 
   useOpenOnParam("nuevo", () => openCreate());
 
-  /** Shared guard for both forms: title + start required, end after start. */
+  /**
+   * The only rule left. `end > start` is now structurally impossible — the
+   * `when-reducer` will not produce it — so the toast that used to say "la hora
+   * de término debe ser posterior al inicio" has nothing left to fire on.
+   */
   const validate = (f: EventFormState): boolean => {
-    if (!f.title.trim() || !f.startsAt) {
-      toast.error("Título y fecha son obligatorios");
-      return false;
-    }
-    if (f.endsAt && new Date(f.endsAt) <= new Date(f.startsAt)) {
-      toast.error("La hora de término debe ser posterior al inicio");
+    if (!f.title.trim()) {
+      toast.error("El evento necesita un título");
       return false;
     }
     return true;
   };
 
+  /** A reminder offset, resolved against whatever the start currently is. */
+  const remindAtFrom = (f: EventFormState): string | null =>
+    f.remindOffset === null
+      ? null
+      : new Date(f.start.getTime() - f.remindOffset * 60_000).toISOString();
+
+  const bodyFrom = (f: EventFormState) => ({
+    title: f.title.trim(),
+    kind: f.kind,
+    description: f.description.trim() || null,
+    starts_at: f.start.toISOString(),
+    ends_at: f.end.toISOString(),
+    all_day: f.allDay,
+    status: f.status as "SCHEDULED" | "DONE" | "CANCELLED",
+    location: f.location.trim() || null,
+    priority: f.priority,
+    property_id: f.propertyId,
+    contact_id: f.contactId,
+    opportunity_id: f.opportunityId,
+    assignee_user: f.assigneeUser,
+  });
+
   const submit = async () => {
     if (!validate(form)) return;
-    await create.mutateAsync({
-      title: form.title.trim(),
-      kind: form.kind,
-      starts_at: new Date(form.startsAt).toISOString(),
-      ends_at: toIso(form.endsAt),
-      location: form.location.trim() || null,
-      remind_at: toIso(form.remindAt),
-    });
-    setForm(EMPTY_EVENT_FORM);
+    await create.mutateAsync({ ...bodyFrom(form), remind_at: remindAtFrom(form) });
+    setForm(emptyEventForm(defaultStart()));
     setOpen(false);
     toast.success("Evento creado");
   };
@@ -381,13 +370,20 @@ export function CalendarPage() {
   // sheet over from detail to edit.
   const openEdit = () => {
     if (!detail || !fullEvent) return;
+    const start = new Date(fullEvent.starts_at);
     setForm({
+      ...emptyEventForm(start, fullEvent.kind),
       title: fullEvent.title ?? "",
-      kind: asKind(fullEvent.kind),
-      startsAt: toLocalInput(fullEvent.starts_at),
-      endsAt: toLocalInput(fullEvent.ends_at),
+      end: fullEvent.ends_at ? new Date(fullEvent.ends_at) : new Date(start.getTime() + 3_600_000),
+      allDay: fullEvent.all_day ?? false,
       location: fullEvent.location ?? "",
-      remindAt: "",
+      description: fullEvent.description ?? "",
+      status: fullEvent.status ?? "SCHEDULED",
+      priority: fullEvent.priority ?? 0,
+      propertyId: fullEvent.property_id ?? null,
+      contactId: fullEvent.contact_id ?? null,
+      opportunityId: fullEvent.opportunity_id ?? null,
+      assigneeUser: fullEvent.assignee_user ?? null,
     });
     setEditingId(detail.id);
     setDetail(null);
@@ -398,11 +394,12 @@ export function CalendarPage() {
     await update.mutateAsync({
       id: editingId,
       body: {
-        title: form.title.trim(),
-        kind: form.kind,
-        starts_at: new Date(form.startsAt).toISOString(),
-        ends_at: toIso(form.endsAt),
-        location: form.location.trim() || null,
+        ...bodyFrom(form),
+        // Explicitly, both ways: a reminder that was set and is now "Sin
+        // recordatorio" has to be removed, not merely left alone.
+        ...(form.remindOffset === null
+          ? { clear_reminder: true }
+          : { remind_at: remindAtFrom(form) }),
       },
     });
     setEditingId(null);
@@ -498,6 +495,9 @@ export function CalendarPage() {
               onFilterChange={setFilter}
               onCreate={() => openCreate()}
               role={role}
+              resolveType={resolveType}
+              upcomingDays={upcomingDays}
+              onLoadMoreDays={() => setUpcomingDays((d) => d + UPCOMING_PAGE_DAYS)}
             />
           )}
 
@@ -513,6 +513,7 @@ export function CalendarPage() {
                       days={gridDays}
                       cursor={cursor}
                       selected={selected}
+                      resolveType={resolveType}
                       itemsByDay={itemsByDay}
                       onSelect={(d) => {
                         // Selecting a day in the month grid drops into the Día view.
@@ -529,7 +530,7 @@ export function CalendarPage() {
                     <SectionLabel className="mb-1 mt-3 px-4 first-letter:uppercase">
                       {format(selected, "EEEE d 'de' MMMM", { locale: es })}
                     </SectionLabel>
-                    <DayAgenda items={selectedItems} onOpen={setDetail} />
+                    <DayAgenda items={selectedItems} onOpen={setDetail} resolveType={resolveType} />
                   </div>
                 </div>
               )}
@@ -540,6 +541,7 @@ export function CalendarPage() {
                   itemsByDay={itemsByDay}
                   onOpen={setDetail}
                   onCreate={openCreate}
+                  resolveType={resolveType}
                 />
               )}
             </div>
@@ -549,21 +551,18 @@ export function CalendarPage() {
         {/* Create flow */}
         <ResponsiveSheet open={open} onOpenChange={setOpen} title="Nuevo evento">
           <div className="mt-4 space-y-4">
-            <EventFormFields idPrefix="new" value={form} onChange={setForm} showRemind />
-            <div className="flex flex-col gap-2 pt-2">
-              <Button onClick={submit} disabled={create.isPending} variant="ink" size="block">
+            <EventForm value={form} onChange={setForm} />
+            {/* One row, the way every other sheet in the app ends. Two
+                full-width buttons stacked read as two steps. */}
+            <SheetActions>
+              <Button variant="ghost" onClick={() => setOpen(false)} disabled={create.isPending}>
+                Cancelar
+              </Button>
+              <Button onClick={submit} disabled={create.isPending} variant="ink">
                 {create.isPending && <Loader2 className="size-4 animate-spin" />}
                 Crear
               </Button>
-              <Button
-                variant="ghost"
-                size="block"
-                onClick={() => setOpen(false)}
-                disabled={create.isPending}
-              >
-                Cancelar
-              </Button>
-            </div>
+            </SheetActions>
           </div>
         </ResponsiveSheet>
 
@@ -574,21 +573,20 @@ export function CalendarPage() {
           title="Editar evento"
         >
           <div className="mt-4 space-y-4">
-            <EventFormFields idPrefix="edit" value={form} onChange={setForm} />
-            <div className="flex flex-col gap-2 pt-2">
-              <Button onClick={submitEdit} disabled={update.isPending} variant="ink" size="block">
-                {update.isPending && <Loader2 className="size-4 animate-spin" />}
-                Guardar
-              </Button>
+            <EventForm value={form} onChange={setForm} showStatus />
+            <SheetActions>
               <Button
                 variant="ghost"
-                size="block"
                 onClick={() => setEditingId(null)}
                 disabled={update.isPending}
               >
                 Cancelar
               </Button>
-            </div>
+              <Button onClick={submitEdit} disabled={update.isPending} variant="ink">
+                {update.isPending && <Loader2 className="size-4 animate-spin" />}
+                Guardar
+              </Button>
+            </SheetActions>
           </div>
         </ResponsiveSheet>
 
@@ -621,90 +619,6 @@ export function CalendarPage() {
   );
 }
 
-/** Shared fields for the create + edit event sheets. */
-function EventFormFields({
-  idPrefix,
-  value,
-  onChange,
-  showRemind = false,
-}: {
-  idPrefix: string;
-  value: EventFormState;
-  onChange: (next: EventFormState) => void;
-  /** Reminders are create-only: the PATCH schema has no `remind_at`. */
-  showRemind?: boolean;
-}) {
-  const set = <K extends keyof EventFormState>(key: K, next: EventFormState[K]) =>
-    onChange({ ...value, [key]: next });
-
-  return (
-    <>
-      <div className="space-y-1.5">
-        <Label htmlFor={`${idPrefix}-title`}>Título</Label>
-        <Input
-          id={`${idPrefix}-title`}
-          value={value.title}
-          onChange={(e) => set("title", e.target.value)}
-        />
-      </div>
-
-      <FieldGroup label="Tipo">
-        <Chips>
-          {KIND_ITEMS.map((k) => (
-            <Chip key={k.id} active={value.kind === k.id} onClick={() => set("kind", k.id)}>
-              {k.label}
-            </Chip>
-          ))}
-        </Chips>
-      </FieldGroup>
-
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1.5">
-          <Label htmlFor={`${idPrefix}-start`}>Inicio</Label>
-          <Input
-            id={`${idPrefix}-start`}
-            type="datetime-local"
-            value={value.startsAt}
-            onChange={(e) => set("startsAt", e.target.value)}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor={`${idPrefix}-end`}>Término</Label>
-          <Input
-            id={`${idPrefix}-end`}
-            type="datetime-local"
-            value={value.endsAt}
-            onChange={(e) => set("endsAt", e.target.value)}
-          />
-        </div>
-      </div>
-
-      <div className="space-y-1.5">
-        <Label htmlFor={`${idPrefix}-location`}>Ubicación</Label>
-        <Input
-          id={`${idPrefix}-location`}
-          value={value.location}
-          onChange={(e) => set("location", e.target.value)}
-          placeholder="Dirección o lugar"
-        />
-      </div>
-
-      {showRemind && (
-        <div className="space-y-1.5">
-          <Label htmlFor={`${idPrefix}-remind`}>Recordatorio</Label>
-          <Input
-            id={`${idPrefix}-remind`}
-            type="datetime-local"
-            value={value.remindAt}
-            onChange={(e) => set("remindAt", e.target.value)}
-          />
-          <p className="text-xs text-muted-foreground">Opcional: te avisamos a esta hora.</p>
-        </div>
-      )}
-    </>
-  );
-}
-
 /** Month grid — identical mobile rendering; gains optional day-create on desktop. */
 function MonthGrid({
   days,
@@ -713,10 +627,12 @@ function MonthGrid({
   itemsByDay,
   onSelect,
   onCreate,
+  resolveType,
 }: {
   days: Date[];
   cursor: Date;
   selected: Date;
+  resolveType: TypeResolver;
   itemsByDay: Map<string, CalendarItem[]>;
   onSelect: (d: Date) => void;
   onCreate?: (d: Date) => void;
@@ -765,7 +681,7 @@ function MonthGrid({
                     style={{
                       background: isSelected
                         ? "var(--color-background)"
-                        : TYPE_META[it.item_type].dot,
+                        : itemMeta(it, resolveType).ink,
                     }}
                   />
                 ))}
@@ -782,9 +698,11 @@ function MonthGrid({
 function DayAgenda({
   items,
   onOpen,
+  resolveType,
 }: {
   items: CalendarItem[];
   onOpen: (it: CalendarItem) => void;
+  resolveType: TypeResolver;
 }) {
   if (items.length === 0) {
     return (
@@ -797,7 +715,7 @@ function DayAgenda({
   return (
     <div className="overflow-hidden">
       {items.map((it, i) => {
-        const meta = TYPE_META[it.item_type];
+        const meta = itemMeta(it, resolveType);
         return (
           <Row
             key={`${it.item_type}-${it.id}`}
@@ -805,14 +723,23 @@ function DayAgenda({
             onClick={() => onOpen(it)}
             left={
               <div className="flex w-12 shrink-0 items-center gap-2">
-                <span className="h-9 w-1 rounded-full" style={{ background: meta.dot }} />
+                <span className="h-9 w-1 rounded-full" style={{ background: meta.ink }} />
                 <span className="text-[13px] font-semibold tabular-nums text-muted-foreground">
                   {timeLabel(it)}
                 </span>
               </div>
             }
             title={it.title ?? "Sin título"}
-            right={<Pill tone={meta.tone}>{meta.label}</Pill>}
+            right={
+              // The type's own colour, not a `Pill` tone: a tenant's "Tasación"
+              // has no semantic tone to map onto.
+              <span
+                className="rounded-full border px-2 py-0.5 text-[11px] font-semibold"
+                style={{ background: meta.wash, borderColor: meta.edge, color: meta.ink }}
+              >
+                {meta.label}
+              </span>
+            }
           />
         );
       })}
@@ -826,11 +753,13 @@ function TimeGrid({
   itemsByDay,
   onOpen,
   onCreate,
+  resolveType,
 }: {
   days: Date[];
   itemsByDay: Map<string, CalendarItem[]>;
   onOpen: (it: CalendarItem) => void;
   onCreate: (d: Date) => void;
+  resolveType: TypeResolver;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -896,7 +825,7 @@ function TimeGrid({
                       onClick={() => onOpen(it)}
                       className="block w-full truncate rounded-md px-1.5 py-0.5 text-left text-[11px] font-medium text-foreground"
                       style={{
-                        background: `color-mix(in oklab, ${TYPE_META[it.item_type].dot} 18%, transparent)`,
+                        background: itemMeta(it, resolveType).wash,
                       }}
                     >
                       {it.title ?? "Sin título"}
@@ -948,7 +877,7 @@ function TimeGrid({
                   ))}
                   {/* Timed events, laid side by side when they overlap. */}
                   {placeOverlapping(timed).map(({ item: it, column, columns }) => {
-                    const meta = TYPE_META[it.item_type];
+                    const meta = itemMeta(it, resolveType);
                     const height = durationPx(it);
                     // Under ~34px there is only room for one line, so the time
                     // is dropped rather than clipped mid-glyph.
@@ -966,8 +895,8 @@ function TimeGrid({
                           height,
                           left: `calc(0.25rem + ${column} * ${width})`,
                           width,
-                          borderColor: meta.dot,
-                          background: `color-mix(in oklab, ${meta.dot} 16%, var(--color-card))`,
+                          borderColor: meta.ink,
+                          background: `color-mix(in oklab, ${meta.ink} 16%, var(--color-card))`,
                         }}
                       >
                         <span className="block truncate text-[11.5px] font-semibold leading-tight text-foreground">
@@ -1006,14 +935,17 @@ function MobileMonthGrid({
   selected,
   itemsByDay,
   onSelect,
+  resolveType,
 }: {
   days: Date[];
   selected: Date;
   itemsByDay: Map<string, CalendarItem[]>;
   onSelect: (d: Date) => void;
+  resolveType: TypeResolver;
 }) {
+  const today = startOfDay(new Date());
   return (
-    <div className="px-4 pb-6">
+    <div className="px-[var(--page-x)] pb-2">
       <div className="mb-1 grid grid-cols-7 gap-1">
         {WEEKDAYS.map((d, i) => (
           <div key={i} className="py-1 text-center text-[11px] font-bold text-faint">
@@ -1028,14 +960,31 @@ function MobileMonthGrid({
           const isToday = isSameDay(day, new Date());
           const isSelected = isSameDay(day, selected);
           const filled = isSelected || (isToday && !isSelected);
+          const past = day < today;
+          // Up to three dots, each the colour of its own type. One dot in one
+          // fixed colour said "something happens" and nothing else, which on a
+          // month grid is the only question it was in a position to answer.
+          const dots = items.slice(0, 3);
+          // Something overdue or cancelled on that day earns a louder ring:
+          // the month view is where you go looking for what went wrong.
+          const critical = items.some(
+            (it) =>
+              (it.status ?? "").toUpperCase() === "CANCELLED" ||
+              (it.item_type === "TASK" && it.start_at && new Date(it.start_at) < new Date()),
+          );
           return (
             <button
               key={dayKey(day)}
               type="button"
               onClick={() => onSelect(day)}
+              aria-label={`${format(day, "d 'de' MMMM", { locale: es })}, ${items.length} ${
+                items.length === 1 ? "evento" : "eventos"
+              }`}
               className={cn(
                 "flex aspect-square flex-col items-center justify-center gap-1 rounded-xl transition active:scale-[0.95]",
                 filled ? "bg-foreground" : "hover:bg-secondary",
+                critical && !filled && "ring-1 ring-destructive/40",
+                past && !filled && "opacity-50",
               )}
             >
               <span
@@ -1050,21 +999,165 @@ function MobileMonthGrid({
               >
                 {format(day, "d")}
               </span>
-              <span
-                className="size-1.5 rounded-full"
-                style={{
-                  background:
-                    items.length > 0
-                      ? filled
+              <span className="flex h-1.5 items-center gap-[3px]">
+                {dots.map((it, i) => (
+                  <span
+                    key={`${it.item_type}-${it.id}-${i}`}
+                    className="size-1.5 rounded-full"
+                    style={{
+                      background: filled
                         ? "var(--color-background)"
-                        : "var(--color-accent-brand)"
-                      : "transparent",
-                }}
-              />
+                        : itemMeta(it, resolveType).ink,
+                    }}
+                  />
+                ))}
+              </span>
             </button>
           );
         })}
       </div>
+    </div>
+  );
+}
+
+/** How many days the upcoming list shows per page. Today plus six. */
+const UPCOMING_PAGE_DAYS = 7;
+
+/**
+ * What is coming, under the month grid.
+ *
+ * Paginated by DAYS and at the data level, not by slicing an array that was
+ * already fetched: each page widens the `from`/`to` window of the feed request.
+ * A month view that pulled every event a tenant has is a thousand rows to draw
+ * three hundred dots with.
+ */
+function UpcomingList({
+  itemsByDay,
+  days,
+  onOpen,
+  onLoadMore,
+  canLoadMore,
+  resolveType,
+}: {
+  itemsByDay: Map<string, CalendarItem[]>;
+  days: number;
+  onOpen: (it: CalendarItem) => void;
+  onLoadMore: () => void;
+  canLoadMore: boolean;
+  resolveType: TypeResolver;
+}) {
+  const today = startOfDay(new Date());
+  const window = Array.from({ length: days }, (_, i) => addDays(today, i));
+  const withItems = window.filter((d) => (itemsByDay.get(dayKey(d)) ?? []).length > 0);
+
+  return (
+    <div className="border-t border-border pb-6 pt-2">
+      <SectionLabel className="px-[var(--page-x)] pb-1">Próximos</SectionLabel>
+      {withItems.length === 0 ? (
+        <MobileEmpty label="Nada agendado en estos días." />
+      ) : (
+        withItems.map((day) => (
+          <div key={dayKey(day)}>
+            <div className="px-[var(--page-x)] pb-1 pt-2.5">
+              <span className="text-[15px] font-bold tracking-tight text-foreground">
+                {dayHeadingOneLine(day)}
+              </span>
+            </div>
+            {(itemsByDay.get(dayKey(day)) ?? []).map((it) => (
+              <DenseEventRow
+                key={`${it.item_type}-${it.id}`}
+                item={it}
+                onOpen={onOpen}
+                resolveType={resolveType}
+                past={!!it.start_at && new Date(it.start_at) < new Date()}
+              />
+            ))}
+          </div>
+        ))
+      )}
+      {canLoadMore && (
+        <div className="px-[var(--page-x)] pt-3">
+          <Button variant="outline" size="block" onClick={onLoadMore}>
+            Cargar más días
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The week, starting at today.
+ *
+ * It used to render all seven days in order, so on a Friday five sixths of the
+ * screen was Monday to Thursday — days you cannot do anything about. Everything
+ * from today forward is the list; the days already gone are folded into one
+ * disclosure above it, dimmed, still one tap away.
+ */
+function WeekList({
+  days,
+  itemsByDay,
+  onOpen,
+  resolveType,
+}: {
+  days: Date[];
+  itemsByDay: Map<string, CalendarItem[]>;
+  onOpen: (it: CalendarItem) => void;
+  resolveType: TypeResolver;
+}) {
+  const today = startOfDay(new Date());
+  const past = days.filter((d) => d < today);
+  const ahead = days.filter((d) => d >= today);
+  const pastCount = past.reduce((n, d) => n + (itemsByDay.get(dayKey(d)) ?? []).length, 0);
+
+  const renderDay = (day: Date, dim: boolean) => {
+    const items = itemsByDay.get(dayKey(day)) ?? [];
+    if (!items.length) return null;
+    return (
+      <div key={dayKey(day)}>
+        <div className="px-[var(--page-x)] pb-1.5 pt-3">
+          <span
+            className={cn(
+              "text-[17px] font-bold tracking-tight",
+              dim ? "text-muted-foreground" : "text-foreground",
+            )}
+          >
+            {dayHeadingOneLine(day)}
+          </span>
+        </div>
+        {items.map((it) => (
+          <div key={`${it.item_type}-${it.id}`}>
+            <DenseEventRow
+              item={it}
+              onOpen={onOpen}
+              resolveType={resolveType}
+              past={dim || (!!it.start_at && new Date(it.start_at) < new Date())}
+            />
+            {!dim && isImminentVisit(it) && it.location && <VisitNavRow address={it.location} />}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const aheadRendered = ahead.map((d) => renderDay(d, false)).filter(Boolean);
+
+  return (
+    <div>
+      {pastCount > 0 && (
+        <details className="border-b border-border">
+          <summary
+            className={cn(
+              "cursor-pointer list-none px-[var(--page-x)] py-2.5 text-[13px] font-semibold text-muted-foreground",
+              FOCUS_RING,
+            )}
+          >
+            Ver días anteriores ({pastCount})
+          </summary>
+          <div className="pb-2">{past.map((d) => renderDay(d, true))}</div>
+        </details>
+      )}
+      {aheadRendered.length > 0 ? aheadRendered : <MobileEmpty label="Nada más esta semana." />}
     </div>
   );
 }
@@ -1084,6 +1177,9 @@ function MobileCalendar({
   filter,
   onFilterChange,
   onCreate,
+  resolveType,
+  upcomingDays,
+  onLoadMoreDays,
 }: {
   mobileView: MobileView;
   onViewChange: (v: MobileView) => void;
@@ -1099,6 +1195,9 @@ function MobileCalendar({
   onFilterChange: (f: CalFilter) => void;
   onCreate: () => void;
   role: string;
+  resolveType: TypeResolver;
+  upcomingDays: number;
+  onLoadMoreDays: () => void;
 }) {
   // Tapping a month-grid day selects it and drops back into the Día view.
   const selectFromMonth = (d: Date) => {
@@ -1142,7 +1241,12 @@ function MobileCalendar({
           {selectedItems.length ? (
             selectedItems.map((it) => (
               <div key={`${it.item_type}-${it.id}`}>
-                <DenseEventRow item={it} onOpen={onOpen} />
+                <DenseEventRow
+                  item={it}
+                  onOpen={onOpen}
+                  resolveType={resolveType}
+                  past={!!it.start_at && new Date(it.start_at) < new Date()}
+                />
                 {isImminentVisit(it) && it.location && <VisitNavRow address={it.location} />}
               </div>
             ))
@@ -1151,38 +1255,30 @@ function MobileCalendar({
           )}
         </div>
       ) : mobileView === "week" ? (
-        <div>
-          {weekDays.some((d) => (itemsByDay.get(dayKey(d)) ?? []).length > 0) ? (
-            weekDays.map((day) => {
-              const items = itemsByDay.get(dayKey(day)) ?? [];
-              if (!items.length) return null;
-              return (
-                <div key={dayKey(day)}>
-                  <div className="px-[var(--page-x)] pb-1.5 pt-3">
-                    <span className="text-[17px] font-bold tracking-tight text-foreground">
-                      {dayHeadingOneLine(day)}
-                    </span>
-                  </div>
-                  {items.map((it) => (
-                    <div key={`${it.item_type}-${it.id}`}>
-                      <DenseEventRow item={it} onOpen={onOpen} />
-                      {isImminentVisit(it) && it.location && <VisitNavRow address={it.location} />}
-                    </div>
-                  ))}
-                </div>
-              );
-            })
-          ) : (
-            <MobileEmpty label="Sin eventos esta semana." />
-          )}
-        </div>
-      ) : (
-        <MobileMonthGrid
-          days={monthDays}
-          selected={selected}
+        <WeekList
+          days={weekDays}
           itemsByDay={itemsByDay}
-          onSelect={selectFromMonth}
+          onOpen={onOpen}
+          resolveType={resolveType}
         />
+      ) : (
+        <>
+          <MobileMonthGrid
+            days={monthDays}
+            selected={selected}
+            itemsByDay={itemsByDay}
+            onSelect={selectFromMonth}
+            resolveType={resolveType}
+          />
+          <UpcomingList
+            itemsByDay={itemsByDay}
+            days={upcomingDays}
+            onOpen={onOpen}
+            onLoadMore={onLoadMoreDays}
+            canLoadMore
+            resolveType={resolveType}
+          />
+        </>
       )}
     </div>
   );
