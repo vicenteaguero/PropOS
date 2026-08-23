@@ -56,6 +56,13 @@ export interface Opportunity {
   /** Participants and properties BEYOND the principal person_id/property_id. */
   extra_participants: number;
   extra_properties: number;
+  /**
+   * Every comuna this deal touches — the principal property's and each one in
+   * `opportunity_properties`. Resolved server-side; the board used to build a
+   * map from a 100-row property fetch, which is why the comuna control found
+   * nothing on a tenant with 40 properties and 500 deals.
+   */
+  comunas?: string[];
   created_at: string;
   updated_at: string;
   closed_at: string | null;
