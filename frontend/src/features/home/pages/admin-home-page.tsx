@@ -620,7 +620,7 @@ export function AdminHomePage() {
     // columns instead of one very long one; the breakpoint is xl and not lg
     // because the desktop shell already spends up to 240px on the sidebar.
     <>
-      <div className="mx-auto w-full max-w-2xl px-[var(--page-x)] pt-4 pb-8 md:max-w-3xl lg:max-w-5xl lg:pt-6 xl:max-w-[78rem] 2xl:max-w-[92rem]">
+      <div className="mx-auto w-full max-w-2xl px-[var(--page-x)] pt-4 pb-[calc(var(--app-nav-h,0px)+2rem)] md:max-w-3xl lg:max-w-5xl lg:pt-6 xl:max-w-[78rem] 2xl:max-w-[92rem]">
         <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_21rem] xl:gap-6">
           <div className="flex min-w-0 flex-col gap-4">
             <div>
