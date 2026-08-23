@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@shared/hooks/use-auth";
 import { SETTINGS_PATH, type NavItem } from "@layouts/nav-items";
 import { useNavGroups, usePendingCount } from "@layouts/use-nav-groups";
+import { useUnreadCount } from "@features/attention/hooks/use-unread";
 
 // Collapsed geometry is expressed only in animatable properties, on the same
 // 300ms ease-in-out curve as the rail width (see SIDEBAR_TRANSITION in
@@ -43,14 +44,16 @@ const ITEM_CLASS = cn(
 function NavItemRow({
   item,
   pendingCount,
+  unreadCount,
   onNavigate,
 }: {
   item: NavItem;
   pendingCount: number;
+  unreadCount: number;
   onNavigate: () => void;
 }) {
   const Icon = item.icon;
-  const showBadge = item.badge === "pending" && pendingCount > 0;
+  const count = item.badge === "pending" ? pendingCount : item.badge === "unread" ? unreadCount : 0;
   return (
     <SidebarMenuItem>
       <SidebarMenuButton asChild tooltip={item.label} className={ITEM_CLASS}>
@@ -73,7 +76,7 @@ function NavItemRow({
           )}
         </NavLink>
       </SidebarMenuButton>
-      {showBadge && <SidebarMenuBadge className="top-1">{pendingCount}</SidebarMenuBadge>}
+      {count > 0 && <SidebarMenuBadge className="top-1">{count}</SidebarMenuBadge>}
     </SidebarMenuItem>
   );
 }
@@ -89,6 +92,7 @@ export function AppSidebar() {
     .map((g) => ({ ...g, items: g.items.filter((i) => i.path !== SETTINGS_PATH) }))
     .filter((g) => g.items.length > 0);
   const pendingCount = usePendingCount();
+  const unreadCount = useUnreadCount();
 
   if (!user) return null;
 
@@ -145,6 +149,7 @@ export function AppSidebar() {
                     key={item.path}
                     item={item}
                     pendingCount={pendingCount}
+                    unreadCount={unreadCount}
                     onNavigate={onNavigate}
                   />
                 ))}

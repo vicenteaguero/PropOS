@@ -35,7 +35,7 @@ export interface NavItem {
   path: string;
   icon: LucideIcon;
   end?: boolean;
-  badge?: "pending";
+  badge?: "pending" | "unread";
   scope?: string;
   /**
    * Feature key from `shared/feature/catalog`. Orthogonal to `scope`: the scope
@@ -117,7 +117,17 @@ export function buildAdminGroups(agentName: string): NavGroup[] {
     {
       label: "Trabajo",
       items: [
-        { label: "Clientes", path: "/admin/clientes", icon: Users, scope: "crm", feature: "crm" },
+        {
+          label: "Clientes",
+          path: "/admin/clientes",
+          icon: Users,
+          scope: "crm",
+          feature: "crm",
+          // The number a broker checks a phone for. It reached the inbox and
+          // stopped there, so an unanswered client was invisible from every
+          // other screen in the app.
+          badge: "unread",
+        },
         {
           label: "Agenda",
           path: "/admin/agenda",
@@ -225,7 +235,13 @@ export function buildGroups(view: UserView, agentName: string, isDevAdmin: boole
               badge: "pending",
               feature: "pendientes",
             },
-            { label: "Clientes", path: "/agent/clientes", icon: Users, feature: "crm" },
+            {
+              label: "Clientes",
+              path: "/agent/clientes",
+              icon: Users,
+              feature: "crm",
+              badge: "unread",
+            },
             {
               label: "Agenda",
               path: "/agent/agenda",

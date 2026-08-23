@@ -19,6 +19,7 @@ import { useThemeMode } from "@core/theme/theme-provider";
 import { tenantSwatch } from "@core/theme/tenant-accent";
 import { useAgentOverlay } from "@features/agent/components/agent-overlay-host";
 import { BottomSheet, Pill, PropoMark } from "@shared/ui";
+import { useUnreadCount } from "@features/attention/hooks/use-unread";
 import { useNavGroups, usePendingCount } from "@layouts/use-nav-groups";
 import { useIsImmersive } from "@layouts/immersive";
 import { SETTINGS_PATH } from "@layouts/nav-items";
@@ -147,6 +148,7 @@ export function MobileBottomNav() {
   const propo = useAgentOverlay();
   const { groups } = useNavGroups();
   const pendingCount = usePendingCount();
+  const unreadCount = useUnreadCount();
   const navRef = useRef<HTMLElement>(null);
   const immersive = useIsImmersive();
   usePublishNavHeight(navRef, immersive);
@@ -227,7 +229,9 @@ export function MobileBottomNav() {
             legible as motion instead of disappearing behind an opaque slab. */}
         <div className="mx-auto flex w-full max-w-[26rem] items-center justify-around rounded-[var(--radius-4xl)] border border-border/70 bg-card/90 px-1 py-1.5 shadow-[0_18px_44px_-10px_rgb(0_0_0/0.72),0_6px_16px_-4px_rgb(0_0_0/0.45),0_0_0_0.5px_rgb(0_0_0/0.35)] backdrop-blur-2xl backdrop-saturate-150 supports-[backdrop-filter]:bg-card/72">
           <NavTab to={base} end icon={Home} label="Inicio" />
-          {allow("crm") && <NavTab to={`${base}/clientes`} icon={Users} label="Clientes" />}
+          {allow("crm") && (
+            <NavTab to={`${base}/clientes`} icon={Users} label="Clientes" badge={unreadCount > 0} />
+          )}
           {/* "Docs", not "Documentos": at seven slots the label box is ~3.4rem
               and the full word truncates to "Documen…", which is uglier than
               the short form and no more informative next to a file glyph. */}
@@ -336,7 +340,12 @@ export function MobileBottomNav() {
             <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-1">
               {group.items.map((item) => {
                 const Icon = item.icon;
-                const badge = item.badge === "pending" && pendingCount > 0 ? pendingCount : null;
+                const badge =
+                  item.badge === "pending" && pendingCount > 0
+                    ? pendingCount
+                    : item.badge === "unread" && unreadCount > 0
+                      ? unreadCount
+                      : null;
                 return (
                   <button
                     key={item.path}
