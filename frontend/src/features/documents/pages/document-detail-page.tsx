@@ -5,6 +5,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
   ArrowLeft,
+  Briefcase,
   Camera,
   ChevronRight,
   Cpu,
@@ -54,6 +55,8 @@ import { DocumentViewer } from "../components/document-viewer";
 import { IntegrityWarning } from "../components/integrity-warning";
 import { DeleteDocumentConfirm } from "../components/delete-confirm";
 import { AssignmentList } from "../components/assignment-list";
+import { DealSheet } from "@features/deals/components/deal-sheet";
+import { useDealForProperty } from "@features/deals/hooks/use-deal-for-property";
 import { AssignmentPicker } from "../components/assignment-picker";
 import { ShareLinkDialog } from "../components/share-link-dialog";
 import { ShareViaDialog } from "../components/share-via-dialog";
@@ -63,6 +66,7 @@ import { Users } from "lucide-react";
 import { usePageTitle } from "@app/page-meta";
 import { useTopbarOwnsSearch } from "@layouts/topbar-slot";
 import { formatDateTime } from "@shared/utils/format";
+import { STAGE_LABELS } from "@features/opportunities/types";
 
 export function DocumentDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -126,6 +130,12 @@ export function DocumentDetailPage() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
+  const [dealOpen, setDealOpen] = useState(false);
+  // A document does not name its deal, but the flat it belongs to usually is in
+  // one. See `useDealForProperty` for why this stays quiet when it is ambiguous.
+  const linkedPropertyId =
+    doc?.assignments?.find((a) => a.target_kind === "PROPERTY")?.property_id ?? null;
+  const { deal: linkedDeal } = useDealForProperty(linkedPropertyId);
   const [shareLinkOpen, setShareLinkOpen] = useState(false);
   const [shareViaOpen, setShareViaOpen] = useState(false);
   const [audienceShareOpen, setAudienceShareOpen] = useState(false);
@@ -430,7 +440,28 @@ export function DocumentDetailPage() {
         <SectionLabel action="+ Vincular" onAction={() => setPickerOpen(true)}>
           Relacionado con
         </SectionLabel>
-        <div className="mt-3">
+        <div className="mt-3 space-y-2">
+          {/* The deal first when there is one: it is the container for
+              everything else — the other people, the money, what is booked —
+              so it answers more questions than the property alone. */}
+          {linkedDeal && (
+            <button
+              type="button"
+              onClick={() => setDealOpen(true)}
+              className="flex w-full items-center gap-2.5 rounded-xl bg-card px-3 py-2.5 text-left transition active:scale-[0.99] hover:bg-secondary/60"
+            >
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+                <Briefcase className="size-4" strokeWidth={1.8} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-medium text-foreground">Negocio</span>
+                <span className="block truncate text-[12.5px] text-muted-foreground">
+                  {STAGE_LABELS[linkedDeal.pipeline_stage] ?? linkedDeal.pipeline_stage}
+                </span>
+              </span>
+              <ChevronRight className="size-4 shrink-0 text-muted-foreground" strokeWidth={2} />
+            </button>
+          )}
           <AssignmentList documentId={doc.id} assignments={doc.assignments ?? []} />
         </div>
       </section>
@@ -491,6 +522,13 @@ export function DocumentDetailPage() {
           )}
         </dl>
       </details>
+
+      <DealSheet
+        dealId={linkedDeal?.id ?? null}
+        role={role}
+        open={dealOpen}
+        onOpenChange={setDealOpen}
+      />
 
       <DocumentViewer
         open={viewerOpen}

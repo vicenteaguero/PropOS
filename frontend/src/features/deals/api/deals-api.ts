@@ -67,3 +67,76 @@ export const dealsApi = {
       body: { pipeline_stage: stage },
     }),
 };
+
+// --------------------------------------------------------------------------
+// Overview — everything hanging off a deal, for the reusable summary.
+// --------------------------------------------------------------------------
+
+export interface DealOverviewParticipant {
+  id: string;
+  full_name: string | null;
+  phone: string | null;
+  role: string | null;
+}
+
+export interface DealOverviewProperty {
+  id: string;
+  title: string | null;
+  address: string | null;
+  status: string | null;
+  list_price_cents: number | null;
+  currency: string | null;
+  role: string | null;
+}
+
+export interface DealOverviewEvent {
+  id: string;
+  title: string | null;
+  kind: string | null;
+  starts_at: string | null;
+  ends_at: string | null;
+  all_day: boolean | null;
+  location: string | null;
+  property_id: string | null;
+  status: string | null;
+}
+
+export interface DealOverviewTask {
+  id: string;
+  title: string | null;
+  due_at: string | null;
+  priority: number | null;
+  status: string | null;
+}
+
+export interface DealOverviewCounts {
+  participants: number;
+  properties: number;
+  open_tasks: number;
+  notes: number;
+  documents: number;
+  transactions: number;
+}
+
+export interface DealOverview {
+  opportunity: Opportunity;
+  participants: DealOverviewParticipant[];
+  properties: DealOverviewProperty[];
+  next_event: DealOverviewEvent | null;
+  open_tasks: DealOverviewTask[];
+  transactions: {
+    id: string;
+    description: string | null;
+    amount_cents: number | null;
+    currency: string | null;
+    status: string | null;
+    due_at: string | null;
+    category: string | null;
+  }[];
+  pending_amount_cents: number;
+  counts: DealOverviewCounts;
+}
+
+export const dealOverviewApi = {
+  get: (id: string) => apiRequest<DealOverview>(`/v1/opportunities/${id}/overview`),
+};

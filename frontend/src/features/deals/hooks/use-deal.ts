@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { editByPrefix, patchById, rollbackAll } from "@shared/lib/optimistic";
-import { dealsApi } from "../api/deals-api";
+import { dealOverviewApi, dealsApi } from "../api/deals-api";
 
 export const dealKeys = {
   detail: (id: string) => ["deals", "detail", id] as const,
@@ -56,5 +56,21 @@ export function useSetDealStage(id: string) {
       void qc.invalidateQueries({ queryKey: dealKeys.detail(id) });
       void qc.invalidateQueries({ queryKey: ["opportunities"] });
     },
+  });
+}
+
+/**
+ * The deal's surroundings, for `DealSummary`.
+ *
+ * Separate key from `useDeal` because they answer different questions and are
+ * shown in different places — the sheet opens on the overview alone, without
+ * paying for the detail payload it does not draw.
+ */
+export function useDealOverview(id: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: ["deals", "overview", id],
+    queryFn: () => dealOverviewApi.get(id as string),
+    enabled: !!id && enabled,
+    staleTime: 30_000,
   });
 }
