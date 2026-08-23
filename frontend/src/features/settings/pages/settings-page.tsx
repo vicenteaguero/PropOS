@@ -2,11 +2,11 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Blend,
   Check,
   ChevronRight,
   FileText,
   Loader2,
+  Moon,
   Palette,
   Shield,
   ShieldCheck,
@@ -25,7 +25,6 @@ import {
   SectionLabel,
   Segmented,
   TOUCH_TARGET_COARSE,
-  TOUCH_TARGET_HIT_AREA,
   TOUCH_TARGET_ROW,
 } from "@shared/ui";
 import { useIsDesktop } from "@/hooks/use-mobile";
@@ -37,11 +36,13 @@ import { PageHeader } from "@shared/components/page-header";
 import { settingsApi } from "../api/settings-api";
 import { AvatarUploader } from "../components/avatar-uploader";
 import { NotificationsCard } from "../components/notifications-card";
+import { PalettePicker } from "../components/palette-picker";
 import { usePageTitle } from "@app/page-meta";
 import { prefetchRoute } from "@shared/lib/route-chunks";
 import { getNavApp, setNavApp as setNavAppPref, type NavApp } from "@shared/lib/nav-app";
 import { useAuth } from "@shared/hooks/use-auth";
 import { useAgentName } from "@core/branding/agent-branding";
+import { useThemeMode } from "@core/theme/theme-provider";
 import {
   buildSettingsShortcuts,
   filterByDev,
@@ -61,16 +62,11 @@ const PAPER_OPTIONS = [
   { value: "OFICIO_CL", label: "Oficio CL", detail: "216×330 mm" },
 ];
 
-// Workspace brand accents (drive the UI accent for this tenant).
-const BRAND_SWATCHES = [
-  "#BE6E7D",
-  "#2E6B52",
-  "#3B5BDB",
-  "#7A3FB0",
-  "#C2410C",
-  "#0F6E8C",
-  "#A11D4B",
-  "#B0560F",
+// Light/dark, as a pair of choices rather than a switch: the toggle in the nav
+// tells you nothing about which state you are in until you have already flipped it.
+const THEME_OPTIONS = [
+  { id: "light", label: "Claro" },
+  { id: "dark", label: "Oscuro" },
 ];
 
 /** Leading icon tile used across the settings rows. */
@@ -229,21 +225,13 @@ export function SettingsPage() {
   const [agentName, setAgentName] = useState("");
   const [paperSize, setPaperSize] = useState("A4");
   const [paperOpen, setPaperOpen] = useState(false);
-  const [brandColor, setBrandColor] = useState<string | null>(null);
-  // How much of the brand bleeds into every surface. index.css writes each
-  // surface token as `color-mix(… var(--accent-brand) var(--tint), <neutral>)`,
-  // so this single number tints backgrounds, cards, borders and the sidebar
-  // together. It shipped hard-coded at 0%, which is why the palette machinery
-  // existed but the app looked grey whatever brand colour was picked.
-  const [brandTint, setBrandTint] = useState(0);
   const [navApp, setNavApp] = useState<NavApp>(getNavApp);
+  const { theme, setTheme: setThemeMode } = useThemeMode();
 
   useEffect(() => {
     if (tenantQ.data) {
       setAgentName(tenantQ.data.settings.ai_assistant_name);
       setPaperSize(tenantQ.data.settings.default_paper_size);
-      setBrandColor(tenantQ.data.settings.brand_color ?? null);
-      setBrandTint(tenantQ.data.settings.brand_tint ?? 0);
     }
   }, [tenantQ.data]);
 
@@ -252,8 +240,6 @@ export function SettingsPage() {
       settingsApi.updateTenant({
         ai_assistant_name: agentName.trim() || "Anita",
         default_paper_size: paperSize,
-        brand_color: brandColor ?? "",
-        brand_tint: brandTint,
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["tenant", "me"] });
@@ -302,58 +288,6 @@ export function SettingsPage() {
       aria-label="Nombre del agente"
       className={`h-9 w-28 rounded-lg border border-border bg-secondary px-3 text-right text-[15px] font-semibold text-foreground placeholder:font-normal placeholder:text-muted-foreground ${FOCUS_RING}`}
     />
-  );
-
-  /** 0 keeps the neutrals neutral; past ~10% the greys visibly take the brand on. */
-  const brandTintPicker = (
-    <div className="flex gap-1 rounded-full bg-muted p-1">
-      {[0, 3, 6, 9].map((t) => (
-        <button
-          key={t}
-          type="button"
-          onClick={() => setBrandTint(t)}
-          className={cn(
-            "min-w-14 rounded-full py-1.5 text-xs font-semibold transition",
-            TOUCH_TARGET_HIT_AREA,
-            brandTint === t ? "bg-primary text-primary-foreground" : "text-muted-foreground",
-          )}
-        >
-          {t === 0 ? "Ninguno" : `${t}%`}
-        </button>
-      ))}
-    </div>
-  );
-
-  const brandSwatches = (
-    <div className="flex flex-wrap items-center gap-2.5">
-      <button
-        type="button"
-        onClick={() => setBrandColor(null)}
-        className={cn(
-          "flex size-9 items-center justify-center rounded-full border-2 text-[11px] font-bold transition",
-          TOUCH_TARGET_HIT_AREA,
-          brandColor === null
-            ? "border-foreground text-foreground"
-            : "border-border text-muted-foreground",
-        )}
-      >
-        Auto
-      </button>
-      {BRAND_SWATCHES.map((hex) => (
-        <button
-          key={hex}
-          type="button"
-          onClick={() => setBrandColor(hex)}
-          aria-label={`Color ${hex}`}
-          style={{ background: hex }}
-          className={cn(
-            "size-9 rounded-full ring-2 ring-offset-2 ring-offset-background transition",
-            TOUCH_TARGET_HIT_AREA,
-            brandColor === hex ? "ring-foreground" : "ring-transparent",
-          )}
-        />
-      ))}
-    </div>
   );
 
   const paperSheet = (
@@ -414,6 +348,36 @@ export function SettingsPage() {
       ),
     },
     {
+      key: "apariencia",
+      title: "Apariencia",
+      body: (
+        <>
+          <SettingLine
+            icon={Moon}
+            title="Tema"
+            sub="Claro u oscuro. La paleta funciona igual en los dos."
+            right={
+              <Segmented
+                items={THEME_OPTIONS}
+                value={theme}
+                onChange={(id) => setThemeMode(id as "light" | "dark")}
+                variant="pill"
+                gutter={false}
+              />
+            }
+          />
+          <SettingLine
+            icon={Palette}
+            title="Paleta"
+            sub="Tuya, no del workspace. Te sigue a cualquier teléfono."
+          />
+          <div className="mt-3">
+            <PalettePicker />
+          </div>
+        </>
+      ),
+    },
+    {
       key: "agente",
       title: "Agente IA",
       body: (
@@ -443,26 +407,6 @@ export function SettingsPage() {
               className="w-full"
             />
           </button>
-        </>
-      ),
-    },
-    {
-      key: "marca",
-      title: "Marca",
-      body: (
-        <>
-          <SettingLine
-            icon={Palette}
-            title="Color de la empresa"
-            sub="Acento de la interfaz para este workspace."
-          />
-          <div className="mt-4">{brandSwatches}</div>
-          <SettingLine
-            icon={Blend}
-            title="Intensidad del tinte"
-            sub="Cuánto del color de marca tiñe fondos, tarjetas y bordes."
-          />
-          <div className="mt-3">{brandTintPicker}</div>
         </>
       ),
     },

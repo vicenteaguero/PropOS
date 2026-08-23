@@ -20,6 +20,12 @@ export interface UserProfile {
    * rotate it -- a handed-over password nobody changes is a shared password.
    */
   mustChangePassword: boolean;
+  /**
+   * Per-user UI preferences, read straight off the profile row at sign-in.
+   * Today: `palette`. Kept as a bag so the next preference costs no migration
+   * and no change to this type.
+   */
+  preferences: Record<string, unknown>;
 }
 
 export interface TenantMembership {

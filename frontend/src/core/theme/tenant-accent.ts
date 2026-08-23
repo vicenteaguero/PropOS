@@ -10,6 +10,8 @@
  * workspace recolors the brand immediately regardless of any dev palette.
  */
 
+import { paletteOwnsAccent } from "./palette";
+
 /** Curated, harmonious hues (avoids muddy/ambiguous ones). Index picked by hash. */
 const HUES = [347, 152, 220, 270, 25, 190, 330, 45, 95, 300];
 const DEFAULT_HUE = 347; // ≈ rosa-antiguo
@@ -70,9 +72,17 @@ interface AccentInput {
 /** Clamp: past ~12% the neutrals stop reading as neutral and text contrast goes. */
 const MAX_TINT = 12;
 
-/** Inject the tenant accent + surface tint inline on <html>. */
+/**
+ * Inject the tenant accent + surface tint inline on <html>.
+ *
+ * No-op while the user runs a palette of their own: a palette writes the same
+ * three tokens, and the person's pick outranks the workspace's. Guarding here
+ * rather than at each call site means boot order stops mattering — the accent
+ * cannot land on top of the palette a moment after it was applied.
+ */
 export function applyTenantAccent({ seed, color, tint }: AccentInput): void {
   if (typeof document === "undefined") return;
+  if (paletteOwnsAccent()) return;
   const style = document.documentElement.style;
 
   if (typeof tint === "number" && Number.isFinite(tint)) {
@@ -144,6 +154,7 @@ export function readCachedAccent(seed: string | null): CachedAccent | null {
 /** Apply the cached accent, if it belongs to the workspace we are about to open. */
 export function bootstrapTenantAccent(): void {
   if (typeof document === "undefined") return;
+  if (paletteOwnsAccent()) return;
   let active: string | null = null;
   try {
     active = localStorage.getItem(ACTIVE_TENANT_KEY);
@@ -159,6 +170,7 @@ export function bootstrapTenantAccent(): void {
 /** Remove all inline accent overrides → falls back to the index.css default. */
 export function clearTenantAccent(): void {
   if (typeof document === "undefined") return;
+  if (paletteOwnsAccent()) return;
   const style = document.documentElement.style;
   style.removeProperty("--accent-hue");
   style.removeProperty("--accent-brand");

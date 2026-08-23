@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useAuth } from "@shared/hooks/use-auth";
 import { useTenantBranding } from "@core/branding/agent-branding";
+import { AUTO_PALETTE, getStoredPalette, setPalette } from "./palette";
 import {
   applyTenantAccent,
   cacheTenantAccent,
@@ -51,9 +52,23 @@ export function ThemeController() {
     });
   }, [resolved, tenantId, brandColor, brandTint, brandedSlug, slug]);
 
-  // Curated per-workspace palette (mockup parity): a [data-tenant="<slug>"] CSS
-  // block in index.css restyles every surface for tenants that have one;
-  // tenants without a block fall back to the neutral default + brand accent.
+  // The user's own palette, replayed from the profile row.
+  //
+  // localStorage already painted it before the first frame; this is what makes
+  // the choice follow the person to another phone. The server value wins on
+  // purpose: it is the last pick this user actually saved, and the picker
+  // writes both at once, so the two only disagree while a PATCH is in flight or
+  // after one failed — in which case the truth is the server's.
+  const remotePalette = user?.preferences?.palette;
+  useEffect(() => {
+    if (!user) return;
+    const next = typeof remotePalette === "string" ? remotePalette : AUTO_PALETTE;
+    if (next !== getStoredPalette()) setPalette(next);
+  }, [user, remotePalette]);
+
+  // Marks the active workspace on <html> for debugging and screenshots. It used
+  // to select a curated [data-tenant] CSS block; those are gone (see index.css)
+  // now that every colour goes through the palette tokens.
   useEffect(() => {
     const el = document.documentElement;
     if (slug) el.dataset.tenant = slug;
