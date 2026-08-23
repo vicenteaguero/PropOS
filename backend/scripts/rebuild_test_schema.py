@@ -12,10 +12,14 @@ rather than maintained by hand.
 What it does
 ------------
 Drops and recreates `propos_test`, then clones every base table of `public` with
-`CREATE TABLE ... (LIKE public.<t> INCLUDING ...)`. Foreign keys are not carried
-over, matching the original design decision: tests do not exercise referential
-integrity across the mirror, and cross-schema FKs would point back at production
-rows.
+`CREATE TABLE ... (LIKE public.<t> INCLUDING ...)`, then replays every foreign
+key so the mirror has the same reference graph. The keys are rebuilt to point
+INSIDE the mirror -- never back at production -- while `auth.*` targets are left
+alone, since auth is project-level and shared.
+
+Foreign keys used to be skipped. That silently broke PostgREST embeds, which
+derive from them: the workspace switcher's `select("*, tenants(...)")` answered
+PGRST200 against the mirror and 200 in production.
 
 Safety
 ------
@@ -74,6 +78,29 @@ def _public_tables(cur: psycopg.Cursor) -> list[str]:
         """
     )
     return [r[0] for r in cur.fetchall()]
+
+
+def _public_foreign_keys(cur: psycopg.Cursor) -> list[tuple[str, str, str]]:
+    """Every FK on a `public` base table, as (table, constraint name, definition).
+
+    `pg_get_constraintdef` writes same-schema targets UNQUALIFIED
+    (`REFERENCES tenants(id)`) and cross-schema ones qualified
+    (`REFERENCES auth.users(id)`). Replaying them with `search_path` set to the
+    mirror therefore rebuilds the graph inside the mirror while leaving the
+    `auth` references pointing at the real, project-level auth tables -- which is
+    what you want, because auth is shared and has no mirror.
+    """
+    cur.execute(
+        """
+        SELECT t.relname, c.conname, pg_get_constraintdef(c.oid)
+        FROM pg_constraint c
+        JOIN pg_class t ON t.oid = c.conrelid
+        JOIN pg_namespace n ON n.oid = t.relnamespace
+        WHERE n.nspname = 'public' AND c.contype = 'f' AND t.relkind = 'r'
+        ORDER BY t.relname, c.conname
+        """
+    )
+    return [(r[0], r[1], r[2]) for r in cur.fetchall()]
 
 
 def _public_functions(cur: psycopg.Cursor) -> list[str]:
@@ -215,6 +242,35 @@ def build_statements(cur: psycopg.Cursor, schema: str) -> list[sql.Composed]:
                 "INCLUDING IDENTITY)"
             ).format(ident, sql.Identifier(table), sql.Identifier(table))
         )
+
+    # Foreign keys, rebuilt to point INSIDE the mirror.
+    #
+    # This used to be skipped, and the omission was not free: PostgREST derives
+    # its embed graph from foreign keys, so `select("*, tenants(...)")` -- the
+    # workspace switcher -- answered PGRST200 "Could not find a relationship"
+    # against the mirror while working fine in production. A mirror that cannot
+    # reproduce a query production runs is not a mirror.
+    #
+    # The safety concern that motivated skipping them is real and handled: a
+    # naive copy could leave `REFERENCES public.x`, pointing staging rows at
+    # production ones. Any explicit `public.` is rewritten to the mirror, and the
+    # SET below makes unqualified targets resolve there too.
+    # `public` stays on the path behind the mirror: enum types like
+    # `transaction_direction` live only in `public`, and the view bodies emitted
+    # further down resolve them unqualified. The mirror comes FIRST, so an
+    # unqualified FK target that exists in both binds to the mirror.
+    stmts.append(sql.SQL("SET LOCAL search_path TO {}, public, pg_catalog").format(ident))
+    for table, name, definition in _public_foreign_keys(cur):
+        safe = re.sub(r"\bREFERENCES\s+public\.", f"REFERENCES {_quote(schema)}.", definition, flags=re.I)
+        stmts.append(
+            sql.SQL("ALTER TABLE {}.{} ADD CONSTRAINT {} " + safe).format(  # noqa: S608 — server-emitted DDL
+                ident, sql.Identifier(table), sql.Identifier(name)
+            )
+        )
+
+    # Back to the default for everything that follows; the narrow path above is
+    # only meant to bind the FK targets.
+    stmts.append(sql.SQL("SET LOCAL search_path TO public, pg_catalog"))
 
     # Functions before views and triggers: both can reference them.
     for definition in _public_functions(cur):
