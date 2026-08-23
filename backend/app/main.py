@@ -64,6 +64,7 @@ from app.features.sharing.router import router as sharing_router
 from app.features.tenants.router import admin_router as tenants_admin_router
 from app.features.tenants.router import router as tenants_router
 from app.features.transactions.router import router as transactions_router
+from app.features.geo.router import router as geo_router
 from app.features.uf.router import router as uf_router
 from app.features.usage.router import router as usage_router
 from app.features.feature_flags.router import admin_router as features_admin_router
@@ -210,6 +211,7 @@ def create_app() -> FastAPI:
     application.include_router(sharing_router, prefix=versioned_prefix)
     application.include_router(tenants_admin_router, prefix=versioned_prefix)
     application.include_router(uf_router, prefix=versioned_prefix)
+    application.include_router(geo_router, prefix=versioned_prefix)
     application.include_router(notifications_router, prefix=versioned_prefix)
     application.include_router(properties_router, prefix=versioned_prefix)
     application.include_router(contacts_router, prefix=versioned_prefix)
