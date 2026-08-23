@@ -3,7 +3,7 @@ import { Loader2, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ResponsiveSheet, FOCUS_RING } from "@shared/ui";
+import { ResponsiveSheet, FOCUS_RING, SheetActions } from "@shared/ui";
 import { EntityCombobox } from "@features/documents/components/entity-combobox";
 import { useContacts } from "@features/contacts/hooks/use-contacts";
 import type { Contact } from "@features/contacts/types";
@@ -124,7 +124,7 @@ export function EmailComposeSheet({ open, onOpenChange, onSent }: Props) {
           />
         </div>
 
-        <div className="flex justify-end gap-2">
+        <SheetActions>
           <Button variant="ghost" onClick={() => close(false)} disabled={send.isPending}>
             Cancelar
           </Button>
@@ -136,7 +136,7 @@ export function EmailComposeSheet({ open, onOpenChange, onSent }: Props) {
             )}
             {send.isPending ? "Enviando…" : "Enviar"}
           </Button>
-        </div>
+        </SheetActions>
       </div>
     </ResponsiveSheet>
   );

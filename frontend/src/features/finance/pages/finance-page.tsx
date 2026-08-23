@@ -28,6 +28,7 @@ import {
   ResponsiveTable,
   type ResponsiveColumn,
   FilterSelect,
+  SheetActions,
 } from "@shared/ui";
 import { toast } from "sonner";
 import {
@@ -451,7 +452,7 @@ export function FinancePage() {
       <ResponsiveSheet open={open} onOpenChange={setOpen} title="Nueva transacción">
         <div className="space-y-3">
           <TransactionFormFields idPrefix="new" value={form} onChange={setForm} />
-          <div className="flex justify-end gap-2 pt-1">
+          <SheetActions>
             <Button variant="ghost" onClick={() => setOpen(false)} disabled={create.isPending}>
               Cancelar
             </Button>
@@ -459,7 +460,7 @@ export function FinancePage() {
               {create.isPending && <Loader2 className="size-4 animate-spin" />}
               Registrar
             </Button>
-          </div>
+          </SheetActions>
         </div>
       </ResponsiveSheet>
 
@@ -470,7 +471,7 @@ export function FinancePage() {
       >
         <div className="space-y-3">
           <TransactionFormFields idPrefix="edit" value={form} onChange={setForm} />
-          <div className="flex justify-end gap-2 pt-1">
+          <SheetActions>
             <Button variant="ghost" onClick={() => setEditing(null)} disabled={update.isPending}>
               Cancelar
             </Button>
@@ -478,7 +479,7 @@ export function FinancePage() {
               {update.isPending && <Loader2 className="size-4 animate-spin" />}
               Guardar
             </Button>
-          </div>
+          </SheetActions>
         </div>
       </ResponsiveSheet>
     </PageLayout>
