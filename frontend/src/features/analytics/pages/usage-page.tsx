@@ -1,3 +1,4 @@
+import { PageLayout } from "@shared/components/page-layout/page-layout";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@shared/api/http";
@@ -113,7 +114,11 @@ export function UsagePage() {
   const actions = (data?.top_keys ?? []).filter((k) => k.kind === "action");
 
   return (
-    <div className="flex flex-col gap-5">
+    // `PageLayout`, not a bare div: this is a tab inside Finanzas whose sibling
+    // tabs get their gutter and their bottom-nav clearance from `ListShell`.
+    // Without either, this one ran edge to edge on a phone and put its last row
+    // behind the floating nav — the same section looking like two products.
+    <PageLayout width="app" noPadding className="flex flex-col gap-5 px-[var(--page-x)] pt-2">
       <Segmented items={RANGES} value={days} onChange={setDays} variant="pill" gutter={false} />
 
       {totals.minutes === 0 && (
@@ -229,7 +234,7 @@ export function UsagePage() {
           </table>
         </div>
       </ChartCard>
-    </div>
+    </PageLayout>
   );
 }
 
