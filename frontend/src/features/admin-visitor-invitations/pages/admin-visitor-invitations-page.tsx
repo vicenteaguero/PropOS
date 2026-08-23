@@ -155,7 +155,7 @@ export function AdminVisitorInvitationsPage() {
       )}
 
       {!isLoading && !error && data && data.length === 0 && (
-        <div className="px-5 lg:px-8">
+        <div className="px-[var(--page-x)] lg:px-8">
           <EmptyState
             title="Sin invitaciones"
             description="Crea la primera invitación con el botón Invitar visitante."

@@ -143,7 +143,7 @@ export function AdminPropertyDetailPage() {
       {/* Header bar. The breadcrumb is hidden in the phone shell, whose own top
           bar now carries a back control on every route below a section root —
           two arrows, one above the other, was the result of adding it. */}
-      <div className="flex items-center justify-between px-5 pt-4 pb-2 lg:px-8 lg:pt-6">
+      <div className="flex items-center justify-between px-[var(--page-x)] pt-4 pb-2 lg:px-8 lg:pt-6">
         {shellOwnsBack ? (
           <span />
         ) : (
@@ -168,7 +168,7 @@ export function AdminPropertyDetailPage() {
           Mobile: single column in DOM order — unchanged. */}
       <div className="lg:grid lg:grid-cols-[1.6fr_1fr] lg:items-start lg:gap-8 lg:px-8">
         {/* Gallery */}
-        <div className="px-5 lg:col-start-1 lg:row-start-1 lg:px-0">
+        <div className="px-[var(--page-x)] lg:col-start-1 lg:row-start-1 lg:px-0">
           <PropertyGallery
             propertyId={p.id}
             overlay={
@@ -181,7 +181,7 @@ export function AdminPropertyDetailPage() {
         </div>
 
         {/* Title + price */}
-        <div className="px-5 pt-4 lg:col-start-1 lg:row-start-2 lg:px-0">
+        <div className="px-[var(--page-x)] pt-4 lg:col-start-1 lg:row-start-2 lg:px-0">
           <h1 className="text-[17px] font-semibold leading-tight tracking-tight text-foreground">
             {p.title}
           </h1>
@@ -204,7 +204,7 @@ export function AdminPropertyDetailPage() {
         </div>
 
         {/* Specs tile */}
-        <div className="px-5 pt-4 lg:col-start-1 lg:row-start-3 lg:px-0">
+        <div className="px-[var(--page-x)] pt-4 lg:col-start-1 lg:row-start-3 lg:px-0">
           <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-4">
             {specs.map((s) => {
               const Icon = s.icon;
@@ -225,7 +225,7 @@ export function AdminPropertyDetailPage() {
         </div>
 
         {/* Cambios de precio y estado. Nada si la publicación nunca se movió. */}
-        <div className="min-w-0 px-5 pt-5 lg:col-start-1 lg:px-0">
+        <div className="min-w-0 px-[var(--page-x)] pt-5 lg:col-start-1 lg:px-0">
           <PriceHistory propertyId={p.id} />
         </div>
 
@@ -234,13 +234,13 @@ export function AdminPropertyDetailPage() {
             title to "Departamento 1D/1B …", which defeats the comparison this
             section exists for. min-w-0 because a grid item otherwise takes its
             min-content width and pushes the whole row past the viewport. */}
-        <div className="min-w-0 px-5 pt-5 lg:col-start-1 lg:px-0">
+        <div className="min-w-0 px-[var(--page-x)] pt-5 lg:col-start-1 lg:px-0">
           <BuildingUnits propertyId={p.id} role={role} />
         </div>
 
         {/* Cómo llegar */}
         {p.address && (
-          <div className="px-5 pt-5 lg:col-start-2 lg:row-span-4 lg:row-start-1 lg:px-0 lg:pt-0">
+          <div className="px-[var(--page-x)] pt-5 lg:col-start-2 lg:row-span-4 lg:row-start-1 lg:px-0 lg:pt-0">
             <SectionLabel>Cómo llegar</SectionLabel>
             <PropertyLocationMap
               property={p}
@@ -270,7 +270,7 @@ export function AdminPropertyDetailPage() {
         )}
 
         {/* Tabs: Descripción IA + Accesos */}
-        <div className="px-5 pt-6 lg:col-start-1 lg:row-start-4 lg:px-0">
+        <div className="px-[var(--page-x)] pt-6 lg:col-start-1 lg:row-start-4 lg:px-0">
           {/* The tab lives in the URL, not in component state: a broker who
               sends "mira los interesados de esta propiedad" was sending a link
               that opened on Descripción, and a refresh threw the tab away. */}
@@ -337,7 +337,7 @@ export function AdminPropertyDetailPage() {
 
             <TabsContent value="grants" className="mt-4">
               {grants.length === 0 && !grantsQ.isLoading && (
-                <div className="rounded-xl border border-border bg-card px-5 py-8 text-center text-sm text-muted-foreground">
+                <div className="rounded-xl border border-border bg-card px-[var(--page-x)] py-8 text-center text-sm text-muted-foreground">
                   Sin accesos otorgados. Usa la sección Usuarios para otorgar.
                 </div>
               )}

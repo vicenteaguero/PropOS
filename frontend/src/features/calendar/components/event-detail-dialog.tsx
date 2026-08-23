@@ -76,7 +76,7 @@ export function EventDetailDialog({
             inset on a phone — which is why this dialog reached both screen
             edges and looked like it had lost its border. */}
         <DialogContent showCloseButton={false} className="gap-0 p-0 sm:max-w-md">
-          <div className="flex items-start gap-3 px-5 pt-5">
+          <div className="flex items-start gap-3 px-[var(--page-x)] pt-5">
             <span
               aria-hidden
               className="mt-1.5 h-9 w-[3px] shrink-0 rounded-full"
@@ -96,7 +96,7 @@ export function EventDetailDialog({
             </Button>
           </div>
 
-          <div className="space-y-4 px-5 pb-5 pt-4">
+          <div className="space-y-4 px-[var(--page-x)] pb-5 pt-4">
             {/* When — the line people actually came for. */}
             <div>
               <p className="text-[15px] font-semibold text-foreground first-letter:uppercase">

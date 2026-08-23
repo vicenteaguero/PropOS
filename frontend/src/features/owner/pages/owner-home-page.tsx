@@ -78,14 +78,14 @@ export function OwnerHomePage() {
     <PageLayout width="app" noPadding>
       <div className="mx-auto w-full max-w-xl pb-6 lg:max-w-6xl">
         {/* Header */}
-        <div className="px-5 pt-5 pb-3 lg:px-8 lg:pt-7">
+        <div className="px-[var(--page-x)] pt-5 pb-3 lg:px-8 lg:pt-7">
           <h1 className="text-[17px] font-semibold leading-tight tracking-tight text-foreground">
             Mis propiedades
           </h1>
         </div>
 
         {grants.length === 0 ? (
-          <div className="px-5 pt-6 lg:px-8">
+          <div className="px-[var(--page-x)] pt-6 lg:px-8">
             <div className="flex flex-col items-center rounded-xl border border-border bg-card px-6 py-12 text-center">
               <span className="mb-4 grid size-14 place-items-center rounded-full bg-secondary text-muted-foreground">
                 <Building2 className="size-7" strokeWidth={1.6} />
@@ -97,7 +97,7 @@ export function OwnerHomePage() {
             </div>
           </div>
         ) : (
-          <div className="px-5 lg:px-8">
+          <div className="px-[var(--page-x)] lg:px-8">
             <div className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0 xl:grid-cols-3">
               {grants.map((g) => (
                 <PropertyCard

@@ -354,7 +354,7 @@ export function FinancePage() {
   return (
     <PageLayout width="md" noPadding className="pb-6 lg:max-w-none">
       {/* Mobile: ink summary card (unchanged). Desktop: KPI card row. */}
-      <div className="px-5 pb-4 lg:hidden">
+      <div className="px-[var(--page-x)] pb-4 lg:hidden">
         <div className="rounded-xl bg-ink p-5 text-ink-foreground">
           <p className="text-[13px] font-medium text-ink-foreground/60">Ingresos del mes</p>
           <p className="mt-1 text-[34px] font-bold leading-none tracking-tight">
@@ -375,7 +375,7 @@ export function FinancePage() {
 
       {/* Mobile-only calculator — keeps the original stacking order (above the
           filter). Desktop renders it as a right-side widget below instead. */}
-      <div className="px-5 pb-4 lg:hidden">
+      <div className="px-[var(--page-x)] pb-4 lg:hidden">
         <CommissionCalculator />
       </div>
 

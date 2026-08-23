@@ -8,7 +8,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { PageLayout } from "@shared/components/page-layout";
 import { PageHeader } from "@shared/components/page-header";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
-import { ActionIcon, ErrorState, PageSkeleton, Pill, ResponsiveSheet } from "@shared/ui";
+import {
+  ActionIcon,
+  ErrorState,
+  PageSkeleton,
+  Pill,
+  ResponsiveSheet,
+  SheetActions,
+} from "@shared/ui";
 import { cn } from "@/lib/utils";
 import { workflowsApi, type Workflow, type WorkflowStep } from "../api/workflows-api";
 
@@ -43,7 +50,7 @@ export function WorkflowsPage() {
   return (
     // Mobile: capped centered column (unchanged). Desktop: full-bleed grid.
     <PageLayout width="md" noPadding className="pb-6 lg:max-w-none">
-      <div className="px-5 pt-4 pb-5 lg:px-8 lg:pt-7">
+      <div className="px-[var(--page-x)] pt-4 pb-5 lg:px-8 lg:pt-7">
         <PageHeader
           title="Workflows / Checklists"
           className="mb-0"
@@ -73,7 +80,7 @@ export function WorkflowsPage() {
       {/* Mobile: single stacked column. Desktop: masonry-ish multi-column grid
           so reusable processes read as a dense board, not a narrow list. */}
       {!list.isLoading && !list.isError && (list.data?.length ?? 0) > 0 && (
-        <div className="space-y-3 px-5 pb-6 lg:columns-2 lg:gap-4 lg:space-y-0 lg:px-8 2xl:columns-3 lg:[&>*]:mb-4 lg:[&>*]:break-inside-avoid">
+        <div className="space-y-3 px-[var(--page-x)] pb-6 lg:columns-2 lg:gap-4 lg:space-y-0 lg:px-8 2xl:columns-3 lg:[&>*]:mb-4 lg:[&>*]:break-inside-avoid">
           {list.data?.map((w) => (
             <WorkflowCard key={w.id} workflow={w} />
           ))}
@@ -100,25 +107,19 @@ export function WorkflowsPage() {
               onChange={(e) => setNewSteps(e.target.value)}
             />
           </div>
-          <div className="flex flex-col gap-2 pt-2">
+          <SheetActions>
+            <Button variant="ghost" onClick={() => setOpen(false)} disabled={create.isPending}>
+              Cancelar
+            </Button>
             <Button
               onClick={() => create.mutate()}
               disabled={!newName.trim() || create.isPending}
               variant="ink"
-              size="block"
             >
               {create.isPending && <Loader2 className="size-4 animate-spin" />}
               Crear
             </Button>
-            <Button
-              variant="ghost"
-              size="block"
-              onClick={() => setOpen(false)}
-              disabled={create.isPending}
-            >
-              Cancelar
-            </Button>
-          </div>
+          </SheetActions>
         </div>
       </ResponsiveSheet>
     </PageLayout>

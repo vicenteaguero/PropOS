@@ -171,7 +171,7 @@ export function AdminTenantsPage() {
       )}
 
       {!isLoading && !error && tenants.length === 0 && (
-        <div className="px-5 lg:px-8">
+        <div className="px-[var(--page-x)] lg:px-8">
           <EmptyState
             title="Sin tenants"
             description="Crea el primer espacio de trabajo."

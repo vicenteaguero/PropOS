@@ -10,7 +10,7 @@ export function DataRightsPage() {
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
       <header className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-5 py-4">
+        <div className="mx-auto flex max-w-3xl items-center justify-between px-[var(--page-x)] py-4">
           <Link
             to="/"
             className="flex items-center gap-1.5 text-sm font-medium text-foreground transition-colors hover:text-muted-foreground"
@@ -27,7 +27,7 @@ export function DataRightsPage() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-2xl flex-1 px-5 py-10">
+      <main className="mx-auto w-full max-w-2xl flex-1 px-[var(--page-x)] py-10">
         <h1 className="mb-2 text-[28px] font-bold leading-tight tracking-tight">
           Tus derechos sobre tus datos
         </h1>

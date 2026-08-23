@@ -115,7 +115,7 @@ export function VisitorRegistrationPage() {
   if (error || !invitation) {
     return (
       <div className="flex min-h-screen flex-col bg-background text-foreground">
-        <main className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center gap-4 px-5 py-10 text-center">
+        <main className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center gap-4 px-[var(--page-x)] py-10 text-center">
           <span className="flex size-14 items-center justify-center rounded-full bg-destructive/15 text-destructive">
             <AlertTriangle className="size-7" strokeWidth={1.8} />
           </span>
@@ -135,7 +135,7 @@ export function VisitorRegistrationPage() {
   if (submitted) {
     return (
       <div className="flex min-h-screen flex-col bg-background text-foreground">
-        <main className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center gap-4 px-5 py-10 text-center">
+        <main className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center gap-4 px-[var(--page-x)] py-10 text-center">
           <span className="flex size-14 items-center justify-center rounded-full bg-success/15 text-success">
             <CheckCircle2 className="size-7" strokeWidth={1.8} />
           </span>
@@ -158,7 +158,7 @@ export function VisitorRegistrationPage() {
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
       <header className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur">
-        <div className="mx-auto flex max-w-2xl items-center justify-between px-5 py-4">
+        <div className="mx-auto flex max-w-2xl items-center justify-between px-[var(--page-x)] py-4">
           <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
             {invitation.tenant_slug.toUpperCase()}
           </span>
@@ -171,7 +171,7 @@ export function VisitorRegistrationPage() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-2xl flex-1 px-5 py-8">
+      <main className="mx-auto w-full max-w-2xl flex-1 px-[var(--page-x)] py-8">
         <h1 className="mb-1 text-[26px] font-bold leading-tight tracking-tight">
           Registro de visita
         </h1>
