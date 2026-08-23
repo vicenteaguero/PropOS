@@ -62,9 +62,12 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
-  /* Tenant-driven brand accent (set inline on <html> by ThemeController) */
+  /* Brand accent + its support hue. Both are set inline on <html>: by the user's
+   * palette when they picked one, otherwise by ThemeController from the
+   * workspace. See core/theme/palette.ts. */
   --color-accent-brand: var(--accent-brand);
   --color-accent-brand-foreground: var(--accent-brand-foreground);
+  --color-accent-2: var(--accent-2);
   /* Tertiary text + stronger divider (mockup faint / line2) */
   --color-faint: var(--faint);
   --color-line-strong: var(--line-strong);
@@ -102,7 +105,10 @@
  *  2. tenant accent  → --accent-brand injected inline on <html> by
  *     ThemeController; --primary/--ring/--sidebar-primary/--chart-1 derive
  *     from it. Global / no tenant → the neutral brand default below.
- *  3. dev palettes   → <html data-palette="…"> (dev-only), scoped under .dark.
+ *  3. user palette   → the same --accent-brand / --accent-2 / --tint written
+ *     inline by core/theme/palette.ts when the user picked one. A palette and
+ *     the tenant accent are the same three tokens, so exactly one owns them and
+ *     there is no specificity race: the user's choice wins.
  *  :root = LIGHT defaults; .dark = DARK (overrides by source order). */
 /* react-loading-skeleton ships its own palette as custom properties set ON the
    element, not inherited, so overriding them at :root does nothing — they have
@@ -286,6 +292,10 @@
   --accent-sat: 42%;
   --accent-brand: hsl(var(--accent-hue) var(--accent-sat) 45%);
   --accent-brand-foreground: #fbfaf8;
+  /* The palette's support hue — second series in a chart, the other half of a
+   * decorative pair. Defaults to a neutral, so a user who never picked a palette
+   * sees exactly what they saw before. */
+  --accent-2: #8c6d5d;
 
   /* Neutral base — NOT achromatic.
    *
@@ -298,8 +308,8 @@
    * 0% here is only the DEFAULT: ThemeController writes --tint
    * inline from the workspace's brand_tint setting, and every surface token
    * below mixes against it, so one number tints the whole app toward the brand.
-   * The hand-written [data-tenant="…"] blocks further down predate this and are
-   * kept for the two workspaces that already had curated palettes. */
+   * A user palette writes the same token, which is how one pick retones the
+   * whole app without any surface knowing a palette exists. */
   --tint: 0%;
   --background: color-mix(in srgb, var(--accent-brand) var(--tint), #fbfaf8);
   --foreground: color-mix(in srgb, var(--accent-brand) var(--tint), #12151a);
@@ -348,7 +358,7 @@
   --input: color-mix(in srgb, var(--accent-brand) var(--tint), #e4e1db);
   --ring: var(--accent-brand);
   --chart-1: var(--accent-brand);
-  --chart-2: #f0d8da;
+  --chart-2: var(--accent-2);
   --chart-3: #9e9e9e;
   --chart-4: #12151a;
   --chart-5: #d8d5ce;
@@ -384,6 +394,7 @@
   --accent-sat: 42%;
   --accent-brand: hsl(var(--accent-hue) var(--accent-sat) 70%);
   --accent-brand-foreground: #0a0c10;
+  --accent-2: #e3b7a0;
 
   --tint: 0%;
   --background: color-mix(in srgb, var(--accent-brand) var(--tint), #0c0e12);
@@ -420,7 +431,7 @@
   --input: color-mix(in srgb, var(--accent-brand) var(--tint), #272c34);
   --ring: var(--accent-brand);
   --chart-1: var(--accent-brand);
-  --chart-2: #ffffff;
+  --chart-2: var(--accent-2);
   --chart-3: rgba(235, 235, 245, 0.55);
   --chart-4: #8a919e;
   --chart-5: #232830;
@@ -434,256 +445,13 @@
   --sidebar-ring: var(--accent-brand);
 }
 
-/* ── Per-workspace palettes (mockup WS_THEMES). ThemeController sets the active
- * tenant's slug on <html data-tenant="…">; each block restyles every surface with
- * curated low-chroma warm/cool tones (white cards that pop) so the whole app reads
- * as that brokerage's brand. The accent (--accent-brand) is injected separately by
- * applyTenantAccent from settings.brand_color; *-foreground tokens inherit
- * var(--foreground). Tenants without a block fall back to the neutral default. ── */
-
-/* Anaida — warm rosa */
-[data-tenant="anaida"] {
-  --background: #f9f6f4;
-  --foreground: #1c1816;
-  --card: #ffffff;
-  --popover: #ffffff;
-  --secondary: #f1e8e5;
-  --muted: #f6efec;
-  --muted-foreground: #8c817c;
-  --faint: #b6aba5;
-  --accent: #f1e8e5;
-  --modal: #ffffff;
-  --border: #ece2dd;
-  --line-strong: #e4d7d1;
-  --input: #ece2dd;
-  --sidebar: #f9f6f4;
-  --sidebar-accent: #f0d8da;
-  --sidebar-border: #ece2dd;
-}
-.dark[data-tenant="anaida"] {
-  --background: #1a1513;
-  --foreground: #f9f6f4;
-  --card: #241d1a;
-  --popover: #241d1a;
-  --secondary: #2c2420;
-  --muted: #332a25;
-  --muted-foreground: rgba(249, 246, 244, 0.62);
-  --faint: rgba(249, 246, 244, 0.34);
-  --accent: #2c2420;
-  --modal: #241d1a;
-  --border: #352b26;
-  --line-strong: #3f332d;
-  --input: #352b26;
-  --sidebar: #1a1513;
-  --sidebar-accent: #3a2a2c;
-  --sidebar-border: #352b26;
-}
-
-/* Ceter — verde */
-[data-tenant="ceter"] {
-  --background: #f4f7f5;
-  --foreground: #15211b;
-  --card: #ffffff;
-  --popover: #ffffff;
-  --secondary: #e8efea;
-  --muted: #eef4f0;
-  --muted-foreground: #7c887f;
-  --faint: #aab4ad;
-  --accent: #e8efea;
-  --modal: #ffffff;
-  --border: #e2eae5;
-  --line-strong: #d8e2dc;
-  --input: #e2eae5;
-  --sidebar: #f4f7f5;
-  --sidebar-accent: #dceae1;
-  --sidebar-border: #e2eae5;
-}
-.dark[data-tenant="ceter"] {
-  --background: #101a15;
-  --foreground: #eaf1ec;
-  --card: #16231c;
-  --popover: #16231c;
-  --secondary: #1b2c23;
-  --muted: #21342a;
-  --muted-foreground: rgba(234, 241, 236, 0.62);
-  --faint: rgba(234, 241, 236, 0.34);
-  --accent: #1b2c23;
-  --modal: #16231c;
-  --border: #243a30;
-  --line-strong: #2c463a;
-  --input: #243a30;
-  --sidebar: #101a15;
-  --sidebar-accent: #1e3329;
-  --sidebar-border: #243a30;
-}
-
-/* ── Dev-only palettes (testing). Dark-scoped; a non-default palette sets its
- * own --primary, so it overrides the tenant accent (dev wins by design). ── */
-
-/* Anthropic-inspired palette — ink background, terracotta primary, cream foreground */
-.dark[data-palette="anthropic"] {
-  --background: #191919;
-  --foreground: #f5f4ee;
-  --card: #1f1f1f;
-  --card-foreground: #f5f4ee;
-  --popover: #1f1f1f;
-  --popover-foreground: #f5f4ee;
-  --primary: #cc785c;
-  --primary-foreground: #191919;
-  --secondary: #2a2724;
-  --secondary-foreground: #f5f4ee;
-  --muted: #2a2724;
-  --muted-foreground: #b7b2a6;
-  --faint: rgba(245, 244, 238, 0.34);
-  --accent: #e8e4d8;
-  --accent-foreground: #191919;
-  --destructive: #ef4444;
-  --destructive-foreground: #f5f4ee;
-  --modal: #2a2724;
-  --modal-foreground: #f5f4ee;
-  --modal-border: rgba(204, 120, 92, 0.18);
-  --border: rgba(245, 244, 238, 0.12);
-  --line-strong: rgba(245, 244, 238, 0.2);
-  --input: rgba(245, 244, 238, 0.12);
-  --ring: #cc785c;
-  --chart-1: #cc785c;
-  --chart-2: #e8e4d8;
-  --chart-3: #b7b2a6;
-  --chart-4: #f5f4ee;
-  --chart-5: #2a2724;
-  --sidebar: #141414;
-  --sidebar-foreground: #f5f4ee;
-  --sidebar-primary: #cc785c;
-  --sidebar-primary-foreground: #191919;
-  --sidebar-accent: rgba(204, 120, 92, 0.12);
-  --sidebar-accent-foreground: #f5f4ee;
-  --sidebar-border: rgba(245, 244, 238, 0.1);
-  --sidebar-ring: #cc785c;
-}
-
-/* Slate — cool blue-gray dark alt */
-.dark[data-palette="slate"] {
-  --background: #0f172a;
-  --foreground: #e2e8f0;
-  --card: #1e293b;
-  --card-foreground: #e2e8f0;
-  --popover: #1e293b;
-  --popover-foreground: #e2e8f0;
-  --primary: #60a5fa;
-  --primary-foreground: #0f172a;
-  --secondary: #1e293b;
-  --secondary-foreground: #e2e8f0;
-  --muted: #1e293b;
-  --muted-foreground: #94a3b8;
-  --faint: rgba(226, 232, 240, 0.34);
-  --accent: #334155;
-  --accent-foreground: #e2e8f0;
-  --destructive: #f87171;
-  --destructive-foreground: #0f172a;
-  --modal: #293548;
-  --modal-foreground: #e2e8f0;
-  --modal-border: rgba(96, 165, 250, 0.22);
-  --border: rgba(148, 163, 184, 0.2);
-  --line-strong: rgba(148, 163, 184, 0.32);
-  --input: rgba(148, 163, 184, 0.2);
-  --ring: #60a5fa;
-  --chart-1: #60a5fa;
-  --chart-2: #818cf8;
-  --chart-3: #94a3b8;
-  --chart-4: #e2e8f0;
-  --chart-5: #334155;
-  --sidebar: #0b1220;
-  --sidebar-foreground: #e2e8f0;
-  --sidebar-primary: #60a5fa;
-  --sidebar-primary-foreground: #0f172a;
-  --sidebar-accent: rgba(96, 165, 250, 0.12);
-  --sidebar-accent-foreground: #e2e8f0;
-  --sidebar-border: rgba(148, 163, 184, 0.18);
-  --sidebar-ring: #60a5fa;
-}
-
-/* Brutalist — sharp, high contrast, zero-radius */
-.dark[data-palette="brutalist"] {
-  --radius: 0px;
-  --background: #000000;
-  --foreground: #ffffff;
-  --card: #0a0a0a;
-  --card-foreground: #ffffff;
-  --popover: #000000;
-  --popover-foreground: #ffffff;
-  --primary: #ff3d00;
-  --primary-foreground: #000000;
-  --secondary: #1a1a1a;
-  --secondary-foreground: #ffffff;
-  --muted: #1a1a1a;
-  --muted-foreground: #b0b0b0;
-  --faint: rgba(255, 255, 255, 0.4);
-  --accent: #ffffff;
-  --accent-foreground: #000000;
-  --destructive: #ff0000;
-  --destructive-foreground: #ffffff;
-  --modal: #1a1a1a;
-  --modal-foreground: #ffffff;
-  --modal-border: #ffffff;
-  --border: #ffffff;
-  --line-strong: #ffffff;
-  --input: #ffffff;
-  --ring: #ff3d00;
-  --chart-1: #ff3d00;
-  --chart-2: #ffffff;
-  --chart-3: #b0b0b0;
-  --chart-4: #ff8800;
-  --chart-5: #1a1a1a;
-  --sidebar: #000000;
-  --sidebar-foreground: #ffffff;
-  --sidebar-primary: #ff3d00;
-  --sidebar-primary-foreground: #000000;
-  --sidebar-accent: #1a1a1a;
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: #ffffff;
-  --sidebar-ring: #ff3d00;
-}
-
-/* Minimalist — desaturated, low contrast, calm */
-.dark[data-palette="minimalist"] {
-  --background: #1a1a1a;
-  --foreground: #d8d8d8;
-  --card: #1f1f1f;
-  --card-foreground: #d8d8d8;
-  --popover: #1f1f1f;
-  --popover-foreground: #d8d8d8;
-  --primary: #a0a0a0;
-  --primary-foreground: #1a1a1a;
-  --secondary: #242424;
-  --secondary-foreground: #d8d8d8;
-  --muted: #242424;
-  --muted-foreground: #888888;
-  --faint: rgba(216, 216, 216, 0.34);
-  --accent: #2a2a2a;
-  --accent-foreground: #d8d8d8;
-  --destructive: #b05050;
-  --destructive-foreground: #1a1a1a;
-  --modal: #262626;
-  --modal-foreground: #d8d8d8;
-  --modal-border: rgba(216, 216, 216, 0.12);
-  --border: rgba(216, 216, 216, 0.08);
-  --line-strong: rgba(216, 216, 216, 0.16);
-  --input: rgba(216, 216, 216, 0.08);
-  --ring: #a0a0a0;
-  --chart-1: #a0a0a0;
-  --chart-2: #c0c0c0;
-  --chart-3: #888888;
-  --chart-4: #d8d8d8;
-  --chart-5: #2a2a2a;
-  --sidebar: #161616;
-  --sidebar-foreground: #d8d8d8;
-  --sidebar-primary: #a0a0a0;
-  --sidebar-primary-foreground: #1a1a1a;
-  --sidebar-accent: rgba(160, 160, 160, 0.08);
-  --sidebar-accent-foreground: #d8d8d8;
-  --sidebar-border: rgba(216, 216, 216, 0.06);
-  --sidebar-ring: #a0a0a0;
-}
+/* The hand-written `[data-tenant="…"]` and `[data-palette="…"]` blocks that used
+ * to live here are gone. They set `--background`, `--card`, `--border` and the
+ * sidebar directly, so they beat any palette a user picked — and the dev ones
+ * were scoped under `.dark`, which meant they silently did nothing in the light
+ * theme. Both are now covered by core/theme/palette.ts: anaida ≈ "Rosa
+ * Antiguo", ceter ≈ "Bosque". Every colour in the app comes through
+ * --accent-brand / --accent-2 / --tint and the neutrals above. */
 
 @layer base {
   * {

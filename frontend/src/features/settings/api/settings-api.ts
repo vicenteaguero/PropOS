@@ -37,6 +37,16 @@ export const settingsApi = {
 
   getMe: () => apiRequest<UserMe>("/v1/users/me"),
 
+  /**
+   * Merge a partial preferences patch into the caller's own profile. Partial on
+   * the server too: sending `{ palette }` cannot wipe a preference added later.
+   */
+  updatePreferences: (preferences: Record<string, unknown>) =>
+    apiRequest<UserMe>("/v1/users/me/preferences", {
+      method: "PATCH",
+      body: { preferences },
+    }),
+
   updateAvatar: (avatar_url: string | null) =>
     apiRequest<UserMe>("/v1/users/me/avatar", {
       method: "PATCH",

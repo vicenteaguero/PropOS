@@ -50,6 +50,7 @@ interface ProfileRow {
   avatar_url: string | null;
   admin_scope: string[] | null;
   must_change_password: boolean | null;
+  preferences: Record<string, unknown> | null;
 }
 
 interface MembershipApiRow {
@@ -83,7 +84,7 @@ async function fetchProfile(
   const { data, error } = await supabase
     .from("profiles")
     .select(
-      "id, full_name, role, tenant_id, is_active, avatar_url, admin_scope, must_change_password",
+      "id, full_name, role, tenant_id, is_active, avatar_url, admin_scope, must_change_password, preferences",
     )
     .eq("id", userId)
     .single();
@@ -108,6 +109,7 @@ async function fetchProfile(
     isDevAdmin: active?.isDevAdmin ?? false,
     view: active?.view ?? "agent",
     mustChangePassword: row.must_change_password ?? false,
+    preferences: row.preferences ?? {},
   };
 }
 

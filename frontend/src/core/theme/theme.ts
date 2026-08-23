@@ -57,6 +57,12 @@ export function applyTheme(theme: Theme): void {
   if (typeof document === "undefined") return;
   document.documentElement.classList.toggle("dark", theme === "dark");
   applyThemeColor(theme);
+  // A palette resolves to a different accent per theme (darker on paper so it
+  // reads as text, lighter on carbon so it does not glare), so flipping the
+  // theme has to re-resolve it. An event rather than a call into palette.ts:
+  // that module needs `getStoredTheme` from here, and importing both ways is a
+  // cycle for what is one line.
+  window.dispatchEvent(new CustomEvent("propos:theme-change", { detail: theme }));
 }
 
 export function setTheme(theme: Theme): void {
