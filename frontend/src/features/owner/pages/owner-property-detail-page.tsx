@@ -129,7 +129,7 @@ export function OwnerPropertyDetailPage() {
 
   return (
     <TooltipProvider>
-      <div className="mx-auto w-full max-w-2xl lg:max-w-4xl pb-10">
+      <div className="mx-auto w-full max-w-2xl pb-[calc(var(--app-nav-h,0px)+2.5rem)] lg:max-w-4xl">
         {/* Header bar */}
         <div className="px-[var(--page-x)] pt-4 pb-2">
           <Link

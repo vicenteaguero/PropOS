@@ -150,7 +150,14 @@ function TenantSwitchGate() {
  */
 function RouteSuspense() {
   return (
-    <Suspense fallback={<PageSkeleton variant="list" className="px-[var(--page-x)] py-4" />}>
+    <Suspense
+      fallback={
+        <PageSkeleton
+          variant="list"
+          className="px-[var(--page-x)] pt-4 pb-[calc(var(--app-nav-h,0px)+1rem)]"
+        />
+      }
+    >
       <Outlet />
     </Suspense>
   );
@@ -227,11 +234,23 @@ export function AppLayout() {
             would double the clearance under a Dynamic Island. Left/right still
             matter in landscape, where the cutout moves to the side, and the
             bottom clears the floating nav. All resolve to 0 on a laptop or
-            tablet, so those layouts are unchanged. */}
+            tablet, so those layouts are unchanged.
+
+            The bottom clearance is NOT here, and that is the point. It used to
+            be — `pb-[var(--app-nav-h)]` on this element — which is right for a
+            page that flows and wrong for every page that sizes itself to the
+            viewport: `MasterDetail` asks for `100dvh - header - tabs`, the
+            padding then pushed that box up by the height of the nav, and the
+            band it left behind painted plain background under a bar whose
+            whole design is a translucent blur over moving content. Nothing
+            could pass beneath it because nothing reached it. Clearance now
+            belongs to whatever owns the scroll — `PageLayout`, `ListShell`,
+            `MasterDetail`'s list column — each of which knows whether it flows
+            or fills. */}
               <main
                 id="main-content"
                 tabIndex={-1}
-                className="flex-1 outline-none pr-[var(--safe-right)] pb-[var(--app-nav-h,0px)] pl-[var(--safe-left)]"
+                className="flex-1 outline-none pr-[var(--safe-right)] pl-[var(--safe-left)]"
               >
                 <RouteSuspense />
               </main>

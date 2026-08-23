@@ -235,7 +235,7 @@ export function ListShell({
 
   if (!fill) {
     return (
-      <div className={cn("pb-8", className)}>
+      <div className={cn("pb-[calc(var(--app-nav-h,0px)+2rem)]", className)}>
         {portalledAction}
         {header}
         <div className={bodyPadding === "page" ? "px-[var(--page-x)]" : undefined}>{body}</div>
@@ -249,7 +249,10 @@ export function ListShell({
       {header}
       <div
         className={cn(
-          "min-h-0 flex-1 overflow-y-auto pb-6",
+          // The bottom clearance for the floating nav lands HERE, on the
+          // scroller, so it follows the last row instead of shortening the
+          // viewport box that holds it.
+          "min-h-0 flex-1 overflow-y-auto pb-[calc(var(--app-nav-h,0px)+1.5rem)]",
           bodyPadding === "page" && "px-[var(--page-x)]",
         )}
       >

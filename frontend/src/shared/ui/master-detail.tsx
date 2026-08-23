@@ -49,9 +49,14 @@ export function MasterDetail({
     >
       <div
         className={cn(
-          // `pb`, not a shorter box: the rows go under the bar, the last one
-          // does not.
-          "h-full min-w-0 overflow-y-auto pb-[var(--app-nav-h,0px)] md:border-r md:border-border md:pb-0",
+          // No bottom padding here, deliberately. This column is a scroll
+          // container whose child is `h-full`, and a percentage height resolves
+          // against the CONTENT box — so padding here shortened the list by the
+          // nav's height and left an empty band under it, which is the same
+          // mistake `<main>` was making one level up. The clearance belongs to
+          // the innermost scroller, where it lands after the last row instead
+          // of shrinking the box (see `ListShell`'s `fill` branch).
+          "h-full min-w-0 overflow-y-auto md:border-r md:border-border",
           selected ? "hidden md:block" : "block",
         )}
       >
