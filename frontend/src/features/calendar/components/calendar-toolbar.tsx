@@ -1,8 +1,8 @@
 import { ChevronLeft, ChevronRight, Mic, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ActionIcon, Chip, Chips, RoundButton } from "@shared/ui";
+import { ActionIcon, CONTROL_H, FOCUS_RING, RoundButton } from "@shared/ui";
 import { cn } from "@/lib/utils";
-import { FILTER_ITEMS, TYPE_META, type CalFilter } from "../lib/calendar-item";
+import { FILTER_ITEMS, sourceMeta, type CalFilter } from "../lib/calendar-item";
 
 export type MobileView = "day" | "week" | "month";
 
@@ -70,10 +70,16 @@ export function CalendarToolbar({
             {periodLabel}
           </h2>
         )}
-        {/* Compact on purpose: at 12px with tight padding the three labels come
-            to ~140px, which is what leaves room for Agendar and the mic on one
-            row at 360px — the narrowest phone we target. */}
-        <div className="flex shrink-0 items-center gap-0.5 rounded-full bg-secondary p-0.5">
+        {/* `CONTROL_H` on the track, `h-full` on the buttons — the same recipe
+            `ViewToggle` uses. This was the one bar control still sized by its
+            own padding: ~34px next to a 40px button and a 44px touch target,
+            which is exactly the mismatch you see before you can name it. */}
+        <div
+          className={cn(
+            CONTROL_H,
+            "flex shrink-0 items-center gap-0.5 rounded-full bg-secondary p-0.5",
+          )}
+        >
           {VIEW_ITEMS.map((item) => (
             <button
               key={item.id}
@@ -81,7 +87,7 @@ export function CalendarToolbar({
               onClick={() => onViewChange(item.id)}
               aria-pressed={view === item.id}
               className={cn(
-                "rounded-full px-2.5 py-1.5 text-[12px] font-semibold transition",
+                "h-full rounded-full px-3 text-[12px] font-semibold transition",
                 view === item.id
                   ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground",
@@ -141,22 +147,45 @@ export function CalendarToolbar({
         )}
       </div>
 
-      {/* The chips double as the legend for the coloured bar on each row, which
-          is why this is chips and not a dropdown. */}
-      <Chips>
-        {FILTER_ITEMS.map((item) => (
-          <Chip key={item.id} active={filter === item.id} onClick={() => onFilterChange(item.id)}>
-            {item.id !== "all" && (
-              <span
-                aria-hidden
-                className="mr-1.5 size-1.5 shrink-0 rounded-full"
-                style={{ background: TYPE_META[item.id].dot }}
-              />
-            )}
-            {item.label}
-          </Chip>
-        ))}
-      </Chips>
+      {/* A grid, not a scroller. Four chips at ~85px each came to 340-390px
+          against the 328px a 360px phone actually has, so the last one was cut
+          off with no scrollbar and no fade to say so. Four equal columns
+          cannot overflow, and the row doubles as the legend for the coloured
+          bar on each event.
+
+          The dot is gone and the whole chip takes the colour: a 6px dot beside
+          grey text is the smallest possible way to carry the one piece of
+          information this row exists to carry. */}
+      <div role="group" aria-label="Filtrar el calendario" className="grid grid-cols-4 gap-1.5">
+        {FILTER_ITEMS.map((item) => {
+          const active = filter === item.id;
+          const meta = item.id === "all" ? null : sourceMeta(item.id);
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => onFilterChange(item.id)}
+              aria-pressed={active}
+              className={cn(
+                CONTROL_H,
+                "flex min-w-0 items-center justify-center rounded-full border px-1 text-[12.5px] font-semibold transition",
+                FOCUS_RING,
+                !active && "border-border bg-transparent text-muted-foreground",
+                // "Todo" is the absence of a category, so it takes ink rather
+                // than borrowing a colour that would read as a fourth source.
+                active && !meta && "border-foreground bg-foreground text-background",
+              )}
+              style={
+                active && meta
+                  ? { background: meta.wash, borderColor: meta.edge, color: meta.ink }
+                  : undefined
+              }
+            >
+              <span className="truncate">{item.label}</span>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

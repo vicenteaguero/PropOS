@@ -1,10 +1,16 @@
 import { label } from "@shared/lib/labels";
-import { TYPE_META, durationLabel, statusIcon, timeLabel } from "../lib/calendar-item";
+import { cn } from "@/lib/utils";
+import { itemMeta, durationLabel, statusIcon, timeLabel } from "../lib/calendar-item";
+import type { TypeResolver } from "../lib/calendar-item";
 import type { CalendarItem } from "../api/calendar-api";
 
 interface EventRowProps {
   item: CalendarItem;
   onOpen: (item: CalendarItem) => void;
+  /** From `useEventTypes()`. Absent falls back to the source colour. */
+  resolveType?: TypeResolver;
+  /** Already happened: shorter and quieter, but still readable and tappable. */
+  past?: boolean;
 }
 
 /**
@@ -19,8 +25,8 @@ interface EventRowProps {
  *
  * What the space went to is the title, which can now use two lines.
  */
-export function EventRow({ item, onOpen }: EventRowProps) {
-  const meta = TYPE_META[item.item_type];
+export function EventRow({ item, onOpen, resolveType, past = false }: EventRowProps) {
+  const meta = itemMeta(item, resolveType);
   const StatusIcon = statusIcon(item);
   const statusText = item.status
     ? label(item.item_type === "TASK" ? "taskStatus" : "eventStatus", item.status)
@@ -30,25 +36,39 @@ export function EventRow({ item, onOpen }: EventRowProps) {
     <button
       type="button"
       onClick={() => onOpen(item)}
-      className="flex w-full gap-3 border-b border-border px-[var(--page-x)] py-2.5 text-left transition last:border-b-0 hover:bg-secondary/50"
+      className={cn(
+        "flex w-full gap-3 border-b border-border px-[var(--page-x)] text-left transition last:border-b-0 hover:bg-secondary/50",
+        // A past event is context, not work. It keeps its full height on the
+        // day you are looking at it — hiding it would break the shape of the
+        // day — but it stops competing with what has not happened yet.
+        past ? "py-1.5 opacity-55" : "py-2.5",
+      )}
     >
       <div className="w-[52px] shrink-0 text-right">
         <div className="text-[15px] font-bold tabular-nums leading-tight text-foreground">
           {timeLabel(item)}
         </div>
-        <div className="text-[11px] leading-tight text-faint">{durationLabel(item)}</div>
+        {!past && <div className="text-[11px] leading-tight text-faint">{durationLabel(item)}</div>}
         <div
-          className="mt-0.5 truncate text-[10px] font-bold uppercase tracking-wide"
-          style={{ color: meta.dot }}
+          className={cn(
+            "truncate text-[10px] font-bold uppercase tracking-wide",
+            !past && "mt-0.5",
+          )}
+          style={{ color: meta.ink }}
         >
           {meta.label}
         </div>
       </div>
 
-      <span className="w-[3px] shrink-0 rounded-full" style={{ background: meta.dot }} />
+      <span className="w-[3px] shrink-0 rounded-full" style={{ background: meta.ink }} />
 
       <div className="min-w-0 flex-1 self-center">
-        <div className="line-clamp-2 text-[15px] font-semibold leading-snug text-foreground">
+        <div
+          className={cn(
+            "text-[15px] font-semibold leading-snug text-foreground",
+            past ? "truncate" : "line-clamp-2",
+          )}
+        >
           {item.title ?? "Sin título"}
         </div>
       </div>
