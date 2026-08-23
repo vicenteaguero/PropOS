@@ -39,6 +39,9 @@ export function builtAtLabel(iso: string = BUILD_BUILT_AT): string {
 /**
  * The one-line signature: `v0.1.0 · 32bb6ac · dev · 23 ago, 02:19`.
  *
+ * For places with a single line to spend — a log, a bug report, a support
+ * paste. The UI uses the two-row `BuildStampRow` instead.
+ *
  * The branch is included because staging and production share a backend and a
  * database — the branch is the only thing that tells the two frontends apart,
  * and "which one am I on" is exactly the confusion this line exists to end.
