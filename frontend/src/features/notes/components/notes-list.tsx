@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useCreateNote, useDeleteNote, useNotes } from "../hooks/use-notes";
-import { ErrorState } from "@shared/ui";
+import { ActionIcon, ErrorState } from "@shared/ui";
 import { formatDateTime } from "@shared/utils/format";
 
 interface Props {
@@ -46,7 +46,7 @@ export function NotesList({ targetTable, targetRowId }: Props) {
           {create.isPending ? (
             <Loader2 className="size-4 animate-spin" />
           ) : (
-            <Plus className="size-4" />
+            <ActionIcon name="createNote" />
           )}
         </Button>
       </div>

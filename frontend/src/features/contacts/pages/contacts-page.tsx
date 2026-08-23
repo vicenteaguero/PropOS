@@ -7,6 +7,7 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
+  ActionIcon,
   CONTROL_SQUARE,
   FilterSelect,
   LoadMore,
@@ -124,7 +125,7 @@ export function ContactsPage() {
           className={cn("rounded-full", CONTROL_SQUARE)}
           onClick={() => setDialogOpen(true)}
         >
-          <Plus className="size-4" strokeWidth={1.8} />
+          <ActionIcon name="createPerson" />
         </Button>
       }
       filters={

@@ -8,7 +8,6 @@ import {
   Loader2,
   Megaphone,
   Pencil,
-  Plus,
   Receipt,
   Wallet,
 } from "lucide-react";
@@ -18,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageLayout } from "@shared/components/page-layout";
 import {
+  ActionIcon,
   Chip,
   Chips,
   CONTROL_SQUARE,
@@ -422,7 +422,7 @@ export function FinancePage() {
                 title="Nueva transacción"
                 onClick={openCreate}
               >
-                <Plus className="size-4" strokeWidth={1.8} />
+                <ActionIcon name="createTransaction" />
               </Button>
             }
             filters={

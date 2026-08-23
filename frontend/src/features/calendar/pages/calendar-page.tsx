@@ -15,21 +15,14 @@ import {
   startOfWeek,
 } from "date-fns";
 import { es } from "date-fns/locale";
-import {
-  Banknote,
-  CalendarDays,
-  type LucideIcon,
-  ListTodo,
-  Loader2,
-  MapPin,
-  Plus,
-} from "lucide-react";
+import { Banknote, CalendarDays, type LucideIcon, ListTodo, Loader2, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageLayout } from "@shared/components/page-layout";
 import { ConfirmDialog } from "@shared/components/confirm-dialog/confirm-dialog";
 import {
+  ActionIcon,
   AppShellScroll,
   Chip,
   Chips,
@@ -442,7 +435,7 @@ export function CalendarPage() {
             aria-label="Nuevo evento"
             className="rounded-full"
           >
-            <Plus className="size-4" strokeWidth={1.8} />
+            <ActionIcon name="createEvent" />
           </Button>,
           actionsHost,
         )}

@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { PageLayout } from "@shared/components/page-layout";
 import { PageHeader } from "@shared/components/page-header";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
-import { ErrorState, PageSkeleton, Pill, ResponsiveSheet } from "@shared/ui";
+import { ActionIcon, ErrorState, PageSkeleton, Pill, ResponsiveSheet } from "@shared/ui";
 import { cn } from "@/lib/utils";
 import { workflowsApi, type Workflow, type WorkflowStep } from "../api/workflows-api";
 
@@ -49,7 +49,7 @@ export function WorkflowsPage() {
           className="mb-0"
           actions={
             <Button onClick={() => setOpen(true)} variant="ink" className="gap-2">
-              <Plus className="size-4" strokeWidth={1.8} />
+              <ActionIcon name="createWorkflow" />
               Nuevo
             </Button>
           }
