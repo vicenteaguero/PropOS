@@ -46,6 +46,7 @@ import { DataHealthCard } from "../components/data-health-card";
 import { AttentionCard } from "@features/attention/components/attention-card";
 import { timeAgo } from "@shared/utils/relative-time";
 import { getNavApp, navHref, NAV_APP_LABEL } from "@shared/lib/nav-app";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface Tile {
   to: string;
@@ -381,9 +382,16 @@ export function AdminHomePage() {
           {/* Ink, not the brand accent. Colour in this app means money — pine
               for what comes in, brick for what goes out — so tinting a headcount
               green made three neutral figures read as revenue. */}
-          <span className="block font-display text-2xl font-semibold leading-none tabular-nums text-foreground">
-            {oppsQ.isPending ? "…" : stat.value}
-          </span>
+          {/* A shimmering block, not a literal "…". Four ellipses under four
+              labels read as "there is nothing here", which is a different fact
+              from "this is still loading" — and the one the broker acted on. */}
+          {oppsQ.isPending ? (
+            <Skeleton className="h-6 w-10 rounded-md" />
+          ) : (
+            <span className="block font-display text-2xl font-semibold leading-none tabular-nums text-foreground">
+              {stat.value}
+            </span>
+          )}
           <span className="mt-1.5 block w-full truncate text-[11.5px] leading-tight text-muted-foreground">
             {stat.label}
           </span>
