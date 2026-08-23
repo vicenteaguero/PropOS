@@ -10,7 +10,6 @@ import {
   Moon,
   Receipt,
   Settings,
-  Sparkles,
   Sun,
   Users,
 } from "lucide-react";
@@ -19,7 +18,7 @@ import { useAuth } from "@shared/hooks/use-auth";
 import { useThemeMode } from "@core/theme/theme-provider";
 import { tenantSwatch } from "@core/theme/tenant-accent";
 import { useAgentOverlay } from "@features/agent/components/agent-overlay-host";
-import { BottomSheet, Pill } from "@shared/ui";
+import { BottomSheet, Pill, PropoMark } from "@shared/ui";
 import { useNavGroups, usePendingCount } from "@layouts/use-nav-groups";
 import { useIsImmersive } from "@layouts/immersive";
 import { SETTINGS_PATH } from "@layouts/nav-items";
@@ -28,6 +27,16 @@ import { cn } from "@/lib/utils";
 import type { UserView } from "@shared/types/auth";
 import { shortName } from "@shared/utils/display-name";
 import { initials } from "@shared/utils/format";
+
+/**
+ * The metrics every slot in the nav shares.
+ *
+ * The icon grew 22 → 24 and the label shrank 10 → 9.5 without the bar getting
+ * taller: at 22px the glyphs were the smallest thing on a screen you use at
+ * arm's length, and the label under them is a reminder, not a heading.
+ */
+const NAV_ICON = "size-[24px]";
+const NAV_LABEL = "text-[9.5px] leading-tight";
 
 function NavTab({
   to,
@@ -45,12 +54,13 @@ function NavTab({
       {({ isActive }) => (
         <>
           <Icon
-            className={cn("size-[22px]", isActive ? "text-foreground" : "text-muted-foreground")}
+            className={cn(NAV_ICON, isActive ? "text-foreground" : "text-muted-foreground")}
             strokeWidth={isActive ? 2.2 : 1.8}
           />
           <span
             className={cn(
-              "max-w-full truncate text-[10px] leading-tight",
+              "max-w-full truncate",
+              NAV_LABEL,
               isActive ? "font-bold text-foreground" : "font-medium text-muted-foreground",
             )}
           >
@@ -184,18 +194,21 @@ export function MobileBottomNav() {
               the short form and no more informative next to a file glyph. */}
           {reachable.has(docsPath) && <NavTab to={docsPath} icon={FileText} label="Docs" />}
           {canPropo && (
-            <div className="flex flex-1 flex-col items-center gap-0.5">
+            // `justify-end` and no negative margin on the label. The FAB is
+            // lifted out of the bar, so the column below it is taller than a
+            // tab's; the label was being dragged back up by a `-mt-1` guess
+            // instead of being centred in the space it actually has, which is
+            // why "Propo" never lined up with the labels beside it.
+            <div className="flex flex-1 flex-col items-center justify-end py-1">
               <button
                 type="button"
                 onClick={() => propo.open()}
                 aria-label="Abrir Propo"
-                className="-mt-7 flex size-12 items-center justify-center rounded-full bg-ink text-ink-foreground shadow-[0_8px_20px_-4px_rgb(0_0_0/0.55)] transition active:scale-90"
+                className="-mt-7 mb-auto flex size-12 items-center justify-center rounded-full bg-ink text-ink-foreground shadow-[0_8px_20px_-4px_rgb(0_0_0/0.55)] transition active:scale-90"
               >
-                <Sparkles className="size-6" />
+                <PropoMark className="size-6" />
               </button>
-              <span className="-mt-1 text-[10px] font-bold leading-tight text-foreground">
-                Propo
-              </span>
+              <span className={cn("font-bold text-foreground", NAV_LABEL)}>Propo</span>
             </div>
           )}
           {allow("productividad") && (
@@ -220,14 +233,14 @@ export function MobileBottomNav() {
             aria-label={pendingCount > 0 ? `Más · ${pendingCount} pendientes` : "Más"}
             className="relative flex min-w-0 flex-1 flex-col items-center gap-0.5 py-1 text-muted-foreground"
           >
-            <LayoutGrid className="size-[22px]" strokeWidth={1.8} />
+            <LayoutGrid className={NAV_ICON} strokeWidth={1.8} />
             {pendingCount > 0 && (
               <span
                 aria-hidden
                 className="absolute right-[calc(50%-16px)] top-0 size-2 rounded-full bg-primary"
               />
             )}
-            <span className="text-[10px] font-medium leading-tight">Más</span>
+            <span className={cn("font-medium", NAV_LABEL)}>Más</span>
           </button>
         </div>
       </nav>
