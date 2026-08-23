@@ -43,6 +43,7 @@ import {
 import { cn } from "@/lib/utils";
 import { initials } from "@shared/utils/format";
 import { DataHealthCard } from "../components/data-health-card";
+import { useAttention } from "@features/attention/hooks/use-attention";
 import { AttentionCard } from "@features/attention/components/attention-card";
 import { timeAgo } from "@shared/utils/relative-time";
 import { getNavApp, navHref, NAV_APP_LABEL } from "@shared/lib/nav-app";
@@ -613,6 +614,33 @@ export function AdminHomePage() {
     </section>
   );
 
+  /**
+   * Whether the right-hand rail earns its 21rem.
+   *
+   * `DataHealthCard` always prints something once it has loaded — "Sin
+   * inconsistencias en tus datos." when there is nothing wrong — so the rail is
+   * never literally empty and "render it if it has children" would always say
+   * yes. On a tenant with no data yet that reserved a quarter of a 1440px
+   * window to hold one 41px sentence, permanently, on the first screen the
+   * broker opens.
+   *
+   * So the question is not "is it empty" but "is there enough to be worth a
+   * column", and the health line alone is not. While the queries are still in
+   * flight the answer is yes: collapsing the rail and then bringing it back is
+   * two layout shifts where waiting costs none.
+   */
+  const attentionQ = useAttention(5);
+  const asideHasContent =
+    allow("crm") &&
+    (attentionQ.isPending ||
+      contactsQ.isPending ||
+      propertiesQ.isPending ||
+      activityQ.isPending ||
+      (attentionQ.data?.total ?? 0) > 0 ||
+      recentProperties.length > 0 ||
+      quickPeople.length > 0 ||
+      activity.length > 0);
+
   return (
     // Width steps, not one jump. The page used to go max-w-2xl -> lg:max-w-6xl
     // with nothing in between, so 672–1024px was a dead zone and a 2560px
@@ -621,7 +649,12 @@ export function AdminHomePage() {
     // because the desktop shell already spends up to 240px on the sidebar.
     <>
       <div className="mx-auto w-full max-w-2xl px-[var(--page-x)] pt-4 pb-[calc(var(--app-nav-h,0px)+2rem)] md:max-w-3xl lg:max-w-5xl lg:pt-6 xl:max-w-[78rem] 2xl:max-w-[92rem]">
-        <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_21rem] xl:gap-6">
+        <div
+          className={cn(
+            "grid items-start gap-4 xl:gap-6",
+            asideHasContent && "xl:grid-cols-[minmax(0,1fr)_21rem]",
+          )}
+        >
           <div className="flex min-w-0 flex-col gap-4">
             <div>
               <h1 className="text-[22px] font-bold leading-tight tracking-tight text-foreground lg:text-[26px]">
@@ -675,6 +708,11 @@ export function AdminHomePage() {
               ))}
             </div>
 
+            {/* With no rail to live in, the one line the health check always
+                prints goes at the end of the column rather than alone in a
+                336px track. */}
+            {!asideHasContent && allow("crm") && <DataHealthCard />}
+
             {(hasPipeline || oppsQ.isError) &&
               (oppsQ.isError ? (
                 <ErrorState
@@ -688,19 +726,23 @@ export function AdminHomePage() {
               ))}
           </div>
 
-          {/* Below xl this is simply the rest of the single column. */}
-          <aside className="flex min-w-0 flex-col gap-4">
-            {/* What is waiting on a person, before what is wrong with the data. */}
-            {allow("crm") && <AttentionCard />}
-            {/* Data problems belong where the day starts, not buried in settings:
-              nobody goes looking for inconsistencies they do not know exist. */}
-            {allow("crm") && <DataHealthCard />}
-            {allow("crm") && propertiesWidget}
-            {allow("crm") &&
-              (quickPeople.length > 0 || contactsQ.isPending || contactsQ.isError) &&
-              peopleWidget}
-            {allow("crm") && activityWidget}
-          </aside>
+          {/* Below xl this is simply the rest of the single column. Above xl it
+              is a 21rem track, and the track is only reserved when there is
+              something to put in it — see `asideHasContent`. */}
+          {asideHasContent && (
+            <aside className="flex min-w-0 flex-col gap-4">
+              {/* What is waiting on a person, before what is wrong with the data. */}
+              {allow("crm") && <AttentionCard />}
+              {/* Data problems belong where the day starts, not buried in settings:
+                nobody goes looking for inconsistencies they do not know exist. */}
+              {allow("crm") && <DataHealthCard />}
+              {allow("crm") && propertiesWidget}
+              {allow("crm") &&
+                (quickPeople.length > 0 || contactsQ.isPending || contactsQ.isError) &&
+                peopleWidget}
+              {allow("crm") && activityWidget}
+            </aside>
+          )}
         </div>
       </div>
       <EventDetailDialog
