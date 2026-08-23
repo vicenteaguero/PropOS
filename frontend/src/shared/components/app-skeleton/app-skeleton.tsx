@@ -18,7 +18,10 @@ export function AppSkeleton() {
       </div>
 
       {/* content */}
-      <div className="mx-auto w-full max-w-7xl px-5 py-7 lg:px-8">
+      <div // `--page-x`, so the boot skeleton lines up with the page that
+        // replaces it. At `px-5` the whole app shifted 4px sideways on load.
+        className="mx-auto w-full max-w-7xl px-[var(--page-x)] py-7 lg:px-8"
+      >
         <Skeleton className="h-9 w-56 lg:w-72" />
         <Skeleton className="mt-5 h-14 w-full max-w-2xl rounded-xl" />
 
