@@ -18,8 +18,6 @@ import { Label } from "@/components/ui/label";
 import { PageLayout } from "@shared/components/page-layout";
 import {
   ActionIcon,
-  Chip,
-  Chips,
   CONTROL_SQUARE,
   ErrorState,
   ListShell,
@@ -29,6 +27,7 @@ import {
   ResponsiveSheet,
   ResponsiveTable,
   type ResponsiveColumn,
+  FilterSelect,
 } from "@shared/ui";
 import { toast } from "sonner";
 import {
@@ -426,13 +425,19 @@ export function FinancePage() {
               </Button>
             }
             filters={
-              <Chips className="min-w-0 flex-1">
-                {KIND_FILTERS.map((f) => (
-                  <Chip key={f.id} active={kind === f.id} onClick={() => setKind(f.id)}>
-                    {f.label}
-                  </Chip>
-                ))}
-              </Chips>
+              <FilterSelect
+                // A dropdown, not five chips: they came to ~403px inside the 328px a
+                // 360px phone has, so "Pagos" — the ledger's only filter — sat off
+                // screen with no scrollbar and nothing to say it was there.
+                label="Tipo"
+                value={kind === "ALL" ? null : kind}
+                allLabel="Todo"
+                options={KIND_FILTERS.filter((f) => f.id !== "ALL").map((f) => ({
+                  value: f.id,
+                  label: f.label,
+                }))}
+                onChange={(v) => setKind((v as KindFilter) ?? "ALL")}
+              />
             }
           />
           {transactionsBlock}

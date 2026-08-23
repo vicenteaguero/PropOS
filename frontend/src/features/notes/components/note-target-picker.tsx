@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Search } from "lucide-react";
 import { useEntitySearch, type EntityKind } from "@shared/api/entity-search";
 import { SearchInput } from "@shared/components/search-input/search-input";
-import { Chip, Chips } from "@shared/ui";
+import { FilterSelect } from "@shared/ui";
 import type { NoteTarget, NoteTargetKind } from "../api/notes-api";
 import { KIND_LABEL, NoteTargetChips } from "./note-target-chips";
 
@@ -72,14 +72,15 @@ export function NoteTargetPicker({ value, onChange, disabled }: Props) {
     <div className="space-y-2">
       <NoteTargetChips targets={value.map(draftToTarget)} onRemove={remove} />
 
-      <Chips>
-        {KINDS.map((k) => (
-          <Chip key={k} active={k === kind} onClick={() => setKind(k)}>
-            {KIND_LABEL[k]}
-          </Chip>
-        ))}
-      </Chips>
-
+      {/* A dropdown, not six chips. They came to ~551px inside the 328px a
+          360px phone gives a bottom sheet, so Evento, Proyecto and Lugar were
+          off screen with no scrollbar and nothing to say they existed. */}
+      <FilterSelect
+        label="Vincular a"
+        value={kind}
+        options={KINDS.map((k) => ({ value: k, label: KIND_LABEL[k] }))}
+        onChange={(v) => v && setKind(v as (typeof KINDS)[number])}
+      />
       <SearchInput
         value={q}
         onChange={setQ}
