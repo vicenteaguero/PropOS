@@ -335,6 +335,15 @@ Catalog lives in `backend/app/core/features.py` and is mirrored in
 file and fails if they drift. Adding a key = one entry each side, then hang
 `requiredFeature` / `feature:` on the route, nav item or tab.
 
+`wip` **se dibuja**: banda explicativa arriba de la ruta o de la pestaña
+(`shared/feature/wip-notice.tsx`), punto ámbar en el sidebar, en la hoja "Más" y
+en la pestaña. El texto es `feature_states.note` del tenant y, si está vacío, el
+default por clave en `WIP_NOTES` (`shared/feature/catalog.ts`) — escrito para el
+corredor, no para nosotros. Un dev admin NO ve nada de esto (`useFeature().showWip`):
+él puso el estado y lo ve en el switchboard. Durante meses `wip` no pintaba nada
+fuera de `FeatureGate`, así que ANAIDA tenía `finanzas = wip` y el corredor veía
+una sección terminada.
+
 Dev-admin switchboard: `/admin/settings/funcionalidades`. Built for a phone —
 picking a state is the write, no save button.
 
