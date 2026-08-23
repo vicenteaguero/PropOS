@@ -66,7 +66,8 @@ so the deploy now lives in the repo instead:
 
 - The trigger was **disabled**, with the reason in its description. It is
   **enabled again** as of 2026-08-23 — and the Actions job was never turned off,
-  so both now deploy the same commit (see "Production deploys twice" below). The
+  so both deploy the same commit (see "Production deploys twice" below). Both
+  still wait for CI, so it is duplicated work, not an ungated deploy. The
   description still opens with `DISABLED:`; the description is prose, the
   `disabled` field is the fact.
 - Auth is **Workload Identity Federation**, so there is no service-account key
@@ -120,29 +121,33 @@ curl -s "$U" -H "Authorization: Bearer $T" \
 gcloud builds triggers describe propos-api-deploy --region=us-central1 --format='value(disabled)'  # empty = enabled
 ```
 
-### Production deploys twice per push, and one of them does not wait for CI
+### Production deploys twice per push
 
-A push to `main` that touches `backend/**` currently produces **two Cloud Run
-revisions from the same commit**: the re-enabled `propos-api-deploy` trigger
-fires on the push, and `ci.yml`'s `deploy-backend` job deploys again after the
-test jobs pass. Measured on `ec9e018e` (2026-08-23):
+A push to `main` that touches `backend/**` or `config/docker/**` currently
+produces **two Cloud Run revisions from the same commit**: the re-enabled
+`propos-api-deploy` trigger fires on the push, and `ci.yml`'s `deploy-backend`
+job deploys again. Measured on `ec9e018e` (2026-08-23):
 
 ```
-12:34  Cloud Build bb846528 (trigger)      → revision propos-api-00087
-12:39  Actions "Backend (ruff + pytest)"   → success
-12:41  Actions "Deploy backend (Cloud Run)" → revision propos-api-00088
+12:34:20  Cloud Build (trigger)                → ci-gate starts, waits on Actions
+12:34:27  Cloud Build (Actions' own submit)
+12:39:10  Actions "Backend (ruff + pytest)"    → success
+12:39:58  revision propos-api-00087            (the trigger's, released by the gate)
+12:41:01  revision propos-api-00088            (the Actions job's)
 ```
 
-Two consequences. The harmless one is waste: two builds, two revisions, one
-commit. The one that matters is **ordering** — the trigger's revision is serving
-five minutes before pytest has an opinion, so a commit that fails CI is live in
-the meantime. `cloudbuild.yaml`'s in-build `ci-gate` is the only thing standing
-in front of it.
+**Both paths gate on CI** — the Actions job through `needs: [backend, frontend,
+migrations]`, the trigger through the `ci-gate` step in `cloudbuild.yaml`, which
+polls the Checks API before letting `deploy` run. So this is *not* an untested
+commit reaching production; the gate is why the trigger's revision lands at
+12:39:58 and not at 12:36.
 
-Pick one path and turn the other off; do not leave both. Check which are live:
+What it costs is duplicated build minutes, two revisions per push (rollback has
+to know which is which), and a minute where two revisions of the same commit are
+being released back to back. Pick one path and turn the other off:
 
 ```bash
-gcloud builds triggers list --region=us-central1 --format="value(name,disabled,github.push.branch)"
+gcloud builds triggers list --region=us-central1 --format="value(name,disabled,github.push.branch,includedFiles)"
 gcloud run revisions list --service=propos-api --region=us-central1 --limit=4 \
   --format="value(metadata.name,metadata.creationTimestamp)"   # two per push = both paths running
 ```
