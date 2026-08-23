@@ -1,6 +1,8 @@
 import { Briefcase, CalendarDays, ListChecks } from "lucide-react";
 import { EmailMark, Row, WhatsAppMark } from "@shared/ui";
 import { listTime } from "@shared/utils/relative-time";
+import { shortName, shortPropertyTitle } from "@shared/utils/display-name";
+import { cn } from "@/lib/utils";
 import type { AttentionItem, AttentionKind, Urgency } from "../api/attention-api";
 
 /** Urgency drives colour, and colour here means "how soon does this expire". */
@@ -83,25 +85,65 @@ export function AttentionRow({
   selected?: boolean;
   onOpen: (item: AttentionItem) => void;
 }) {
+  const unread = item.unread ?? 0;
   return (
     <Row
       divider={divider}
       onClick={() => onOpen(item)}
-      className={selected ? "bg-secondary/60" : undefined}
+      // Half the vertical padding, which is the whole change: at `py-3` a
+      // 390px phone showed 7 rows, and the app this is measured against shows
+      // 7.5 with the list at ~75% of the screen. The rows lost no content —
+      // the property line moved under the message instead of beside it.
+      className={cn("py-1.5", selected && "bg-secondary/60")}
       left={<KindMark item={item} />}
-      title={item.title}
-      titleRight={<span className="text-[12px] font-medium text-faint">{listTime(item.at)}</span>}
-      sub={
-        <span className="flex min-w-0 items-baseline gap-1.5">
-          {item.subtitle ? (
-            <span className="min-w-0 flex-1 truncate">{item.subtitle}</span>
-          ) : (
-            <span className="min-w-0 flex-1 truncate text-faint">Sin propiedad vinculada</span>
+      title={
+        <span className={cn("truncate", unread > 0 && "font-bold")}>
+          {shortName(item.title, item.title)}
+        </span>
+      }
+      titleRight={
+        <span className="flex items-center gap-1.5">
+          {/* `--info`, never `--primary`: primary is the tenant's brand hue and
+              changes per workspace, so unread would be a different colour in
+              every one — the same mistake the calendar made with event types. */}
+          {unread > 0 && (
+            <span
+              aria-label={`${unread} sin leer`}
+              className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-[var(--color-info)] px-1 text-[10.5px] font-bold text-[var(--color-info-foreground)]"
+            >
+              {unread > 9 ? "9+" : unread}
+            </span>
           )}
-          {/* Never truncates. The deadline is the whole point of the row, and a
-              "Vencida hace…" that stops before the number says nothing. */}
-          <span className={`shrink-0 font-medium ${URGENCY_TEXT[item.urgency]}`}>
-            {item.reason}
+          <span className="text-[12px] font-medium text-faint">
+            {listTime(item.last_at ?? item.at)}
+          </span>
+        </span>
+      }
+      sub={
+        <span className="block min-w-0">
+          {/* The message. The list carried names and timestamps and not one
+              character of anything anyone had said, so two rows from the same
+              person were indistinguishable without opening both. */}
+          {item.preview && (
+            <span className="line-clamp-2 text-[13px] text-muted-foreground">{item.preview}</span>
+          )}
+          <span className="flex min-w-0 items-baseline gap-1.5">
+            {item.subtitle ? (
+              // The property, in the brand accent: it is the one thing on the
+              // row that identifies WHAT this is about, and grey buried it.
+              <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-[var(--color-accent-brand)]">
+                {shortPropertyTitle(item.subtitle)}
+              </span>
+            ) : (
+              <span className="min-w-0 flex-1 truncate text-[12px] text-faint">
+                Sin propiedad vinculada
+              </span>
+            )}
+            {/* Never truncates. The deadline is the whole point of the row, and
+                a "Vencida hace…" that stops before the number says nothing. */}
+            <span className={`shrink-0 text-[12px] font-medium ${URGENCY_TEXT[item.urgency]}`}>
+              {item.reason}
+            </span>
           </span>
         </span>
       }

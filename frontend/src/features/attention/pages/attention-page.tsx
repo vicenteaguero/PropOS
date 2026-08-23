@@ -1,6 +1,15 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Archive, ArchiveRestore, PenSquare, Users } from "lucide-react";
+import {
+  Archive,
+  ArchiveRestore,
+  ArrowUpDown,
+  PenSquare,
+  SlidersHorizontal,
+  Users,
+} from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { clientChatApi } from "@features/client-chat/api/client-chat-api";
 import { Button } from "@/components/ui/button";
 import {
   CONTROL_SQUARE,
@@ -194,10 +203,26 @@ interface AttentionPageProps {
  * stops being fixable. Conversations that are already in that queue do not
  * repeat below it — everything else follows in the order it arrived.
  */
+type InboxSort = "urgency" | "recent" | "unread";
+
+const INBOX_SORTS: { value: InboxSort; label: string; sub: string }[] = [
+  { value: "urgency", label: "Urgencia", sub: "Lo que deja de arreglarse antes" },
+  { value: "recent", label: "Más recientes", sub: "Por última actividad" },
+  { value: "unread", label: "Sin leer", sub: "Los que tienen más mensajes nuevos" },
+];
+
 export function AttentionPage({ channels = ["whatsapp", "email"] }: AttentionPageProps) {
   const [channel, setChannel] = useState<ChannelFilter>("todos");
   const [state, setState] = useState<StateFilter>("todos");
   const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<InboxSort>("urgency");
+  const qc = useQueryClient();
+  // Fire-and-forget: the badge is optimistic through the invalidation, and a
+  // failed mark-read is a badge that stays up, not an error worth a toast.
+  const markRead = useMutation({
+    mutationFn: (conversationId: string) => clientChatApi.markRead(conversationId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["attention"] }),
+  });
   // The open thread's coordinates live in the URL — not in state, and not as
   // the row object, which is rebuilt on every refetch. Below md the pane swaps
   // the list out, so Back has to return to the list rather than leave the CRM.
@@ -305,6 +330,22 @@ export function AttentionPage({ channels = ["whatsapp", "email"] }: AttentionPag
     });
   }, [attention.data, kindFilter, state, channel, archivedView, query, showWhatsApp, showEmail]);
 
+  /**
+   * The queue, ordered. `urgency` keeps the grouped view the page was built
+   * around; the other two flatten it, because "most recent" and "most unread"
+   * are questions about the whole list and grouping them by urgency answers a
+   * different one.
+   */
+  const orderedItems = useMemo(() => {
+    if (sort === "urgency") return attentionItems;
+    const stamp = (i: AttentionItem) => new Date(i.last_at ?? i.at ?? 0).getTime();
+    return [...attentionItems].sort((a, b) =>
+      sort === "recent"
+        ? stamp(b) - stamp(a)
+        : (b.unread ?? 0) - (a.unread ?? 0) || stamp(b) - stamp(a),
+    );
+  }, [attentionItems, sort]);
+
   /** Threads already represented in the queue, so they are not listed twice. */
   const queuedThreadKeys = useMemo(() => {
     const keys = new Set<string>();
@@ -354,7 +395,13 @@ export function AttentionPage({ channels = ["whatsapp", "email"] }: AttentionPag
 
   /** Where an item is worked. Conversations open in this pane; the rest route. */
   const openAttention = (item: AttentionItem) => {
-    if (item.conversation_id) return openThread("whatsapp", item.conversation_id);
+    if (item.conversation_id) {
+      // Opening it is reading it. Marking read on close instead would leave the
+      // badge up for as long as the thread is open, which is the one moment it
+      // is certainly wrong.
+      if ((item.unread ?? 0) > 0) markRead.mutate(item.conversation_id);
+      return openThread("whatsapp", item.conversation_id);
+    }
     if (item.thread_id) return openThread("email", item.thread_id);
     if (item.event_id) return navigate(`/${role}/agenda?tab=calendario`);
     if (item.task_id) return navigate(`/${role}/agenda?tab=tareas`);
@@ -393,6 +440,11 @@ export function AttentionPage({ channels = ["whatsapp", "email"] }: AttentionPag
     <div className="flex items-center gap-2">
       {showWhatsApp && showEmail && <ChannelSwitch value={channel} onChange={setChannel} />}
       <FilterSelect
+        // Icons, not words: "Filtrar: Todo · Ordenar: Urgencia" spent two
+        // thirds of a phone's width saying that neither control was doing
+        // anything. The sheet each opens still carries the full label.
+        iconOnly
+        icon={<SlidersHorizontal className="size-4" strokeWidth={1.9} />}
         // "Estado" named the field; "Filtrar" names the act, which is what a
         // control the broker taps should say.
         label="Filtrar"
@@ -405,6 +457,17 @@ export function AttentionPage({ channels = ["whatsapp", "email"] }: AttentionPag
           const count = attention.data?.counts?.[f.id as AttentionKind];
           return { value: f.id, label: count ? `${f.label} (${count})` : f.label };
         })}
+      />
+      {/* The control that was simply missing. The queue has always been ranked
+          by urgency, which is right by default and wrong the moment you are
+          looking for "the one that came in ten minutes ago". */}
+      <FilterSelect
+        iconOnly
+        icon={<ArrowUpDown className="size-4" strokeWidth={1.9} />}
+        label="Ordenar"
+        value={sort}
+        options={INBOX_SORTS.map((o) => ({ value: o.value, label: o.label, sub: o.sub }))}
+        onChange={(v) => setSort((v as InboxSort) ?? "urgency")}
       />
     </div>
   );
@@ -420,20 +483,20 @@ export function AttentionPage({ channels = ["whatsapp", "email"] }: AttentionPag
       search={{
         value: query,
         onChange: setQuery,
-        placeholder: "Buscar por nombre, teléfono o asunto",
+        placeholder: "Buscar conversación…",
         ariaLabel: "Buscar conversaciones",
       }}
       action={
-        // Personas is no longer a headline tab (see SectionTab.secondary), so
-        // the view it was pulled out of carries the door to it. A conversation
-        // is with a person; the catalogue of people is the natural next place.
+        // Its own destination now, not a `?tab=` that injected a tab into the
+        // bar with no way to close it. A conversation is with a person; the
+        // catalogue of people is the natural next place.
         <Button
           size="icon"
           variant="outline"
           aria-label="Ver personas"
           title="Ver personas"
           className={cn("rounded-full", CONTROL_SQUARE)}
-          onClick={() => navigate(`/${role}/clientes?tab=personas`)}
+          onClick={() => navigate(`/${role}/personas`)}
         >
           <Users className="size-4" strokeWidth={1.8} />
         </Button>
@@ -459,32 +522,46 @@ export function AttentionPage({ channels = ["whatsapp", "email"] }: AttentionPag
       isEmpty={shown.length === 0 && attentionItems.length === 0}
       emptyTitle={query ? "Sin coincidencias" : "Nada pendiente"}
     >
-      {URGENCY_ORDER.map((urgency) => {
-        const group = attentionItems.filter((item) => item.urgency === urgency);
-        if (group.length === 0) return null;
-        return (
-          <div key={urgency}>
-            {/* The heading carries the urgency so the rows do not have to. */}
-            <SectionLabel count={group.length}>
-              {kindFilter
-                ? `${KIND_LABEL[kindFilter]} · ${URGENCY_LABEL[urgency]}`
-                : URGENCY_LABEL[urgency]}
-            </SectionLabel>
-            {group.map((item, i) => (
-              <AttentionRow
-                key={item.id}
-                item={item}
-                divider={i < group.length - 1}
-                selected={
-                  (selected?.channel === "whatsapp" && selected.id === item.conversation_id) ||
-                  (selected?.channel === "email" && selected.id === item.thread_id)
-                }
-                onOpen={openAttention}
-              />
-            ))}
-          </div>
-        );
-      })}
+      {sort !== "urgency" &&
+        orderedItems.map((item, i) => (
+          <AttentionRow
+            key={item.id}
+            item={item}
+            divider={i < orderedItems.length - 1}
+            selected={
+              (selected?.channel === "whatsapp" && selected.id === item.conversation_id) ||
+              (selected?.channel === "email" && selected.id === item.thread_id)
+            }
+            onOpen={openAttention}
+          />
+        ))}
+      {sort === "urgency" &&
+        URGENCY_ORDER.map((urgency) => {
+          const group = attentionItems.filter((item) => item.urgency === urgency);
+          if (group.length === 0) return null;
+          return (
+            <div key={urgency}>
+              {/* The heading carries the urgency so the rows do not have to. */}
+              <SectionLabel count={group.length}>
+                {kindFilter
+                  ? `${KIND_LABEL[kindFilter]} · ${URGENCY_LABEL[urgency]}`
+                  : URGENCY_LABEL[urgency]}
+              </SectionLabel>
+              {group.map((item, i) => (
+                <AttentionRow
+                  key={item.id}
+                  item={item}
+                  divider={i < group.length - 1}
+                  selected={
+                    (selected?.channel === "whatsapp" && selected.id === item.conversation_id) ||
+                    (selected?.channel === "email" && selected.id === item.thread_id)
+                  }
+                  onOpen={openAttention}
+                />
+              ))}
+            </div>
+          );
+        })}
       {attentionItems.length > 0 && shown.length > 0 && (
         <SectionLabel>
           {archivedView ? "Archivadas" : unidentifiedView ? "Sin identificar" : "Conversaciones"}

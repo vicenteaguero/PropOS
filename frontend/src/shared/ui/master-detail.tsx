@@ -35,11 +35,13 @@ export function MasterDetail({
     <div
       style={{ "--list-w": listWidth, "--aside-w": asideWidth } as CSSProperties}
       className={cn(
-        // Subtract both shell strips. Exactly one is non-zero: the sidebar shell
-        // has a header and no bottom nav, the mobile shell the reverse. Getting
-        // this wrong cost 56px of phantom header on mobile AND hid the pane's
-        // bottom edge (a chat composer, typically) behind the floating nav.
-        "h-[calc(100dvh-var(--app-header-h,3.5rem)-var(--app-nav-h,0px)-var(--section-tabs-h,0px))] w-full overflow-hidden",
+        // Full height minus the header and the tab strip — but NOT the bottom
+        // nav. Subtracting the nav here made the list end exactly where the bar
+        // begins, so nothing ever passed underneath it and its backdrop blur
+        // had nothing to blur: the bar read as a solid white band. The list
+        // column pads itself instead (below), so rows scroll under the bar and
+        // the last one still clears it.
+        "h-[calc(100dvh-var(--app-header-h,3.5rem)-var(--section-tabs-h,0px))] w-full overflow-hidden",
         "md:grid md:[grid-template-columns:var(--list-w)_minmax(0,1fr)]",
         aside && "2xl:[grid-template-columns:var(--list-w)_minmax(0,1fr)_var(--aside-w)]",
         className,
@@ -47,13 +49,24 @@ export function MasterDetail({
     >
       <div
         className={cn(
-          "h-full min-w-0 overflow-y-auto md:border-r md:border-border",
+          // `pb`, not a shorter box: the rows go under the bar, the last one
+          // does not.
+          "h-full min-w-0 overflow-y-auto pb-[var(--app-nav-h,0px)] md:border-r md:border-border md:pb-0",
           selected ? "hidden md:block" : "block",
         )}
       >
         {list}
       </div>
-      <div className={cn("h-full min-w-0 overflow-y-auto", selected ? "block" : "hidden md:block")}>
+      {/* The detail pane keeps the old maths: what sits at its bottom edge is a
+          composer, and a text field half-hidden behind a translucent bar is not
+          a design choice. */}
+      <div
+        className={cn(
+          "min-w-0 overflow-y-auto",
+          "h-[calc(100%-var(--app-nav-h,0px))] md:h-full",
+          selected ? "block" : "hidden md:block",
+        )}
+      >
         {detail}
       </div>
       {aside && (

@@ -56,6 +56,8 @@
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
@@ -211,6 +213,14 @@
 }
 
 :root {
+
+  /* Unread. Deliberately NOT `--primary`: that is the tenant's brand hue and
+     changes per workspace, so "unread" would be green in one and orange in the
+     next — the same mistake the calendar made with event colours. A blue dot
+     is what every inbox on the planet uses, and it is the one colour the
+     brand palette never lands on because the accent is derived from a seed. */
+  --info: oklch(0.55 0.17 250);
+  --info-foreground: oklch(0.99 0 0);
   /* Categorical palette — see `shared/ui/category-palette.ts`. Nine hues that
      stay distinct from each other in both themes. Deliberately independent of
      `--accent-brand`: the accent is derived from the workspace hue, so any
@@ -356,6 +366,8 @@
 /* DARK — default. Mirrors the previous always-dark :root palette (rosa carbon),
  * with accent-derived tokens now sourced from --accent-brand. */
 .dark {
+  --info: oklch(0.72 0.15 250);
+  --info-foreground: oklch(0.16 0.01 260);
   /* Lighter and less saturated on a dark ground: the same chroma that reads as
      "violet" on white reads as "glowing" on near-black. */
   --cat-violet: oklch(0.75 0.15 300);
