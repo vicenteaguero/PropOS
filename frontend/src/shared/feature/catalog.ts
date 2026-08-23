@@ -61,3 +61,51 @@ export function isEnabled(features: FeatureMap, key?: string): boolean {
   const { state } = entryFor(features, key);
   return state === "on" || state === "wip";
 }
+
+/**
+ * What we say when a feature is `wip` and nobody wrote a note for this tenant.
+ *
+ * A tenant row's `note` always wins -- it is the sentence a dev admin typed
+ * standing next to the person who hit the rough edge. This map exists so the
+ * `wip` state is never announced with silence: "En desarrollo" on its own tells
+ * the broker that something is unfinished but not whether they can use it, and
+ * that is the only question they have.
+ *
+ * Written for the broker: no feature keys, no "integración", no "pipeline".
+ */
+export const WIP_NOTES: Record<FeatureKey, string> = {
+  agent:
+    "Propo ya entiende lo que le pides y puede anotar por ti, pero todavía se equivoca. Revisa siempre lo que proponga antes de aceptarlo.",
+  propo_voz:
+    "Puedes hablarle a Propo en vez de escribir. La transcripción falla con audios largos o con ruido de fondo.",
+  pendientes:
+    "Aquí llega lo que Propo entendió en una conversación y quiere anotar. Mientras Propo esté en desarrollo, esta lista puede traer cosas incompletas.",
+  finanzas:
+    "Puedes registrar ingresos y gastos y ver el resumen del mes. Todavía faltan las comisiones por operación y los reportes que se puedan descargar.",
+  analytics:
+    "Los números salen de lo que ya está cargado en la app. Mientras no esté todo cargado, tómalos como referencia y no como cierre contable.",
+  crm: "Personas, negocios y su historial ya funcionan. Seguimos afinando la fusión de duplicados y el orden de la lista.",
+  conversaciones:
+    "Las conversaciones se ven y se responden. Falta pulir la búsqueda dentro del historial.",
+  inbox: "La bandeja de WhatsApp está conectada. Puede tardar en mostrar mensajes muy recientes.",
+  email: "La bandeja de correo todavía no sincroniza sola. Lo que veas puede estar desactualizado.",
+  productividad: "Agenda, tareas y notas funcionan. Faltan los recordatorios automáticos.",
+  documents:
+    "Puedes subir y compartir archivos. Falta la firma y el vencimiento automático de documentos.",
+  propiedades:
+    "Las fichas de propiedad ya sirven para trabajar. Seguimos completando fotos y campos del formulario.",
+  portales:
+    "La publicación en portales todavía no está conectada. Por ahora publica desde el portal como siempre.",
+  datos:
+    "La importación desde planilla funciona con archivos simples. Revisa el resultado antes de darlo por bueno.",
+  phones: "Los teléfonos del equipo se administran aquí. Falta verificar el número por SMS.",
+  workflows: "Las automatizaciones se pueden ver pero todavía no se editan desde aquí.",
+  uso: "Métricas internas de uso. Los números de los últimos minutos pueden faltar.",
+};
+
+/** The sentence to show for a `wip` feature: the tenant's note, else the default. */
+export function wipNoteFor(features: FeatureMap, key?: string): string | null {
+  if (!key) return null;
+  const entry = entryFor(features, key);
+  return entry.note || WIP_NOTES[key as FeatureKey] || null;
+}

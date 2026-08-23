@@ -6,6 +6,7 @@ import { useIsImmersive } from "@layouts/immersive";
 import { useAuth } from "@shared/hooks/use-auth";
 import { entryFor, isVisible } from "@shared/feature/catalog";
 import { FeatureLockedScreen } from "@shared/feature/feature-gate";
+import { FeatureWipFrame, WipDot } from "@shared/feature/wip-notice";
 import { cn } from "@/lib/utils";
 import { TOUCH_TARGET_ROW_COARSE } from "./touch-target";
 
@@ -16,6 +17,8 @@ export interface TabBarItem {
   label: string;
   /** Trailing count. Omit or pass 0 — an explicit zero badge is noise. */
   count?: number;
+  /** Draw the unfinished-feature dot. `SectionTabs` derives it from the state. */
+  wip?: boolean;
 }
 
 interface TabBarProps {
@@ -135,6 +138,10 @@ export function TabBar({
               )}
             >
               {it.label}
+              {/* A dot, not a word. "En desarrollo" beside a tab label is wider
+                  than the label and pushes the strip past the screen on a
+                  phone; the sentence lives in the banner the tab opens onto. */}
+              {it.wip && <WipDot />}
               {!!it.count && (
                 <span
                   className={cn(
@@ -216,7 +223,7 @@ interface SectionTabsProps {
  * at exactly what the sender was looking at.
  */
 export function SectionTabs({ tabs: allTabs, param = "tab", className }: SectionTabsProps) {
-  const { features } = useAuth();
+  const { features, user } = useAuth();
   const tabs = allTabs.filter((t) => isVisible(features, t.feature));
   const barRef = useRef<HTMLDivElement>(null);
   const topbarHost = useTopbarSlot();
@@ -237,12 +244,22 @@ export function SectionTabs({ tabs: allTabs, param = "tab", className }: Section
 
   const gate = entryFor(features, active.feature);
   const renderActive = () =>
-    gate.state === "locked" ? <FeatureLockedScreen note={gate.note} /> : active.render();
+    gate.state === "locked" ? (
+      <FeatureLockedScreen note={gate.note} />
+    ) : (
+      <FeatureWipFrame feature={active.feature}>{active.render()}</FeatureWipFrame>
+    );
 
   // Secondary tabs are not in the strip unless one of them is what you are
   // looking at — otherwise leaving it would mean navigating to a tab that has
   // no button, and Back would be the only way out.
-  const visible = tabs.filter((t) => !t.secondary || t.id === active.id);
+  const isDevAdmin = !!user?.isDevAdmin;
+  const visible = tabs
+    .filter((t) => !t.secondary || t.id === active.id)
+    .map((t) => ({
+      ...t,
+      wip: !isDevAdmin && entryFor(features, t.feature).state === "wip",
+    }));
 
   const bar = (
     <TabBar

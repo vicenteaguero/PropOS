@@ -18,6 +18,8 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuth } from "@shared/hooks/use-auth";
 import { SETTINGS_PATH, type NavItem } from "@layouts/nav-items";
+import { WipDot } from "@shared/feature/wip-notice";
+import { entryFor } from "@shared/feature/catalog";
 import { useNavGroups, usePendingCount } from "@layouts/use-nav-groups";
 import { useUnreadCount } from "@features/attention/hooks/use-unread";
 
@@ -45,11 +47,13 @@ function NavItemRow({
   item,
   pendingCount,
   unreadCount,
+  wip,
   onNavigate,
 }: {
   item: NavItem;
   pendingCount: number;
   unreadCount: number;
+  wip: boolean;
   onNavigate: () => void;
 }) {
   const Icon = item.icon;
@@ -69,6 +73,7 @@ function NavItemRow({
         >
           <Icon />
           <span className="flex-1 truncate">{item.label}</span>
+          {wip && <WipDot />}
           {item.devOnly && (
             <span className="rounded bg-warning/20 px-1 py-0 text-[11px] font-bold uppercase tracking-wide text-warning">
               dev
@@ -82,7 +87,7 @@ function NavItemRow({
 }
 
 export function AppSidebar() {
-  const { signOut, user } = useAuth();
+  const { signOut, user, features } = useAuth();
   const { pathname } = useLocation();
   const { setOpenMobile, isMobile } = useSidebar();
   const { groups: allGroups } = useNavGroups();
@@ -150,6 +155,8 @@ export function AppSidebar() {
                     item={item}
                     pendingCount={pendingCount}
                     unreadCount={unreadCount}
+                    // The dev admin who set the state does not need the marker.
+                    wip={!user.isDevAdmin && entryFor(features, item.feature).state === "wip"}
                     onNavigate={onNavigate}
                   />
                 ))}

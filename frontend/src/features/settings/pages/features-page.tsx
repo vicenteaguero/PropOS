@@ -142,6 +142,12 @@ function FeatureRow({
   // The note is only ever shown to a user in these two states, so asking for it
   // the rest of the time is asking for text nobody will read.
   const showNote = entry.state === "locked" || entry.state === "wip";
+  // A `wip` feature with no note is not silent -- `WIP_NOTES` carries a default
+  // sentence per key, so this field overrides rather than fills a void.
+  const placeholder =
+    entry.state === "wip"
+      ? "Qué le decimos al usuario (vacío = texto por defecto)"
+      : "Qué le decimos al usuario";
 
   return (
     <div className="flex flex-col gap-2">
@@ -160,7 +166,7 @@ function FeatureRow({
         <Input
           value={note}
           disabled={saving}
-          placeholder="Qué le decimos al usuario"
+          placeholder={placeholder}
           onChange={(e) => setNote(e.target.value)}
           onBlur={() => {
             if ((entry.note ?? "") !== note.trim()) onChange(entry.state, note.trim() || null);
