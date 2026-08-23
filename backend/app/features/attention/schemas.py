@@ -45,6 +45,17 @@ class AttentionItem(BaseModel):
     #: When this stops being fixable cheaply — the 24 h window closing, the
     #: visit starting, the due date. Null when nothing forces the issue.
     deadline: dt.datetime | None = None
+    #: What they actually said. The inbox listed names and timestamps and not
+    #: one character of any message, so two rows from the same person were
+    #: indistinguishable without opening both.
+    preview: str | None = None
+    #: Inbound messages the CALLER has not read. 0 for everything that is not a
+    #: conversation.
+    unread: int = 0
+    #: When the thread last moved, either direction — what the row prints.
+    #: `at` stays the moment that drives urgency, which for an unanswered
+    #: thread is when the client wrote, not when we last replied.
+    last_at: dt.datetime | None = None
 
     contact_id: str | None = None
     property_id: str | None = None
