@@ -10,7 +10,8 @@ import {
 describe("initials", () => {
   it("takes the first letter of the first two words", () => {
     expect(initials("Vicente Agüero")).toBe("VA");
-    expect(initials("Ana María Pérez Soto")).toBe("AM");
+    // Given name + surname, not the two given names.
+    expect(initials("Ana María Pérez Soto")).toBe("AP");
   });
 
   it("handles a single name", () => {
