@@ -16,6 +16,7 @@ import { AudioPlayer, EntityLinkRow } from "@shared/ui";
 import { extractLinks, linkLabel } from "@shared/lib/links";
 import { priorityBucket } from "../lib/task-order";
 import { useRemoveTaskAttachment, useUploadTaskAttachments } from "../hooks/use-tasks";
+import { TaskEntityPicker, linkToRelated, type TaskLink } from "./task-entity-picker";
 import type { Task } from "../api/tasks-api";
 
 const PRIORITIES = [
@@ -59,6 +60,10 @@ export function TaskDetailSheet({
   const [priority, setPriority] = useState(0);
   const [owner, setOwner] = useState<string | null>(null);
   const [links, setLinks] = useState<string[]>([]);
+  // The entity link, editable. It could be set when the task was created and
+  // never afterwards — so a task filed against the wrong property stayed filed
+  // against the wrong property for its whole life.
+  const [entity, setEntity] = useState<TaskLink | null>(null);
   const [confirming, setConfirming] = useState(false);
   // Read first. Opening straight into a form makes every glance at a task an
   // edit session — one stray keystroke and the title has changed — and it puts
@@ -77,6 +82,15 @@ export function TaskDetailSheet({
     setPriority(task.priority ?? 0);
     setOwner(task.owner_user);
     setLinks(task.related?.links ?? extractLinks(task.description));
+    const property = task.related_labels?.properties?.[0];
+    const person = task.related_labels?.people?.[0];
+    setEntity(
+      property
+        ? { kind: "PROPERTY", id: property.id, label: property.label ?? "" }
+        : person
+          ? { kind: "CONTACT", id: person.id, label: person.label ?? "" }
+          : null,
+    );
     setEditing(false);
   }, [task]);
 
@@ -89,12 +103,14 @@ export function TaskDetailSheet({
   const people = task.related_labels?.people ?? [];
   const deals = task.related_labels?.opportunities ?? [];
   const savedLinks = task.related?.links ?? extractLinks(task.description);
+  const savedEntityId = properties[0]?.id ?? people[0]?.id;
   const dirty =
     title !== task.title ||
     description !== (task.description ?? "") ||
     priorityBucket(priority) !== priorityBucket(task.priority) ||
     owner !== task.owner_user ||
-    links.join("|") !== savedLinks.join("|");
+    links.join("|") !== savedLinks.join("|") ||
+    entity?.id !== savedEntityId;
   const priorityLabel = PRIORITIES.find((p) => p.value === priorityBucket(priority))?.label;
   const ownerMember = members?.find((m) => m.id === owner) ?? null;
 
@@ -318,6 +334,11 @@ export function TaskDetailSheet({
                 </Chips>
               </div>
 
+              <div>
+                <p className="mb-1.5 text-[13px] font-medium text-muted-foreground">Vincular a</p>
+                <TaskEntityPicker value={entity} onChange={setEntity} disabled={saving} />
+              </div>
+
               {members && members.length > 1 && (
                 <div>
                   <p className="mb-1.5 text-[13px] font-medium text-muted-foreground">
@@ -366,9 +387,12 @@ export function TaskDetailSheet({
                       description: description.trim() || null,
                       priority,
                       owner_user: owner,
-                      // Merged, never replaced: `related` also carries the
-                      // property, person and deal links.
-                      related: { ...(task.related ?? {}), links },
+                      // `linkToRelated` merges rather than replaces, so the
+                      // deal key and the URLs survive a change of property.
+                      related: {
+                        ...(linkToRelated(entity, task.related ?? {}) ?? {}),
+                        links,
+                      },
                     });
                     setEditing(false);
                   }}
