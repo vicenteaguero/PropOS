@@ -7,10 +7,12 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query
 
 from app.core.dependencies import get_current_user, get_tenant_id, require_feature, require_role, require_scope
+from app.features.events import types_service
 from app.features.events.schemas import (
     CalendarItem,
     EventCreate,
     EventResponse,
+    EventTypeResponse,
     EventUpdate,
 )
 from app.features.events.service import EventService
@@ -46,6 +48,17 @@ async def calendar_feed(
     return await EventService.calendar_feed(tenant_id, date_from, date_to)
 
 
+# Before `/{event_id}`: FastAPI matches by declaration order, so a literal
+# segment declared after a path parameter is swallowed by it and 422s.
+@router.get("/types", response_model=list[EventTypeResponse])
+async def list_event_types(
+    tenant_id: UUID = Depends(get_tenant_id),
+    only_active: bool = Query(default=True),
+) -> list[dict]:
+    """The tenant's event catalog. Readable by every broker — writes are ADMIN."""
+    return await types_service.list_types(tenant_id, only_active=only_active)
+
+
 @router.get("/{event_id}", response_model=EventResponse)
 async def get_event(event_id: UUID, tenant_id: UUID = Depends(get_tenant_id)) -> dict:
     return await EventService.get_event(event_id, tenant_id)
@@ -65,8 +78,9 @@ async def update_event(
     event_id: UUID,
     payload: EventUpdate,
     tenant_id: UUID = Depends(get_tenant_id),
+    current_user: dict[str, Any] = Depends(get_current_user),
 ) -> dict:
-    return await EventService.update_event(event_id, payload, tenant_id)
+    return await EventService.update_event(event_id, payload, tenant_id, UUID(current_user["id"]))
 
 
 @router.delete("/{event_id}", status_code=204)

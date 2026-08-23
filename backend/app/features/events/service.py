@@ -95,17 +95,65 @@ class EventService:
         return row
 
     @staticmethod
-    async def update_event(event_id: UUID, payload, tenant_id: UUID) -> dict:
+    async def update_event(event_id: UUID, payload, tenant_id: UUID, user_id: UUID | None = None) -> dict:
         client = get_supabase_client()
-        data = _serialize(payload.model_dump(exclude_unset=True))
-        return (
+        data = payload.model_dump(exclude_unset=True)
+        # Reminder fields are not columns on `events`.
+        remind_at = data.pop("remind_at", None)
+        clear_reminder = data.pop("clear_reminder", False)
+        data = _serialize(data)
+
+        row = (
             client.table(EVENTS_TABLE)
             .update(data)
             .eq("id", str(event_id))
             .eq("tenant_id", str(tenant_id))
             .execute()
             .data[0]
+            if data
+            else await EventService.get_event(event_id, tenant_id)
         )
+
+        # Moving an event used to leave its reminder ringing on the old day,
+        # because `EventUpdate` had no way to say anything about reminders at
+        # all. Replace rather than add: a second row for the same event would
+        # notify twice.
+        if clear_reminder or remind_at:
+            EventService._replace_reminder(
+                client,
+                tenant_id=tenant_id,
+                event_id=event_id,
+                user_id=user_id,
+                remind_at=None if clear_reminder else remind_at,
+                title=row.get("title"),
+            )
+        return row
+
+    @staticmethod
+    def _replace_reminder(client, *, tenant_id, event_id, user_id, remind_at, title) -> None:
+        query = (
+            client.table("reminders")
+            .delete()
+            .eq("tenant_id", str(tenant_id))
+            .eq("target_table", "events")
+            .eq("target_row_id", str(event_id))
+        )
+        if user_id:
+            query = query.eq("user_id", str(user_id))
+        query.execute()
+        if not remind_at or not user_id:
+            return
+        client.table("reminders").insert(
+            {
+                "tenant_id": str(tenant_id),
+                "target_table": "events",
+                "target_row_id": str(event_id),
+                "user_id": str(user_id),
+                "remind_at": remind_at.isoformat() if hasattr(remind_at, "isoformat") else remind_at,
+                "message": title,
+                "created_by": str(user_id),
+            }
+        ).execute()
 
     @staticmethod
     async def delete_event(event_id: UUID, tenant_id: UUID) -> None:

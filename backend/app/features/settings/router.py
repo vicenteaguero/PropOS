@@ -18,6 +18,8 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, status
 
 from app.core.dependencies import get_current_user, get_tenant_id, require_role
+from app.features.events import types_service
+from app.features.events.schemas import EventTypeCreate, EventTypeResponse, EventTypeUpdate
 from app.features.settings import service
 from app.features.settings.schemas import (
     ChecklistTemplate,
@@ -174,3 +176,34 @@ async def update_tag(tag_id: UUID, payload: TagWrite, tenant_id: UUID = Depends(
 async def delete_tag(tag_id: UUID, tenant_id: UUID = Depends(get_tenant_id)) -> None:
     """Cascades to `taggings`: the label comes off every row that carried it."""
     service.delete_tag(tenant_id, tag_id)
+
+
+# --- Event types -----------------------------------------------------------
+#
+# Reads live on the events router, unauthenticated by role beyond the usual
+# broker gate: a calendar that cannot name its own types is not a calendar.
+# Writes are here, with the rest of the catalogs.
+
+
+@router.get("/event-types", response_model=list[EventTypeResponse])
+async def list_event_types(tenant_id: UUID = Depends(get_tenant_id)) -> list[dict[str, Any]]:
+    """Every type, including the deactivated ones the calendar hides."""
+    return await types_service.list_types(tenant_id, only_active=False)
+
+
+@router.post("/event-types", response_model=EventTypeResponse, status_code=status.HTTP_201_CREATED)
+async def create_event_type(payload: EventTypeCreate, tenant_id: UUID = Depends(get_tenant_id)) -> dict[str, Any]:
+    return types_service.create_type(tenant_id, payload)
+
+
+@router.put("/event-types/{type_id}", response_model=EventTypeResponse)
+async def update_event_type(
+    type_id: UUID, payload: EventTypeUpdate, tenant_id: UUID = Depends(get_tenant_id)
+) -> dict[str, Any]:
+    return types_service.update_type(tenant_id, type_id, payload)
+
+
+@router.delete("/event-types/{type_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_event_type(type_id: UUID, tenant_id: UUID = Depends(get_tenant_id)) -> None:
+    """Deactivates instead of deleting when events already carry the key."""
+    types_service.delete_type(tenant_id, type_id)
