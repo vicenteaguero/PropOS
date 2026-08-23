@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "react-loading-skeleton/dist/skeleton.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -101,6 +102,28 @@
  *     from it. Global / no tenant → the neutral brand default below.
  *  3. dev palettes   → <html data-palette="…"> (dev-only), scoped under .dark.
  *  :root = LIGHT defaults; .dark = DARK (overrides by source order). */
+/* react-loading-skeleton ships its own palette as custom properties set ON the
+   element, not inherited, so overriding them at :root does nothing — they have
+   to be re-declared on the same selector. Same specificity, declared after the
+   @import, so ours wins. This is the whole theme integration: no provider to
+   wrap the tree in, and dark mode follows the class on <html> like the rest. */
+.react-loading-skeleton {
+  --base-color: var(--muted);
+  --highlight-color: color-mix(in srgb, var(--card) 70%, var(--muted));
+  --animation-duration: 1.6s;
+  border-radius: var(--radius);
+}
+
+.dark .react-loading-skeleton {
+  --highlight-color: color-mix(in srgb, var(--card) 55%, var(--muted));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .react-loading-skeleton {
+    --pseudo-element-display: none;
+  }
+}
+
 :root {
   --app-header-h: 3.5rem;
   /* Strip occupied by the floating mobile bottom nav, safe-area pad included.

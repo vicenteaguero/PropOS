@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { ChevronRight, Inbox } from "lucide-react";
 import { useAuth } from "@shared/hooks/use-auth";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useAttention } from "../hooks/use-attention";
 
 /**
@@ -15,7 +16,23 @@ export function AttentionCard() {
   const { user } = useAuth();
   const role = (user?.role ?? "ADMIN").toLowerCase();
   // Small page: the top of the queue is all this needs.
-  const { data } = useAttention(5);
+  const { data, isPending } = useAttention(5);
+
+  // A skeleton, not `null`. Returning nothing while loading made the card pop
+  // into existence a second after the page settled and shove everything below
+  // it down — and, worse, said "nothing is on fire" during the second the
+  // broker was actually looking.
+  if (isPending) {
+    return (
+      <div className="flex w-full items-center gap-3 rounded-xl border border-border px-3.5 py-2.5">
+        <Skeleton className="size-4 shrink-0 rounded-full" />
+        <span className="min-w-0 flex-1 space-y-1.5">
+          <Skeleton className="h-3.5 w-40" />
+          <Skeleton className="h-3 w-56 max-w-full" />
+        </span>
+      </div>
+    );
+  }
 
   if (!data || data.total === 0) return null;
   const top = data.items[0];
