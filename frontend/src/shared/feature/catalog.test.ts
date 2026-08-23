@@ -1,7 +1,15 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { FEATURE_KEYS, entryFor, isEnabled, isVisible, type FeatureMap } from "./catalog";
+import {
+  FEATURE_KEYS,
+  WIP_NOTES,
+  entryFor,
+  isEnabled,
+  isVisible,
+  wipNoteFor,
+  type FeatureMap,
+} from "./catalog";
 
 /**
  * The catalog lives twice -- once in Python, once here -- because the backend
@@ -59,5 +67,21 @@ describe("state resolution", () => {
   it("says yes when no key is asked about", () => {
     expect(isVisible(map, undefined)).toBe(true);
     expect(isEnabled(map, undefined)).toBe(true);
+  });
+});
+
+describe("wip notes", () => {
+  it("has a broker-facing sentence for every key", () => {
+    for (const key of FEATURE_KEYS) {
+      expect(WIP_NOTES[key], key).toBeTruthy();
+    }
+  });
+
+  it("prefers the tenant's own note over the default", () => {
+    expect(wipNoteFor({ finanzas: { state: "wip", note: "Lo pidió la dueña" } }, "finanzas")).toBe(
+      "Lo pidió la dueña",
+    );
+    expect(wipNoteFor({}, "finanzas")).toBe(WIP_NOTES.finanzas);
+    expect(wipNoteFor({}, undefined)).toBeNull();
   });
 });

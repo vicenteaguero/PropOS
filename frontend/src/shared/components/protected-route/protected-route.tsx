@@ -4,6 +4,7 @@ import { useAuth } from "@shared/hooks/use-auth";
 import { AppSkeleton } from "@shared/components/app-skeleton/app-skeleton";
 import { entryFor } from "@shared/feature/catalog";
 import { FeatureLockedScreen } from "@shared/feature/feature-gate";
+import { FeatureWipFrame } from "@shared/feature/wip-notice";
 import type { UserRole, UserView } from "@shared/types/auth";
 
 interface ProtectedRouteProps {
@@ -84,6 +85,9 @@ export function ProtectedRoute({
     if (gate.state === "locked") {
       return <FeatureLockedScreen note={gate.note} />;
     }
+    // `wip` does not gate -- it announces. The frame is a no-op for every other
+    // state and for a dev admin, so wrapping unconditionally costs nothing.
+    return <FeatureWipFrame feature={requiredFeature}>{children}</FeatureWipFrame>;
   }
 
   return <>{children}</>;

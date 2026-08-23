@@ -9,6 +9,7 @@ import { AgentComposer } from "./agent-composer";
 import { AgentMessageList } from "./agent-message-list";
 import { AgentVoice } from "./agent-voice";
 import { useAgentName } from "@core/branding/agent-branding";
+import { useFeature } from "@shared/feature/use-feature";
 import { TOUCH_TARGET_HIT_AREA } from "@shared/ui";
 import { useDismissOnBack } from "@shared/hooks/use-dismiss-on-back";
 import { useKeyboardInset } from "@shared/hooks/use-keyboard-inset";
@@ -85,6 +86,7 @@ export function AgentOverlay({ onClose, initialMode = "chat" }: Props) {
   const messagesQuery = useAgentMessages(sessionId);
   const chat = useAgentChat(sessionId);
   const agentName = useAgentName();
+  const agentWip = useFeature("agent").showWip;
   const qc = useQueryClient();
   const [mode, setMode] = useState<"voice" | "chat">(initialMode);
   const [closing, setClosing] = useState(false);
@@ -188,8 +190,13 @@ export function AgentOverlay({ onClose, initialMode = "chat" }: Props) {
               <div>
                 <div className="text-[16px] font-bold leading-none">{agentName}</div>
                 <div className="mt-1 flex items-center gap-1.5 text-[11.5px] text-white/50">
-                  <span className="size-1.5 rounded-full bg-emerald-500" />
-                  {mode === "voice" ? "Modo voz" : "Asistente IA"}
+                  {/* The status line is the only place in the overlay with room
+                      to say it, and it is on screen for the whole session. The
+                      sentence itself is one tap away on the Propo page. */}
+                  <span
+                    className={`size-1.5 rounded-full ${agentWip ? "bg-warning" : "bg-emerald-500"}`}
+                  />
+                  {agentWip ? "En desarrollo" : mode === "voice" ? "Modo voz" : "Asistente IA"}
                 </div>
               </div>
             </div>

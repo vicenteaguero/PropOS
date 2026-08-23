@@ -32,7 +32,7 @@ interface FeatureGateProps {
  * unclickable as the thing it explains.
  */
 export function FeatureGate({ feature, children, fallback = null, className }: FeatureGateProps) {
-  const { state, note } = useFeature(feature);
+  const { state, note, showWip } = useFeature(feature);
   const [sheetOpen, setSheetOpen] = useState(false);
 
   if (state === "hidden") return <>{fallback}</>;
@@ -63,14 +63,27 @@ export function FeatureGate({ feature, children, fallback = null, className }: F
     );
   }
 
-  if (state === "wip") {
+  // `showWip` and not `state === "wip"`: the dev admin who set the state does
+  // not need a badge on every block they flipped.
+  if (showWip) {
     return (
-      <div className={cn("relative", className)}>
-        <div className="absolute right-2 top-2 z-10">
-          <Pill tone="warning">En desarrollo</Pill>
+      <>
+        <div className={cn("relative", className)}>
+          <div className="absolute right-2 top-2 z-10">
+            <button
+              type="button"
+              onClick={() => setSheetOpen(true)}
+              aria-label={`${feature}: en desarrollo`}
+            >
+              <Pill tone="warning">En desarrollo</Pill>
+            </button>
+          </div>
+          {children}
         </div>
-        {children}
-      </div>
+        <BottomSheet open={sheetOpen} onOpenChange={setSheetOpen} title="En desarrollo">
+          <p className="px-1 pb-6 text-sm text-muted-foreground">{note}</p>
+        </BottomSheet>
+      </>
     );
   }
 

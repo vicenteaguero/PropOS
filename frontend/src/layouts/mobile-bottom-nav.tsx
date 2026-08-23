@@ -19,6 +19,8 @@ import { useThemeMode } from "@core/theme/theme-provider";
 import { tenantSwatch } from "@core/theme/tenant-accent";
 import { useAgentOverlay } from "@features/agent/components/agent-overlay-host";
 import { BottomSheet, Pill, PropoMark } from "@shared/ui";
+import { WipDot } from "@shared/feature/wip-notice";
+import { entryFor } from "@shared/feature/catalog";
 import { useUnreadCount } from "@features/attention/hooks/use-unread";
 import { useNavGroups, usePendingCount } from "@layouts/use-nav-groups";
 import { useIsImmersive } from "@layouts/immersive";
@@ -142,7 +144,7 @@ function usePublishNavHeight(ref: React.RefObject<HTMLElement | null>, hidden: b
 }
 
 export function MobileBottomNav() {
-  const { user, memberships, switchTenant, signOut } = useAuth();
+  const { user, memberships, switchTenant, signOut, features } = useAuth();
   const { theme, toggle } = useThemeMode();
   const navigate = useNavigate();
   const [moreOpen, setMoreOpen] = useState(false);
@@ -361,6 +363,9 @@ export function MobileBottomNav() {
                     <span className="min-w-0 flex-1 truncate text-[15px] font-medium text-foreground">
                       {item.label}
                     </span>
+                    {!user.isDevAdmin && entryFor(features, item.feature).state === "wip" && (
+                      <WipDot />
+                    )}
                     {badge !== null && <Pill tone="accent">{badge}</Pill>}
                   </button>
                 );
