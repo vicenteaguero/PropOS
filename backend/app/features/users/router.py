@@ -9,6 +9,7 @@ from app.features.users.schemas import (
     TenantMember,
     AvatarUpdate,
     ImpersonateResponse,
+    PreferencesUpdate,
     SetPasswordPayload,
     UserCreate,
     UserDetailResponse,
@@ -34,6 +35,15 @@ async def update_my_avatar(
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> dict:
     return await UserService.update_avatar(UUID(current_user["id"]), payload.avatar_url)
+
+
+@router.patch("/me/preferences", response_model=UserResponse)
+async def update_my_preferences(
+    payload: PreferencesUpdate,
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> dict:
+    """Merge UI preferences (colour palette) into the caller's own profile."""
+    return await UserService.update_preferences(UUID(current_user["id"]), payload.preferences)
 
 
 @router.post("/me/password-changed")

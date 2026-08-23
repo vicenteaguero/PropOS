@@ -205,6 +205,22 @@ class UserService:
         return client.table(PROFILES_TABLE).select("*").eq("id", str(user_id)).single().execute().data
 
     @staticmethod
+    async def update_preferences(user_id: UUID, patch: dict[str, Any]) -> dict:
+        """Merge a partial preferences patch into the user's own profile.
+
+        A merge, not a replace: the palette picker sends only ``palette`` and
+        must not wipe whatever preference is added next. A key set to ``None``
+        is dropped, which is how a preference goes back to its default.
+        """
+        client = get_supabase_client()
+        current = client.table(PROFILES_TABLE).select("preferences").eq("id", str(user_id)).single().execute().data
+        merged = {**(current.get("preferences") or {}), **patch}
+        merged = {k: v for k, v in merged.items() if v is not None}
+        updated = client.table(PROFILES_TABLE).update({"preferences": merged}).eq("id", str(user_id)).execute().data
+        invalidate_profile(str(user_id))
+        return updated[0] if updated else {**(current or {}), "preferences": merged}
+
+    @staticmethod
     async def create_user(payload: Any, tenant_id: UUID) -> dict:
         """Direct create with password (legacy + fake-email path).
 
