@@ -125,6 +125,19 @@
 }
 
 :root {
+  /* Categorical palette — see `shared/ui/category-palette.ts`. Nine hues that
+     stay distinct from each other in both themes. Deliberately independent of
+     `--accent-brand`: the accent is derived from the workspace hue, so any
+     categorical role it plays collides with a different category per tenant. */
+  --cat-violet: oklch(0.52 0.2 300);
+  --cat-indigo: oklch(0.5 0.19 268);
+  --cat-sky: oklch(0.55 0.15 235);
+  --cat-teal: oklch(0.52 0.11 195);
+  --cat-lime: oklch(0.52 0.14 145);
+  --cat-amber: oklch(0.6 0.14 85);
+  --cat-orange: oklch(0.58 0.16 55);
+  --cat-rose: oklch(0.55 0.19 15);
+  --cat-slate: oklch(0.5 0.02 260);
   --app-header-h: 3.5rem;
   /* Strip occupied by the floating mobile bottom nav, safe-area pad included.
    * Published from the live DOM by MobileBottomNav (see its ResizeObserver) so
@@ -257,6 +270,17 @@
 /* DARK — default. Mirrors the previous always-dark :root palette (rosa carbon),
  * with accent-derived tokens now sourced from --accent-brand. */
 .dark {
+  /* Lighter and less saturated on a dark ground: the same chroma that reads as
+     "violet" on white reads as "glowing" on near-black. */
+  --cat-violet: oklch(0.75 0.15 300);
+  --cat-indigo: oklch(0.73 0.14 268);
+  --cat-sky: oklch(0.76 0.12 235);
+  --cat-teal: oklch(0.76 0.09 195);
+  --cat-lime: oklch(0.76 0.12 145);
+  --cat-amber: oklch(0.8 0.12 85);
+  --cat-orange: oklch(0.77 0.13 55);
+  --cat-rose: oklch(0.75 0.14 15);
+  --cat-slate: oklch(0.72 0.02 260);
   /* Dark theme uses a lighter accent (≈ #D4919B at hue 347) so it reads as
    * text on carbon and carries dark foreground on fills. */
   --accent-hue: 347;

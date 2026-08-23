@@ -9,33 +9,64 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { format } from "date-fns";
-import type { PillTone } from "@shared/ui";
-import type { CalendarItem, EventKind } from "../api/calendar-api";
+import { categoryVars, type CategoryColor } from "@shared/ui/category-palette";
+import type { CalendarItem } from "../api/calendar-api";
 
-/** Per-type tone + dot color + kind icon (semantic tokens only). */
-export const TYPE_META: Record<
-  CalendarItem["item_type"],
-  { tone: PillTone; dot: string; label: string; icon: LucideIcon }
-> = {
-  EVENT: { tone: "accent", dot: "var(--color-accent-brand)", label: "Evento", icon: MapPin },
-  TASK: { tone: "warning", dot: "var(--color-warning)", label: "Tarea", icon: ListTodo },
-  PAYMENT: { tone: "success", dot: "var(--color-success)", label: "Pago", icon: Banknote },
-};
-
-export const KIND_ITEMS: { id: EventKind; label: string }[] = [
-  { id: "VISIT", label: "Visita" },
-  { id: "MEETING", label: "Reunión" },
-  { id: "CALL", label: "Llamada" },
-  { id: "DEADLINE", label: "Vencimiento" },
-  { id: "OTHER", label: "Otro" },
-];
-
-export function asKind(value: string | null | undefined): EventKind {
-  return KIND_ITEMS.find((k) => k.id === value)?.id ?? "OTHER";
+/**
+ * What a calendar row is, and what colour it takes.
+ *
+ * The three sources are fixed; an EVENT's colour and label come from the
+ * tenant's type catalog, so "Tasación" is as first-class as "Visita".
+ *
+ * The old version of this gave EVENT `--accent-brand` — the workspace hue —
+ * which meant that for some tenants an event was the same colour as a payment
+ * and the legend became three identical dots. Every colour here is a member of
+ * the fixed categorical palette instead.
+ */
+export interface ItemMeta {
+  color: CategoryColor;
+  label: string;
+  icon: LucideIcon;
+  /** CSS values, ready for a style prop. */
+  ink: string;
+  wash: string;
+  edge: string;
 }
 
-export function kindLabel(value: string | null | undefined): string {
-  return KIND_ITEMS.find((k) => k.id === value)?.label ?? "Otro";
+const SOURCE_META: Record<
+  CalendarItem["item_type"],
+  { color: CategoryColor; label: string; icon: LucideIcon }
+> = {
+  // The legend colour for "every event type at once". An individual event
+  // takes its own type's colour instead — this is the filter, not the row.
+  EVENT: { color: "indigo", label: "Evento", icon: MapPin },
+  TASK: { color: "amber", label: "Tarea", icon: ListTodo },
+  PAYMENT: { color: "lime", label: "Pago", icon: Banknote },
+};
+
+/** The kind→type resolver from `useEventTypes()`. */
+export type TypeResolver = (key: string | null | undefined) => {
+  key: string;
+  label: string;
+  color: CategoryColor;
+};
+
+export function itemMeta(it: CalendarItem, resolve?: TypeResolver): ItemMeta {
+  const base = SOURCE_META[it.item_type];
+  const type = it.item_type === "EVENT" && resolve ? resolve(it.kind) : null;
+  const color = type?.color ?? base.color;
+  return {
+    color,
+    label: type?.label ?? base.label,
+    icon: base.icon,
+    ...categoryVars(color),
+  };
+}
+
+/** The colour of a source with no event type in play — legends, filter chips. */
+export function sourceMeta(type: CalendarItem["item_type"]): ItemMeta {
+  const base = SOURCE_META[type];
+  return { ...base, ...categoryVars(base.color) };
 }
 
 export function timeLabel(it: CalendarItem): string {
@@ -77,7 +108,10 @@ export type CalFilter = "all" | "EVENT" | "TASK" | "PAYMENT";
 
 export const FILTER_ITEMS: { id: CalFilter; label: string; param: string | null }[] = [
   { id: "all", label: "Todo", param: null },
-  { id: "EVENT", label: "Visitas", param: "visitas" },
+  // The URL param stays `visitas` so saved links keep working; the label
+  // does not, because the filter has always matched every event type and
+  // calling it "Visitas" hid meetings and calls behind a word for one of them.
+  { id: "EVENT", label: "Eventos", param: "visitas" },
   { id: "TASK", label: "Tareas", param: "tareas" },
   { id: "PAYMENT", label: "Pagos", param: "pagos" },
 ];
