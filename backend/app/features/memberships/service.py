@@ -72,6 +72,30 @@ def _sync_profile_snapshot(client, user_id: UUID) -> None:
     invalidate_profile(str(user_id))
 
 
+def _assert_dev_only_allowed(client, tenant_id: UUID, membership: dict) -> None:
+    """Refuse a dev-only workspace to anyone who is not a dev admin.
+
+    The demo workspace holds hundreds of invented people and lives in the same
+    database production serves. Until now the only thing keeping a broker out of
+    it was that nobody had added them to `DEMO_ADMIN_EMAILS` -- closed by
+    accident rather than by design, and one edit away from a broker opening the
+    app and finding a workspace switcher full of fictional clients.
+
+    Marking the tenant `settings.dev_only = true` makes a stray membership
+    insufficient on its own.
+    """
+    row = client.table("tenants").select("settings").eq("id", str(tenant_id)).limit(1).execute().data
+    if not row:
+        return
+    if not (row[0].get("settings") or {}).get("dev_only"):
+        return
+    if not membership.get("is_dev_admin"):
+        raise HTTPException(
+            status_code=403,
+            detail="This workspace is restricted to developer accounts",
+        )
+
+
 class MembershipService:
     @staticmethod
     async def list_for_user(user_id: UUID) -> list[dict]:
@@ -98,7 +122,7 @@ class MembershipService:
         client = get_supabase_client()
         check = (
             client.table(TABLE)
-            .select("role, admin_scope")
+            .select("role, admin_scope, is_dev_admin")
             .eq("user_id", str(user_id))
             .eq("tenant_id", str(tenant_id))
             .eq("is_active", True)
@@ -107,6 +131,8 @@ class MembershipService:
         )
         if not check.data:
             raise HTTPException(status_code=403, detail=f"No active membership in tenant {tenant_id}")
+
+        _assert_dev_only_allowed(client, tenant_id, check.data[0])
 
         # Sync the profiles snapshot (tenant_id/role/admin_scope) for legacy RLS.
         # Done directly instead of via the activate_tenant() RPC: that function is
