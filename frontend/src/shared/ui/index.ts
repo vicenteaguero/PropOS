@@ -29,6 +29,7 @@ export { ChoiceSwitch, type ChoiceOption } from "./choice-switch";
 export { LinkInput } from "./link-input";
 export { ActionIcon, ACTION_ICONS, type ActionName } from "./action-icon";
 export { MonthGrid, type MonthGridProps } from "./month-grid";
+export { PropoMark, type PropoState } from "./propo-mark";
 export {
   CATEGORY_COLORS,
   CATEGORY_LABELS,
