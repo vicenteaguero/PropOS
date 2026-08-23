@@ -68,7 +68,12 @@ export function EventDetailDialog({
   return (
     <>
       <Dialog open={!!item} onOpenChange={onOpenChange}>
-        <DialogContent showCloseButton={false} className="max-w-md gap-0 p-0">
+        {/* `sm:max-w-md`, never a bare `max-w-md`: tailwind-merge treats every
+            `max-w-*` as one group, so an unprefixed override ERASES the
+            `max-w-[calc(100%-2rem)]` that `DialogContent` uses to keep a 16px
+            inset on a phone — which is why this dialog reached both screen
+            edges and looked like it had lost its border. */}
+        <DialogContent showCloseButton={false} className="gap-0 p-0 sm:max-w-md">
           <div className="flex items-start gap-3 px-5 pt-5">
             <span
               aria-hidden
