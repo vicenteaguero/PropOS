@@ -240,7 +240,7 @@ AREAS_TABLE = "internal_areas"
 _LABEL_CHUNK = 200
 
 
-def _hydrate_assignment_labels(client, assignments: list[dict]) -> None:
+def _hydrate_assignment_labels(client, tenant_id: str, assignments: list[dict]) -> None:
     """Attach a human label to each assignment, in place.
 
     The frontend used to resolve these by fetching `/v1/properties` and
@@ -384,7 +384,7 @@ class DocumentService:
                 .execute()
                 .data
             )
-            _hydrate_assignment_labels(client, assigns)
+            _hydrate_assignment_labels(client, str(tenant_id), assigns)
             grouped: dict[str, list[dict]] = {}
             for a in assigns:
                 grouped.setdefault(a["document_id"], []).append(a)
@@ -436,7 +436,7 @@ class DocumentService:
                 except Exception:
                     logger.warning("thumbnail signed url failed", path=thumb)
                     v["thumbnail_url"] = None
-        _hydrate_assignment_labels(client, assignments)
+        _hydrate_assignment_labels(client, str(tenant_id), assignments)
         doc["versions"] = versions
         doc["assignments"] = assignments
         doc["current_version"] = next(

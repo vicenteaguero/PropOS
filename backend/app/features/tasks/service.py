@@ -32,7 +32,7 @@ def _serialize(data: dict[str, Any]) -> dict[str, Any]:
 _LABEL_CHUNK = 200
 
 
-def _hydrate_related_labels(rows: list[dict]) -> None:
+def _hydrate_related_labels(tenant_id: str, rows: list[dict]) -> None:
     """Attach `related_labels` to each task, in place."""
     property_ids: set[str] = set()
     contact_ids: set[str] = set()
@@ -103,7 +103,7 @@ class TaskService:
             if only_open:
                 builder = builder.in_("status", ["OPEN", "IN_PROGRESS", "BLOCKED"])
             rows = builder.execute().data or []
-            _hydrate_related_labels(rows)
+            _hydrate_related_labels(str(tenant_id), rows)
             return rows
 
         return await run_blocking(_read)
