@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Building2, CalendarDays, FolderKanban, MapPin, TrendingUp, User, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useAuth } from "@shared/hooks/use-auth";
+import { shortName, shortPropertyTitle } from "@shared/utils/display-name";
 import { cn } from "@/lib/utils";
 import type { NoteTarget, NoteTargetKind } from "../api/notes-api";
 
@@ -65,6 +66,16 @@ export function NoteTargetChips({ targets, onRemove, className }: Props) {
     <div className={cn("flex flex-wrap gap-1.5", className)}>
       {targets.map((target) => {
         const Icon = KIND_ICON[target.kind];
+        // "Juan Ignacio Pérez Salas" and "Departamento 3D/3B en venta en Macul"
+        // are both wider than a chip in a two-column grid, so the full name
+        // truncated to "Juan Igna…" — which identifies nobody. The `title`
+        // keeps the whole thing one hover away.
+        const shown =
+          target.kind === "CONTACT"
+            ? shortName(target.label, target.label)
+            : target.kind === "PROPERTY"
+              ? shortPropertyTitle(target.label)
+              : target.label;
         return (
           <span
             key={`${target.kind}-${target.row_id}`}
@@ -83,10 +94,10 @@ export function NoteTargetChips({ targets, onRemove, className }: Props) {
                 className="truncate hover:underline"
                 onClick={(e) => e.stopPropagation()}
               >
-                {target.label}
+                {shown}
               </Link>
             ) : (
-              <span className="truncate">{target.label}</span>
+              <span className="truncate">{shown}</span>
             )}
             {onRemove && (
               <button
