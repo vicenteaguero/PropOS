@@ -7,6 +7,7 @@ from uuid import UUID
 from app.core.logging.logger import get_logger
 from app.core.db import run_blocking
 from app.core.supabase.client import get_supabase_client
+from app.features.notes.attachments import list_for_notes
 
 TASKS_TABLE = "tasks"
 
@@ -71,6 +72,24 @@ def _hydrate_related_labels(tenant_id: str, rows: list[dict]) -> None:
         }
 
 
+def _hydrate_attachments(tenant_id: UUID, rows: list[dict]) -> None:
+    """Attach photos and voice memos, in place.
+
+    One batched read for the whole page (see `list_for_notes`), not one per
+    task. Best-effort: an attachment that fails to sign must not take the task
+    list down with it.
+    """
+    if not rows:
+        return
+    try:
+        grouped = list_for_notes(tenant_id, [r["id"] for r in rows], TASKS_TABLE)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("task attachment hydration failed", error=str(exc))
+        grouped = {}
+    for row in rows:
+        row["attachments"] = grouped.get(row["id"], [])
+
+
 class TaskService:
     @staticmethod
     async def list_tasks(
@@ -104,6 +123,7 @@ class TaskService:
                 builder = builder.in_("status", ["OPEN", "IN_PROGRESS", "BLOCKED"])
             rows = builder.execute().data or []
             _hydrate_related_labels(str(tenant_id), rows)
+            _hydrate_attachments(tenant_id, rows)
             return rows
 
         return await run_blocking(_read)

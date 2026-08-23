@@ -35,6 +35,10 @@ from app.core.supabase.client import get_supabase_client
 
 MEDIA_ASSETS = "media_assets"
 MEDIA_FILES = "media_files"
+# Default owner table. Every function below takes `target_table` so the same
+# code serves tasks, which need exactly this behaviour — `media_assets` is
+# already polymorphic, and a second copy of 150 lines would drift the moment
+# either side changed (which is the warning this module opens with).
 TARGET_TABLE = "notes"
 
 # Both roles land in the same `media_assets` table; `role` is what separates a
@@ -125,7 +129,7 @@ def _build_rows(assets: list[dict], files_by_id: dict[str, dict], signed: dict[s
     return out
 
 
-def list_for_notes(tenant_id: UUID, note_ids: list[str]) -> dict[str, list[dict]]:
+def list_for_notes(tenant_id: UUID, note_ids: list[str], target_table: str = TARGET_TABLE) -> dict[str, list[dict]]:
     """Attachments for a page of notes, grouped by note id.
 
     Three round trips for the whole page regardless of note count: assets,
@@ -139,7 +143,7 @@ def list_for_notes(tenant_id: UUID, note_ids: list[str]) -> dict[str, list[dict]
         client.table(MEDIA_ASSETS)
         .select("id, media_file_id, target_row_id, role, position, created_at")
         .eq("tenant_id", str(tenant_id))
-        .eq("target_table", TARGET_TABLE)
+        .eq("target_table", target_table)
         .in_("target_row_id", note_ids)
         .order("position")
         .order("created_at")
@@ -179,16 +183,16 @@ def list_for_notes(tenant_id: UUID, note_ids: list[str]) -> dict[str, list[dict]
     return grouped
 
 
-def list_for_note(tenant_id: UUID, note_id: UUID) -> list[dict]:
-    return list_for_notes(tenant_id, [str(note_id)]).get(str(note_id), [])
+def list_for_note(tenant_id: UUID, note_id: UUID, target_table: str = TARGET_TABLE) -> list[dict]:
+    return list_for_notes(tenant_id, [str(note_id)], target_table).get(str(note_id), [])
 
 
-def _next_position(client: Any, tenant_id: UUID, note_id: UUID) -> int:
+def _next_position(client: Any, tenant_id: UUID, note_id: UUID, target_table: str = TARGET_TABLE) -> int:
     last = (
         client.table(MEDIA_ASSETS)
         .select("position")
         .eq("tenant_id", str(tenant_id))
-        .eq("target_table", TARGET_TABLE)
+        .eq("target_table", target_table)
         .eq("target_row_id", str(note_id))
         .order("position", desc=True)
         .limit(1)
@@ -203,16 +207,17 @@ def add_attachments(
     tenant_id: UUID,
     uploaded_by: UUID,
     files: list[tuple[bytes, str | None, str | None]],
+    target_table: str = TARGET_TABLE,
 ) -> list[dict]:
-    """Upload each `(content, mime, filename)` and link it to the note."""
+    """Upload each `(content, mime, filename)` and link it to the owning row."""
     client = get_supabase_client()
-    position = _next_position(client, tenant_id, note_id)
+    position = _next_position(client, tenant_id, note_id, target_table)
 
     created: list[dict] = []
     for content, mime, filename in files:
         content_type = (mime or "application/octet-stream").lower().split(";")[0].strip()
         role = role_for_mime(content_type)
-        object_path = f"{tenant_id}/notes/{note_id}/{uuid4().hex}.{_extension(content_type, filename, role)}"
+        object_path = f"{tenant_id}/{target_table}/{note_id}/{uuid4().hex}.{_extension(content_type, filename, role)}"
         client.storage.from_(MEDIA_BUCKET).upload(
             path=object_path,
             file=content,
@@ -248,7 +253,7 @@ def add_attachments(
                 {
                     "tenant_id": str(tenant_id),
                     "media_file_id": media_file["id"],
-                    "target_table": TARGET_TABLE,
+                    "target_table": target_table,
                     "target_row_id": str(note_id),
                     "role": role,
                     "position": position,
@@ -280,10 +285,10 @@ def add_attachments(
     )
     # Re-read through the list path so the response carries signed URLs and
     # derivative links built by exactly the same code the GET uses.
-    return list_for_note(tenant_id, note_id)
+    return list_for_note(tenant_id, note_id, target_table)
 
 
-def delete_attachment(asset_id: UUID, note_id: UUID, tenant_id: UUID) -> bool:
+def delete_attachment(asset_id: UUID, note_id: UUID, tenant_id: UUID, target_table: str = TARGET_TABLE) -> bool:
     """Unlink an attachment; drop the object + file row when nothing else uses it."""
     client = get_supabase_client()
     asset = (
@@ -291,7 +296,7 @@ def delete_attachment(asset_id: UUID, note_id: UUID, tenant_id: UUID) -> bool:
         .select("id, media_file_id")
         .eq("id", str(asset_id))
         .eq("tenant_id", str(tenant_id))
-        .eq("target_table", TARGET_TABLE)
+        .eq("target_table", target_table)
         .eq("target_row_id", str(note_id))
         .limit(1)
         .execute()

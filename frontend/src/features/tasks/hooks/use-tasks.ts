@@ -67,3 +67,23 @@ export function useDeleteTask() {
     onSettled: () => qc.invalidateQueries({ queryKey: tasksKeys.all }),
   });
 }
+
+export function useUploadTaskAttachments() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ taskId, files }: { taskId: string; files: Blob[] }) =>
+      tasksApi.attachments.upload(taskId, files),
+    onSuccess: () => qc.invalidateQueries({ queryKey: tasksKeys.all }),
+    onError: (err) =>
+      toast.error(err instanceof Error ? err.message : "No se pudo subir el adjunto"),
+  });
+}
+
+export function useRemoveTaskAttachment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ taskId, assetId }: { taskId: string; assetId: string }) =>
+      tasksApi.attachments.remove(taskId, assetId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: tasksKeys.all }),
+  });
+}
