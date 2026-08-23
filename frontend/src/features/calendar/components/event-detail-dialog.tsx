@@ -40,6 +40,12 @@ interface EventDetailDialogProps {
  * used to be a title, a pill and the word "Programado", with the deal, the
  * property and the people it concerned all one tap away and no tap offered.
  */
+// `px-5` inside the dialog, deliberately NOT `--page-x`. The page gutter is
+// the page's; a dialog is a container INSIDE it, already inset 16px from the
+// screen edge, so inheriting the page gutter would make its padding change
+// with the viewport for no reason and stack two insets on a phone. Same family
+// as the nested-radius rule: an inner container sizes itself, not from its
+// parent's edge.
 export function EventDetailDialog({
   item,
   full,
@@ -76,7 +82,7 @@ export function EventDetailDialog({
             inset on a phone — which is why this dialog reached both screen
             edges and looked like it had lost its border. */}
         <DialogContent showCloseButton={false} className="gap-0 p-0 sm:max-w-md">
-          <div className="flex items-start gap-3 px-[var(--page-x)] pt-5">
+          <div className="flex items-start gap-3 px-5 pt-5">
             <span
               aria-hidden
               className="mt-1.5 h-9 w-[3px] shrink-0 rounded-full"
@@ -96,7 +102,7 @@ export function EventDetailDialog({
             </Button>
           </div>
 
-          <div className="space-y-4 px-[var(--page-x)] pb-5 pt-4">
+          <div className="space-y-4 px-5 pb-5 pt-4">
             {/* When — the line people actually came for. */}
             <div>
               <p className="text-[15px] font-semibold text-foreground first-letter:uppercase">
