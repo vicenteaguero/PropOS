@@ -2,12 +2,26 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
+from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, StringConstraints
+
+
+# `events.kind` stopped being a Postgres enum in 20240601000080: types are a
+# per-tenant catalog now, so a broker can add "TASACION" without a deploy. The
+# five names below are the seeded system types, kept as constants because the
+# scheduler, the seeder and the agent all still reference them by name — but
+# `kind` on the wire is a plain string, validated against the shape the column
+# enforces rather than against a closed set the server cannot know.
+SYSTEM_EVENT_KINDS = ("VISIT", "MEETING", "CALL", "DEADLINE", "OTHER")
+
+EventKindStr = Annotated[str, StringConstraints(pattern=r"^[A-Z][A-Z0-9_]{0,31}$")]
 
 
 class EventKind(str, Enum):
+    """The seeded types. Accepted anywhere `EventKindStr` is, and no longer exhaustive."""
+
     VISIT = "VISIT"
     MEETING = "MEETING"
     CALL = "CALL"
@@ -22,7 +36,7 @@ class EventStatus(str, Enum):
 
 
 class EventBase(BaseModel):
-    kind: EventKind = EventKind.OTHER
+    kind: EventKindStr = "OTHER"
     title: str
     description: str | None = None
     starts_at: datetime
@@ -35,6 +49,9 @@ class EventBase(BaseModel):
     project_id: UUID | None = None
     opportunity_id: UUID | None = None
     assignee_user: UUID | None = None
+    # 0 normal, 1 alta, 2 crítica. Read as well as written: events in the same
+    # hour sort by this before they sort by title.
+    priority: int = Field(default=0, ge=0, le=2)
 
 
 class EventCreate(EventBase):
@@ -43,7 +60,7 @@ class EventCreate(EventBase):
 
 
 class EventUpdate(BaseModel):
-    kind: EventKind | None = None
+    kind: EventKindStr | None = None
     title: str | None = None
     description: str | None = None
     starts_at: datetime | None = None
@@ -56,6 +73,13 @@ class EventUpdate(BaseModel):
     project_id: UUID | None = None
     opportunity_id: UUID | None = None
     assignee_user: UUID | None = None
+    priority: int | None = Field(default=None, ge=0, le=2)
+    # Editing an event used to leave its reminder on the old day: `EventUpdate`
+    # had no `remind_at`, so moving a visit from Tuesday to Thursday still rang
+    # on Tuesday. `None` leaves the reminder alone; a value replaces it; the
+    # sentinel below clears it.
+    remind_at: datetime | None = None
+    clear_reminder: bool = False
 
 
 class EventResponse(EventBase):
@@ -88,3 +112,40 @@ class CalendarItem(BaseModel):
     # key the model does not name, so the address was stripped from every feed
     # response. That is why the "cómo llegar" button never rendered on Home.
     location: str | None = None
+
+
+class EventTypeBase(BaseModel):
+    """A row of the per-tenant event catalog."""
+
+    key: EventKindStr
+    label: str
+    # A name from the fixed categorical palette, never a hex and never the
+    # tenant accent -- see `shared/ui/event-palette.ts`.
+    color: str = "slate"
+    icon: str | None = None
+    behavior: Literal["visit", "meeting", "call", "deadline", "other"] = "other"
+    position: int = 0
+    active: bool = True
+
+
+class EventTypeCreate(EventTypeBase):
+    pass
+
+
+class EventTypeUpdate(BaseModel):
+    # `key` is absent on purpose: renaming it would orphan every event already
+    # filed under it, because `events.kind` carries the key and not an id.
+    label: str | None = None
+    color: str | None = None
+    icon: str | None = None
+    behavior: Literal["visit", "meeting", "call", "deadline", "other"] | None = None
+    position: int | None = None
+    active: bool | None = None
+
+
+class EventTypeResponse(EventTypeBase):
+    id: UUID
+    tenant_id: UUID
+    is_system: bool = False
+
+    model_config = {"from_attributes": True}
