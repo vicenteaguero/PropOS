@@ -52,7 +52,7 @@ export function PortalFormDialog({ open, onOpenChange }: Props) {
           <Input
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Sube tus documentos aquí..."
+            placeholder="Sube tus documentos aquí…"
           />
         </Field>
         <Field label="Acceso" labelClassName="text-xs">
