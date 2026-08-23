@@ -11,6 +11,14 @@ export default defineConfig({
     // written with React's natural extension was never collected — and CI
     // passed `--passWithNoTests`, which turned "collected nothing" into green.
     include: ["src/**/*.test.{ts,tsx}"],
+    // Pin the clock's zone.
+    //
+    // The date formatters are asserted against UTC strings ("09:30Z" -> 09:30),
+    // which only holds when the runner is in UTC. On a machine in Chile
+    // (UTC-4) those two suites had been failing locally while CI stayed green,
+    // so the tests were quietly untrustworthy in exactly the place they get
+    // read most: on the developer's laptop.
+    env: { TZ: "UTC" },
   },
   resolve: {
     alias: {
