@@ -2,6 +2,7 @@ import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { documentsApi, type ListDocumentsParams } from "../api/documents-api";
 import type { AssignmentTarget, DocumentItem } from "../types";
 import { toast } from "sonner";
+import { editByPrefix, patchById, rollbackAll } from "@shared/lib/optimistic";
 
 export const documentsKeys = {
   all: ["documents"] as const,
@@ -171,5 +172,33 @@ export function useRemoveAssignment(documentId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: documentsKeys.detail(documentId) });
     },
+  });
+}
+
+/**
+ * Flip a document's priority flag from anywhere in the list.
+ *
+ * Separate from `useUpdateDocument`, which is keyed to one document id and so
+ * cannot be called from a card in a list. Optimistic, because the whole value
+ * of the flag is that the card changes colour the instant you set it.
+ */
+export function useToggleDocumentPriority() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, next }: { id: string; next: boolean }) =>
+      documentsApi.update(id, { is_priority: next }),
+    onMutate: async ({ id, next }) => {
+      await qc.cancelQueries({ queryKey: documentsKeys.all });
+      return {
+        snapshots: editByPrefix(qc, documentsKeys.all, (d: unknown) =>
+          patchById(d, id, { is_priority: next }),
+        ),
+      };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.snapshots) rollbackAll(qc, ctx.snapshots);
+      toast.error("No se pudo cambiar la prioridad");
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: documentsKeys.all }),
   });
 }

@@ -67,6 +67,7 @@ import { VisitNavRow } from "../components/visit-nav-row";
 import { EventDetailDialog } from "../components/event-detail-dialog";
 import { dayHeading as dayHeadingOneLine, feedRange, weekDaysOf } from "../lib/calendar-range";
 import {
+  FILTER_ITEMS,
   filterFromParam,
   isImminentVisit,
   matchesFilter,
@@ -474,6 +475,28 @@ export function CalendarPage() {
               <h2 className="min-w-0 flex-1 truncate text-xl font-bold tracking-tight text-foreground first-letter:uppercase">
                 {periodLabel}
               </h2>
+              {/* Same four filters the phone toolbar carries, inline here.
+                  They were mobile-only, so the laptop — where a week grid shows
+                  visits, tasks and payments stacked in the same column — was
+                  the one place you could not narrow it down. */}
+              <Chips className="shrink-0">
+                {FILTER_ITEMS.map((item) => (
+                  <Chip
+                    key={item.id}
+                    active={filter === item.id}
+                    onClick={() => setFilter(item.id)}
+                  >
+                    {item.id !== "all" && (
+                      <span
+                        aria-hidden
+                        className="mr-1.5 size-1.5 shrink-0 rounded-full"
+                        style={{ background: TYPE_META[item.id].dot }}
+                      />
+                    )}
+                    {item.label}
+                  </Chip>
+                ))}
+              </Chips>
               <div className="hidden lg:block">
                 <Segmented
                   items={VIEW_ITEMS}
