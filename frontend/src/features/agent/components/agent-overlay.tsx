@@ -11,6 +11,7 @@ import { useAgentName } from "@core/branding/agent-branding";
 import { TOUCH_TARGET_HIT_AREA } from "@shared/ui";
 import { useDismissOnBack } from "@shared/hooks/use-dismiss-on-back";
 import { useKeyboardInset } from "@shared/hooks/use-keyboard-inset";
+import { useScrollLock } from "@shared/hooks/use-scroll-lock";
 import { overrideThemeColor } from "@core/theme/theme";
 
 interface Props {
@@ -47,6 +48,9 @@ export function AgentOverlay({ onClose, initialMode = "chat" }: Props) {
   // Keeps the composer above the on-screen keyboard instead of behind it, and
   // pins this panel to the visible box rather than the layout viewport.
   const keyboard = useKeyboardInset();
+  // The overlay is a bare portal, not a Radix dialog: nothing else stops the
+  // page behind it from scrolling.
+  useScrollLock(true);
   // The panel forces its own dark palette, so the PWA's status bar and bottom
   // safe area have to follow it — otherwise a light-theme broker gets a white
   // band above and below a black panel.
@@ -104,9 +108,17 @@ export function AgentOverlay({ onClose, initialMode = "chat" }: Props) {
           
           Opaque on a phone, the usual scrim on a laptop, where there is no
           keyboard and the page behind is meant to show. */}
+      {/* Oversized by half a viewport in each direction, and deliberately NOT
+          pinned to `--vv-*`. It must not follow the visible box — a backdrop
+          that shrinks with the keyboard exposes the page behind mid-animation —
+          but `inset-0` alone is not enough either, because iOS rubber-band
+          overscroll can lift the layout viewport's edge above the visible one
+          and leave an uncovered strip. Extending past both edges is correct
+          before the store's first write, correct without `visualViewport`, and
+          correct at every frame of the animation. */}
       <div
         aria-hidden
-        className="fixed inset-0 z-50 bg-[#0A0A0A] md:bg-overlay/50 md:backdrop-blur-md"
+        className="fixed inset-x-0 -top-1/2 -bottom-1/2 z-50 bg-[#0A0A0A] md:bg-overlay/50 md:backdrop-blur-md"
       />
       {/* And this one is pinned to the VISIBLE box, so the header and the
           composer stay where the eye is instead of scrolling off the top when
