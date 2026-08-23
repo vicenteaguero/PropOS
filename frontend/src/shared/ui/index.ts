@@ -28,6 +28,14 @@ export { Segmented, type SegmentedItem } from "./segmented";
 export { ChoiceSwitch, type ChoiceOption } from "./choice-switch";
 export { LinkInput } from "./link-input";
 export { ActionIcon, ACTION_ICONS, type ActionName } from "./action-icon";
+export { MonthGrid, type MonthGridProps } from "./month-grid";
+export {
+  CATEGORY_COLORS,
+  CATEGORY_LABELS,
+  asCategoryColor,
+  categoryVars,
+  type CategoryColor,
+} from "./category-palette";
 export { SectionLabel } from "./section-label";
 export { SectionTabs, type SectionTab } from "./section-tabs";
 export { Row } from "./row";
