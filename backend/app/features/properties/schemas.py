@@ -24,6 +24,10 @@ class ListingKind(str, Enum):
 class PropertyBase(BaseModel):
     title: str
     address: str | None = None
+    # A column since 20240601000082. It used to live in `metadata` for some
+    # rows and in `buildings.comuna` for others, which is why the deals board's
+    # comuna filter matched nothing: there was no field to match on.
+    comuna: str | None = None
     status: PropertyStatus = PropertyStatus.AVAILABLE
     is_draft: bool = False
     description: str | None = None
@@ -48,6 +52,7 @@ class PropertyCreate(PropertyBase):
 class PropertyUpdate(BaseModel):
     title: str | None = None
     address: str | None = None
+    comuna: str | None = None
     status: PropertyStatus | None = None
     is_draft: bool | None = None
     description: str | None = None

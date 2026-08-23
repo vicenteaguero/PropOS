@@ -53,6 +53,65 @@ def _flatten_counts(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return rows
 
 
+def _attach_comunas(client, tenant_id: UUID, rows: list[dict]) -> None:
+    """Attach `comunas`: every comuna this deal touches, in place.
+
+    A deal is not about one property. `property_id` is the principal, and
+    `opportunity_properties` holds the rest — so a comuna filter that read only
+    `property_id` missed the half of a broker's book where the buyer is looking
+    at three flats in two neighbourhoods.
+
+    Two bounded reads for the whole page, not one per deal. Best-effort: a
+    board with no comunas is a board without one filter, a board that 500s is
+    no board.
+    """
+    if not rows:
+        return
+    ids = [r["id"] for r in rows]
+    try:
+        links = (
+            client.table("opportunity_properties")
+            .select("opportunity_id,property_id")
+            .eq("tenant_id", str(tenant_id))
+            .in_("opportunity_id", ids)
+            .execute()
+            .data
+            or []
+        )
+    except Exception:  # noqa: BLE001
+        links = []
+
+    by_opp: dict[str, set[str]] = {}
+    for row in rows:
+        principal = row.get("property_id")
+        if principal:
+            by_opp.setdefault(row["id"], set()).add(principal)
+    for link in links:
+        if link.get("property_id"):
+            by_opp.setdefault(link["opportunity_id"], set()).add(link["property_id"])
+
+    wanted = {pid for pids in by_opp.values() for pid in pids}
+    comunas: dict[str, str] = {}
+    if wanted:
+        try:
+            props = (
+                client.table("properties")
+                .select("id,comuna")
+                .eq("tenant_id", str(tenant_id))
+                .in_("id", list(wanted))
+                .execute()
+                .data
+                or []
+            )
+            comunas = {p["id"]: p["comuna"] for p in props if p.get("comuna")}
+        except Exception:  # noqa: BLE001
+            comunas = {}
+
+    for row in rows:
+        names = {comunas[pid] for pid in by_opp.get(row["id"], set()) if pid in comunas}
+        row["comunas"] = sorted(names)
+
+
 class OpportunityService:
     @staticmethod
     async def list_opportunities(
@@ -89,7 +148,9 @@ class OpportunityService:
                 builder = builder.eq("person_id", str(person_id))
             if property_id:
                 builder = builder.eq("property_id", str(property_id))
-            return _flatten_counts(builder.execute().data or [])
+            rows = _flatten_counts(builder.execute().data or [])
+            _attach_comunas(client, tenant_id, rows)
+            return rows
 
         return await run_blocking(_read)
 

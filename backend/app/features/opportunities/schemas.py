@@ -64,6 +64,10 @@ class OpportunityResponse(OpportunityBase):
     #: one-buyer deal. Zero on the detail endpoints, which list them in full.
     extra_participants: int = 0
     extra_properties: int = 0
+    #: Every comuna this deal touches — the principal property's and each one
+    #: in `opportunity_properties`. Resolved by the list endpoint so the board
+    #: can filter without fetching the whole property table to build a map.
+    comunas: list[str] = []
 
     model_config = {"from_attributes": True}
 
