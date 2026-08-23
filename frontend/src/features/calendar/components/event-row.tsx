@@ -27,6 +27,7 @@ interface EventRowProps {
  */
 export function EventRow({ item, onOpen, resolveType, past = false }: EventRowProps) {
   const meta = itemMeta(item, resolveType);
+  const priority = item.priority ?? 0;
   const StatusIcon = statusIcon(item);
   const statusText = item.status
     ? label(item.item_type === "TASK" ? "taskStatus" : "eventStatus", item.status)
@@ -60,12 +61,19 @@ export function EventRow({ item, onOpen, resolveType, past = false }: EventRowPr
         </div>
       </div>
 
-      <span className="w-[3px] shrink-0 rounded-full" style={{ background: meta.ink }} />
+      {/* The bar carries the type's colour; its WIDTH carries the priority.
+          A separate badge would have been a fourth thing competing for a row
+          that already holds a time, a type, a title and a status. */}
+      <span
+        className={cn("shrink-0 rounded-full", priority >= 2 ? "w-[5px]" : "w-[3px]")}
+        style={{ background: meta.ink }}
+      />
 
       <div className="min-w-0 flex-1 self-center">
         <div
           className={cn(
-            "text-[15px] font-semibold leading-snug text-foreground",
+            "text-[15px] leading-snug text-foreground",
+            priority >= 1 ? "font-bold" : "font-semibold",
             past ? "truncate" : "line-clamp-2",
           )}
         >
