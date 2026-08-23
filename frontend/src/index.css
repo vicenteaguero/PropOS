@@ -68,6 +68,8 @@
   --color-accent-brand: var(--accent-brand);
   --color-accent-brand-foreground: var(--accent-brand-foreground);
   --color-accent-2: var(--accent-2);
+  --color-accent-3: var(--accent-3);
+  --color-accent-soft: var(--accent-soft);
   /* Tertiary text + stronger divider (mockup faint / line2) */
   --color-faint: var(--faint);
   --color-line-strong: var(--line-strong);
@@ -296,6 +298,11 @@
    * decorative pair. Defaults to a neutral, so a user who never picked a palette
    * sees exactly what they saw before. */
   --accent-2: #8c6d5d;
+  --accent-3: #9e9e9e;
+  /* The pale fill. Defaults to the brand at 12% — what --sidebar-accent was
+   * hard-coding — so a workspace on Automática looks exactly as it did; a
+   * palette replaces it with the actual cream from its source. */
+  --accent-soft: color-mix(in srgb, var(--accent-brand) 12%, transparent);
 
   /* Neutral base — NOT achromatic.
    *
@@ -359,14 +366,14 @@
   --ring: var(--accent-brand);
   --chart-1: var(--accent-brand);
   --chart-2: var(--accent-2);
-  --chart-3: #9e9e9e;
+  --chart-3: var(--accent-3);
   --chart-4: #12151a;
   --chart-5: #d8d5ce;
   --sidebar: color-mix(in srgb, var(--accent-brand) var(--tint), #f7f5f1);
   --sidebar-foreground: var(--foreground);
   --sidebar-primary: var(--accent-brand);
   --sidebar-primary-foreground: var(--accent-brand-foreground);
-  --sidebar-accent: color-mix(in srgb, var(--accent-brand) 12%, transparent);
+  --sidebar-accent: var(--accent-soft);
   --sidebar-accent-foreground: var(--foreground);
   --sidebar-border: color-mix(in srgb, var(--accent-brand) var(--tint), #e4e1db);
   --sidebar-ring: var(--accent-brand);
@@ -395,6 +402,8 @@
   --accent-brand: hsl(var(--accent-hue) var(--accent-sat) 70%);
   --accent-brand-foreground: #0a0c10;
   --accent-2: #e3b7a0;
+  --accent-3: rgba(235, 235, 245, 0.55);
+  --accent-soft: color-mix(in srgb, var(--accent-brand) 12%, transparent);
 
   --tint: 0%;
   --background: color-mix(in srgb, var(--accent-brand) var(--tint), #0c0e12);
@@ -432,14 +441,14 @@
   --ring: var(--accent-brand);
   --chart-1: var(--accent-brand);
   --chart-2: var(--accent-2);
-  --chart-3: rgba(235, 235, 245, 0.55);
+  --chart-3: var(--accent-3);
   --chart-4: #8a919e;
   --chart-5: #232830;
   --sidebar: color-mix(in srgb, var(--accent-brand) var(--tint), #0a0c10);
   --sidebar-foreground: var(--foreground);
   --sidebar-primary: var(--accent-brand);
   --sidebar-primary-foreground: var(--accent-brand-foreground);
-  --sidebar-accent: color-mix(in srgb, var(--accent-brand) 12%, transparent);
+  --sidebar-accent: var(--accent-soft);
   --sidebar-accent-foreground: var(--foreground);
   --sidebar-border: color-mix(in srgb, var(--accent-brand) var(--tint), #272c34);
   --sidebar-ring: var(--accent-brand);

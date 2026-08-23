@@ -4,10 +4,16 @@
  * A palette is NOT a set of screens' colours. It is four numbers per theme,
  * because `index.css` already derives every surface token from them:
  *
- *   --accent-brand              the brand colour (primary, ring, sidebar accent, chart-1)
+ *   --accent-brand              the brand colour (primary, ring, chart-1)
  *   --accent-brand-foreground   what reads on top of a filled accent
- *   --accent-2                  the support hue (chart-2, second series, decorative pairs)
+ *   --accent-2                  the support hue (chart-2, second series)
+ *   --accent-3                  the third hue (chart-3)
+ *   --accent-soft               the pale member (sidebar hover, chips, soft fills)
  *   --tint                      0-12%, how much of the brand bleeds into every neutral
+ *
+ * Four colours plus a dial, which is exactly what a source palette hands you.
+ * The first pass carried only two of the four and let `--tint` stand in for the
+ * cream; that dropped a colour per palette on the floor.
  *
  * That is why a palette is light/dark compatible by construction rather than by
  * hand: the ground stays near-white on paper and near-black in the dark, and
@@ -38,6 +44,15 @@ export interface PaletteTone {
   fg: string;
   /** Support hue — second series in a chart, decorative pairings. */
   support: string;
+  /** Third hue — third series in a chart. The colour a source palette has left. */
+  third: string;
+  /**
+   * The pale member of the palette (the cream, the rosa suave). Fills that
+   * should read as "of the brand" without being the brand: sidebar hover,
+   * chips, soft badges. In the dark theme it is the deep counterpart, not the
+   * cream — a cream fill on carbon is a lamp.
+   */
+  soft: string;
   /** 0-12: how much brand bleeds into backgrounds, cards, borders, sidebar. */
   tint: number;
 }
@@ -64,78 +79,232 @@ export const PALETTE_DEFS: PaletteDef[] = [
     id: "rosa",
     label: "Rosa Antiguo",
     hint: "El original de PropOS. Cálido, sobrio.",
-    light: { accent: "#B4636F", fg: "#FFFFFF", support: "#8C6D5D", tint: 4 },
-    dark: { accent: "#D4919B", fg: "#1C1816", support: "#E3B7A0", tint: 3 },
+    light: {
+      accent: "#B4636F",
+      fg: "#FFFFFF",
+      support: "#8C6D5D",
+      third: "#9E9E9E",
+      soft: "#F0D8DA",
+      tint: 4,
+    },
+    dark: {
+      accent: "#D4919B",
+      fg: "#1C1816",
+      support: "#E3B7A0",
+      third: "#9E9E9E",
+      soft: "#3A2A2C",
+      tint: 3,
+    },
   },
   {
     id: "menta",
     label: "Menta",
     hint: "Verde agua y ámbar. Fresca y clara.",
-    light: { accent: "#2F8A6C", fg: "#FFFFFF", support: "#B57A14", tint: 4 },
-    dark: { accent: "#59B292", fg: "#06231A", support: "#FFC94D", tint: 3 },
+    light: {
+      accent: "#2F8A6C",
+      fg: "#FFFFFF",
+      support: "#B57A14",
+      third: "#D94E68",
+      soft: "#FAE7CB",
+      tint: 4,
+    },
+    dark: {
+      accent: "#59B292",
+      fg: "#06231A",
+      support: "#FFC94D",
+      third: "#FA6781",
+      soft: "#2A2318",
+      tint: 3,
+    },
   },
   {
     id: "coral",
     label: "Coral",
     hint: "Frambuesa y durazno. Enérgica.",
-    light: { accent: "#C22B54", fg: "#FFFFFF", support: "#C0642C", tint: 4 },
-    dark: { accent: "#E06B80", fg: "#2A0812", support: "#FFC69D", tint: 3 },
+    light: {
+      accent: "#C22B54",
+      fg: "#FFFFFF",
+      support: "#C0642C",
+      third: "#E06B80",
+      soft: "#FFE6D4",
+      tint: 4,
+    },
+    dark: {
+      accent: "#E06B80",
+      fg: "#2A0812",
+      support: "#FFC69D",
+      third: "#FFE6D4",
+      soft: "#2E1A18",
+      tint: 3,
+    },
   },
   {
     id: "arena",
     label: "Arena",
     hint: "Tierra, musgo y papel. Muy terrenal.",
-    light: { accent: "#8A5A2E", fg: "#FFFFFF", support: "#6B7752", tint: 5 },
-    dark: { accent: "#C58A54", fg: "#2A1408", support: "#B0BA99", tint: 4 },
+    light: {
+      accent: "#8A5A2E",
+      fg: "#FFFFFF",
+      support: "#6B7752",
+      third: "#4E220F",
+      soft: "#F7F1DE",
+      tint: 5,
+    },
+    dark: {
+      accent: "#C58A54",
+      fg: "#2A1408",
+      support: "#B0BA99",
+      third: "#E0C9A0",
+      soft: "#2A2116",
+      tint: 4,
+    },
   },
   {
     id: "indigo",
     label: "Índigo",
     hint: "Azul de tinta sobre crema. Formal.",
-    light: { accent: "#3C4784", fg: "#FFFFFF", support: "#6E85AC", tint: 4 },
-    dark: { accent: "#8C9CD8", fg: "#111844", support: "#EAE0CF", tint: 4 },
+    light: {
+      accent: "#3C4784",
+      fg: "#FFFFFF",
+      support: "#6E85AC",
+      third: "#111844",
+      soft: "#EAE0CF",
+      tint: 4,
+    },
+    dark: {
+      accent: "#8C9CD8",
+      fg: "#111844",
+      support: "#EAE0CF",
+      third: "#7288AE",
+      soft: "#1B2140",
+      tint: 4,
+    },
   },
   {
     id: "vice",
     label: "Vice",
     hint: "Neón de costa: magenta y atardecer.",
-    light: { accent: "#C71173", fg: "#FFFFFF", support: "#D9611A", tint: 3 },
-    dark: { accent: "#FF3FA4", fg: "#1A0320", support: "#FFB03A", tint: 6 },
+    light: {
+      accent: "#C71173",
+      fg: "#FFFFFF",
+      support: "#D9611A",
+      third: "#1F7A9E",
+      soft: "#FBE0EE",
+      tint: 3,
+    },
+    dark: {
+      accent: "#FF3FA4",
+      fg: "#1A0320",
+      support: "#FFB03A",
+      third: "#35D2F5",
+      soft: "#2A0A2E",
+      tint: 6,
+    },
   },
   {
     id: "terracota",
     label: "Terracota",
     hint: "Arcilla sobre pergamino. Editorial.",
-    light: { accent: "#A9573C", fg: "#FFFFFF", support: "#7E7457", tint: 4 },
-    dark: { accent: "#CC785C", fg: "#191919", support: "#E8E4D8", tint: 4 },
+    light: {
+      accent: "#A9573C",
+      fg: "#FFFFFF",
+      support: "#7E7457",
+      third: "#4A4437",
+      soft: "#E8E4D8",
+      tint: 4,
+    },
+    dark: {
+      accent: "#CC785C",
+      fg: "#191919",
+      support: "#E8E4D8",
+      third: "#B7B2A6",
+      soft: "#2A2724",
+      tint: 4,
+    },
   },
   {
     id: "oceano",
     label: "Océano",
     hint: "Azul profundo y verde marino.",
-    light: { accent: "#0E6A8C", fg: "#FFFFFF", support: "#2F7F6D", tint: 4 },
-    dark: { accent: "#58B6D6", fg: "#04212C", support: "#7FD1B5", tint: 4 },
+    light: {
+      accent: "#0E6A8C",
+      fg: "#FFFFFF",
+      support: "#2F7F6D",
+      third: "#3F5E7A",
+      soft: "#DCEAF0",
+      tint: 4,
+    },
+    dark: {
+      accent: "#58B6D6",
+      fg: "#04212C",
+      support: "#7FD1B5",
+      third: "#A9C4D8",
+      soft: "#10242E",
+      tint: 4,
+    },
   },
   {
     id: "bosque",
     label: "Bosque",
     hint: "Pino y liquen. Tranquila.",
-    light: { accent: "#2E6B52", fg: "#FFFFFF", support: "#71833E", tint: 4 },
-    dark: { accent: "#6FBF95", fg: "#06241A", support: "#C3D08A", tint: 3 },
+    light: {
+      accent: "#2E6B52",
+      fg: "#FFFFFF",
+      support: "#71833E",
+      third: "#4A5C3A",
+      soft: "#DCEAE1",
+      tint: 4,
+    },
+    dark: {
+      accent: "#6FBF95",
+      fg: "#06241A",
+      support: "#C3D08A",
+      third: "#9DBFA5",
+      soft: "#16281F",
+      tint: 3,
+    },
   },
   {
     id: "ciruela",
     label: "Ciruela",
     hint: "Violeta y rosa. Poco común.",
-    light: { accent: "#6B3FA0", fg: "#FFFFFF", support: "#A44C81", tint: 4 },
-    dark: { accent: "#B79CE8", fg: "#1A0F2E", support: "#F0A6C8", tint: 4 },
+    light: {
+      accent: "#6B3FA0",
+      fg: "#FFFFFF",
+      support: "#A44C81",
+      third: "#4A3468",
+      soft: "#EDE2F5",
+      tint: 4,
+    },
+    dark: {
+      accent: "#B79CE8",
+      fg: "#1A0F2E",
+      support: "#F0A6C8",
+      third: "#C9B8E0",
+      soft: "#241734",
+      tint: 4,
+    },
   },
   {
     id: "grafito",
     label: "Grafito",
     hint: "Sin color. Sólo el contenido.",
-    light: { accent: "#3A3F47", fg: "#FFFFFF", support: "#7B8189", tint: 0 },
-    dark: { accent: "#C6CBD4", fg: "#14171C", support: "#8A919E", tint: 0 },
+    light: {
+      accent: "#3A3F47",
+      fg: "#FFFFFF",
+      support: "#7B8189",
+      third: "#A8AEB6",
+      soft: "#EDEEF0",
+      tint: 0,
+    },
+    dark: {
+      accent: "#C6CBD4",
+      fg: "#14171C",
+      support: "#8A919E",
+      third: "#5F656E",
+      soft: "#1E2228",
+      tint: 0,
+    },
   },
 ];
 
@@ -192,6 +361,8 @@ export function applyPalette(id: Palette, theme: Theme = getStoredTheme()): void
     style.removeProperty("--accent-brand");
     style.removeProperty("--accent-brand-foreground");
     style.removeProperty("--accent-2");
+    style.removeProperty("--accent-3");
+    style.removeProperty("--accent-soft");
     style.removeProperty("--tint");
     document.documentElement.dataset.palette = AUTO_PALETTE;
     return;
@@ -201,6 +372,8 @@ export function applyPalette(id: Palette, theme: Theme = getStoredTheme()): void
   style.setProperty("--accent-brand", tone.accent);
   style.setProperty("--accent-brand-foreground", tone.fg);
   style.setProperty("--accent-2", tone.support);
+  style.setProperty("--accent-3", tone.third);
+  style.setProperty("--accent-soft", tone.soft);
   style.setProperty("--tint", `${tone.tint}%`);
   // Not used for colour — a couple of palettes want a structural tweak (see
   // index.css) and screenshots want to name the palette they caught.

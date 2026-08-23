@@ -22,7 +22,8 @@ import { tenantSwatch } from "@core/theme/tenant-accent";
  * A row of three dots tells you nothing about what a palette does to a screen —
  * every palette is "a colour and two others". So the tile is a miniature of the
  * real thing: the page ground, a card on top of it, a filled accent button, a
- * line of text and the support hue. The neutrals come from `NEUTRALS`, which is
+ * line of text, and all four members of the palette. The neutrals come from
+ * `NEUTRALS`, which is
  * the same pair index.css paints, so what you tap is what you get.
  *
  * The preview is drawn in the ACTIVE theme. A palette has a light tone and a
@@ -35,6 +36,8 @@ function PaletteTile({
   accent,
   fg,
   support,
+  third,
+  soft,
   selected,
   onSelect,
 }: {
@@ -43,6 +46,8 @@ function PaletteTile({
   accent: string;
   fg: string;
   support: string;
+  third: string;
+  soft: string;
   selected: boolean;
   onSelect: () => void;
 }) {
@@ -72,6 +77,7 @@ function PaletteTile({
             <span className="size-4 rounded-full" style={{ background: accent }} />
             <span className="h-1.5 flex-1 rounded-full" style={{ background: n.line }} />
             <span className="size-2.5 rounded-full" style={{ background: support }} />
+            <span className="size-2.5 rounded-full" style={{ background: third }} />
           </div>
           <div className="mt-2 flex items-center gap-1.5">
             <span
@@ -80,11 +86,21 @@ function PaletteTile({
             >
               Aa
             </span>
+            {/* The pale member, drawn as what it becomes: a soft chip. */}
             <span
-              className="h-1.5 w-8 rounded-full"
-              style={{ background: support, opacity: 0.7 }}
+              className="rounded px-1.5 py-0.5 text-[9px] font-semibold"
+              style={{ background: soft, color: accent }}
+            >
+              Aa
+            </span>
+            <span
+              className="h-1.5 w-6 rounded-full"
+              style={{ background: support, opacity: 0.8 }}
             />
-            <span className="h-1.5 flex-1 rounded-full" style={{ background: n.line }} />
+            <span
+              className="h-1.5 flex-1 rounded-full"
+              style={{ background: third, opacity: 0.6 }}
+            />
           </div>
         </div>
       </div>
@@ -135,6 +151,8 @@ export function PalettePicker() {
         accent={auto}
         fg="#ffffff"
         support={theme === "dark" ? "#e3b7a0" : "#8c6d5d"}
+        third={theme === "dark" ? "#8a919e" : "#9e9e9e"}
+        soft={`color-mix(in srgb, ${auto} 12%, transparent)`}
         selected={current === AUTO_PALETTE}
         onSelect={() => choose(AUTO_PALETTE)}
       />
@@ -148,6 +166,8 @@ export function PalettePicker() {
             accent={tone.accent}
             fg={tone.fg}
             support={tone.support}
+            third={tone.third}
+            soft={tone.soft}
             selected={current === def.id}
             onSelect={() => choose(def.id)}
           />
