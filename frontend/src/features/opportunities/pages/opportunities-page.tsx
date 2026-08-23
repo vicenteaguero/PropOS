@@ -56,7 +56,10 @@ export function OpportunitiesPage() {
   const [comuna, setComuna] = useState<string | null>(null);
   const [order, setOrder] = useState<DealOrder>("stage");
 
-  const properties = useProperties();
+  // 500, not the endpoint default of 100: a board of 500 deals resolves
+  // against this map, and a short page left four fifths of the cards with no
+  // property title — which looks like missing data, not a cap.
+  const properties = useProperties(undefined, { limit: 500 });
   const navigate = useNavigate();
   const isDesktop = useIsDesktop();
   const { user } = useAuth();

@@ -16,10 +16,10 @@ interface ContactsQueryOpts extends EntityQueryOpts {
   propertyId?: string;
 }
 
-export function useProperties(q?: string, opts: EntityQueryOpts = {}) {
+export function useProperties(q?: string, opts: EntityQueryOpts & { limit?: number } = {}) {
   return useQuery({
-    queryKey: entitiesKeys.properties(q),
-    queryFn: () => entitiesApi.listProperties(q),
+    queryKey: [...entitiesKeys.properties(q), opts.limit ?? 0],
+    queryFn: () => entitiesApi.listProperties(q, opts.limit),
     enabled: opts.enabled ?? true,
     staleTime: 60_000,
   });
