@@ -1,10 +1,25 @@
 import { useRef, useState } from "react";
 import { useOpenOnParam } from "@shared/hooks/use-open-on-param";
-import { Link as LinkIcon, Loader2, Mic, Plus, Sparkles, Trash2 } from "lucide-react";
+import { Link as LinkIcon, Loader2, Mic, Pin, Plus, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { PageLayout } from "@shared/components/page-layout";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
-import { AudioPlayer, ErrorState, HOVER_REVEAL, PageSkeleton } from "@shared/ui";
+import { AudioPlayer, ErrorState, FilterSelect, PageSkeleton, Pill } from "@shared/ui";
+import { createPortal } from "react-dom";
+import { useTopbarActionsSlot } from "@layouts/topbar-slot";
+import { NoteDetailSheet } from "../components/note-detail-sheet";
+import {
+  NOTE_FILTERS,
+  NOTE_SORTS,
+  firstLink,
+  linkDomain,
+  matchesNoteFilter,
+  noteBackground,
+  notePriorityBucket,
+  sortNotes,
+  type NoteFilter,
+  type NoteSort,
+} from "../lib/note-style";
 import { useAuth } from "@shared/hooks/use-auth";
 import { useAgentName } from "@core/branding/agent-branding";
 import { useThemeMode } from "@core/theme/theme-provider";
@@ -13,24 +28,18 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useIsDesktop } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
-import { useCreateNoteWithAttachments, useDeleteNote, useNotes } from "../hooks/use-notes";
+import {
+  useCreateNoteWithAttachments,
+  useDeleteNote,
+  useNotes,
+  useUpdateNote,
+} from "../hooks/use-notes";
 import { NoteTargetPicker, type DraftTarget } from "../components/note-target-picker";
 import { NoteBody } from "../components/note-body";
 import { NoteAttachmentPicker } from "../components/note-attachment-picker";
 import { NoteTargetChips } from "../components/note-target-chips";
 import type { Note } from "../api/notes-api";
 import { formatDayMonth } from "@shared/utils/format";
-
-// Soft pastel sticky-note tints, applied ONLY in light mode (inline style would
-// otherwise win over `dark:` classes, muddying dark cards). Dark mode keeps the
-// plain `bg-card`. Low alpha so the foreground/border tokens stay legible.
-const LIGHT_TINTS = [
-  "rgba(250, 204, 21, 0.10)", // amber
-  "rgba(96, 165, 250, 0.10)", // blue
-  "rgba(52, 211, 153, 0.10)", // green
-  "rgba(244, 114, 182, 0.10)", // pink
-  "rgba(167, 139, 250, 0.10)", // violet
-];
 
 // Friendly label for the linked record type, when a note is attached to one.
 
@@ -42,7 +51,16 @@ export function NotesPage() {
   const { data, isLoading, error, refetch } = useNotes({});
   const create = useCreateNoteWithAttachments();
   const del = useDeleteNote();
+  const updateNote = useUpdateNote();
+  const actionsHost = useTopbarActionsSlot();
   const [body, setBody] = useState("");
+  // The composer used to be open on arrival, so the first thing the page showed
+  // was an empty box rather than the notes already written.
+  const [composing, setComposing] = useState(false);
+  const [detailNote, setDetailNote] = useState<Note | null>(null);
+  const [expanded, setExpanded] = useState(false);
+  const [filter, setFilter] = useState<NoteFilter>("all");
+  const [sort, setSort] = useState<NoteSort>("recent");
   // What the note is about. Its whole value is the link — an unattached note is
   // a post-it, and the reason the old view felt worthless was that the link
   // existed in the database and was never shown or editable here.
@@ -80,39 +98,63 @@ export function NotesPage() {
   // the agent pipeline isn't available to this user).
   const focusComposer = () => composerRef.current?.querySelector("textarea")?.focus();
 
-  useOpenOnParam("nuevo", focusComposer);
+  // Arriving from Home's "Nueva nota" tile opens the composer, not just the page.
+  useOpenOnParam("nuevo", () => {
+    setComposing(true);
+    focusComposer();
+  });
 
   const notes = data ?? [];
+  const visibleNotes = sortNotes(
+    notes.filter((n) => matchesNoteFilter(n, filter)),
+    sort,
+  );
 
   const composer = (
     <div
       ref={composerRef}
       className={cn("rounded-xl border border-border bg-card p-3", isDesktop ? "max-w-2xl" : "")}
     >
+      {/* Two rows at rest, taller once it is being used. A note is usually a
+          sentence, so a permanently tall box just pushed the notes down. */}
       <Textarea
         aria-label="Nueva nota"
         value={body}
         onChange={(e) => setBody(e.target.value)}
-        rows={2}
+        onFocus={() => setExpanded(true)}
+        rows={expanded ? 5 : 2}
         placeholder="Escribe una nota…"
-        className="mb-2 resize-none border-0 bg-transparent px-1 shadow-none focus-visible:ring-0"
+        className="mb-2 resize-none border-0 bg-transparent px-1 shadow-none transition-all focus-visible:ring-0"
       />
       {(linking || targets.length > 0) && (
         <div className="mb-2">
           <NoteTargetPicker value={targets} onChange={setTargets} disabled={create.isPending} />
         </div>
       )}
-      <div className="mb-2">
-        <NoteAttachmentPicker value={files} onChange={setFiles} disabled={create.isPending} />
-      </div>
-      <div className="flex items-center justify-between gap-2">
-        <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => setLinking((v) => !v)}>
+      {/* One row: link, attachments, save. It used to be two bands — the
+          attachment picker on its own line above the buttons — so an empty
+          composer was as tall as a note card. */}
+      <div className="flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Vincular"
+          className="shrink-0 rounded-full"
+          onClick={() => setLinking((v) => !v)}
+        >
           <LinkIcon className="size-4" />
-          {targets.length > 0
-            ? `${targets.length} vinculada${targets.length === 1 ? "" : "s"}`
-            : "Vincular"}
         </Button>
-        <Button onClick={add} disabled={create.isPending || !body.trim()} className="gap-2">
+        <NoteAttachmentPicker value={files} onChange={setFiles} disabled={create.isPending} />
+        {targets.length > 0 && (
+          <span className="truncate text-[12px] text-muted-foreground">
+            {targets.length} vinculada{targets.length === 1 ? "" : "s"}
+          </span>
+        )}
+        <Button
+          onClick={add}
+          disabled={create.isPending || !body.trim()}
+          className="ml-auto shrink-0 gap-2 rounded-full"
+        >
           {create.isPending ? (
             <Loader2 className="size-4 animate-spin" />
           ) : (
@@ -157,89 +199,161 @@ export function NotesPage() {
 
   const empty = <EmptyState title="Sin notas" description="Escribe tu primera nota arriba." />;
 
-  const NoteCard = ({ note, index }: { note: Note; index: number }) => (
-    <div
-      className="group mb-3 break-inside-avoid rounded-xl border border-border bg-card p-3.5 text-left"
-      // Light mode only: subtle rotating pastel tint. Dark falls through to bg-card.
-      style={
-        theme === "light" ? { background: LIGHT_TINTS[index % LIGHT_TINTS.length] } : undefined
-      }
-    >
-      <NoteBody
-        body={note.body}
-        className="text-[13px] leading-relaxed text-foreground line-clamp-6"
-      />
-      {note.attachments.length > 0 && (
-        <div className="mt-2.5 space-y-1.5">
-          {/* Photos first as a strip, memos below: an image is recognised at a
+  const NoteCard = ({ note }: { note: Note }) => {
+    const link = firstLink(note.body);
+    const priority = notePriorityBucket(note.priority);
+    return (
+      <button
+        type="button"
+        onClick={() => setDetailNote(note)}
+        className="flex h-full w-full flex-col rounded-xl border border-border p-3 text-left transition active:scale-[0.99]"
+        // Persisted, or derived from the note's id — never from its position in
+        // the list, which used to repaint every card whenever the order changed.
+        style={{ background: noteBackground(note, theme === "light" ? "light" : "dark") }}
+      >
+        {(note.pinned || priority > 0) && (
+          <div className="mb-1.5 flex items-center gap-1.5">
+            {note.pinned && <Pin className="size-3.5 text-foreground" strokeWidth={2} />}
+            {priority === 2 && <Pill tone="destructive">Alta</Pill>}
+            {priority === 1 && <Pill tone="warning">Media</Pill>}
+          </div>
+        )}
+        <NoteBody
+          body={note.body}
+          className="text-[13px] leading-relaxed text-foreground line-clamp-4"
+        />
+        {note.attachments.length > 0 && (
+          <div className="mt-2.5 space-y-1.5">
+            {/* Photos first as a strip, memos below: an image is recognised at a
               glance, a player has to be read. */}
-          {note.attachments.some((a) => a.role === "PHOTO") && (
-            <div className="flex gap-1.5 overflow-x-auto">
-              {note.attachments
-                .filter((a) => a.role === "PHOTO")
-                .map((a) => (
-                  <img
-                    key={a.id}
-                    src={a.url}
-                    alt=""
-                    loading="lazy"
-                    className="size-16 shrink-0 rounded-lg object-cover"
-                  />
-                ))}
-            </div>
-          )}
-          {note.attachments
-            .filter((a) => a.role === "AUDIO")
-            .map((a) => (
-              <AudioPlayer key={a.id} src={a.url} />
-            ))}
-        </div>
-      )}
-      {note.targets.length > 0 && <NoteTargetChips targets={note.targets} className="mt-2.5" />}
-      <div className="mt-3 flex items-center justify-between gap-2">
-        <span />
-        <span className="flex items-center gap-2">
-          <span className="text-[11px] text-faint">{formatDayMonth(note.created_at)}</span>
-          <button
-            type="button"
-            onClick={() => del.mutate(note.id)}
-            aria-label="Eliminar nota"
-            className={`text-faint hover:text-destructive ${HOVER_REVEAL}`}
-          >
-            <Trash2 className="size-4" />
-          </button>
+            {note.attachments.some((a) => a.role === "PHOTO") && (
+              <div className="flex gap-1.5 overflow-x-auto">
+                {note.attachments
+                  .filter((a) => a.role === "PHOTO")
+                  .map((a) => (
+                    <img
+                      key={a.id}
+                      src={a.url}
+                      alt=""
+                      loading="lazy"
+                      className="size-16 shrink-0 rounded-lg object-cover"
+                    />
+                  ))}
+              </div>
+            )}
+            {note.attachments
+              .filter((a) => a.role === "AUDIO")
+              .map((a) => (
+                <AudioPlayer key={a.id} src={a.url} />
+              ))}
+          </div>
+        )}
+        {link && (
+          <span className="mt-2 inline-flex max-w-full items-center gap-1 self-start rounded-full bg-background/60 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+            <LinkIcon className="size-3 shrink-0" strokeWidth={2} />
+            <span className="truncate">{linkDomain(link)}</span>
+          </span>
+        )}
+        {note.targets.length > 0 && <NoteTargetChips targets={note.targets} className="mt-2" />}
+        {/* Deleting lives in the detail sheet behind a confirm: it used to be a
+          bin icon on the card itself, which on a touch screen is one mis-tap
+          away from losing the note. */}
+        <span className="mt-auto pt-2 text-[11px] text-faint">
+          {formatDayMonth(note.created_at)}
         </span>
-      </div>
-    </div>
-  );
+      </button>
+    );
+  };
 
-  // 2-column masonry on mobile, widening to 3 on the desktop app surface.
+  // A real grid, not CSS `columns`.
+  //
+  // Masonry fills column one before column two, and balances by height, so the
+  // second column started lower than the first and the two never lined up —
+  // which read as a stray padding nobody could find. Equal-height cells in a
+  // grid start at the same place by construction.
   const grid = (
-    <div className="columns-2 gap-3 lg:columns-3">
-      {notes.map((n, i) => (
-        <NoteCard key={n.id} note={n} index={i} />
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+      {visibleNotes.map((n) => (
+        <NoteCard key={n.id} note={n} />
       ))}
     </div>
   );
 
+  const openComposer = () => {
+    setComposing(true);
+    focusComposer();
+  };
+
   const content = (
     <>
+      {/* "Nueva nota" goes in the bar; the Propo card stays on the page,
+          because dictating is the entry worth advertising. */}
+      {actionsHost &&
+        createPortal(
+          <Button
+            onClick={openComposer}
+            variant="ink"
+            size="icon"
+            aria-label="Nueva nota"
+            className="rounded-full"
+          >
+            <Plus className="size-4" strokeWidth={1.8} />
+          </Button>,
+          actionsHost,
+        )}
+
       <div className="mb-3">{propoCard}</div>
-      <div className="mb-5">{composer}</div>
-      {isLoading && loading}
-      {error && errorBox}
-      {!isLoading && !error && notes.length === 0 && empty}
+      {composing && <div className="mb-4">{composer}</div>}
+
       {!isLoading && !error && notes.length > 0 && (
-        <>
-          {grid}
-          <div className="mt-4">
-            <Button variant="outline" className="gap-2" onClick={focusComposer}>
+        <div className="mb-3 flex items-center gap-2">
+          <FilterSelect
+            label="Filtrar"
+            value={filter === "all" ? null : filter}
+            allLabel="Todas"
+            options={NOTE_FILTERS.filter((f) => f.value !== "all").map((f) => ({
+              value: f.value,
+              label: f.label,
+            }))}
+            onChange={(v: string | null) => setFilter((v as NoteFilter) ?? "all")}
+          />
+          <div className="min-w-0 flex-1">
+            <FilterSelect
+              label="Ordenar"
+              value={sort}
+              options={NOTE_SORTS.map((o) => ({ value: o.value, label: o.label, sub: o.sub }))}
+              onChange={(v: string | null) => setSort((v as NoteSort) ?? "recent")}
+            />
+          </div>
+          {!actionsHost && (
+            <Button variant="outline" className="gap-2" onClick={openComposer}>
               <Plus className="size-4" />
               Nueva nota
             </Button>
-          </div>
-        </>
+          )}
+        </div>
       )}
+
+      {isLoading && loading}
+      {error && errorBox}
+      {!isLoading && !error && notes.length === 0 && empty}
+      {!isLoading && !error && notes.length > 0 && grid}
+      {!isLoading && !error && notes.length > 0 && visibleNotes.length === 0 && (
+        <p className="py-10 text-center text-sm text-muted-foreground">
+          Ninguna nota coincide con este filtro.
+        </p>
+      )}
+
+      <NoteDetailSheet
+        note={detailNote}
+        onOpenChange={(o) => !o && setDetailNote(null)}
+        onSave={(id, patch) => {
+          updateNote.mutate({ id, body: patch });
+          setDetailNote(null);
+        }}
+        onDelete={(id) => del.mutate(id)}
+        saving={updateNote.isPending}
+      />
     </>
   );
 

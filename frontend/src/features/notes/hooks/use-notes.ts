@@ -52,6 +52,22 @@ export function useCreateNote() {
   });
 }
 
+export function useUpdateNote() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      body,
+    }: {
+      id: string;
+      body: { body?: string; priority?: number; pinned?: boolean; color?: string | null };
+    }) => notesApi.update(id, body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: notesKeys.all }),
+    onError: (err) =>
+      toast.error(err instanceof Error ? err.message : "No se pudo guardar la nota"),
+  });
+}
+
 export function useDeleteNote() {
   const qc = useQueryClient();
   return useMutation({
