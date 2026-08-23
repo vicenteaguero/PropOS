@@ -139,7 +139,12 @@ export function CommandPalette({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
           showCloseButton={false}
-          className="top-[12%] max-w-xl translate-y-0 overflow-hidden p-0"
+          // `sm:max-w-xl`: a bare `max-w-xl` is the same tailwind-merge group as
+          // `DialogContent`'s `max-w-[calc(100%-2rem)]` and erases it, so the
+          // palette lost its 16px phone inset and went full-bleed. Reachable on
+          // a phone — the topbar renders the magnifier whenever the page does
+          // not own search.
+          className="top-[12%] translate-y-0 overflow-hidden p-0 sm:max-w-xl"
         >
           <DialogTitle className="sr-only">Buscar y navegar</DialogTitle>
           <Command loop>
