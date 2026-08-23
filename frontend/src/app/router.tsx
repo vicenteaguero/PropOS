@@ -27,6 +27,14 @@ const AdminPhonesPage = lazy(() =>
     default: m.AdminPhonesPage,
   })),
 );
+const ContactsPage = lazy(() =>
+  import("@features/contacts/pages/contacts-page").then((m) => ({ default: m.ContactsPage })),
+);
+const AdminPropertiesPage = lazy(() =>
+  import("@features/admin-properties/pages/admin-properties-page").then((m) => ({
+    default: m.AdminPropertiesPage,
+  })),
+);
 const AdminPropertyDetailPage = lazy(() =>
   import("@features/admin-properties/pages/admin-property-detail-page").then((m) => ({
     default: m.AdminPropertyDetailPage,
@@ -271,6 +279,27 @@ export function AppRouter() {
                 <>
                   <Route path="clientes" element={<ClientsSectionPage />} />
                   <Route path="agenda" element={<AgendaSectionPage />} />
+                  {/* Their own destinations, not `secondary` tabs inside
+                      Clientes. As tabs, the button that opened one INJECTED a
+                      tab that had not been in the bar a moment earlier, and
+                      there was no way to close it — see SectionTab.secondary.
+                      As routes they get the topbar's back arrow for free. */}
+                  <Route
+                    path="personas"
+                    element={
+                      <ProtectedRoute requiredScope="crm" requiredFeature="crm">
+                        <ContactsPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="propiedades"
+                    element={
+                      <ProtectedRoute requiredFeature="propiedades">
+                        <AdminPropertiesPage />
+                      </ProtectedRoute>
+                    }
+                  />
                   <Route
                     path="personas/:id"
                     element={
