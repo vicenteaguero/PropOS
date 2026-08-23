@@ -188,6 +188,7 @@ export function AdminPropertiesPage() {
             <ActionIcon name="createProperty" size="lg" />
           </Button>
         }
+        filtersInline
         filters={
           properties.length > 0 && !isLoading && !error ? (
             // Same properties, another way of looking at them — a setting, not
