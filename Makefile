@@ -327,22 +327,17 @@ scale-status: gcloud-auth
 
 # Staging backend (dev.propos.cl). Same Supabase project and the same auth, but
 # SUPABASE_DB_SCHEMA=propos_test, so every domain table read and written lives in
-# the mirror schema and staging cannot touch a broker's rows. Deploys are manual
-# on purpose: the prod trigger stays the only thing wired to a git push.
+# the mirror schema and staging cannot touch a broker's rows.
+#
+# A push to `dev` deploys this automatically (trigger propos-api-dev-deploy).
+# This target is the manual override, for when you want to try a checkout you
+# have not pushed.
 #
 # Regenerate the mirror's structure with `make test-schema-rebuild` after a
 # migration, then re-seed identity if you need to sign in against it.
 deploy-staging: gcloud-auth
-	@bash scripts/log.sh DEPLOY "🧪" "Deploying propos-api-dev (schema propos_test)"
-	@IMG=$$(gcloud run services describe propos-api --region $(GCP_REGION) \
-		--format='value(spec.template.spec.containers[0].image)'); \
-	SECRETS=$$(gcloud run services describe propos-api --region $(GCP_REGION) --format=json \
-		| python3 -c "import sys,json;d=json.load(sys.stdin);e=d['spec']['template']['spec']['containers'][0].get('env',[]);print(','.join(f\"{x['name']}={x['valueFrom']['secretKeyRef']['name']}:latest\" for x in e if 'valueFrom' in x))"); \
-	gcloud run deploy propos-api-dev --image="$$IMG" --region $(GCP_REGION) \
-		--platform=managed --allow-unauthenticated --port=8000 \
-		--min-instances=0 --max-instances=1 --memory=512Mi --cpu=1 --cpu-boost \
-		--concurrency=8 --env-vars-file=config/docker/cloudrun-env-dev.yaml \
-		--set-secrets="$$SECRETS"
+	@bash scripts/log.sh DEPLOY "🧪" "Building the current checkout into propos-api-dev"
+	gcloud builds submit --config config/docker/cloudbuild-dev.yaml --region=$(GCP_REGION) .
 
 kapso-templates-sync:
 	@bash scripts/log.sh KAPSO "📨" "Syncing WhatsApp HSM templates to Kapso"

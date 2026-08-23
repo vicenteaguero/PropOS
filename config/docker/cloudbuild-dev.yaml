@@ -1,0 +1,91 @@
+# Staging backend: build whatever is checked out and deploy it to propos-api-dev.
+#
+# Deliberately separate from cloudbuild.yaml rather than a parameterised version
+# of it. That file carries the CI gate, the required-secret check and the
+# readiness smoke test that protect production; bending it to serve two services
+# would put staging's needs inside production's deploy path. This one is allowed
+# to be simpler because nothing it touches is load-bearing.
+#
+# The important difference from production is not in here at all: it is
+# `SUPABASE_DB_SCHEMA=propos_test` in cloudrun-env-dev.yaml, which keeps every
+# domain read and write out of the schema a broker's rows live in.
+#
+# Run with `make deploy-staging`, which submits the current checkout. Staging
+# therefore tracks whatever you have in hand -- usually `dev` -- instead of
+# copying production's image, which would have made it impossible to test
+# anything that was not already released.
+
+steps:
+  - name: "gcr.io/cloud-builders/docker"
+    id: build-push
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        TAG="dev-$$(date -u +%Y%m%d-%H%M%S)"
+        echo "$$TAG" > /workspace/image_tag
+        echo "==> building $_IMAGE_BASE:$$TAG"
+        docker pull "$_IMAGE_BASE:latest" || true
+        DOCKER_BUILDKIT=1 docker build \
+          --cache-from="$_IMAGE_BASE:latest" \
+          --build-arg BUILDKIT_INLINE_CACHE=1 \
+          -t "$_IMAGE_BASE:$$TAG" \
+          -f config/docker/backend.prod.Dockerfile \
+          .
+        docker push "$_IMAGE_BASE:$$TAG"
+
+  - name: "gcr.io/cloud-builders/gcloud"
+    id: deploy
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        TAG="$$(cat /workspace/image_tag)"
+
+        # Mirror production's secret mounts. Reading them off the live service
+        # instead of listing them here means a secret added to production cannot
+        # silently go missing from staging.
+        SECRETS="$$(gcloud run services describe propos-api --region=$_REGION --format=json \
+          | python3 -c "import sys,json;d=json.load(sys.stdin);e=d['spec']['template']['spec']['containers'][0].get('env',[]);print(','.join(f\"{x['name']}={x['valueFrom']['secretKeyRef']['name']}:latest\" for x in e if 'valueFrom' in x))")"
+
+        gcloud run deploy propos-api-dev \
+          --image="$_IMAGE_BASE:$$TAG" \
+          --region=$_REGION \
+          --platform=managed \
+          --allow-unauthenticated \
+          --port=8000 \
+          --min-instances=0 \
+          --max-instances=1 \
+          --memory=512Mi \
+          --cpu=1 \
+          --cpu-boost \
+          --concurrency=8 \
+          --env-vars-file=config/docker/cloudrun-env-dev.yaml \
+          --set-secrets="$$SECRETS"
+
+  - name: "gcr.io/cloud-builders/gcloud"
+    id: smoke-test
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        URL="$$(gcloud run services describe propos-api-dev --region=$_REGION --format='value(status.url)')"
+        for i in 1 2 3 4 5 6; do
+          CODE="$$(curl -s --max-time 20 -o /workspace/ready.json -w '%{http_code}' "$$URL/health/ready" || echo 000)"
+          echo "attempt $$i -> http=$$CODE"
+          if [ "$$CODE" = "200" ]; then cat /workspace/ready.json; echo ""; exit 0; fi
+          sleep 10
+        done
+        echo "STAGING FAILED READINESS"; cat /workspace/ready.json 2>/dev/null || true
+        exit 1
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: E2_HIGHCPU_8
+
+substitutions:
+  _IMAGE_BASE: us-central1-docker.pkg.dev/propos-489401/propos/api
+  _REGION: us-central1
