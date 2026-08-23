@@ -18,6 +18,8 @@ import type { LucideIcon } from "lucide-react";
 import { startOfDay, endOfDay, startOfMonth, format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useAuth } from "@shared/hooks/use-auth";
+import { isEnabled as featureEnabled } from "@shared/feature/catalog";
+import { useFeature } from "@shared/feature/use-feature";
 import { useAgentName } from "@core/branding/agent-branding";
 import { useContacts } from "@features/contacts/hooks/use-contacts";
 import { propertiesApi } from "@features/admin-properties/api/properties-api";
@@ -35,6 +37,7 @@ import {
   ErrorState,
   NavMark,
   PageSkeleton,
+  Pill,
   SectionLabel,
   WhatsAppMark,
   type PillTone,
@@ -54,6 +57,13 @@ interface Tile {
   label: string;
   icon: LucideIcon;
   scope?: string;
+  /**
+   * Feature key. Orthogonal to `scope`, exactly as in the nav: the scope asks
+   * whether this person may, the feature asks whether the brokerage has it.
+   * A tile pointing at a route the feature gate refuses is a tap that lands on
+   * a 403 — which is how "Agregar gasto" behaved while Finanzas was locked.
+   */
+  feature?: string;
   /** routes that only exist for the ADMIN role */
   adminOnly?: boolean;
 }
@@ -85,7 +95,7 @@ function timeLabel(item: Pick<CalendarItem, "all_day" | "start_at">): string {
 }
 
 export function AdminHomePage() {
-  const { user } = useAuth();
+  const { user, features } = useAuth();
   const agentName = useAgentName();
   const navigate = useNavigate();
   const propo = useAgentOverlay();
@@ -97,8 +107,19 @@ export function AdminHomePage() {
   const firstName = (user?.fullName ?? "").split(" ")[0] || "";
   const scope = user?.adminScope ?? [];
   const allow = (s?: string) => !s || scope.length === 0 || scope.includes(s);
+  /**
+   * Both gates at once, for every block on this page.
+   *
+   * Home was the one surface that read `admin_scope` and ignored `feature_states`
+   * entirely, so a tenant with Finanzas turned off still got the "Agregar gasto"
+   * tile, and a tenant with Propo hidden still got the ask bar and the pendientes
+   * card. `featureEnabled` is false for `locked` and `hidden` and true for `wip`
+   * — an unfinished feature is one you still want people to exercise.
+   */
+  const can = (s?: string, f?: string) => allow(s) && featureEnabled(features, f);
   // Propo (agent pipeline) is backend ADMIN-only.
-  const canPropo = isAdmin && allow("agent");
+  const agentFeature = useFeature("agent");
+  const canPropo = isAdmin && can("agent", "agent");
 
   const contactsQ = useContacts({ limit: 50 });
 
@@ -152,7 +173,7 @@ export function AdminHomePage() {
     queryKey: ["analytics", "pending-count"],
     queryFn: () => apiRequest("/v1/analytics/pending-count"),
     staleTime: 30_000,
-    enabled: allow("pendientes"),
+    enabled: can("pendientes", "pendientes"),
   });
   const pendingCount = pendingQuery.data?.pending_count ?? 0;
 
@@ -160,7 +181,7 @@ export function AdminHomePage() {
     queryKey: ["interactions", "list", { limit: 6 }],
     queryFn: () => interactionsApi.list({ limit: 6 }),
     staleTime: 60_000,
-    enabled: allow("crm"),
+    enabled: can("crm", "crm"),
   });
   const activity = activityQ.data ?? [];
 
@@ -188,29 +209,34 @@ export function AdminHomePage() {
       label: "Agendar evento",
       icon: CalendarPlus,
       scope: "productividad",
+      feature: "productividad",
     },
     {
       to: `${base}/clientes?tab=personas&nuevo=1`,
       label: "Nuevo contacto",
       icon: UserPlus,
       scope: "crm",
+      feature: "crm",
     },
     {
       to: `${base}/clientes?tab=propiedades&nuevo=1`,
       label: "Agregar propiedad",
       icon: Building2,
+      feature: "propiedades",
     },
     {
       to: `${base}/documentos?nuevo=1`,
       label: "Subir documento",
       icon: Upload,
       scope: "documents",
+      feature: "documents",
     },
     {
       to: "/admin/finanzas?nuevo=1",
       label: "Agregar gasto",
       icon: Receipt,
       scope: "finanzas",
+      feature: "finanzas",
       adminOnly: true,
     },
     {
@@ -218,10 +244,11 @@ export function AdminHomePage() {
       label: "Nueva nota",
       icon: StickyNote,
       scope: "productividad",
+      feature: "productividad",
     },
   ];
 
-  const tiles = actionTiles.filter((t) => allow(t.scope) && (!t.adminOnly || isAdmin));
+  const tiles = actionTiles.filter((t) => can(t.scope, t.feature) && (!t.adminOnly || isAdmin));
 
   const propoBar = canPropo && (
     <div className="flex gap-2">
@@ -236,9 +263,13 @@ export function AdminHomePage() {
         <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-ink text-ink-foreground">
           <PropoMark className="size-4" />
         </span>
-        <span className="truncate text-[15px] text-muted-foreground">
+        <span className="min-w-0 flex-1 truncate text-[15px] text-muted-foreground">
           Pídele algo a {agentName}…
         </span>
+        {/* Inline, not an overlay pill: the bar is 46px tall and a badge pinned
+            to its corner sits on top of the placeholder. The sentence that
+            explains it lives on the Propo page, which this bar opens. */}
+        {agentFeature.showWip && <Pill tone="warning">En desarrollo</Pill>}
       </button>
       <button
         type="button"
@@ -512,7 +543,7 @@ export function AdminHomePage() {
     queryKey: ["properties", "list", { limit: 6 }],
     queryFn: () => propertiesApi.list({ limit: 6 }),
     staleTime: 60_000,
-    enabled: allow("crm"),
+    enabled: can("crm", "propiedades"),
   });
   const recentProperties = (propertiesQ.data ?? []).slice(0, 3);
 
@@ -631,7 +662,7 @@ export function AdminHomePage() {
    */
   const attentionQ = useAttention(5);
   const asideHasContent =
-    allow("crm") &&
+    can("crm", "crm") &&
     (attentionQ.isPending ||
       contactsQ.isPending ||
       propertiesQ.isPending ||
@@ -676,16 +707,17 @@ export function AdminHomePage() {
               scheduled. */}
             {propoBar}
 
-            {todayFeed.isError ? (
-              <ErrorState
-                compact
-                message="No se pudo cargar tu agenda de hoy."
-                error={todayFeed.error}
-                onRetry={() => todayFeed.refetch()}
-              />
-            ) : (
-              agendaWidget
-            )}
+            {can("productividad", "productividad") &&
+              (todayFeed.isError ? (
+                <ErrorState
+                  compact
+                  message="No se pudo cargar tu agenda de hoy."
+                  error={todayFeed.error}
+                  onRetry={() => todayFeed.refetch()}
+                />
+              ) : (
+                agendaWidget
+              ))}
 
             {/* auto-fill instead of a fixed column count: three tiles on a phone,
               as many as fit on a tablet or a wide window, with no breakpoint to
@@ -711,9 +743,10 @@ export function AdminHomePage() {
             {/* With no rail to live in, the one line the health check always
                 prints goes at the end of the column rather than alone in a
                 336px track. */}
-            {!asideHasContent && allow("crm") && <DataHealthCard />}
+            {!asideHasContent && can("crm", "crm") && <DataHealthCard />}
 
-            {(hasPipeline || oppsQ.isError) &&
+            {can("crm", "crm") &&
+              (hasPipeline || oppsQ.isError) &&
               (oppsQ.isError ? (
                 <ErrorState
                   compact
@@ -732,15 +765,15 @@ export function AdminHomePage() {
           {asideHasContent && (
             <aside className="flex min-w-0 flex-col gap-4">
               {/* What is waiting on a person, before what is wrong with the data. */}
-              {allow("crm") && <AttentionCard />}
+              {can("crm", "crm") && <AttentionCard />}
               {/* Data problems belong where the day starts, not buried in settings:
                 nobody goes looking for inconsistencies they do not know exist. */}
-              {allow("crm") && <DataHealthCard />}
-              {allow("crm") && propertiesWidget}
-              {allow("crm") &&
+              {can("crm", "crm") && <DataHealthCard />}
+              {can("crm", "propiedades") && propertiesWidget}
+              {can("crm", "crm") &&
                 (quickPeople.length > 0 || contactsQ.isPending || contactsQ.isError) &&
                 peopleWidget}
-              {allow("crm") && activityWidget}
+              {can("crm", "crm") && activityWidget}
             </aside>
           )}
         </div>
