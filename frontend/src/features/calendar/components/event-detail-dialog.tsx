@@ -11,7 +11,8 @@ import { label } from "@shared/lib/labels";
 import { NAV_APP_LABEL, navHref } from "@shared/lib/nav-app";
 import { MapsMark, WazeMark } from "@shared/ui/icons/brand-marks";
 import { DealSheet } from "@features/deals/components/deal-sheet";
-import { TYPE_META, durationLabel, kindLabel, timeLabel } from "../lib/calendar-item";
+import { itemMeta, durationLabel, timeLabel } from "../lib/calendar-item";
+import { useEventTypes } from "../hooks/use-event-types";
 import type { CalendarItem, EventDetail } from "../api/calendar-api";
 
 interface EventDetailDialogProps {
@@ -52,9 +53,10 @@ export function EventDetailDialog({
 }: EventDetailDialogProps) {
   const navigate = useNavigate();
   const [dealOpen, setDealOpen] = useState(false);
+  const { resolve: resolveType } = useEventTypes();
   if (!item) return null;
 
-  const meta = TYPE_META[item.item_type];
+  const meta = itemMeta(item, resolveType);
   const isEvent = item.item_type === "EVENT";
   const address = full?.location ?? item.location ?? null;
   const dealId = full?.opportunity_id ?? item.opportunity_id ?? null;
@@ -78,7 +80,7 @@ export function EventDetailDialog({
             <span
               aria-hidden
               className="mt-1.5 h-9 w-[3px] shrink-0 rounded-full"
-              style={{ background: meta.dot }}
+              style={{ background: meta.ink }}
             />
             <DialogTitle className="min-w-0 flex-1 text-[20px] font-bold leading-tight tracking-tight">
               {item.title ?? "Sin título"}
@@ -108,7 +110,12 @@ export function EventDetailDialog({
             </div>
 
             <div className="flex flex-wrap items-center gap-1.5">
-              <Pill tone={meta.tone}>{isEvent ? kindLabel(item.kind) : meta.label}</Pill>
+              <span
+                className="rounded-full border px-2 py-0.5 text-[11.5px] font-semibold"
+                style={{ background: meta.wash, borderColor: meta.edge, color: meta.ink }}
+              >
+                {meta.label}
+              </span>
               {item.status && (
                 <Pill tone="neutral">
                   {label(item.item_type === "TASK" ? "taskStatus" : "eventStatus", item.status)}
