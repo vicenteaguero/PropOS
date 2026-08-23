@@ -3,6 +3,8 @@ import { AlertTriangle, ChevronRight, Globe, Lock, Plus, UserRound } from "lucid
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
+  ActionIcon,
+  categoryVars,
   CONTROL_SQUARE,
   AppShellScroll,
   FilterSelect,
@@ -22,6 +24,9 @@ import { MessageTemplateSheet } from "../components/message-template-sheet";
 import { PipelineSheet } from "../components/pipeline-sheet";
 import { TagSheet } from "../components/tag-sheet";
 import { ChecklistTemplateSheet } from "../components/checklist-template-sheet";
+import { EventTypeSheet } from "../components/event-type-sheet";
+import { useAllEventTypes, useEventTypeMutations } from "@features/calendar/hooks/use-event-types";
+import type { EventType } from "@features/calendar/api/calendar-api";
 import { TemplateBody } from "../components/template-body";
 import {
   useChecklistTemplates,
@@ -605,6 +610,116 @@ function TagsTab() {
   );
 }
 
+function EventTypeRow({ type, onOpen }: { type: EventType; onOpen: () => void }) {
+  const vars = categoryVars(type.color);
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className={cn(
+        ROW,
+        TOUCH_TARGET_ROW,
+        FOCUS_RING,
+        "flex-row items-center gap-3 transition hover:bg-secondary/50 active:scale-[0.995]",
+        !type.active && "opacity-55",
+      )}
+    >
+      <span aria-hidden className="size-3 shrink-0 rounded-full" style={{ background: vars.ink }} />
+      <span className="min-w-0 flex-1 truncate text-[15px] font-medium text-foreground">
+        {type.label}
+      </span>
+      {!type.active && <Pill tone="neutral">Oculto</Pill>}
+      <span className="shrink-0 font-mono text-[12px] text-faint">{type.key}</span>
+      <ChevronRight className="size-4 shrink-0 text-faint" strokeWidth={1.8} />
+    </button>
+  );
+}
+
+/**
+ * Configuración → Clientes → Tipos de evento.
+ *
+ * `events.kind` was a Postgres enum with five members, so a brokerage whose
+ * week is built around tasaciones filed them under "Otro" — and "Otro" is
+ * where a filter stops being useful.
+ */
+function EventTypesTab() {
+  const { data, isPending, isError, error, refetch } = useAllEventTypes();
+  const { create, update, remove } = useEventTypeMutations();
+
+  const [query, setQuery] = useState("");
+  const [editing, setEditing] = useState<EventType | null>(null);
+  const [open, setOpen] = useState(false);
+
+  const all = useMemo(
+    () =>
+      [...(data ?? [])].sort(
+        (a, b) => a.position - b.position || a.label.localeCompare(b.label, "es"),
+      ),
+    [data],
+  );
+  const rows = all.filter((t) => t.label.toLowerCase().includes(query.trim().toLowerCase()));
+  const saving = create.isPending || update.isPending;
+
+  const openSheet = (type: EventType | null) => {
+    setEditing(type);
+    setOpen(true);
+  };
+
+  return (
+    <>
+      <ListShell
+        titleSr="Tipos de evento"
+        meta={all.length > 0 ? `${all.length} tipos` : null}
+        search={{ value: query, onChange: setQuery, placeholder: "Buscar tipo…" }}
+        primaryAction={
+          <Button
+            size="icon"
+            aria-label="Nuevo tipo"
+            title="Nuevo tipo"
+            className={cn("rounded-full", CONTROL_SQUARE)}
+            onClick={() => openSheet(null)}
+          >
+            <ActionIcon name="createEvent" />
+          </Button>
+        }
+        isLoading={isPending}
+        error={isError ? error : undefined}
+        onRetry={() => refetch()}
+        errorMessage="No se pudieron cargar los tipos."
+        isEmpty={rows.length === 0}
+        emptyTitle={all.length === 0 ? "Sin tipos" : "Nada con ese nombre"}
+        emptyAction={
+          all.length === 0 ? { label: "Crear tipo", onClick: () => openSheet(null) } : undefined
+        }
+      >
+        {rows.map((type) => (
+          <EventTypeRow key={type.id} type={type} onOpen={() => openSheet(type)} />
+        ))}
+      </ListShell>
+
+      <EventTypeSheet
+        open={open}
+        type={editing}
+        existing={all}
+        onOpenChange={setOpen}
+        saving={saving}
+        onSave={(values) => {
+          const done = { onSuccess: () => setOpen(false) };
+          if (editing) {
+            const { key: _key, ...rest } = values;
+            update.mutate({ id: editing.id, body: rest }, done);
+          } else {
+            create.mutate({ ...values, position: all.length }, done);
+          }
+        }}
+        onDelete={
+          editing ? () => remove.mutate(editing.id, { onSuccess: () => setOpen(false) }) : undefined
+        }
+      />
+    </>
+  );
+}
+
 /**
  * Configuración → Clientes: the two vocabularies a brokerage owns.
  *
@@ -622,6 +737,7 @@ export function ClientsCatalogsPage() {
     { id: "listas", label: "Listas de cierre", render: () => <ChecklistTemplatesTab /> },
     { id: "pipelines", label: "Pipelines", render: () => <PipelinesTab /> },
     { id: "etiquetas", label: "Etiquetas", render: () => <TagsTab /> },
+    { id: "tipos-evento", label: "Tipos de evento", render: () => <EventTypesTab /> },
   ];
 
   // `AppShellScroll`, like every other tabbed surface. This page asked for
