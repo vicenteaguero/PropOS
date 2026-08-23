@@ -61,6 +61,11 @@ PROTECTED = {
     "internal_areas",
     "email_accounts",
     "feature_states",
+    # Same shape as `tags` and `message_templates`: key, label, colour, icon,
+    # position, is_system. Migration ...0080 turned event types into a per-tenant
+    # catalog, and this list did not follow -- so emptying a tenant deleted the
+    # event types it had configured.
+    "event_types",
 }
 
 #: The audit trail is a ledger, not tenant data -- `docs/disaster-recovery.md`

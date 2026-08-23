@@ -48,12 +48,14 @@ TZ = ZoneInfo("America/Santiago")
 
 # Admins that should be able to switch into the demo workspace. Looked up by email;
 # missing ones are skipped rather than created (auth.users is not ours to write).
-DEMO_ADMIN_EMAILS = (
-    "vicenteaguero@uc.cl",
-    "vicente+plain@propos.dev",
-    "ana@propos.dev",
-    "jaime@propos.dev",
-)
+#: Who gets a membership in the demo workspace. Deliberately just the dev admin.
+#:
+#: This used to also list vicente+plain@, ana@ and jaime@propos.dev, deleted on
+#: 2026-06-20 -- so the demo was closed by accident rather than by design. Every
+#: address added here gets `view: "admin"` on a tenant holding ~250 invented
+#: people (see `_membership_rows`), which is not something a broker should ever
+#: find in their workspace switcher.
+DEMO_ADMIN_EMAILS = ("vicenteaguero@uc.cl",)
 
 
 def demo_uuid(kind: str, key: str | int) -> str:
