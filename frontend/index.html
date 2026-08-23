@@ -6,8 +6,15 @@
          Without it `apple-mobile-web-app-status-bar-style=black-translucent` below still
          draws the standalone PWA under the status bar while every inset reads 0, so the
          bottom nav lands under the home indicator and headers land under the notch.
-         interactive-widget=resizes-content makes the visual viewport shrink when the
-         soft keyboard opens, so `fixed bottom-0` chrome rides above it. -->
+         interactive-widget=resizes-content is CHROMIUM-ONLY. On Android it shrinks the
+         LAYOUT viewport when the soft keyboard opens, so `fixed bottom-0` chrome rides
+         above it. iOS Safari — including installed PWAs — ignores it entirely and never
+         shrinks anything; there the keyboard just covers the page, which is why
+         shared/lib/viewport-store reads `visualViewport` instead of trusting layout.
+         Keep this flag: it costs iOS nothing and Android needs it. But note the coupling
+         it creates — because Android's innerHeight shrinks, `covered` is ~0 there and the
+         ONLY evidence of a keyboard is the `shrunk` branch, which depends entirely on a
+         correct module-level `restHeight` (and on resetting it when the device rotates). -->
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content"
