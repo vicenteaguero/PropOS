@@ -1,15 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  Building2,
-  ChevronRight,
-  ImagePlus,
-  Link as LinkIcon,
-  Loader2,
-  Trash2,
-  User,
-  X,
-} from "lucide-react";
+import { ImagePlus, Link as LinkIcon, Loader2, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,7 +9,7 @@ import { Chip, Chips, Field, Pill, ResponsiveSheet, SheetActions } from "@shared
 import { ConfirmDialog } from "@shared/components/confirm-dialog/confirm-dialog";
 import { initials } from "@shared/utils/format";
 import { useTenantMembers } from "@shared/hooks/use-tenant-members";
-import { AudioPlayer } from "@shared/ui";
+import { AudioPlayer, EntityLinkRow } from "@shared/ui";
 import { extractLinks, linkLabel } from "@shared/lib/links";
 import { priorityBucket } from "../lib/task-order";
 import { useRemoveTaskAttachment, useUploadTaskAttachments } from "../hooks/use-tasks";
@@ -245,18 +236,18 @@ export function TaskDetailSheet({
               </p>
               <div className="space-y-1.5">
                 {properties.map((p) => (
-                  <LinkRow
+                  <EntityLinkRow
                     key={p.id}
-                    icon={Building2}
-                    label={p.label ?? "Propiedad"}
+                    kind="PROPERTY"
+                    label={p.label}
                     onClick={() => go(`/${role}/propiedades/${p.id}`)}
                   />
                 ))}
                 {people.map((p) => (
-                  <LinkRow
+                  <EntityLinkRow
                     key={p.id}
-                    icon={User}
-                    label={p.label ?? "Persona"}
+                    kind="CONTACT"
+                    label={p.label}
                     onClick={() => go(`/${role}/personas/${p.id}`)}
                   />
                 ))}
@@ -306,29 +297,5 @@ export function TaskDetailSheet({
         }}
       />
     </>
-  );
-}
-
-function LinkRow({
-  icon: Icon,
-  label,
-  onClick,
-}: {
-  icon: typeof Building2;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex w-full items-center gap-2.5 rounded-xl bg-card px-3 py-2.5 text-left transition active:scale-[0.99]"
-    >
-      <Icon className="size-4 shrink-0 text-muted-foreground" strokeWidth={1.9} />
-      <span className="min-w-0 flex-1 truncate text-[14px] font-medium text-foreground">
-        {label}
-      </span>
-      <ChevronRight className="size-4 shrink-0 text-muted-foreground" strokeWidth={2} />
-    </button>
   );
 }

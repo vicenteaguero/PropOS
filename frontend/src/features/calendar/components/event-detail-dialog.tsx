@@ -2,10 +2,10 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Briefcase, Building2, ChevronRight, Pencil, Trash2, User, X } from "lucide-react";
+import { Pencil, Trash2, X } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { ErrorState, Pill } from "@shared/ui";
+import { EntityLinkRow, ErrorState, Pill } from "@shared/ui";
 import { Skeleton } from "@/components/ui/skeleton";
 import { label } from "@shared/lib/labels";
 import { NAV_APP_LABEL, navHref } from "@shared/lib/nav-app";
@@ -148,20 +148,16 @@ export function EventDetailDialog({
                 rest of the answer. */}
             {(dealId || item.property_id || item.contact_id) && (
               <div className="space-y-1.5">
-                {dealId && (
-                  <LinkRow icon={Briefcase} label="Negocio" onClick={() => setDealOpen(true)} />
-                )}
+                {dealId && <EntityLinkRow kind="DEAL" onClick={() => setDealOpen(true)} />}
                 {item.property_id && (
-                  <LinkRow
-                    icon={Building2}
-                    label="Propiedad"
+                  <EntityLinkRow
+                    kind="PROPERTY"
                     onClick={() => go(`/${role}/propiedades/${item.property_id}`)}
                   />
                 )}
                 {item.contact_id && (
-                  <LinkRow
-                    icon={User}
-                    label="Persona"
+                  <EntityLinkRow
+                    kind="CONTACT"
                     onClick={() => go(`/${role}/personas/${item.contact_id}`)}
                   />
                 )}
@@ -197,29 +193,5 @@ export function EventDetailDialog({
 
       <DealSheet dealId={dealId} role={role} open={dealOpen} onOpenChange={setDealOpen} />
     </>
-  );
-}
-
-function LinkRow({
-  icon: Icon,
-  label: text,
-  onClick,
-}: {
-  icon: typeof Briefcase;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex w-full items-center gap-2.5 rounded-xl bg-secondary px-3 py-2.5 text-left transition active:scale-[0.99]"
-    >
-      <Icon className="size-4 shrink-0 text-muted-foreground" strokeWidth={1.9} />
-      <span className="min-w-0 flex-1 truncate text-[14px] font-medium text-foreground">
-        {text}
-      </span>
-      <ChevronRight className="size-4 shrink-0 text-muted-foreground" strokeWidth={2} />
-    </button>
   );
 }
