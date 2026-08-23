@@ -1,9 +1,7 @@
 import { Suspense, lazy, useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { MapPin } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
-import { formatClp } from "@shared/utils/currency";
+import { PropertyRow } from "./property-row";
 import type { Property } from "../api/properties-api";
 
 // The only reference to the map module anywhere in the app, and it is dynamic:
@@ -12,60 +10,6 @@ import type { Property } from "../api/properties-api";
 const PropertyMap = lazy(() => import("./property-map"));
 
 const rowAnchor = (id: string) => `map-row-${id}`;
-
-function MapRow({
-  property,
-  active,
-  rowId,
-  onHover,
-  onOpen,
-}: {
-  property: Property;
-  active: boolean;
-  /** Anchor the map uses to scroll this row into view when its pin is clicked. */
-  rowId: string;
-  onHover: (id: string | null) => void;
-  onOpen: () => void;
-}) {
-  return (
-    <button
-      id={rowId}
-      type="button"
-      onClick={onOpen}
-      onMouseEnter={() => onHover(property.id)}
-      onMouseLeave={() => onHover(null)}
-      className={cn(
-        "flex w-full items-center gap-3 rounded-xl border p-2 text-left transition active:scale-[0.99]",
-        active ? "border-foreground bg-secondary/50" : "border-border",
-      )}
-    >
-      {property.cover_url ? (
-        <img
-          src={property.cover_thumb_url ?? property.cover_url}
-          alt=""
-          loading="lazy"
-          decoding="async"
-          className="size-14 shrink-0 rounded-lg object-cover"
-        />
-      ) : (
-        <span className="flex size-14 shrink-0 items-center justify-center rounded-lg bg-secondary">
-          <MapPin className="size-[18px] text-muted-foreground" strokeWidth={1.8} />
-        </span>
-      )}
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-[15px] font-semibold text-foreground">
-          {property.title}
-        </span>
-        <span className="block truncate text-[13px] text-muted-foreground">
-          {property.address ?? "Sin dirección"}
-        </span>
-        <span className="mt-0.5 block text-[13px] font-semibold text-foreground">
-          {formatClp(property.list_price_cents, "Precio a convenir")}
-        </span>
-      </span>
-    </button>
-  );
-}
 
 /**
  * Map-first property search: the map is the query and the list follows it.
@@ -127,20 +71,23 @@ export function PropertyMapView({ properties }: { properties: Property[] }) {
         </p>
       ) : (
         inView.map((p) => (
-          <MapRow
+          <PropertyRow
             key={p.id}
             rowId={rowAnchor(p.id)}
             property={p}
             active={p.id === hoveredId || p.id === selectedId}
             onHover={setHoveredId}
-            onOpen={() => navigate(`/admin/properties/${p.id}`)}
+            onOpen={() => navigate(`/admin/propiedades/${p.id}`)}
           />
         ))
       )}
     </div>
   );
 
-  const mapClass = "h-[55dvh] w-full overflow-hidden rounded-xl lg:h-[calc(100dvh-12rem)]";
+  // 40dvh on a phone, not 55: at 55 the map plus the page header filled the
+  // fold, so the list it exists to filter began below it and the two were
+  // never on screen together — which is the entire point of a map view.
+  const mapClass = "h-[40dvh] w-full overflow-hidden rounded-xl lg:h-[calc(100dvh-12rem)]";
 
   return (
     // One list, positioned by grid order rather than rendered twice: the old
