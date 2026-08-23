@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -25,6 +26,8 @@ import type { Contact } from "@features/contacts/types";
 import { useOpportunities } from "@features/opportunities/hooks/use-opportunities";
 import { useCalendarFeed } from "@features/calendar/hooks/use-calendar";
 import type { CalendarItem } from "@features/calendar/api/calendar-api";
+import { EventDetailDialog } from "@features/calendar/components/event-detail-dialog";
+import { useEvent } from "@features/calendar/hooks/use-calendar";
 import { interactionsApi } from "@features/interactions/api/interactions-api";
 import { INTERACTION_KIND_LABELS } from "@features/interactions/types";
 import { apiRequest } from "@shared/api/http";
@@ -137,6 +140,9 @@ export function AdminHomePage() {
   const [nextItem, ...restOfNext] = nextThree;
   // The calendar feed carries the address now (see v_calendar_feed), so offering
   // directions costs nothing extra here — no request per item, no detail fetch.
+  const [detailItem, setDetailItem] = useState<CalendarItem | null>(null);
+  const detailEventId = detailItem?.item_type === "EVENT" ? detailItem.id : undefined;
+  const detailEvent = useEvent(detailEventId);
   const navApp = getNavApp();
   const nextHref = navHref(nextItem?.location, navApp);
 
@@ -254,7 +260,9 @@ export function AdminHomePage() {
       <div className="flex items-center">
         <button
           type="button"
-          onClick={() => navigate(`${base}/agenda`)}
+          // Opens the event itself rather than dropping the user into the
+          // calendar to find it again. Same dialog the calendar uses.
+          onClick={() => (nextItem ? setDetailItem(nextItem) : navigate(`${base}/agenda`))}
           className={cn("flex min-w-0 flex-1 items-center gap-3 py-3 text-left", CARD_X)}
         >
           {nextItem ? (
@@ -309,7 +317,9 @@ export function AdminHomePage() {
         <button
           key={`${it.item_type}-${it.id}`}
           type="button"
-          onClick={() => navigate(`${base}/agenda`)}
+          // Opens the event itself rather than dropping the user into the
+          // calendar to find it again. Same dialog the calendar uses.
+          onClick={() => (nextItem ? setDetailItem(nextItem) : navigate(`${base}/agenda`))}
           className={cn(
             "flex w-full items-center gap-3 border-t border-background/15 py-2.5 text-left",
             CARD_X,
@@ -325,7 +335,9 @@ export function AdminHomePage() {
       {upcoming.length > nextThree.length && (
         <button
           type="button"
-          onClick={() => navigate(`${base}/agenda`)}
+          // Opens the event itself rather than dropping the user into the
+          // calendar to find it again. Same dialog the calendar uses.
+          onClick={() => (nextItem ? setDetailItem(nextItem) : navigate(`${base}/agenda`))}
           className={cn(
             "flex w-full items-center justify-between border-t border-background/15 py-2 text-[12.5px] font-semibold opacity-70",
             CARD_X,
@@ -596,89 +608,108 @@ export function AdminHomePage() {
     // monitor left ~1100px of empty gutter. Above xl the page becomes two real
     // columns instead of one very long one; the breakpoint is xl and not lg
     // because the desktop shell already spends up to 240px on the sidebar.
-    <div className="mx-auto w-full max-w-2xl px-[var(--page-x)] pt-4 pb-8 md:max-w-3xl lg:max-w-5xl lg:pt-6 xl:max-w-[78rem] 2xl:max-w-[92rem]">
-      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_21rem] xl:gap-6">
-        <div className="flex min-w-0 flex-col gap-4">
-          <div>
-            <h1 className="text-[22px] font-bold leading-tight tracking-tight text-foreground lg:text-[26px]">
-              {greeting()}
-              {firstName ? `, ${firstName}` : ""}
-            </h1>
-            <p className="mt-0.5 text-[13px] text-muted-foreground first-letter:uppercase">
-              {format(today, "EEEE d 'de' MMMM", { locale: es })}
-            </p>
-          </div>
+    <>
+      <div className="mx-auto w-full max-w-2xl px-[var(--page-x)] pt-4 pb-8 md:max-w-3xl lg:max-w-5xl lg:pt-6 xl:max-w-[78rem] 2xl:max-w-[92rem]">
+        <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_21rem] xl:gap-6">
+          <div className="flex min-w-0 flex-col gap-4">
+            <div>
+              <h1 className="text-[22px] font-bold leading-tight tracking-tight text-foreground lg:text-[26px]">
+                {greeting()}
+                {firstName ? `, ${firstName}` : ""}
+              </h1>
+              <p className="mt-0.5 text-[13px] text-muted-foreground first-letter:uppercase">
+                {format(today, "EEEE d 'de' MMMM", { locale: es })}
+              </p>
+            </div>
 
-          {/* Blocking work first, then the way to create more of it. Propo's
+            {/* Blocking work first, then the way to create more of it. Propo's
               queue is the only thing here that goes stale if ignored, so it
               outranks the composer that fills it. */}
-          {pendingCard}
+            {pendingCard}
 
-          {/* Asking is the fastest way in, and it is the one control that
+            {/* Asking is the fastest way in, and it is the one control that
               answers any question. The agenda below is what is already
               scheduled. */}
-          {propoBar}
+            {propoBar}
 
-          {todayFeed.isError ? (
-            <ErrorState
-              compact
-              message="No se pudo cargar tu agenda de hoy."
-              error={todayFeed.error}
-              onRetry={() => todayFeed.refetch()}
-            />
-          ) : (
-            agendaWidget
-          )}
-
-          {/* auto-fill instead of a fixed column count: three tiles on a phone,
-              as many as fit on a tablet or a wide window, with no breakpoint to
-              keep in sync with the tile list. */}
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(104px,1fr))] gap-2">
-            {tiles.map((t) => (
-              <button
-                key={t.to}
-                type="button"
-                onClick={() => navigate(t.to)}
-                // Fixed height, not padding-derived: the labels became verbs
-                // ("Agregar propiedad") and wrap to two lines on a 390px phone,
-                // which would otherwise leave the one-line tiles short and the
-                // grid ragged.
-                className="flex h-[4.75rem] flex-col items-center justify-center gap-1 rounded-xl bg-secondary px-1 transition hover:bg-muted active:scale-[0.97]"
-              >
-                <t.icon className="size-[22px] shrink-0 text-foreground" strokeWidth={1.8} />
-                <TileLabel label={t.label} />
-              </button>
-            ))}
-          </div>
-
-          {(hasPipeline || oppsQ.isError) &&
-            (oppsQ.isError ? (
+            {todayFeed.isError ? (
               <ErrorState
                 compact
-                message="No se pudo cargar el pipeline."
-                error={oppsQ.error}
-                onRetry={() => oppsQ.refetch()}
+                message="No se pudo cargar tu agenda de hoy."
+                error={todayFeed.error}
+                onRetry={() => todayFeed.refetch()}
               />
             ) : (
-              pipelineStrip
-            ))}
-        </div>
+              agendaWidget
+            )}
 
-        {/* Below xl this is simply the rest of the single column. */}
-        <aside className="flex min-w-0 flex-col gap-4">
-          {/* What is waiting on a person, before what is wrong with the data. */}
-          {allow("crm") && <AttentionCard />}
-          {/* Data problems belong where the day starts, not buried in settings:
+            {/* auto-fill instead of a fixed column count: three tiles on a phone,
+              as many as fit on a tablet or a wide window, with no breakpoint to
+              keep in sync with the tile list. */}
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(104px,1fr))] gap-2">
+              {tiles.map((t) => (
+                <button
+                  key={t.to}
+                  type="button"
+                  onClick={() => navigate(t.to)}
+                  // Fixed height, not padding-derived: the labels became verbs
+                  // ("Agregar propiedad") and wrap to two lines on a 390px phone,
+                  // which would otherwise leave the one-line tiles short and the
+                  // grid ragged.
+                  className="flex h-[4.75rem] flex-col items-center justify-center gap-1 rounded-xl bg-secondary px-1 transition hover:bg-muted active:scale-[0.97]"
+                >
+                  <t.icon className="size-[22px] shrink-0 text-foreground" strokeWidth={1.8} />
+                  <TileLabel label={t.label} />
+                </button>
+              ))}
+            </div>
+
+            {(hasPipeline || oppsQ.isError) &&
+              (oppsQ.isError ? (
+                <ErrorState
+                  compact
+                  message="No se pudo cargar el pipeline."
+                  error={oppsQ.error}
+                  onRetry={() => oppsQ.refetch()}
+                />
+              ) : (
+                pipelineStrip
+              ))}
+          </div>
+
+          {/* Below xl this is simply the rest of the single column. */}
+          <aside className="flex min-w-0 flex-col gap-4">
+            {/* What is waiting on a person, before what is wrong with the data. */}
+            {allow("crm") && <AttentionCard />}
+            {/* Data problems belong where the day starts, not buried in settings:
               nobody goes looking for inconsistencies they do not know exist. */}
-          {allow("crm") && <DataHealthCard />}
-          {allow("crm") && propertiesWidget}
-          {allow("crm") &&
-            (quickPeople.length > 0 || contactsQ.isPending || contactsQ.isError) &&
-            peopleWidget}
-          {allow("crm") && activityWidget}
-        </aside>
+            {allow("crm") && <DataHealthCard />}
+            {allow("crm") && propertiesWidget}
+            {allow("crm") &&
+              (quickPeople.length > 0 || contactsQ.isPending || contactsQ.isError) &&
+              peopleWidget}
+            {allow("crm") && activityWidget}
+          </aside>
+        </div>
       </div>
-    </div>
+      <EventDetailDialog
+        item={detailItem}
+        full={detailEvent.data}
+        loading={detailEvent.isLoading}
+        error={detailEvent.error}
+        onRetry={() => detailEvent.refetch()}
+        onOpenChange={(o) => !o && setDetailItem(null)}
+        onEdit={() => {
+          setDetailItem(null);
+          navigate(`${base}/agenda?tab=calendario`);
+        }}
+        onDelete={() => {
+          setDetailItem(null);
+          navigate(`${base}/agenda?tab=calendario`);
+        }}
+        role={base.replace("/", "")}
+      />
+    </>
   );
 }
 
