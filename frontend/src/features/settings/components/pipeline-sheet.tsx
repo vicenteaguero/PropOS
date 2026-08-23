@@ -11,6 +11,7 @@ import {
   SectionLabel,
   SheetActions,
   TOUCH_TARGET_COARSE,
+  ChoiceSwitch,
 } from "@shared/ui";
 import { label } from "@shared/lib/labels";
 import type { PipelineWrite } from "../api/catalogs-api";
@@ -30,7 +31,6 @@ import {
   type PipelineTransition,
   type TransitionMode,
 } from "../lib/pipelines";
-import { ChoiceSwitch } from "./choice-switch";
 
 const MODES: { value: TransitionMode; label: string; activeClassName?: string }[] = [
   { value: "none", label: "No se puede" },
