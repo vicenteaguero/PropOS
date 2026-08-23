@@ -31,6 +31,7 @@ import { InstallNudge } from "@shared/components/install-nudge/install-nudge";
 import { useUfDailyRefresh } from "@features/uf/hooks/use-uf";
 import { UfButton } from "@features/uf/components/uf-button";
 import { PageSkeleton, WorkspacePill } from "@shared/ui";
+import { BuildStampRow } from "@core/version/build-stamp-row";
 import { initials } from "@shared/utils/format";
 import { cn } from "@/lib/utils";
 
@@ -303,6 +304,12 @@ export function AppLayout() {
                     <LogOut className="size-4" />
                     Cerrar sesión
                   </DropdownMenuItem>
+                  {/* Same signature the phone shows under "Más". Two shells,
+                      one answer to "which build is this". */}
+                  <DropdownMenuSeparator />
+                  <div className="px-1 py-0.5">
+                    <BuildStampRow />
+                  </div>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
