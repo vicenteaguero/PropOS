@@ -119,6 +119,21 @@ class UserService:
         return q.execute().data
 
     @staticmethod
+    async def list_members(tenant_id: UUID) -> list[dict]:
+        """Active colleagues, for assignment pickers and avatars."""
+        client = get_supabase_client()
+        return (
+            client.table(PROFILES_TABLE)
+            .select("id, full_name, avatar_url, role")
+            .eq("tenant_id", str(tenant_id))
+            .eq("is_active", True)
+            .order("full_name")
+            .execute()
+            .data
+            or []
+        )
+
+    @staticmethod
     async def get_user(user_id: UUID, tenant_id: UUID) -> dict:
         client = get_supabase_client()
         resp = (

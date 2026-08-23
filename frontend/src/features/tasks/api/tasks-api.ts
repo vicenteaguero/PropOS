@@ -25,6 +25,13 @@ export interface Task {
   due_at: string | null;
   completed_at: string | null;
   related: TaskRelated;
+  /** Profile id of whoever owns this task. Null = nobody claimed it. */
+  owner_user: string | null;
+  /** Names for the ids in `related`, resolved server-side. */
+  related_labels?: {
+    properties?: { id: string; label: string | null }[];
+    people?: { id: string; label: string | null }[];
+  };
   created_at: string;
 }
 
@@ -36,11 +43,13 @@ export interface TaskInput {
   priority?: number;
   status?: TaskStatus;
   related?: TaskRelated;
+  owner_user?: string | null;
 }
 
 export const tasksApi = {
-  list: (params: { only_open?: boolean; status?: string } = {}) =>
+  list: (params: { only_open?: boolean; status?: string; owner_user?: string } = {}) =>
     apiRequest<Task[]>(`/v1/tasks${qs({ ...params })}`),
+  get: (id: string) => apiRequest<Task>(`/v1/tasks/${id}`),
   create: (body: TaskInput) => apiRequest<Task>("/v1/tasks", { method: "POST", body }),
   update: (id: string, body: Partial<TaskInput>) =>
     apiRequest<Task>(`/v1/tasks/${id}`, { method: "PATCH", body }),

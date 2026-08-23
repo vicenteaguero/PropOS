@@ -56,6 +56,9 @@ class TaskUpdate(BaseModel):
 class TaskResponse(TaskBase):
     id: UUID
     tenant_id: UUID
+    # Names for the ids in `related`, resolved server-side. Without this the
+    # client would join against the capped entity endpoints.
+    related_labels: dict[str, Any] = {}
     completed_at: datetime | None = None
     source: str
     created_by: UUID | None = None

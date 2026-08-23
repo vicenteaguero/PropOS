@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { formatDateTime } from "@shared/utils/format";
+import { formatDateTime, initials } from "@shared/utils/format";
 import {
   addDays,
   endOfWeek,
@@ -18,12 +18,18 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { PageLayout } from "@shared/components/page-layout";
 import { PageHeader } from "@shared/components/page-header";
+import { createPortal } from "react-dom";
+import { useTopbarActionsSlot } from "@layouts/topbar-slot";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useTenantMembers } from "@shared/hooks/use-tenant-members";
+import { TaskDetailSheet } from "../components/task-detail-sheet";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
 import {
   Chip,
   Chips,
   ErrorState,
   FieldGroup,
+  FilterSelect,
   PageSkeleton,
   Pill,
   ResponsiveSheet,
@@ -33,6 +39,8 @@ import {
   TOUCH_TARGET_HIT_AREA,
 } from "@shared/ui";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import { useAuth } from "@shared/hooks/use-auth";
 import { useCreateTask, useDeleteTask, useTasks, useUpdateTask } from "../hooks/use-tasks";
 import { useCreateReminder } from "../hooks/use-reminders";
 import { TaskEntityPicker, linkToRelated, type TaskLink } from "../components/task-entity-picker";
@@ -243,7 +251,13 @@ function TaskCheck({
       type="button"
       onClick={onToggle}
       aria-label="Completar"
-      className="mt-0.5 flex shrink-0 items-center justify-center rounded-full transition active:scale-90"
+      // Centred on the row rather than pinned to the first text line, and with
+      // the hit area expanded to the 44px floor: the painted circle is 22px, so
+      // half of every tap was landing on the row instead of the control.
+      className={cn(
+        "flex shrink-0 items-center justify-center self-center rounded-full transition active:scale-90",
+        TOUCH_TARGET_HIT_AREA,
+      )}
       style={
         done
           ? { width: 22, height: 22, background: "var(--color-foreground)" }
@@ -271,13 +285,16 @@ function MobileTaskRow({
   done,
   divider,
   onComplete,
-  onDelete,
+  onOpen,
+  assignee,
 }: {
   t: Task;
   done: boolean;
   divider: boolean;
   onComplete: (id: string) => void;
-  onDelete: (id: string) => void;
+  onOpen: (t: Task) => void;
+  /** Only passed in team mode: in "mine" every row would carry the same face. */
+  assignee?: { full_name: string | null; avatar_url: string | null } | null;
 }) {
   const urgency = urgencyOf(t);
   const ringColor = !done && t.priority >= 2 ? URGENCY_COLOR.overdue : URGENCY_COLOR[urgency];
@@ -285,10 +302,12 @@ function MobileTaskRow({
   const highPriority = t.priority >= 2;
 
   return (
-    <div className={`flex items-start gap-3 px-5 py-3 ${divider ? "border-b border-border" : ""}`}>
+    <div className={`flex items-center gap-3 px-5 py-3 ${divider ? "border-b border-border" : ""}`}>
       <TaskCheck done={done} color={ringColor} onToggle={() => onComplete(t.id)} />
 
-      <div className="min-w-0 flex-1">
+      {/* The row opens the task. Deleting used to live out here, one mis-tap
+          from destroying it; it is inside the sheet now, behind a confirm. */}
+      <button type="button" onClick={() => onOpen(t)} className="min-w-0 flex-1 text-left">
         <div
           className={`text-[15px] font-medium leading-snug ${
             done ? "text-faint line-through" : "text-foreground"
@@ -320,19 +339,16 @@ function MobileTaskRow({
             )}
           </div>
         )}
-      </div>
-
-      {/* Always visible: this row is the touch surface, and a hover-only
-          control is unreachable there. 44px box, pulled into the row padding
-          so the icon still reads as a small affordance. */}
-      <button
-        type="button"
-        onClick={() => onDelete(t.id)}
-        aria-label="Eliminar"
-        className="-mt-1.5 -mr-2.5 flex size-11 shrink-0 items-center justify-center rounded-full text-faint transition hover:bg-secondary hover:text-destructive active:scale-90"
-      >
-        <Trash2 className="size-4" strokeWidth={1.8} />
       </button>
+
+      {assignee && (
+        <Avatar size="sm" className="size-7 shrink-0" title={assignee.full_name ?? undefined}>
+          {assignee.avatar_url && <AvatarImage src={assignee.avatar_url} alt="" />}
+          <AvatarFallback className="text-[10px]">
+            {initials(assignee.full_name ?? "?")}
+          </AvatarFallback>
+        </Avatar>
+      )}
     </div>
   );
 }
@@ -356,8 +372,38 @@ function AddTaskRow({ onClick }: { onClick: () => void }) {
   );
 }
 
+type TaskScope = "mine" | "team";
+
 export function TasksPage() {
+  const { user } = useAuth();
+  const role = user?.role.toLowerCase() ?? "agent";
+  // "Mías" or the whole workspace. `tasks.owner_user` existed but nothing ever
+  // wrote or filtered on it, so everyone saw everything with no way to say
+  // whose it was.
+  const [scope, setScope] = useState<TaskScope>("mine");
+  const { data: members } = useTenantMembers();
+  const memberById = useMemo(() => new Map((members ?? []).map((m) => [m.id, m])), [members]);
   const { data, isLoading, error, refetch } = useTasks({ only_open: true });
+  const [detailTask, setDetailTask] = useState<Task | null>(null);
+  // A task ticked off should leave the flow, not vanish mid-thought. The list
+  // only asks for open tasks, so the ones completed in this sitting are kept
+  // here and rendered at the end of their group until the next load.
+  const [justDone, setJustDone] = useState<Record<string, Task>>({});
+  const actionsHost = useTopbarActionsSlot();
+
+  /**
+   * "Mías" means mine *or* unclaimed.
+   *
+   * `owner_user` has never been written until now, so every task that already
+   * exists has none. Reading "mine" strictly would hand the user an empty
+   * screen and look broken; an unassigned task is nobody's and therefore
+   * everybody's, which is also how it behaves in practice.
+   */
+  const scoped = useMemo(() => {
+    if (!data) return data;
+    if (scope === "team") return data;
+    return data.filter((t) => !t.owner_user || t.owner_user === user?.id);
+  }, [data, scope, user?.id]);
   const create = useCreateTask();
   const update = useUpdateTask();
   const del = useDeleteTask();
@@ -378,26 +424,26 @@ export function TasksPage() {
   /* Desktop grouping (unchanged). */
   const grouped = useMemo(() => {
     const g = new Map<Bucket, Task[]>();
-    for (const t of data ?? []) {
+    for (const t of scoped ?? []) {
       const b = bucketOf(t);
       if (!g.has(b)) g.set(b, []);
       g.get(b)!.push(t);
     }
     return g;
-  }, [data]);
+  }, [scoped]);
 
   /* Mobile grouping by period + a separate overdue list (shown under "Hoy"). */
   const { byPeriod, overdue } = useMemo(() => {
     const byPeriod = new Map<Period, Task[]>();
     const overdue: Task[] = [];
-    for (const t of data ?? []) {
+    for (const t of scoped ?? []) {
       if (urgencyOf(t) === "overdue") overdue.push(t);
       const p = periodOf(t);
       if (!byPeriod.has(p)) byPeriod.set(p, []);
       byPeriod.get(p)!.push(t);
     }
     return { byPeriod, overdue };
-  }, [data]);
+  }, [scoped]);
 
   /** Open-task count per period chip (overdue counts toward "today"). */
   const periodCount = (p: Period) => byPeriod.get(p)?.length ?? 0;
@@ -435,6 +481,9 @@ export function TasksPage() {
         priority,
         due_at: dueAt ? new Date(dueAt).toISOString() : null,
         related: linkToRelated(link),
+        // Claim it. Without an owner a new task is invisible to the "Mías"
+        // filter that just shipped, and reassigning is one tap in the sheet.
+        owner_user: user?.id ?? null,
       });
     } catch {
       // `useCreateTask` already toasts; keep the sheet open so the user retries.
@@ -469,8 +518,16 @@ export function TasksPage() {
   /** Both mutations block the form: the task and its reminder land together. */
   const busy = create.isPending || createReminder.isPending;
 
-  const complete = (id: string) => update.mutate({ id, body: { status: "DONE" } });
+  const complete = (id: string) => {
+    const task = (scoped ?? []).find((t) => t.id === id);
+    if (task) setJustDone((prev) => ({ ...prev, [id]: { ...task, status: "DONE" } }));
+    update.mutate({ id, body: { status: "DONE" } });
+  };
   const remove = (id: string) => del.mutate(id);
+  const saveTask = (id: string, body: Partial<Task>) => {
+    update.mutate({ id, body });
+    setDetailTask(null);
+  };
 
   // Desktop arranges the visible buckets into two columns; mobile uses periods.
   const leftCol = visibleBuckets.filter((b) => LEFT_BUCKETS.includes(b));
@@ -479,25 +536,49 @@ export function TasksPage() {
   // Mobile: the tasks for the currently-selected period.
   const periodTasks = byPeriod.get(period) ?? [];
   // Inside "Hoy" we list overdue first, then strictly-today tasks.
-  const todayOnly =
+  const openInPeriod =
     period === "today" ? periodTasks.filter((t) => urgencyOf(t) !== "overdue") : periodTasks;
+  // Ticked-off tasks fall to the bottom of their own group instead of
+  // disappearing under the thumb that ticked them.
+  const doneInPeriod = Object.values(justDone).filter(
+    (t) => periodOf(t) === period && !periodTasks.some((p) => p.id === t.id),
+  );
+  const todayOnly = [...openInPeriod, ...doneInPeriod];
   const periodTitle = PERIOD_META.find((p) => p.id === period)!.title;
   const subtitle = periodSubtitle(period);
 
   return (
     // Mobile keeps the capped (md) centered column; desktop widens to the app surface.
     <PageLayout width="app" noPadding className="max-w-4xl lg:max-w-none">
-      <div className="px-5 pt-4 pb-5 lg:px-8 lg:pt-7">
-        <PageHeader
-          className="mb-0"
-          actions={
-            <Button onClick={() => setOpen(true)} variant="ink" className="gap-2">
-              <Plus className="size-4" strokeWidth={1.8} />
-              Nueva
-            </Button>
-          }
-        />
-      </div>
+      {/* On a phone the create action goes in the bar, where every other list
+          in the app keeps it. The sidebar shell has no bar to portal into, so
+          the header keeps its own button there. */}
+      {actionsHost ? (
+        createPortal(
+          <Button
+            onClick={() => setOpen(true)}
+            variant="ink"
+            size="icon"
+            aria-label="Nueva tarea"
+            className="rounded-full"
+          >
+            <Plus className="size-4" strokeWidth={1.8} />
+          </Button>,
+          actionsHost,
+        )
+      ) : (
+        <div className="px-5 pt-4 pb-5 lg:px-8 lg:pt-7">
+          <PageHeader
+            className="mb-0"
+            actions={
+              <Button onClick={() => setOpen(true)} variant="ink" className="gap-2">
+                <Plus className="size-4" strokeWidth={1.8} />
+                Nueva
+              </Button>
+            }
+          />
+        </div>
+      )}
 
       {isLoading && <PageSkeleton variant="list" count={5} />}
       {error && (
@@ -507,7 +588,7 @@ export function TasksPage() {
           className="mx-5 lg:mx-8"
         />
       )}
-      {!isLoading && !error && (data?.length ?? 0) === 0 && (
+      {!isLoading && !error && (scoped?.length ?? 0) === 0 && (
         <EmptyState
           title="Sin tareas abiertas"
           actionLabel="Nueva tarea"
@@ -515,26 +596,42 @@ export function TasksPage() {
         />
       )}
 
-      {!isLoading && !error && (data?.length ?? 0) > 0 && (
+      {!isLoading && !error && (scoped?.length ?? 0) > 0 && (
         <>
           {/* ---------------------------------------------------------- *
            * Mobile: Todoist × Uber time view — period chips + section.
            * ---------------------------------------------------------- */}
           <div className="pb-6 lg:hidden">
-            <Chips className="px-5 pb-4">
-              {PERIOD_META.filter((p) => p.id !== "nodate" || periodCount("nodate") > 0).map(
-                (p) => (
-                  <Chip
-                    key={p.id}
-                    active={period === p.id}
-                    count={periodCount(p.id) || undefined}
-                    onClick={() => setPeriod(p.id)}
-                  >
-                    {p.label}
-                  </Chip>
-                ),
-              )}
-            </Chips>
+            {/* A scrolling strip of chips put half the periods off screen with
+                no sign the rest existed. `FilterSelect` states the current
+                choice in one line and opens as a sheet under a thumb — and it
+                leaves room beside it for whose tasks these are. */}
+            <div className="flex items-center gap-2 px-5 pb-3 pt-1">
+              <FilterSelect
+                label="Tareas de"
+                value={scope}
+                allLabel={undefined}
+                options={[
+                  { value: "mine", label: "Mías" },
+                  { value: "team", label: "Todo el equipo" },
+                ]}
+                onChange={(v: string | null) => setScope((v as TaskScope) ?? "mine")}
+              />
+              <div className="min-w-0 flex-1">
+                <FilterSelect
+                  label="Cuándo"
+                  value={period}
+                  options={PERIOD_META.filter(
+                    (p) => p.id !== "nodate" || periodCount("nodate") > 0,
+                  ).map((p) => ({
+                    value: p.id,
+                    label: p.label,
+                    sub: periodCount(p.id) ? `${periodCount(p.id)} tareas` : "Sin tareas",
+                  }))}
+                  onChange={(v: string | null) => setPeriod((v as Period) ?? "today")}
+                />
+              </div>
+            </div>
 
             {/* Big period title + date-range subtext. */}
             <div className="flex items-baseline gap-2.5 px-5 pb-1.5">
@@ -557,7 +654,10 @@ export function TasksPage() {
                     done={t.status === "DONE"}
                     divider={i < overdue.length - 1}
                     onComplete={complete}
-                    onDelete={remove}
+                    onOpen={setDetailTask}
+                    assignee={
+                      scope === "team" ? (memberById.get(t.owner_user ?? "") ?? null) : null
+                    }
                   />
                 ))}
                 <div className="h-2" />
@@ -572,7 +672,8 @@ export function TasksPage() {
                 done={t.status === "DONE"}
                 divider={i < todayOnly.length - 1}
                 onComplete={complete}
-                onDelete={remove}
+                onOpen={setDetailTask}
+                assignee={scope === "team" ? (memberById.get(t.owner_user ?? "") ?? null) : null}
               />
             ))}
 
@@ -594,7 +695,7 @@ export function TasksPage() {
               <Chip
                 key={f.id}
                 active={filter === f.id}
-                count={f.id === "all" ? (data?.length ?? 0) : grouped.get(f.id)?.length}
+                count={f.id === "all" ? (scoped?.length ?? 0) : grouped.get(f.id)?.length}
                 onClick={() => setFilter(f.id)}
               >
                 {f.label}
@@ -628,6 +729,15 @@ export function TasksPage() {
           </div>
         </>
       )}
+
+      <TaskDetailSheet
+        task={detailTask}
+        role={role}
+        onOpenChange={(o) => !o && setDetailTask(null)}
+        onSave={saveTask}
+        onDelete={remove}
+        saving={update.isPending}
+      />
 
       <ResponsiveSheet
         open={open}

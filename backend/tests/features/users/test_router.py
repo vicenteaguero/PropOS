@@ -167,3 +167,17 @@ async def test_delete_user(mock_client, client):
     response = await client.delete(f"{USERS_PATH}/{MOCK_OTHER_USER_ID}")
 
     assert response.status_code == 204
+
+
+def test_members_route_is_declared_before_the_user_id_route() -> None:
+    """`/users/members` must not be swallowed by `/users/{user_id}`.
+
+    FastAPI matches routes in declaration order, so a parameterised path above
+    this one would capture "members" as a `user_id` and fail UUID parsing —
+    a 422 on a route that looks correct in the source.
+    """
+    from app.features.users.router import router
+
+    paths = [r.path for r in router.routes if "GET" in getattr(r, "methods", set())]
+    assert "/users/members" in paths
+    assert paths.index("/users/members") < paths.index("/users/{user_id}")
