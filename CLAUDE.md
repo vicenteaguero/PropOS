@@ -244,9 +244,31 @@ means "from any stage", and a pipeline with **zero** declared transitions is unc
 the last transition silently turns the state machine off.
 
 Design rules that came out of the same pass: no page subtitles and no explanatory copy
-(`PageHeader` has no `description` slot on purpose), `--radius` is 8px with every radius going
+(`PageHeader` has no `description` slot on purpose), `--radius` is **0.375rem = 6px**
+(`index.css:275`; this doc said 8px for months and it was simply wrong) with every radius going
 through a token, and the page gutter is `--page-x` on the container — never `px-5` repeated per
 section.
+
+### UI lessons
+
+Every row here is a mistake that shipped, found by using the product on a phone. They are listed
+with the failure that produced them because the rule on its own is forgettable and the failure is
+not.
+
+| Lesson | The failure that produced it |
+|---|---|
+| A placeholder, not a label above every field. Eight labelled rows are twice the height of the same form without them, and height is the scarce axis on a phone. | the event and task modals |
+| **Compact into one row when two controls fit.** A control per row turns a form into a scroll. | four filters in two rows in Tareas; Crear and Cancelar as two stacked full-width buttons |
+| **No silent overflow.** A scrollable strip that overflows by 20px has no room to signal it — the fix is to make it fit (a grid), not to fade the edge. | the calendar's four filter chips at 360px; the edge fade on `TabBar`, which read as a rendering fault |
+| **Vertical alignment is `items-center`, never a `mt-*` guess.** A negative margin that simulates centring is a number tuned against one font size. | the task checkbox at `mt-0.5`, the "Propo" nav label at `-mt-1` |
+| **Every control in a bar row uses `CONTROL_H`.** | the calendar's Día/Semana/Mes at ~34px beside a 40px button and a 44px touch target |
+| **The tenant accent is not a member of any categorical palette.** It is derived from the workspace hue, so for some tenants it lands on `--success` and the legend becomes identical dots. Categories come from `shared/ui/category-palette.ts`. | `--accent-brand` as the colour of an event, colliding with Pago and Tarea |
+| **Nested radii: the inner radius is the outer minus the padding.** Equal radii make the inner corner look unglued from the outer one. | cards inside cards |
+| **`cn()` + tailwind-merge erases the base component's class in the same group.** `max-w-*` is one group, so a bare `max-w-md` deletes `max-w-[calc(100%-2rem)]`. Always prefix the override (`sm:max-w-md`). | the event dialog reaching both screen edges and looking borderless |
+| **A component two features need is a shared component.** | `MapRow`, `ChoiceSwitch`, `PushToggle` |
+| **The topbar is for actions that belong to the whole page, and tabs are for peers.** A `secondary` tab that only exists while it is open is navigation pretending to be a tab. | the Personas button injecting a tab with no way to close it; page-level actions living inside the page body |
+| **Do not add a scrollable tab strip.** If the options do not fit, they are not tabs. | Clientes at seven tabs |
+| **One sheet-footer convention: `SheetActions`.** | `size="block"` stacked buttons in the calendar next to `SheetActions` in thirteen other dialogs |
 
 ## Feature states (the kill switch)
 
