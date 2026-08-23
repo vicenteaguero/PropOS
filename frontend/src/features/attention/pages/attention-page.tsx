@@ -80,6 +80,8 @@ interface InboxEntry {
   statusLabel: string;
   statusTone: PillTone;
   contactId: string | null;
+  /** What was last said. The one line that tells a broker whether to open it. */
+  preview: string | null;
   /** last activity was inbound and the thread is still open → awaiting our reply */
   needsReply: boolean;
   archived: boolean;
@@ -149,6 +151,7 @@ function conversationEntry(
     statusLabel: conversationStatusLabel(c.status),
     statusTone: CONVERSATION_STATUS_TONES[c.status] ?? "neutral",
     contactId: c.contact_id,
+    preview: c.last_preview ?? null,
     // Open thread whose latest activity was the contact writing in.
     needsReply: c.status !== "closed" && inbound > 0 && inbound >= last,
     archived: !!c.archived_at,
@@ -171,6 +174,7 @@ function threadEntry(t: EmailThread, property: string | null): InboxEntry {
     statusLabel: emailStatusLabel(t.status),
     statusTone: EMAIL_STATUS_TONES[t.status.toUpperCase()] ?? "neutral",
     contactId: t.contact_id,
+    preview: t.last_preview ?? null,
     // Email threads expose no inbound timestamp, so "sin responder" cannot be
     // derived for them; they are simply never in that bucket.
     needsReply: false,
@@ -603,15 +607,24 @@ export function AttentionPage({ channels = ["whatsapp", "email"] }: AttentionPag
               </span>
             }
             sub={
-              <span className="flex min-w-0 items-baseline gap-1.5">
-                <span className="min-w-0 flex-1 truncate">
-                  {e.property ?? <span className="text-faint">Sin propiedad vinculada</span>}
-                </span>
-                {e.needsReply ? (
-                  <span className="shrink-0 font-medium text-destructive">Sin responder</span>
-                ) : (
-                  e.closed && <span className="shrink-0 text-faint">{e.statusLabel}</span>
+              <span className="flex min-w-0 flex-col gap-0.5">
+                {/* What was said, first. The property is context; the message is
+                    the reason to open the thread, and an e-mail row used to
+                    carry neither while the WhatsApp row beside it carried the
+                    message. */}
+                {e.preview && (
+                  <span className="min-w-0 truncate text-muted-foreground">{e.preview}</span>
                 )}
+                <span className="flex min-w-0 items-baseline gap-1.5">
+                  <span className="min-w-0 flex-1 truncate">
+                    {e.property ?? <span className="text-faint">Sin propiedad vinculada</span>}
+                  </span>
+                  {e.needsReply ? (
+                    <span className="shrink-0 font-medium text-destructive">Sin responder</span>
+                  ) : (
+                    e.closed && <span className="shrink-0 text-faint">{e.statusLabel}</span>
+                  )}
+                </span>
               </span>
             }
           />

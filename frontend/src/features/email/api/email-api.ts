@@ -13,6 +13,8 @@ export interface EmailThread {
   is_lead: boolean;
   portal: string | null;
   status: string;
+  /** Last line of the last message, so an e-mail row reads like a chat row. */
+  last_preview?: string | null;
 }
 
 export interface EmailMessage {

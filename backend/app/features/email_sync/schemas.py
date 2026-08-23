@@ -33,6 +33,11 @@ class EmailThreadResponse(BaseModel):
     is_lead: bool
     portal: str | None = None
     status: str
+    # The last line of the last message. The inbox lists e-mail threads beside
+    # WhatsApp conversations, which carry `last_preview`; without it an e-mail
+    # row was a name and a subject while its neighbour showed what the person
+    # said.
+    last_preview: str | None = None
 
     model_config = {"from_attributes": True}
 

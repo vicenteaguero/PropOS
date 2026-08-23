@@ -144,6 +144,48 @@ def _conversation_extras(tenant_id: UUID, user_id: UUID | None, ids: list[str]) 
     }
 
 
+def _thread_previews(tenant_id: UUID, ids: list[str]) -> dict[str, str]:
+    """`{thread_id: "last line of the last message"}` in one round trip.
+
+    E-mail rows in the queue carried a name, a subject and nothing else, while
+    every WhatsApp row beside them showed what the person actually said — so
+    two entries for the same kind of obligation read as two different products.
+    The subject is not a substitute: a portal lead's subject is boilerplate
+    ("Nuevo interesado en tu publicación") and the body is where the question
+    is.
+
+    Best-effort, like `_conversation_extras`: no preview is worse than a
+    preview, and an exception here is worse than either.
+    """
+    if not ids:
+        return {}
+    try:
+        rows = (
+            _client()
+            .table("email_messages")
+            .select("thread_id,snippet,body_text,sent_at")
+            .eq("tenant_id", str(tenant_id))
+            .in_("thread_id", ids)
+            .order("sent_at", desc=True)
+            .limit(_SCAN_LIMIT)
+            .execute()
+            .data
+            or []
+        )
+    except Exception:  # noqa: BLE001
+        return {}
+    out: dict[str, str] = {}
+    # Ordered newest first, so the first row seen for a thread is its latest.
+    for row in rows:
+        thread_id = row.get("thread_id")
+        if not thread_id or thread_id in out:
+            continue
+        text = (row.get("snippet") or row.get("body_text") or "").strip()
+        if text:
+            out[thread_id] = " ".join(text.split())[:160]
+    return out
+
+
 def _unanswered(tenant_id: UUID, now: dt.datetime, user_id: UUID | None = None):
     rows = (
         _client()
@@ -237,6 +279,8 @@ def _email_waiting(tenant_id: UUID, now: dt.datetime):
         or []
     )
 
+    previews = _thread_previews(tenant_id, [r["id"] for r in rows])
+
     for row in rows:
         at = _parse(row.get("last_inbound_at"))
         age = now - at if at else dt.timedelta()
@@ -272,6 +316,7 @@ def _email_waiting(tenant_id: UUID, now: dt.datetime):
             deadline=(at + dt.timedelta(hours=_FREEFORM_HOURS)) if at else None,
             contact_id=contact_id,
             thread_id=row["id"],
+            preview=previews.get(row["id"]),
         )
 
 

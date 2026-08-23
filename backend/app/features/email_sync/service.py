@@ -31,7 +31,48 @@ class EmailSyncService:
             builder = builder.eq("contact_id", str(contact_id))
         if q:
             builder = builder.ilike("subject", f"%{q}%")
-        return builder.execute().data
+        rows = builder.execute().data or []
+        EmailSyncService._attach_previews(client, tenant_id, rows)
+        return rows
+
+    @staticmethod
+    def _attach_previews(client, tenant_id: UUID, rows: list[dict]) -> None:
+        """Fill `last_preview` on every row, in one extra round trip.
+
+        Best-effort by design: an inbox without previews is worse than one with
+        them, and an inbox that 500s is worse than either. Mirrors what
+        `channels/router_api.py` already does for WhatsApp conversations.
+        """
+        for row in rows:
+            row.setdefault("last_preview", None)
+        ids = [r["id"] for r in rows if r.get("id")]
+        if not ids:
+            return
+        try:
+            messages = (
+                client.table(MESSAGES)
+                .select("thread_id,snippet,body_text,sent_at")
+                .eq("tenant_id", str(tenant_id))
+                .in_("thread_id", ids)
+                .order("sent_at", desc=True)
+                .limit(1000)
+                .execute()
+                .data
+                or []
+            )
+        except Exception:  # noqa: BLE001
+            return
+        latest: dict[str, str] = {}
+        # Newest first, so the first row seen for a thread is its latest.
+        for message in messages:
+            thread_id = message.get("thread_id")
+            if not thread_id or thread_id in latest:
+                continue
+            text = (message.get("snippet") or message.get("body_text") or "").strip()
+            if text:
+                latest[thread_id] = " ".join(text.split())[:160]
+        for row in rows:
+            row["last_preview"] = latest.get(row["id"])
 
     @staticmethod
     async def get_thread(thread_id: UUID, tenant_id: UUID) -> dict:
