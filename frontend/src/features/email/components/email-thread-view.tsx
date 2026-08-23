@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useImmersive } from "@layouts/immersive";
+import { useShellMode } from "@shared/hooks/use-shell-mode";
 import { useKeyboardInset } from "@shared/hooks/use-keyboard-inset";
 import { ArrowLeft, Loader2, Mail, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -74,6 +75,12 @@ export function EmailThreadView({ threadId, onBack }: Props) {
   // the whole screen right now" — same contract as MessageThread, so both
   // channels behave identically once opened.
   useImmersive(!!onBack);
+  // The notch inset belongs to whoever is the topmost element on screen. In the
+  // phone shell that is this header, because the claim above has unmounted
+  // `MobileTopBar`; in the sidebar shell the app's own <header> is already
+  // under the notch and adding it again indents this bar a second time.
+  const bare = useShellMode() === "bottom-nav";
+
   // Publishes --kb-inset / --kb-open, which the composer's `.pb-composer`
   // padding reads. Without a caller in this tree those properties are unset and
   // the reply box goes behind the keyboard.
@@ -101,7 +108,15 @@ export function EmailThreadView({ threadId, onBack }: Props) {
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-background">
-      <div className="flex items-center gap-3 border-b border-border px-4 py-3 pt-[calc(var(--safe-top)+0.75rem)]">
+      <div
+        className={cn(
+          // `--page-x`, like the WhatsApp thread beside it in the same inbox.
+          // `px-4` matched on a phone and diverged at md, so the two threads
+          // indented differently on a tablet.
+          "flex items-center gap-3 border-b border-border px-[var(--page-x)] py-3",
+          bare && "pt-[calc(var(--safe-top)+0.75rem)]",
+        )}
+      >
         {onBack && (
           <RoundButton
             tone="ghost"
@@ -119,7 +134,7 @@ export function EmailThreadView({ threadId, onBack }: Props) {
         <Pill tone={statusTone(thread.status)}>{statusLabel(thread.status)}</Pill>
       </div>
 
-      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 py-4">
+      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-[var(--page-x)] py-4">
         {thread.messages.length === 0 ? (
           <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
             <Mail className="mr-2 size-4" strokeWidth={1.8} /> Sin mensajes en esta conversación.
@@ -146,7 +161,7 @@ export function EmailThreadView({ threadId, onBack }: Props) {
                     </span>
                     <span className="shrink-0">{formatShortDateTime(m.sent_at)}</span>
                   </div>
-                  <p className="whitespace-pre-wrap">{m.body_text || m.snippet}</p>
+                  <p className="break-words whitespace-pre-wrap">{m.body_text || m.snippet}</p>
                 </div>
               </div>
             );

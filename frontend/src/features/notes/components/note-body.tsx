@@ -17,7 +17,7 @@ export function NoteBody({ body, className }: Props) {
   const parts = body.split(URL_RE);
 
   return (
-    <p className={cn("whitespace-pre-wrap", className)}>
+    <p className={cn("break-words whitespace-pre-wrap", className)}>
       {parts.map((part, i) => {
         // Odd indices are the captured URLs; even ones are the text between.
         if (i % 2 === 0 || !part) return <Fragment key={i}>{part}</Fragment>;

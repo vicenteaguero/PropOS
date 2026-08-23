@@ -65,7 +65,7 @@ export function NotesList({ targetTable, targetRowId }: Props) {
           {data.map((n) => (
             <li key={n.id} className="flex items-start justify-between gap-2 rounded-md border p-3">
               <div className="min-w-0">
-                <p className="whitespace-pre-wrap text-sm">{n.body}</p>
+                <p className="break-words whitespace-pre-wrap text-sm">{n.body}</p>
                 <span className="text-xs text-muted-foreground">
                   {formatDateTime(n.created_at)}
                 </span>

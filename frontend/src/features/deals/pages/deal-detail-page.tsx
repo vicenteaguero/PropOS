@@ -109,7 +109,7 @@ export function DealDetailPage() {
         </dl>
 
         {deal.notes && (
-          <p className="mt-3 whitespace-pre-wrap text-[13.5px] leading-relaxed text-muted-foreground">
+          <p className="mt-3 break-words whitespace-pre-wrap text-[13.5px] leading-relaxed text-muted-foreground">
             {deal.notes}
           </p>
         )}

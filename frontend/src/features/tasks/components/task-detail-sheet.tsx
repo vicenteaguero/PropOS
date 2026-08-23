@@ -318,7 +318,7 @@ export function TaskDetailSheet({
             />
           ) : (
             description.trim() && (
-              <p className="whitespace-pre-wrap text-[14px] leading-relaxed text-muted-foreground">
+              <p className="break-words whitespace-pre-wrap text-[14px] leading-relaxed text-muted-foreground">
                 {description}
               </p>
             )
