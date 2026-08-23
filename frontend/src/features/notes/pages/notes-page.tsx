@@ -1,10 +1,10 @@
 import { useRef, useState } from "react";
 import { useOpenOnParam } from "@shared/hooks/use-open-on-param";
-import { Link as LinkIcon, Loader2, Mic, Pin, Plus, Sparkles } from "lucide-react";
+import { Link as LinkIcon, Loader2, Mic, Pin, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { PageLayout } from "@shared/components/page-layout";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
-import { AudioPlayer, ErrorState, FilterSelect, PageSkeleton, Pill } from "@shared/ui";
+import { ActionIcon, AudioPlayer, ErrorState, FilterSelect, PageSkeleton, Pill } from "@shared/ui";
 import { createPortal } from "react-dom";
 import { useTopbarActionsSlot } from "@layouts/topbar-slot";
 import { NoteDetailSheet } from "../components/note-detail-sheet";
@@ -158,7 +158,7 @@ export function NotesPage() {
           {create.isPending ? (
             <Loader2 className="size-4 animate-spin" />
           ) : (
-            <Plus className="size-4" />
+            <ActionIcon name="createNote" />
           )}
           Agregar
         </Button>
@@ -297,7 +297,7 @@ export function NotesPage() {
             aria-label="Nueva nota"
             className="rounded-full"
           >
-            <Plus className="size-4" strokeWidth={1.8} />
+            <ActionIcon name="createNote" />
           </Button>,
           actionsHost,
         )}
@@ -327,7 +327,7 @@ export function NotesPage() {
           </div>
           {!actionsHost && (
             <Button variant="outline" className="gap-2" onClick={openComposer}>
-              <Plus className="size-4" />
+              <ActionIcon name="createNote" />
               Nueva nota
             </Button>
           )}

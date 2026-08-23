@@ -5,13 +5,21 @@ import { useIntentPrefetch } from "@shared/hooks/use-intent-prefetch";
 import { propertyQueries } from "../hooks/use-property-detail";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@shared/hooks/use-auth";
-import { Bath, BedDouble, Maximize, Plus, LayoutGrid, Map as MapIcon } from "lucide-react";
+import { Bath, BedDouble, Maximize, LayoutGrid, Map as MapIcon } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { PageLayout } from "@shared/components/page-layout";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
-import { CONTROL_SQUARE, ListShell, LoadMore, PhotoCard, Pill, ViewToggle } from "@shared/ui";
+import {
+  ActionIcon,
+  CONTROL_SQUARE,
+  ListShell,
+  LoadMore,
+  PhotoCard,
+  Pill,
+  ViewToggle,
+} from "@shared/ui";
 import { toast } from "sonner";
 import { propertiesApi, type Property, type PropertyInput } from "../api/properties-api";
 import { PropertyFormDialog } from "../components/property-form-dialog";
@@ -176,7 +184,7 @@ export function AdminPropertiesPage() {
             aria-label="Crear propiedad"
             onClick={() => setDialogOpen(true)}
           >
-            <Plus className="size-5" strokeWidth={1.8} />
+            <ActionIcon name="createProperty" size="lg" />
           </Button>
         }
         filters={

@@ -1,6 +1,6 @@
-import { ChevronLeft, ChevronRight, Mic, Plus, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, Mic, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Chip, Chips, RoundButton } from "@shared/ui";
+import { ActionIcon, Chip, Chips, RoundButton } from "@shared/ui";
 import { cn } from "@/lib/utils";
 import { FILTER_ITEMS, TYPE_META, type CalFilter } from "../lib/calendar-item";
 
@@ -135,7 +135,7 @@ export function CalendarToolbar({
               aria-label="Nuevo evento"
               className="ml-1 rounded-full"
             >
-              <Plus className="size-4" strokeWidth={1.8} />
+              <ActionIcon name="createEvent" />
             </Button>
           </div>
         )}

@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { ExternalLink, Folder, Plus, QrCode } from "lucide-react";
+import { ExternalLink, Folder, QrCode } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
-import { ErrorState, PageSkeleton, ResponsiveSheet } from "@shared/ui";
+import { ActionIcon, ErrorState, PageSkeleton, ResponsiveSheet } from "@shared/ui";
 import { PageLayout } from "@shared/components/page-layout";
 import { PageHeader } from "@shared/components/page-header";
 import { ConfirmDialog } from "@shared/components/confirm-dialog/confirm-dialog";
@@ -30,7 +30,7 @@ export function PortalAdminPage() {
       <PageHeader
         actions={
           <Button size="sm" onClick={() => setCreateOpen(true)}>
-            <Plus className="size-4" /> Nuevo enlace
+            <ActionIcon name="link" /> Nuevo enlace
           </Button>
         }
       />

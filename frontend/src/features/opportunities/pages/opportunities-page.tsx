@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useProperties } from "@features/documents/hooks/use-entities";
 import { Building2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { AppShellScroll, CONTROL_SQUARE, ListCapNotice, ListShell } from "@shared/ui";
+import { ActionIcon, AppShellScroll, CONTROL_SQUARE, ListCapNotice, ListShell } from "@shared/ui";
 import { toast } from "sonner";
 import { useAuth } from "@shared/hooks/use-auth";
 import { useIsDesktop } from "@/hooks/use-mobile";
@@ -140,7 +140,7 @@ export function OpportunitiesPage() {
             className={cn("rounded-full", CONTROL_SQUARE)}
             onClick={openNew}
           >
-            <Plus className="size-4" strokeWidth={1.8} />
+            <ActionIcon name="createDeal" />
           </Button>
         }
         skeleton="board"

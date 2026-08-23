@@ -32,6 +32,7 @@ import {
 } from "../lib/task-order";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
 import {
+  ActionIcon,
   Chip,
   Chips,
   ErrorState,
@@ -386,7 +387,7 @@ function AddTaskRow({ onClick }: { onClick: () => void }) {
         className="flex shrink-0 items-center justify-center rounded-full border-2 border-dashed text-faint"
         style={{ width: 22, height: 22, borderColor: "var(--color-line-strong)" }}
       >
-        <Plus className="size-3" strokeWidth={2.4} />
+        <ActionIcon name="createTask" size="sm" />
       </span>
       <span className="text-[14.5px] font-medium text-muted-foreground">Añadir tarea</span>
     </button>
@@ -586,7 +587,7 @@ export function TasksPage() {
               aria-label="Nueva tarea"
               className="rounded-full"
             >
-              <Plus className="size-4" strokeWidth={1.8} />
+              <ActionIcon name="createTask" />
             </Button>,
             actionsHost,
           )
@@ -775,7 +776,7 @@ export function TasksPage() {
             </Chips>
             {!actionsHost && (
               <Button onClick={() => setOpen(true)} variant="ink" className="shrink-0 gap-2">
-                <Plus className="size-4" strokeWidth={1.8} />
+                <ActionIcon name="createTask" />
                 Nueva
               </Button>
             )}

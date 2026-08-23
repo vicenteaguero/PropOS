@@ -27,6 +27,7 @@ export { SwipeAction } from "./swipe-action";
 export { Segmented, type SegmentedItem } from "./segmented";
 export { ChoiceSwitch, type ChoiceOption } from "./choice-switch";
 export { LinkInput } from "./link-input";
+export { ActionIcon, ACTION_ICONS, type ActionName } from "./action-icon";
 export { SectionLabel } from "./section-label";
 export { SectionTabs, type SectionTab } from "./section-tabs";
 export { Row } from "./row";

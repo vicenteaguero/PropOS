@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from "react";
-import { CONTROL_SQUARE } from "@shared/ui";
+import { ActionIcon, CONTROL_SQUARE } from "@shared/ui";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Camera, FilePlus2, Plus, Upload, X } from "lucide-react";
@@ -472,7 +472,7 @@ export function NewDocumentButton() {
   return (
     <>
       <Button size="sm" onClick={() => state.setOpen(true)}>
-        <Plus className="size-4" /> Nuevo documento
+        <ActionIcon name="createDocument" /> Nuevo documento
       </Button>
       <FastAddDialogBody {...state} />
     </>
