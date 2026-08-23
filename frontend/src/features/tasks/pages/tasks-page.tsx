@@ -11,13 +11,12 @@ import {
   startOfDay,
 } from "date-fns";
 import { es } from "date-fns/locale";
-import { Calendar, Flag, Loader2, Plus, Trash2 } from "lucide-react";
+import { Calendar, Flag, Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { PageLayout } from "@shared/components/page-layout";
-import { PageHeader } from "@shared/components/page-header";
 import { createPortal } from "react-dom";
 import { useTopbarActionsSlot } from "@layouts/topbar-slot";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -41,7 +40,6 @@ import {
   PageSkeleton,
   Pill,
   ResponsiveSheet,
-  RoundButton,
   Row,
   SectionLabel,
   TOUCH_TARGET_HIT_AREA,
@@ -109,12 +107,15 @@ function BucketSection({
   bucket,
   tasks,
   onComplete,
-  onDelete,
+  onOpen,
+  assigneeFor,
 }: {
   bucket: Bucket;
   tasks: Task[];
   onComplete: (id: string) => void;
-  onDelete: (id: string) => void;
+  onOpen: (t: Task) => void;
+  /** Only in team mode; in "mine" every row would carry the same face. */
+  assigneeFor?: (t: Task) => { full_name: string | null; avatar_url: string | null } | null;
 }) {
   return (
     <section>
@@ -122,16 +123,29 @@ function BucketSection({
       <div className="overflow-hidden">
         {tasks.map((t, i) => {
           const due = t.due_at ? dueLabel(t.due_at) : null;
+          const assignee = assigneeFor?.(t) ?? null;
+          const done = t.status === "DONE";
           return (
             <Row
               key={t.id}
               divider={i < tasks.length - 1}
+              onClick={() => onOpen(t)}
               left={
                 <button
                   type="button"
-                  onClick={() => onComplete(t.id)}
-                  className={`flex size-6 shrink-0 items-center justify-center rounded-full border-2 border-line-strong text-transparent transition-colors hover:border-success hover:text-success ${TOUCH_TARGET_HIT_AREA}`}
-                  aria-label="Completar"
+                  onClick={(e) => {
+                    // The row opens the task; the circle completes it.
+                    e.stopPropagation();
+                    onComplete(t.id);
+                  }}
+                  className={cn(
+                    "flex size-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
+                    done
+                      ? "border-foreground bg-ink text-ink-foreground"
+                      : "border-line-strong text-transparent hover:border-success hover:text-success",
+                    TOUCH_TARGET_HIT_AREA,
+                  )}
+                  aria-label={done ? "Reabrir" : "Completar"}
                 />
               }
               title={t.title}
@@ -144,15 +158,14 @@ function BucketSection({
                 ) : undefined
               }
               right={
-                <RoundButton
-                  tone="ghost"
-                  size={32}
-                  onClick={() => onDelete(t.id)}
-                  aria-label="Eliminar"
-                  className="text-muted-foreground"
-                >
-                  <Trash2 className="size-4" strokeWidth={1.8} />
-                </RoundButton>
+                assignee ? (
+                  <Avatar size="sm" className="size-7" title={assignee.full_name ?? undefined}>
+                    {assignee.avatar_url && <AvatarImage src={assignee.avatar_url} alt="" />}
+                    <AvatarFallback className="text-[10px]">
+                      {initials(assignee.full_name ?? "?")}
+                    </AvatarFallback>
+                  </Avatar>
+                ) : undefined
               }
             />
           );
@@ -564,32 +577,20 @@ export function TasksPage() {
       {/* On a phone the create action goes in the bar, where every other list
           in the app keeps it. The sidebar shell has no bar to portal into, so
           the header keeps its own button there. */}
-      {actionsHost ? (
-        createPortal(
-          <Button
-            onClick={() => setOpen(true)}
-            variant="ink"
-            size="icon"
-            aria-label="Nueva tarea"
-            className="rounded-full"
-          >
-            <Plus className="size-4" strokeWidth={1.8} />
-          </Button>,
-          actionsHost,
-        )
-      ) : (
-        <div className="px-5 pt-4 pb-5 lg:px-8 lg:pt-7">
-          <PageHeader
-            className="mb-0"
-            actions={
-              <Button onClick={() => setOpen(true)} variant="ink" className="gap-2">
-                <Plus className="size-4" strokeWidth={1.8} />
-                Nueva
-              </Button>
-            }
-          />
-        </div>
-      )}
+      {actionsHost
+        ? createPortal(
+            <Button
+              onClick={() => setOpen(true)}
+              variant="ink"
+              size="icon"
+              aria-label="Nueva tarea"
+              className="rounded-full"
+            >
+              <Plus className="size-4" strokeWidth={1.8} />
+            </Button>,
+            actionsHost,
+          )
+        : null}
 
       {isLoading && <PageSkeleton variant="list" count={5} />}
       {error && (
@@ -731,18 +732,54 @@ export function TasksPage() {
           {/* ---------------------------------------------------------- *
            * Desktop: two columns — near-term left, later right. (unchanged)
            * ---------------------------------------------------------- */}
-          <Chips className="hidden px-8 pb-5 lg:flex">
-            {FILTERS.filter((f) => f.id === "all" || grouped.has(f.id)).map((f) => (
-              <Chip
-                key={f.id}
-                active={filter === f.id}
-                count={f.id === "all" ? (scoped?.length ?? 0) : grouped.get(f.id)?.length}
-                onClick={() => setFilter(f.id)}
-              >
-                {f.label}
-              </Chip>
-            ))}
-          </Chips>
+          {/* The same controls as the phone. This used to be a chip strip with
+              no scope switch, no priority filter and no ordering — so the
+              laptop, where there is the most room for them, had the fewest. */}
+          <div className="hidden flex-wrap items-center gap-2 px-8 pb-5 lg:flex">
+            <FilterSelect
+              label="Tareas de"
+              value={scope}
+              options={[
+                { value: "mine", label: "Mías" },
+                { value: "team", label: "Todo el equipo" },
+              ]}
+              onChange={(v: string | null) => setScope((v as TaskScope) ?? "mine")}
+            />
+            <FilterSelect
+              label="Prioridad"
+              value={priorityFilter === "all" ? null : priorityFilter}
+              allLabel="Todas"
+              options={TASK_PRIORITY_FILTERS.filter((f) => f.value !== "all").map((f) => ({
+                value: f.value,
+                label: f.label,
+              }))}
+              onChange={(v: string | null) => setPriorityFilter((v as TaskPriorityFilter) ?? "all")}
+            />
+            <FilterSelect
+              label="Ordenar"
+              value={order}
+              options={TASK_ORDERS.map((o) => ({ value: o.value, label: o.label, sub: o.sub }))}
+              onChange={(v: string | null) => setOrder((v as TaskOrder) ?? "due")}
+            />
+            <Chips className="min-w-0 flex-1">
+              {FILTERS.filter((f) => f.id === "all" || grouped.has(f.id)).map((f) => (
+                <Chip
+                  key={f.id}
+                  active={filter === f.id}
+                  count={f.id === "all" ? (scoped?.length ?? 0) : grouped.get(f.id)?.length}
+                  onClick={() => setFilter(f.id)}
+                >
+                  {f.label}
+                </Chip>
+              ))}
+            </Chips>
+            {!actionsHost && (
+              <Button onClick={() => setOpen(true)} variant="ink" className="shrink-0 gap-2">
+                <Plus className="size-4" strokeWidth={1.8} />
+                Nueva
+              </Button>
+            )}
+          </div>
 
           <div className="hidden gap-x-8 px-8 pb-6 lg:grid lg:grid-cols-2">
             <div className="space-y-7">
@@ -750,9 +787,12 @@ export function TasksPage() {
                 <BucketSection
                   key={bucket}
                   bucket={bucket}
-                  tasks={grouped.get(bucket)!}
+                  tasks={sortTasks(grouped.get(bucket)!, order)}
                   onComplete={complete}
-                  onDelete={remove}
+                  onOpen={setDetailTask}
+                  assigneeFor={
+                    scope === "team" ? (t) => memberById.get(t.owner_user ?? "") ?? null : undefined
+                  }
                 />
               ))}
             </div>
@@ -761,9 +801,12 @@ export function TasksPage() {
                 <BucketSection
                   key={bucket}
                   bucket={bucket}
-                  tasks={grouped.get(bucket)!}
+                  tasks={sortTasks(grouped.get(bucket)!, order)}
                   onComplete={complete}
-                  onDelete={remove}
+                  onOpen={setDetailTask}
+                  assigneeFor={
+                    scope === "team" ? (t) => memberById.get(t.owner_user ?? "") ?? null : undefined
+                  }
                 />
               ))}
             </div>
