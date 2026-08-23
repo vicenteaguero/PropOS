@@ -25,11 +25,9 @@ export const LEGACY_CLIENT_ROUTES: LegacyRoute[] = [
   { from: "client-inbox", to: "../clientes?tab=whatsapp" },
   { from: "correos", to: "../clientes?tab=correos" },
   // The entity lists, before they became tabs.
-  { from: "personas", to: "../clientes?tab=personas" },
   { from: "interacciones", to: "../clientes?tab=interacciones" },
   { from: "oportunidades", to: "../clientes?tab=oportunidades" },
-  { from: "properties", to: "../clientes?tab=propiedades" },
-  { from: "propiedades", to: "../clientes?tab=propiedades" },
+  { from: "properties", to: "../propiedades" },
 ];
 
 export const LEGACY_AGENDA_ROUTES: LegacyRoute[] = [

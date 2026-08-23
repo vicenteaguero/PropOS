@@ -24,6 +24,11 @@ function landOn(entry: string, routes: LegacyRoute[], section: string) {
       <Routes>
         <Route path="/admin">
           <Route path={section} element={<Landed section={section} />} />
+          {/* Personas and Propiedades stopped being tabs and became their own
+              routes, so a redirect can now legitimately point outside the
+              section. Declared here so those entries land somewhere. */}
+          <Route path="personas" element={<Landed section="personas" />} />
+          <Route path="propiedades" element={<Landed section="propiedades" />} />
           {routes.map(({ from, to }) => (
             <Route key={from} path={from} element={<Navigate to={to} replace />} />
           ))}
@@ -34,10 +39,18 @@ function landOn(entry: string, routes: LegacyRoute[], section: string) {
   return screen.getByTestId("landed").textContent ?? "";
 }
 
+/** The section a legacy `to` lands in — the path, not the tab. */
+function sectionOf(to: string): string {
+  return new URL(to, "http://x/").pathname.replace(/^.*\//, "");
+}
+
 describe("legacy Clientes routes", () => {
   it.each(LEGACY_CLIENT_ROUTES)("$from lands inside clientes", ({ from, to }) => {
     const expectedTab = new URL(to, "http://x/").searchParams.get("tab") ?? "";
-    expect(landOn(from, LEGACY_CLIENT_ROUTES, "clientes")).toBe(`clientes:${expectedTab}`);
+    const expectedSection = sectionOf(to);
+    expect(landOn(from, LEGACY_CLIENT_ROUTES, "clientes")).toBe(
+      `${expectedSection}:${expectedTab}`,
+    );
   });
 
   it("keeps every tab alias the section still answers to", () => {

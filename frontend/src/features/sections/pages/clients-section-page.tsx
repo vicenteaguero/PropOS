@@ -1,4 +1,5 @@
 import { lazy, Suspense } from "react";
+import { Navigate, useSearchParams } from "react-router-dom";
 import { PageSkeleton, SectionTabs, type SectionTab } from "@shared/ui";
 import { useAuth } from "@shared/hooks/use-auth";
 import type { InboxChannel } from "@features/attention/pages/attention-page";
@@ -6,17 +7,9 @@ import type { InboxChannel } from "@features/attention/pages/attention-page";
 const AttentionPage = lazy(() =>
   import("@features/attention/pages/attention-page").then((m) => ({ default: m.AttentionPage })),
 );
-const ContactsPage = lazy(() =>
-  import("@features/contacts/pages/contacts-page").then((m) => ({ default: m.ContactsPage })),
-);
 const OpportunitiesPage = lazy(() =>
   import("@features/opportunities/pages/opportunities-page").then((m) => ({
     default: m.OpportunitiesPage,
-  })),
-);
-const AdminPropertiesPage = lazy(() =>
-  import("@features/admin-properties/pages/admin-properties-page").then((m) => ({
-    default: m.AdminPropertiesPage,
   })),
 );
 
@@ -37,6 +30,8 @@ const AdminPropertiesPage = lazy(() =>
  */
 export function ClientsSectionPage() {
   const { user } = useAuth();
+  const [params] = useSearchParams();
+  const role = (user?.role ?? "ADMIN").toLowerCase();
   const scope = user?.adminScope ?? [];
   // An empty scope is full admin; otherwise the scope list is a whitelist.
   const allow = (s?: string) => !s || scope.length === 0 || scope.includes(s);
@@ -48,9 +43,12 @@ export function ClientsSectionPage() {
     ...(allow("email") ? (["email"] as const) : []),
   ];
 
-  // Two headline tabs, not four. See SectionTab.secondary: Personas and
-  // Propiedades are catalogues reached from the two views a broker actually
-  // opens the section for, and each of those views carries a button to its own.
+  // Two tabs. Personas and Propiedades used to be `secondary` tabs here —
+  // present in the bar only while open — which meant the button that opened
+  // one INJECTED a tab that had not been there a moment earlier, and closing
+  // it meant tapping a different tab. They are their own routes now
+  // (`/:role/personas`, `/:role/propiedades`), so the topbar gives them a back
+  // arrow like every other destination and the bar stops changing shape.
   const tabs: SectionTab[] = [
     ...(channels.length > 0
       ? [
@@ -68,16 +66,6 @@ export function ClientsSectionPage() {
         ]
       : []),
     {
-      id: "personas",
-      label: "Personas",
-      scope: "crm",
-      feature: "crm",
-      secondary: true,
-      // Interacciones lived here as its own tab; its links now open the person.
-      aliases: ["interacciones"],
-      render: () => <ContactsPage />,
-    },
-    {
       id: "negocios",
       label: "Negocios",
       scope: "crm",
@@ -85,14 +73,14 @@ export function ClientsSectionPage() {
       aliases: ["pipeline", "oportunidades"],
       render: () => <OpportunitiesPage />,
     },
-    {
-      id: "propiedades",
-      label: "Propiedades",
-      feature: "propiedades",
-      secondary: true,
-      render: () => <AdminPropertiesPage />,
-    },
   ].filter((t) => allow(t.scope));
+
+  // Links and push notifications still carry `?tab=personas`. Sending them to
+  // the tab that no longer exists would silently land on Conversaciones.
+  const legacyTab = params.get("tab");
+  if (legacyTab === "personas" || legacyTab === "interacciones")
+    return <Navigate to={`/${role}/personas`} replace />;
+  if (legacyTab === "propiedades") return <Navigate to={`/${role}/propiedades`} replace />;
 
   return (
     <Suspense fallback={<PageSkeleton variant="list" />}>
