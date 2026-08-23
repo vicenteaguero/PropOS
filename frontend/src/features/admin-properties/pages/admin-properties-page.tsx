@@ -5,7 +5,7 @@ import { useIntentPrefetch } from "@shared/hooks/use-intent-prefetch";
 import { propertyQueries } from "../hooks/use-property-detail";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@shared/hooks/use-auth";
-import { Bath, BedDouble, Maximize, LayoutGrid, Map as MapIcon } from "lucide-react";
+import { Bath, BedDouble, Maximize, LayoutGrid, List, Map as MapIcon } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ import {
 } from "@shared/ui";
 import { toast } from "sonner";
 import { propertiesApi, type Property, type PropertyInput } from "../api/properties-api";
+import { PropertyRow } from "../components/property-row";
 import { PropertyFormDialog } from "../components/property-form-dialog";
 import { PropertyMapView } from "../components/property-map-view";
 import { formatClp } from "@shared/utils/currency";
@@ -113,7 +114,7 @@ export function AdminPropertiesPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   useOpenOnParam("nuevo", () => setDialogOpen(true));
   const prefetch = useIntentPrefetch();
-  const [view, setView] = useState<"lista" | "mapa">("lista");
+  const [view, setView] = useState<"lista" | "grilla" | "mapa">("lista");
   const [search, setSearch] = useState("");
   // Debounced so typing doesn't fire a request per keystroke; the query key
   // carries the term, so results are cached per search rather than refetched.
@@ -173,7 +174,7 @@ export function AdminPropertiesPage() {
         search={{
           value: search,
           onChange: setSearch,
-          placeholder: "Buscar por título o dirección",
+          placeholder: "Buscar propiedad…",
           ariaLabel: "Buscar propiedades",
         }}
         primaryAction={
@@ -196,7 +197,11 @@ export function AdminPropertiesPage() {
               value={view}
               onChange={setView}
               options={[
-                { value: "lista", label: "Lista", icon: <LayoutGrid className="size-4" /> },
+                // `List`, not `LayoutGrid`: the icon was a grid because the
+                // view WAS a grid, under a label that said "Lista". Now there
+                // are three, and each icon draws what it opens.
+                { value: "lista", label: "Lista", icon: <List className="size-4" /> },
+                { value: "grilla", label: "Fotos", icon: <LayoutGrid className="size-4" /> },
                 { value: "mapa", label: "Mapa", icon: <MapIcon className="size-4" /> },
               ]}
             />
@@ -229,6 +234,20 @@ export function AdminPropertiesPage() {
         }
       >
         {view === "lista" ? (
+          // A real list: one row per property, the two facts you scan for on
+          // the first line and the specs on the second.
+          <div className="space-y-2 px-[var(--page-x)]">
+            {properties.map((p) => (
+              <PropertyRow
+                key={p.id}
+                property={p}
+                onOpen={() => navigate(`/${role}/propiedades/${p.id}`)}
+                onIntent={() => prefetch(propertyQueries.detail(p.id))}
+              />
+            ))}
+            {hasNextPage && <LoadMore onVisible={fetchNextPage} busy={isFetchingNextPage} />}
+          </div>
+        ) : view === "grilla" ? (
           // Two columns from 360px up. One card per screen meant scrolling
           // through 40 properties one at a time; the point of the list is to
           // FIND one, and a cover plus a price is legible at half width.
