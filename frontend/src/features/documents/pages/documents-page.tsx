@@ -129,7 +129,7 @@ export function DocumentsPage() {
       onChange={onSearchChange}
       className="lg:max-w-xl"
       ariaLabel="Buscar documentos"
-      placeholder="Buscar por nombre..."
+      placeholder="Buscar documento…"
     />
   );
 

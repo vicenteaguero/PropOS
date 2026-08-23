@@ -33,7 +33,7 @@ interface SearchInputProps {
 export function SearchInput({
   value,
   onChange,
-  placeholder = "Buscar...",
+  placeholder = "Buscar…",
   ariaLabel,
   variant = "pill",
   debounceMs = 250,
@@ -98,7 +98,12 @@ export function SearchInput({
           // The variants still differ in what they should: the magnifier's
           // inset and the type scale.
           CONTROL_H,
-          pill ? "pl-11 pr-11 text-base md:text-[15px]" : "pl-9 pr-9 text-base md:text-sm",
+          // Right padding only while the clear button exists. Reserving it
+          // unconditionally cost 36-44px of a field that is ~240px wide inside
+          // a picker, so the placeholder truncated on an empty input — the one
+          // moment the placeholder is the entire content of the control.
+          pill ? "pl-11 text-base md:text-[15px]" : "pl-9 text-base md:text-sm",
+          local ? (pill ? "pr-11" : "pr-9") : "pr-3",
           FOCUS_RING,
         )}
       />

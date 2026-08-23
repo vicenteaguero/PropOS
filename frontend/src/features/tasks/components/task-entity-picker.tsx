@@ -103,7 +103,7 @@ export function TaskEntityPicker({ value, onChange, disabled }: Props) {
           getLabel={(p) => p.title}
           getKey={(p) => p.id}
           loading={properties.isLoading}
-          placeholder="Buscar propiedad"
+          placeholder="Buscar propiedad…"
           emptyText="Sin propiedades"
           disabled={disabled}
           ariaLabel="Vincular propiedad"
@@ -119,7 +119,7 @@ export function TaskEntityPicker({ value, onChange, disabled }: Props) {
           getLabel={(c) => c.full_name}
           getKey={(c) => c.id}
           loading={contacts.isLoading}
-          placeholder="Buscar contacto"
+          placeholder="Buscar contacto…"
           emptyText="Sin contactos"
           disabled={disabled}
           ariaLabel="Vincular contacto"
