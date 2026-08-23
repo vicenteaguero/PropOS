@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { FOCUS_RING, TOUCH_TARGET_ROW_COARSE } from "@shared/ui";
+import { FOCUS_RING } from "./focus-ring";
+import { TOUCH_TARGET_ROW_COARSE } from "./touch-target";
 
 export interface ChoiceOption {
   value: string;

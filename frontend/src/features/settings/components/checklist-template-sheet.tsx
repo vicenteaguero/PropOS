@@ -12,6 +12,7 @@ import {
   SectionLabel,
   SheetActions,
   TOUCH_TARGET_COARSE,
+  ChoiceSwitch,
 } from "@shared/ui";
 import { label } from "@shared/lib/labels";
 import type { ChecklistTemplateWrite } from "../api/catalogs-api";
@@ -24,7 +25,6 @@ import {
   type ChecklistItem,
   type ChecklistTemplate,
 } from "../lib/checklist-templates";
-import { ChoiceSwitch } from "./choice-switch";
 
 const OPERATION_KINDS = ["venta", "arriendo"] as const;
 
