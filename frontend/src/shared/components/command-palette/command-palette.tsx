@@ -146,7 +146,7 @@ export function CommandPalette({
             <CommandInput
               value={query}
               onValueChange={setQuery}
-              placeholder="Buscar una persona, una propiedad, una página…"
+              placeholder="Buscar en PropOS…"
             />
             <CommandList className="max-h-[60dvh]">
               <CommandEmpty>Sin resultados.</CommandEmpty>

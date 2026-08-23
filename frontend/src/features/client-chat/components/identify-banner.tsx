@@ -49,7 +49,7 @@ export function IdentifyBanner({ conversation }: { conversation: ClientConversat
           variant="inline"
           debounceMs={0}
           ariaLabel="Buscar la persona"
-          placeholder="Buscar a quién pertenece este número…"
+          placeholder="Buscar persona…"
         />
       </div>
 

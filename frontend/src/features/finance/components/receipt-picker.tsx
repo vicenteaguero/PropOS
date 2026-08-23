@@ -104,7 +104,7 @@ export function ReceiptPicker({ value, onChange, disabled }: Props) {
           getLabel={(doc) => doc.display_name}
           getKey={(doc) => doc.id}
           loading={isFetching}
-          placeholder="Buscar documento"
+          placeholder="Buscar documento…"
           emptyText="Sin documentos"
           disabled={disabled}
           ariaLabel="Elegir boleta existente"

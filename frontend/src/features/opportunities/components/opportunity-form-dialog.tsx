@@ -69,7 +69,7 @@ export function OpportunityFormDialog({
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar contacto"
+              placeholder="Buscar contacto…"
             />
             <select
               value={personId}
