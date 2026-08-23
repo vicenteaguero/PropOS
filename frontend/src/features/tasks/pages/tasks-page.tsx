@@ -44,6 +44,7 @@ import {
   SectionLabel,
   SheetActions,
   TOUCH_TARGET_HIT_AREA,
+  CONTROL_H,
 } from "@shared/ui";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -722,7 +723,11 @@ export function TasksPage() {
                 ))}
               </Chips>
               {!actionsHost && (
-                <Button onClick={() => setOpen(true)} variant="ink" className="shrink-0 gap-2">
+                <Button
+                  onClick={() => setOpen(true)}
+                  variant="ink"
+                  className={cn("shrink-0 gap-2", CONTROL_H)}
+                >
                   <ActionIcon name="createTask" />
                   Nueva
                 </Button>
