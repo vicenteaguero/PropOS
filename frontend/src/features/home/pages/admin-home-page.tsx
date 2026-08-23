@@ -10,7 +10,6 @@ import {
   Mic,
   Phone,
   Receipt,
-  Sparkles,
   StickyNote,
   Upload,
   UserPlus,
@@ -39,6 +38,7 @@ import {
   SectionLabel,
   WhatsAppMark,
   type PillTone,
+  PropoMark,
 } from "@shared/ui";
 import { cn } from "@/lib/utils";
 import { initials } from "@shared/utils/format";
@@ -181,7 +181,10 @@ export function AdminHomePage() {
   const actionTiles: Tile[] = [
     {
       to: `${base}/agenda?tab=calendario&nuevo=1`,
-      label: "Agendar",
+      // "Agendar" alone reads as a verb with nothing after it, next to three
+      // tiles that name what they create. `TileLabel` already wraps a
+      // two-word label onto two lines, so this costs no height.
+      label: "Agendar evento",
       icon: CalendarPlus,
       scope: "productividad",
     },
@@ -230,7 +233,7 @@ export function AdminHomePage() {
         )}
       >
         <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-ink text-ink-foreground">
-          <Sparkles className="size-4" />
+          <PropoMark className="size-4" />
         </span>
         <span className="truncate text-[15px] text-muted-foreground">
           Pídele algo a {agentName}…
