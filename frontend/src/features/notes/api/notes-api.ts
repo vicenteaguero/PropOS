@@ -45,6 +45,11 @@ export interface Note {
   created_at: string;
   targets: NoteTarget[];
   attachments: NoteAttachment[];
+  /** 0 normal · 1 media · 2+ alta, same reading as a task's priority. */
+  priority?: number;
+  pinned?: boolean;
+  color?: string | null;
+  updated_at?: string;
 }
 
 export interface NoteTargetInput {
@@ -67,6 +72,10 @@ export interface NotesQuery {
 export const notesApi = {
   list: (params: NotesQuery = {}) => apiRequest<Note[]>(`/v1/notes${qs({ ...params })}`),
   create: (body: NoteInput) => apiRequest<Note>("/v1/notes", { method: "POST", body }),
+  update: (
+    id: string,
+    body: { body?: string; priority?: number; pinned?: boolean; color?: string | null },
+  ) => apiRequest<Note>(`/v1/notes/${id}`, { method: "PATCH", body }),
   remove: (id: string) => apiRequest<void>(`/v1/notes/${id}`, { method: "DELETE" }),
 
   addTargets: (id: string, targets: NoteTargetInput[]) =>

@@ -49,6 +49,12 @@ class NoteAttachment(BaseModel):
 
 class NoteBase(BaseModel):
     body: str
+    # 0 normal · 1 media · 2+ alta, same reading as `tasks.priority`.
+    priority: int = 0
+    pinned: bool = False
+    # Persisted so a card keeps its colour. It used to be picked from the note's
+    # index in the list, which repainted every card whenever the order changed.
+    color: str | None = None
     # Kept for compatibility: the agent's note writer still fills this pair, and
     # it mirrors the first entry of `targets`.
     target_table: str | None = None
@@ -61,6 +67,9 @@ class NoteCreate(NoteBase):
 
 class NoteUpdate(BaseModel):
     body: str | None = None
+    priority: int | None = None
+    pinned: bool | None = None
+    color: str | None = None
 
 
 class NoteResponse(NoteBase):
