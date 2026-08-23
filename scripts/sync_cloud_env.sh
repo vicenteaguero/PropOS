@@ -202,3 +202,33 @@ check_settings_drift
 
 echo ""
 echo "Next: git add + commit + push (auto-deploys via Cloud Build trigger)."
+
+# === STAGING VARIANT ==========================================================
+# propos-api-dev serves dev.propos.cl and differs from prod in exactly four
+# values. The important one is SUPABASE_DB_SCHEMA: same Supabase project, same
+# auth, but every domain table read and written in `propos_test`, so staging
+# cannot touch a broker's rows. Regenerate alongside the prod file so the two
+# never drift.
+DEV_ENV_FILE="$ROOT/config/docker/cloudrun-env-dev.yaml"
+python3 - "$OUT_YAML" "$DEV_ENV_FILE" <<'PYEOF'
+import re, sys, pathlib
+
+src, dst = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
+overrides = {
+    "SUPABASE_DB_SCHEMA": "propos_test",
+    "ALLOWED_ORIGINS": '["https://dev.propos.cl","https://prop-os-edge.vercel.app"]',
+    "APP_BASE_URL": "https://dev.propos.cl",
+    "LOG_LEVEL": "debug",
+}
+out, seen = [], set()
+for line in src.read_text().splitlines():
+    m = re.match(r"^([A-Z_0-9]+):", line)
+    if m and m.group(1) in overrides:
+        seen.add(m.group(1))
+        out.append(f"{m.group(1)}: '{overrides[m.group(1)]}'")
+    else:
+        out.append(line)
+out += [f"{k}: '{v}'" for k, v in overrides.items() if k not in seen]
+dst.write_text("\n".join(out) + "\n")
+print(f"wrote {dst}")
+PYEOF
