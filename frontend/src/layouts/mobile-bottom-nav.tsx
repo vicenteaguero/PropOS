@@ -26,7 +26,7 @@ import { SETTINGS_PATH } from "@layouts/nav-items";
 import { prefetchRoute } from "@shared/lib/route-chunks";
 import { cn } from "@/lib/utils";
 import type { UserView } from "@shared/types/auth";
-import { shortName } from "./short-name";
+import { shortName } from "@shared/utils/display-name";
 import { initials } from "@shared/utils/format";
 
 function NavTab({
@@ -242,7 +242,7 @@ export function MobileBottomNav() {
           </div>
           <div className="min-w-0 flex-1">
             <div className="truncate text-[15px] font-semibold tracking-tight text-foreground">
-              {shortName(user.fullName)}
+              {shortName(user.fullName, "Mi cuenta")}
             </div>
             <div className="truncate text-[13px] capitalize text-muted-foreground">
               {user.role.toLowerCase()}

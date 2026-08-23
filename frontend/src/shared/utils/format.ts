@@ -12,15 +12,21 @@
  * transcript parsing — a genuinely different contract, not a duplicate.
  */
 
-/** "Vicente Agüero" → "VA". Null-safe; returns "?" when there's no name. */
+import { shortName } from "./display-name";
+
+/**
+ * "Vicente Agüero" → "VA". Null-safe; returns "?" when there's no name.
+ *
+ * Built on `shortName`, so "Ana María Pérez Soto" is "AP" and not "AM": a
+ * Chilean legal name carries two given names, and an avatar reading "AM" for
+ * someone everyone calls Ana Pérez identifies nobody.
+ */
 export function initials(name: string | null | undefined): string {
-  if (!name) return "?";
-  const letters = name
-    .trim()
-    .split(/\s+/)
+  const letters = shortName(name)
+    .split(" ")
     .map((part) => part[0] ?? "")
     .join("")
-    .toUpperCase()
+    .toLocaleUpperCase("es")
     .slice(0, 2);
   return letters || "?";
 }
