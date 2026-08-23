@@ -34,7 +34,7 @@ export function PageLayout({
       <div
         className={cn(
           "flex min-h-[calc(100dvh-var(--app-header-h,0px)-var(--app-nav-h,0px)-var(--section-tabs-h,0px))] w-full items-center justify-center",
-          !noPadding && "px-4 py-6 md:px-6 md:py-8",
+          !noPadding && "px-[var(--page-x)] py-6 md:py-8",
           className,
         )}
       >
@@ -48,7 +48,19 @@ export function PageLayout({
       className={cn(
         "mx-auto w-full",
         widthMap[width],
-        !noPadding && (width === "app" ? "px-4 py-5 lg:px-8 lg:py-7" : "px-4 py-6 md:px-6 md:py-8"),
+        // `--page-x`, not a repeated `px-4`: the token is the page gutter and
+        // it already steps to 1.5rem at md, so the hand-written md: override
+        // was a second source of truth that had drifted (`px-6` vs 1.5rem is
+        // the same number, which is exactly why nobody noticed the duplication).
+        //
+        // Vertical: `py-6` put 24px above the first thing on every phone
+        // screen, on top of whatever the topbar already contributes. 16px is
+        // enough to separate; anything more is a band of nothing at the top of
+        // the fold.
+        !noPadding &&
+          (width === "app"
+            ? "px-[var(--page-x)] py-4 lg:px-8 lg:py-7"
+            : "px-[var(--page-x)] py-4 md:py-8"),
         className,
       )}
     >
