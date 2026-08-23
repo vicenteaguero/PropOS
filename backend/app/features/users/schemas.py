@@ -4,6 +4,8 @@ from datetime import datetime
 from enum import Enum
 from uuid import UUID
 
+from typing import Any
+
 from pydantic import BaseModel, EmailStr, Field
 
 from app.features.memberships.schemas import UserView
@@ -40,6 +42,10 @@ class UserBase(BaseModel):
     is_dev_admin: bool = False
     view: UserView = UserView.AGENT
     must_change_password: bool = False
+    #: Per-user UI preferences (colour palette today). Read at sign-in straight
+    #: off the profile row, so the client can paint in the user's palette before
+    #: anything else loads.
+    preferences: dict[str, Any] = {}
 
 
 class AvatarUpdate(BaseModel):
@@ -109,6 +115,12 @@ class UserUpdate(BaseModel):
     admin_scope: list[str] | None = None
     is_dev_admin: bool | None = None
     view: UserView | None = None
+
+
+class PreferencesUpdate(BaseModel):
+    """A partial preferences patch: the keys sent are merged, the rest survive."""
+
+    preferences: dict[str, Any]
 
 
 class TenantMember(BaseModel):
