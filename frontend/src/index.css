@@ -213,7 +213,6 @@
 }
 
 :root {
-
   /* Unread. Deliberately NOT `--primary`: that is the tenant's brand hue and
      changes per workspace, so "unread" would be green in one and orange in the
      next — the same mistake the calendar made with event colours. A blue dot
