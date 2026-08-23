@@ -157,8 +157,25 @@ filas.
 
 **Schema toggle en dev.** El header `X-Db-Schema` cambia el schema por request; el middleware
 (`backend/app/core/middleware/dev_schema.py`) sólo se instala con `APP_ENV=development`. El
-switch está en Configuración → Desarrollo (sólo en builds dev). Ojo: `propos_test` no tiene
-`profiles` ni RLS, sirve para probar el backend, no para navegar la app.
+switch está en Configuración → Desarrollo (sólo en builds dev). `propos_test` **sí** tiene
+`profiles` y las 81 tablas desde que `make test-schema-rebuild` lo regenera de la estructura
+viva — la nota anterior decía lo contrario y quedó obsoleta. Sigue sin RLS, lo que da igual
+en el camino de la app: el backend conecta como service-role (BYPASSRLS).
+
+**Staging real, un solo proyecto Supabase.** `dev.propos.cl` pega contra
+**`propos-api-dev`** (Cloud Run, `--min 0`), que corre con `SUPABASE_DB_SCHEMA=propos_test`
+— misma base y mismo auth que producción, pero cada tabla de dominio leída y escrita en el
+schema espejo, así que staging no puede tocar las filas de una corredora. Demostrado: la
+misma petición con el mismo token devuelve 40 propiedades en prod y 0 en staging.
+
+Los límites, dichos: auth y Storage son **por proyecto**, no por schema, así que un usuario
+de staging es un usuario de producción y los archivos subidos caen en los buckets reales.
+Aísla los datos de negocio, no la identidad ni los archivos.
+
+Desplegar staging es manual (`make deploy-staging`) a propósito: el trigger de git sigue
+siendo sólo de producción. Tras una migración, `make test-schema-rebuild` para refrescar la
+estructura del espejo; si necesitas entrar, hay que re-sembrar `tenants`, `profiles` y
+`tenant_memberships` (`profiles.full_name` es columna generada, cópiala excluyéndola).
 
 **Un solo proyecto Supabase.** `public` es producción. `propos_test` es el schema espejo que usa la suite de integración; se regenera desde la estructura viva con `make test-schema-rebuild` (`make test-schema-rebuild DRY=1` imprime el SQL sin ejecutar). No se mantiene a mano: la migración `...0002` lo dejó congelado en 28 tablas mientras `public` llegaba a 59. El fixture de integración aborta si PostgREST no expone `propos_test`, en vez de caer a `public`.
 
