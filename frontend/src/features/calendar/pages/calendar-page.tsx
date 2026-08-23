@@ -267,7 +267,14 @@ export function CalendarPage() {
       m.get(key)!.push(it);
     }
     for (const list of m.values()) {
-      list.sort((a, b) => (a.start_at ?? "").localeCompare(b.start_at ?? ""));
+      list.sort((a, b) => {
+        const at = (a.start_at ?? "").localeCompare(b.start_at ?? "");
+        // Priority breaks ties INSIDE an hour, it does not override the clock:
+        // an urgent thing at 16:00 does not happen before a normal one at
+        // 09:00, and a calendar that claimed otherwise would be lying.
+        if (at !== 0) return at;
+        return (b.priority ?? 0) - (a.priority ?? 0);
+      });
     }
     return m;
   }, [data, filter]);

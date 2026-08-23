@@ -107,6 +107,9 @@ class CalendarItem(BaseModel):
     contact_id: UUID | None = None
     amount_cents: int | None = None
     opportunity_id: UUID | None = None
+    #: 0 normal, 1 alta, 2 crítica. Carried by the feed since 20240601000083 —
+    #: before that the event form could write a priority nothing ever read.
+    priority: int | None = None
     # `v_calendar_feed` has carried this since 20240601000070, but the field was
     # never declared here -- and `response_model=list[CalendarItem]` drops every
     # key the model does not name, so the address was stripped from every feed

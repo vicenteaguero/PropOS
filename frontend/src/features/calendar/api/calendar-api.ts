@@ -24,6 +24,12 @@ export interface CalendarItem {
   location?: string | null;
   /** The deal this belongs to, if any. Added in 20240601000077. */
   opportunity_id?: string | null;
+  /**
+   * 0 normal · 1 alta · 2 crítica. Carried since 20240601000083: before that
+   * the event form could set a priority that nothing ever read, which is the
+   * same as not having one.
+   */
+  priority?: number | null;
 }
 
 /**
