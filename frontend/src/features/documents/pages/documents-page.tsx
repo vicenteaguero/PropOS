@@ -1,13 +1,12 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ExternalLink, FileText, Folder } from "lucide-react";
+import { ExternalLink, FileText, Folder, LayoutGrid, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageLayout } from "@shared/components/page-layout";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
 import { useAuth } from "@shared/hooks/use-auth";
 import { useIsDesktop } from "@/hooks/use-mobile";
-import { ViewModeToggle } from "../components/view-mode-toggle";
 import { DocumentsGrid } from "../components/documents-grid";
 import { DocumentsList } from "../components/documents-list";
 import { DocumentsGrouped } from "../components/documents-grouped";
@@ -19,7 +18,7 @@ import { NewDocumentActions } from "../components/fast-add-fab";
 import { useDocuments } from "../hooks/use-documents";
 import { formatBytes } from "@shared/lib/format";
 import type { DocumentItem, ViewMode } from "../types";
-import { ErrorState, ListShell } from "@shared/ui";
+import { ErrorState, ListShell, ViewToggle } from "@shared/ui";
 import { SearchInput } from "@shared/components/search-input/search-input";
 import { formatDate } from "@shared/utils/format";
 
@@ -216,7 +215,14 @@ export function DocumentsPage() {
               <div className="min-w-0 flex-1">
                 <SortControl value={sort} onChange={setSortPersist} />
               </div>
-              <ViewModeToggle value={viewMode} onChange={setViewModePersist} />
+              <ViewToggle
+                value={viewMode}
+                onChange={(v) => setViewModePersist(v as ViewMode)}
+                options={[
+                  { value: "grid", label: "Fotos", icon: <LayoutGrid className="size-4" /> },
+                  { value: "list", label: "Lista", icon: <List className="size-4" /> },
+                ]}
+              />
             </div>
           }
           bodyPadding="page"
@@ -240,7 +246,14 @@ export function DocumentsPage() {
           <div className="min-w-[12rem] flex-1">{searchField}</div>
           <GroupByToggle value={groupBy} onChange={setGroupByPersist} />
           <SortControl value={sort} onChange={setSortPersist} />
-          <ViewModeToggle value={viewMode} onChange={setViewModePersist} />
+          <ViewToggle
+            value={viewMode}
+            onChange={(v) => setViewModePersist(v as ViewMode)}
+            options={[
+              { value: "grid", label: "Fotos", icon: <LayoutGrid className="size-4" /> },
+              { value: "list", label: "Lista", icon: <List className="size-4" /> },
+            ]}
+          />
           <NewDocumentActions />
         </div>
         {entityBanner && <div className="px-6 pt-3">{entityBanner}</div>}
