@@ -166,6 +166,10 @@ function RouteSuspense() {
 export function AppLayout() {
   const { user, signOut } = useAuth();
   const shellMode = useShellMode();
+  // First name only. The header is a fixed 56px row shared with the workspace
+  // switcher, the command bar and the UF chip; a full "Vicente Agüero Contreras"
+  // eats the command bar's width on a 13" screen.
+  const firstName = (user?.fullName ?? "").trim().split(" ")[0] ?? "";
   useUfDailyRefresh();
   // Held for the lifetime of the app, in BOTH shell branches, so the viewport
   // store's refcount never reaches zero and its four CSS variables are never
@@ -300,11 +304,23 @@ export function AppLayout() {
             <div className="block">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="flex items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:coarse)]:size-11">
+                  {/* Avatar plus first name. An avatar alone answers "am I
+                      signed in"; on a shared laptop the question is "as WHOM",
+                      and two initials in a circle are not an answer — the
+                      workspace switcher beside it already names the brokerage,
+                      so the person was the one thing the bar did not say.
+                      Dropped below sm, where the header has no room to spare;
+                      the phone shell has its own top bar and is untouched. */}
+                  <button className="flex items-center gap-2 rounded-full pr-1 outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:coarse)]:h-11">
                     <Avatar size="sm">
                       {user?.avatarUrl && <AvatarImage src={user.avatarUrl} alt={user.fullName} />}
                       <AvatarFallback>{user ? initials(user.fullName) : "?"}</AvatarFallback>
                     </Avatar>
+                    {firstName && (
+                      <span className="hidden max-w-[9rem] truncate text-sm font-semibold text-foreground sm:block">
+                        {firstName}
+                      </span>
+                    )}
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
