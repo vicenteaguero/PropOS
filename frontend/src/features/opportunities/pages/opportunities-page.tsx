@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useProperties } from "@features/documents/hooks/use-entities";
-import { Building2, Plus } from "lucide-react";
+import { Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ActionIcon, AppShellScroll, CONTROL_SQUARE, ListCapNotice, ListShell } from "@shared/ui";
 import { toast } from "sonner";

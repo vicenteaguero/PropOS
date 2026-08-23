@@ -41,8 +41,9 @@ export function shortPropertyTitle(title: string | null | undefined): string {
   const m = TITLE_RE.exec(raw);
   if (!m) return raw;
   const [, kind, size, comuna] = m;
+  const place = (comuna ?? "").trim();
   // No bedroom count (a commercial unit, a plot): the kind is all that is left
   // to say, so keep it rather than returning a bare comuna.
-  const left = size || kind.trim();
-  return left ? `${left} · ${comuna.trim()}` : comuna.trim();
+  const left = (size ?? "").trim() || (kind ?? "").trim();
+  return left ? `${left} · ${place}` : place;
 }
