@@ -49,6 +49,13 @@ interface ListShellProps {
   primaryAction?: ReactNode;
   /** Filter row under the header: chips, a pill TabBar, a date range. */
   filters?: ReactNode;
+  /**
+   * Put `filters` on the header row instead of under it.
+   *
+   * For a control that is not really a filter — a view switch — where a row of
+   * its own costs 56px of a phone screen to hold three buttons.
+   */
+  filtersInline?: boolean;
   /** Small trailing text on the title line — a result count, a sync time. */
   meta?: ReactNode;
 
@@ -103,6 +110,7 @@ export function ListShell({
   action,
   primaryAction,
   filters,
+  filtersInline = false,
   meta,
   isLoading = false,
   error,
@@ -179,6 +187,13 @@ export function ListShell({
             )}
           />
         )}
+        {/* Inline: a view switch is not a filter row, it is a control that
+            belongs beside the field it changes the results of. Propiedades put
+            it on a line of its own, which cost a whole row of a phone screen
+            to hold three 40px buttons. */}
+        {filters && filtersInline && (
+          <div className="order-last shrink-0 sm:order-none">{filters}</div>
+        )}
         {(action || (primaryAction && !inBar)) && (
           <div className={cn("flex shrink-0 items-center gap-2", !search && "ml-auto")}>
             {action}
@@ -188,7 +203,7 @@ export function ListShell({
           </div>
         )}
       </div>
-      {filters && <div className="mt-3">{filters}</div>}
+      {filters && !filtersInline && <div className="mt-3">{filters}</div>}
     </div>
   );
 
