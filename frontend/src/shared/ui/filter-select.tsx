@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown, SlidersHorizontal } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,6 +28,18 @@ interface FilterSelectProps {
   onChange: (value: string | null) => void;
   /** Label for the "no filter" entry. Omit to make the filter mandatory. */
   allLabel?: string;
+  /**
+   * Collapse the trigger to a square icon button.
+   *
+   * For a control row where the words are the least useful part: "Prioridad:
+   * Todas · Ordenar: Vencimiento" costs two thirds of a phone's width to say
+   * that neither filter is doing anything. The icon says which control it is,
+   * the sheet still carries the full label, and the accessible name is the
+   * label plus the current value.
+   */
+  iconOnly?: boolean;
+  /** Glyph for `iconOnly`. */
+  icon?: ReactNode;
   className?: string;
 }
 
@@ -51,13 +63,32 @@ export function FilterSelect({
   options,
   onChange,
   allLabel,
+  iconOnly = false,
+  icon,
   className,
 }: FilterSelectProps) {
   const isDesktop = useIsDesktop();
   const [sheetOpen, setSheetOpen] = useState(false);
   const active = options.find((o) => o.value === value) ?? null;
 
-  const trigger = (
+  const trigger = iconOnly ? (
+    <button
+      type="button"
+      onClick={isDesktop ? undefined : () => setSheetOpen(true)}
+      aria-label={active ? `${label}: ${active.label}` : label}
+      title={active ? `${label}: ${active.label}` : label}
+      className={cn(
+        "inline-flex aspect-square items-center justify-center rounded-full border transition",
+        CONTROL_H,
+        active
+          ? "border-foreground bg-ink text-ink-foreground"
+          : "border-border text-muted-foreground hover:text-foreground",
+        className,
+      )}
+    >
+      {icon ?? <SlidersHorizontal className="size-4" strokeWidth={1.9} />}
+    </button>
+  ) : (
     <button
       type="button"
       onClick={isDesktop ? undefined : () => setSheetOpen(true)}
