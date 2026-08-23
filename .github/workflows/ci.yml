@@ -129,9 +129,10 @@ jobs:
     timeout-minutes: 15
     # A real gate now that the backlog is at zero: 35 npm advisories and 171
     # Python ones sat behind a permanently red advisory job nobody could read a
-    # signal out of. `deploy-backend` does not depend on this job, so a
-    # third-party advisory published overnight fails the run and blocks a merge
-    # without ever standing between a fix and production.
+    # signal out of. The deploy does not wait on this job — cloudbuild.yaml's
+    # ci-gate reads the required checks, not this one — so a third-party advisory
+    # published overnight fails the run and blocks a merge without ever standing
+    # between a fix and production.
     steps:
       - uses: actions/checkout@v4
 
@@ -248,90 +249,19 @@ jobs:
           path: backend/tests/integration/agent/results.jsonl
           if-no-files-found: warn
 
-  # ── Backend deploy ────────────────────────────────────────────────────────
-  # Replaces the Cloud Build GitHub-App trigger, whose installation link broke:
-  # `gcloud builds triggers describe propos-api-deploy` returns no
-  # installationId, so pushes to main stopped producing a build and the backend
-  # silently stayed on an old revision. Reconnecting that trigger is a console
-  # OAuth flow; this path lives in the repo instead.
+  # ── Backend deploy: NOT here ──────────────────────────────────────────────
+  # A `deploy-backend` job lived here from 2026-08-22 to 2026-08-23. It was
+  # written because the Cloud Build trigger `propos-api-deploy` had been found
+  # disabled and pushes to main stopped producing a build. The trigger is
+  # enabled again, so for one day BOTH deployed every backend push — two Cloud
+  # Run revisions of the same commit, one per path.
   #
-  # Two things improve as a side effect:
-  #   - CI gating is native (`needs:`) rather than cloudbuild.yaml polling the
-  #     Checks API and hoping. The build still runs its own gate as a backstop.
-  #   - Auth is Workload Identity Federation, so there is no service-account key
-  #     anywhere. The pool only accepts tokens whose `repository` claim is this
-  #     repo (see the provider's attribute-condition).
+  # The rule now: **one Cloud Build trigger per environment, and nothing else
+  # deploys.** `propos-api-deploy` (^main^ → propos-api) and
+  # `propos-api-dev-deploy` (^dev^ → propos-api-dev). CI still gates the deploy,
+  # from inside the build: cloudbuild.yaml's `ci-gate` step polls this workflow's
+  # checks for the commit and refuses to deploy until they are green.
   #
-  # Mirrors the old trigger exactly: branch main, and only when backend/** or
-  # config/docker/** changed.
-  deploy-backend:
-    name: Deploy backend (Cloud Run)
-    needs: [backend, frontend, migrations]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write # required to mint the OIDC token WIF exchanges
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          # Full history: the diff below spans a whole push, which for a
-          # fast-forward merge of a feature branch is many commits.
-          fetch-depth: 0
-
-      - name: Did anything the image contains change?
-        id: changed
-        env:
-          BEFORE: ${{ github.event.before }}
-        run: |
-          # Compare against what main pointed at BEFORE this push, not against
-          # HEAD^.
-          #
-          # `HEAD^ HEAD` inspects a single commit. Merging a branch
-          # fast-forward lands N commits at once, and if the last of them
-          # happens to touch only frontend/, the backend deploy was skipped —
-          # production silently stayed on the previous image while main moved
-          # on. That is the exact failure the Cloud Build trigger had, and it
-          # fails quietly, which is what makes it dangerous.
-          #
-          # `before` is all-zeros for a new branch or after a force-push; deploy
-          # rather than guess in that case.
-          if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ] \
-             || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
-            echo "value=true" >> "$GITHUB_OUTPUT"
-            echo "No usable base ref — deploying to be safe."
-          elif git diff --quiet "$BEFORE" HEAD -- backend/ config/docker/; then
-            echo "value=false" >> "$GITHUB_OUTPUT"
-            echo "No backend/ or config/docker/ changes since $BEFORE — skipping deploy."
-          else
-            echo "value=true" >> "$GITHUB_OUTPUT"
-            echo "Backend changed since $BEFORE — deploying."
-          fi
-
-      - uses: google-github-actions/auth@v2
-        if: steps.changed.outputs.value == 'true'
-        with:
-          project_id: propos-489401
-          workload_identity_provider: projects/694860045239/locations/global/workloadIdentityPools/github/providers/github
-          service_account: propos-cloudbuild@propos-489401.iam.gserviceaccount.com
-
-      - uses: google-github-actions/setup-gcloud@v2
-        if: steps.changed.outputs.value == 'true'
-
-      - name: Build and deploy
-        if: steps.changed.outputs.value == 'true'
-        run: |
-          # COMMIT_SHA/SHORT_SHA are set by the trigger in a webhook build and
-          # absent in a manual submit; cloudbuild.yaml's gate reads COMMIT_SHA to
-          # look up this commit's checks, and build-push tags the image with
-          # SHORT_SHA so a rollback can name a revision.
-          gcloud builds submit \
-            --config config/docker/cloudbuild.yaml \
-            --substitutions "COMMIT_SHA=${{ github.sha }},SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)" \
-            .
-
-      - name: Report the live revision
-        if: steps.changed.outputs.value == 'true'
-        run: |
-          gcloud run services describe propos-api --region us-central1 \
-            --format='value(status.latestReadyRevisionName,status.url)'
+  # If a deploy stops happening, the trigger is the thing to check first — a
+  # disabled trigger is silent. See docs/deployment.md, and
+  # `make deploy-backend` is the manual escape hatch.

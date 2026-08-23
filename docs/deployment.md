@@ -12,7 +12,7 @@ undo a bad deploy.
 | URL | https://app.propos.cl (`prop-os-delta.vercel.app` still resolves) | https://dev.propos.cl (`prop-os-edge.vercel.app` still resolves) |
 | Vercel Root Directory | `.` (uses root `vercel.json`) | `frontend` (uses `frontend/vercel.json`) |
 | Backend | Cloud Run `propos-api`, `us-central1` | Cloud Run `propos-api-dev`, `us-central1` (`--min 0`) |
-| Backend deploys on push | Cloud Build trigger `propos-api-deploy` (`^main$`) **and** the `deploy-backend` job in `ci.yml` — see below | Cloud Build trigger `propos-api-dev-deploy` (`^dev$`, `cloudbuild-dev.yaml`) |
+| Backend deploys on push | Cloud Build trigger `propos-api-deploy` (`^main$`, `cloudbuild.yaml`, paths `backend/**;config/docker/**`) | Cloud Build trigger `propos-api-dev-deploy` (`^dev$`, `cloudbuild-dev.yaml`) |
 | Database | Supabase `tlbkwrjzraaikdrajwqh`, schema `public` | **the same project**, schema `propos_test` |
 
 Two things follow from that table and are easy to forget:
@@ -32,8 +32,13 @@ Two things follow from that table and are easy to forget:
     --format="value(name,disabled,github.push.branch,filename)"
   gcloud run services list --format="value(metadata.name,status.url)"
   ```
-- **Both frontends talk to the same Cloud Run service**, so `ALLOWED_ORIGINS`
-  must list both origins. It is generated with both by
+- **One Cloud Build trigger per environment, and nothing else deploys.** That is
+  the rule as of 2026-08-23. Adding a second path — an Actions job, a script in
+  another workflow — means two revisions of the same commit per push and a
+  rollback that has to guess which is which. If a deploy stops happening, suspect
+  the trigger before writing a second path: a disabled trigger is silent.
+- **Both frontends talk to a Cloud Run service each**, and `ALLOWED_ORIGINS`
+  must list both origins on both services. It is generated with both by
   `scripts/sync_cloud_env.sh`; dropping one silently breaks that frontend with a
   CORS error rather than an obvious failure.
 
@@ -47,42 +52,55 @@ Pushing to `main`:
 2. **Vercel `prop-os`** — production deploy. Any other branch produces a preview
    deploy in the same project, which is why a push to `dev` shows up in
    `prop-os` as `Preview` and in `prop-os-edge` as `Production`.
-3. **GitHub Actions job `deploy-backend`** (in `ci.yml`) — only when the push
-   touches `backend/**` or `config/docker/**`. Runs `gcloud builds submit` with
-   `config/docker/cloudbuild.yaml`, which builds
-   `config/docker/backend.prod.Dockerfile`, tags the image with the commit SHA
-   *and* `latest`, deploys to Cloud Run, and smoke tests the result.
+3. **Cloud Build trigger `propos-api-deploy`** — only when the push touches
+   `backend/**` or `config/docker/**`. Runs `config/docker/cloudbuild.yaml`,
+   which builds `config/docker/backend.prod.Dockerfile`, waits for this commit's
+   CI checks (`ci-gate`), tags the image with the commit SHA *and* `latest`,
+   deploys to Cloud Run, and smoke tests the result.
+   The path filter is evaluated over the **whole push**, not the head commit:
+   `ec9e018e` was a fast-forward of three commits whose head touched only
+   `CLAUDE.md`, and the trigger fired because an earlier commit in the push
+   touched `backend/`.
 
-### Why the deploy moved out of Cloud Build's own trigger
+Pushing to `dev` is the same shape, through `propos-api-dev-deploy` and
+`cloudbuild-dev.yaml`, into `propos-api-dev`.
 
-`propos-api-deploy` was a Cloud Build GitHub-App trigger. Its installation link
-broke at some point — `gcloud builds triggers describe propos-api-deploy` returns
-**no `installationId`** — so pushes to `main` stopped producing a build and the
-backend silently stayed on an old revision while `main` moved on. Nothing failed
-loudly; the deploy just never happened.
+### The Actions deploy job, and why it is gone (2026-08-22 → 2026-08-23)
 
-Reconnecting a legacy GitHub App is a console OAuth flow that cannot be scripted,
-so the deploy now lives in the repo instead:
+`propos-api-deploy` was found **disabled** on 2026-08-22, and a disabled trigger
+is silent: pushes to `main` produced no build and the backend stayed on an old
+revision while `main` moved on. `describe` also returned **no `installationId`**,
+which read as a broken GitHub-App link — and reconnecting a legacy App is a
+console OAuth flow that cannot be scripted. So the deploy was rewritten as a
+`deploy-backend` job in `ci.yml`, authenticating over Workload Identity
+Federation:
 
-- The trigger was **disabled**, with the reason in its description. It is
-  **enabled again** as of 2026-08-23 — and the Actions job was never turned off,
-  so both deploy the same commit (see "Production deploys twice" below). Both
-  still wait for CI, so it is duplicated work, not an ungated deploy. The
-  description still opens with `DISABLED:`; the description is prose, the
-  `disabled` field is the fact.
-- Auth is **Workload Identity Federation**, so there is no service-account key
-  anywhere. The pool provider only accepts tokens whose `repository` claim is
-  `vicenteaguero/PropOS`:
+```
+pool      projects/694860045239/locations/global/workloadIdentityPools/github
+provider  .../providers/github   (attribute-condition on assertion.repository)
+identity  propos-cloudbuild@propos-489401.iam.gserviceaccount.com
+```
 
-  ```
-  pool      projects/694860045239/locations/global/workloadIdentityPools/github
-  provider  .../providers/github   (attribute-condition on assertion.repository)
-  identity  propos-cloudbuild@propos-489401.iam.gserviceaccount.com
-  ```
+The trigger was then re-enabled (see the `PATCH` recipe below) without the job
+being removed, so for one day **both** deployed every backend push — two Cloud
+Run revisions of the same commit, ~1 min apart. Measured on `ec9e018e`:
 
-- CI now gates the deploy **natively** through `needs: [backend, frontend,
-  migrations]`, instead of `cloudbuild.yaml` polling the Checks API and hoping.
-  The in-build `ci-gate` still runs as a backstop for manual submits.
+```
+12:34:20  Cloud Build (trigger)                → ci-gate starts, waits on Actions
+12:34:27  Cloud Build (the Actions job's submit)
+12:39:10  Actions "Backend (ruff + pytest)"    → success
+12:39:58  revision propos-api-00087            (the trigger's, released by the gate)
+12:41:01  revision propos-api-00088            (the Actions job's)
+```
+
+Both paths gated on CI, so this was duplicated work rather than an untested
+deploy. **Resolved on 2026-08-23 by deleting the `deploy-backend` job**: one
+Cloud Build trigger per environment, nothing else deploys. The WIF pool and
+service account still exist and still work — bringing the job back is a git
+revert, not a setup.
+
+With the job gone, CI gating rests entirely on the `ci-gate` step in
+`cloudbuild.yaml` — see "CI gates the backend deploy" below.
 
 `make deploy-backend` remains the manual escape hatch. It needs
 `scripts/check_ci_status.py` in the upload, which is why `.gcloudignore`
@@ -107,6 +125,12 @@ gcloud builds triggers describe propos-api-deploy --region=us-central1 \
 `gcloud builds triggers run <name> --branch=main` still works while disabled, so
 a manual build is the escape hatch.
 
+This matters more since 2026-08-23 than it did before: the trigger is now the
+**only** thing that deploys production. The failure mode to watch for is not a
+red build, it is no build at all. `gcloud builds list --region=us-central1
+--limit=5 --format="value(status,createTime,substitutions.SHORT_SHA)"` after a
+backend merge is the cheap check.
+
 Re-enabling has a trap. `PATCH ?updateMask=disabled` with `{"disabled":false}`
 returns 200 and a body showing `disabled: false` — and changes nothing, because
 `false` is the proto3 default for a bool and the server reads the field as
@@ -119,37 +143,6 @@ curl -s "$U" -H "Authorization: Bearer $T" \
   | python3 -c "import json,sys; d=json.load(sys.stdin); [d.pop(k,None) for k in ('disabled','createTime','resourceName')]; print(json.dumps(d))" \
   | curl -s -X PATCH "$U" -H "Authorization: Bearer $T" -H "Content-Type: application/json" -d @- > /dev/null
 gcloud builds triggers describe propos-api-deploy --region=us-central1 --format='value(disabled)'  # empty = enabled
-```
-
-### Production deploys twice per push
-
-A push to `main` that touches `backend/**` or `config/docker/**` currently
-produces **two Cloud Run revisions from the same commit**: the re-enabled
-`propos-api-deploy` trigger fires on the push, and `ci.yml`'s `deploy-backend`
-job deploys again. Measured on `ec9e018e` (2026-08-23):
-
-```
-12:34:20  Cloud Build (trigger)                → ci-gate starts, waits on Actions
-12:34:27  Cloud Build (Actions' own submit)
-12:39:10  Actions "Backend (ruff + pytest)"    → success
-12:39:58  revision propos-api-00087            (the trigger's, released by the gate)
-12:41:01  revision propos-api-00088            (the Actions job's)
-```
-
-**Both paths gate on CI** — the Actions job through `needs: [backend, frontend,
-migrations]`, the trigger through the `ci-gate` step in `cloudbuild.yaml`, which
-polls the Checks API before letting `deploy` run. So this is *not* an untested
-commit reaching production; the gate is why the trigger's revision lands at
-12:39:58 and not at 12:36.
-
-What it costs is duplicated build minutes, two revisions per push (rollback has
-to know which is which), and a minute where two revisions of the same commit are
-being released back to back. Pick one path and turn the other off:
-
-```bash
-gcloud builds triggers list --region=us-central1 --format="value(name,disabled,github.push.branch,includedFiles)"
-gcloud run revisions list --service=propos-api --region=us-central1 --limit=4 \
-  --format="value(metadata.name,metadata.creationTimestamp)"   # two per push = both paths running
 ```
 
 ### CI gates the backend deploy
