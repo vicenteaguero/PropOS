@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, Query, status
 
 from app.core.dependencies import get_current_user, get_tenant_id, require_dev_admin, require_role
 from app.features.users.schemas import (
+    TenantMember,
     AvatarUpdate,
     ImpersonateResponse,
     SetPasswordPayload,
@@ -49,6 +50,20 @@ async def list_users(
     search: str | None = Query(default=None),
 ) -> list[dict]:
     return await UserService.list_users(tenant_id, role=role, view=view, search=search)
+
+
+@router.get(
+    "/members",
+    response_model=list[TenantMember],
+    dependencies=[Depends(require_role("ADMIN", "AGENT"))],
+)
+async def list_members(tenant_id: UUID = Depends(get_tenant_id)) -> list[dict]:
+    """Colleagues in this workspace, for assigning work to them.
+
+    Declared before `/{user_id}` on purpose: FastAPI matches in order, and a
+    parameterised route above this one would swallow "members" as a UUID.
+    """
+    return await UserService.list_members(tenant_id)
 
 
 @router.get("/{user_id}", response_model=UserDetailResponse, dependencies=[Depends(require_role("ADMIN"))])

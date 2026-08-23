@@ -25,6 +25,52 @@ def _serialize(data: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
+# `tasks.related` stores bare ids, so anything that wants to *show* a link has
+# to resolve names. Doing it here rather than in the client is the same call the
+# documents feature makes, and for the same reason: the entity list endpoints
+# cap at 100 rows, so a client-side join silently fails on a real tenant.
+_LABEL_CHUNK = 200
+
+
+def _hydrate_related_labels(rows: list[dict]) -> None:
+    """Attach `related_labels` to each task, in place."""
+    property_ids: set[str] = set()
+    contact_ids: set[str] = set()
+    for row in rows:
+        related = row.get("related") or {}
+        property_ids.update(related.get("properties") or [])
+        contact_ids.update(related.get("people") or [])
+    if not property_ids and not contact_ids:
+        for row in rows:
+            row["related_labels"] = {"properties": [], "people": []}
+        return
+
+    client = get_supabase_client()
+
+    def _names(table: str, ids: set[str], field: str) -> dict[str, str]:
+        out: dict[str, str] = {}
+        id_list = list(ids)
+        for i in range(0, len(id_list), _LABEL_CHUNK):
+            try:
+                got = (
+                    client.table(table).select(f"id, {field}").in_("id", id_list[i : i + _LABEL_CHUNK]).execute().data
+                    or []
+                )
+            except Exception:  # noqa: BLE001 — a label is never worth a 500
+                continue
+            out.update({r["id"]: r.get(field) for r in got if r.get(field)})
+        return out
+
+    properties = _names("properties", property_ids, "title")
+    contacts = _names("contacts", contact_ids, "full_name")
+    for row in rows:
+        related = row.get("related") or {}
+        row["related_labels"] = {
+            "properties": [{"id": pid, "label": properties.get(pid)} for pid in (related.get("properties") or [])],
+            "people": [{"id": cid, "label": contacts.get(cid)} for cid in (related.get("people") or [])],
+        }
+
+
 class TaskService:
     @staticmethod
     async def list_tasks(
@@ -56,7 +102,9 @@ class TaskService:
                 builder = builder.eq("owner_user", str(owner_user))
             if only_open:
                 builder = builder.in_("status", ["OPEN", "IN_PROGRESS", "BLOCKED"])
-            return builder.execute().data
+            rows = builder.execute().data or []
+            _hydrate_related_labels(rows)
+            return rows
 
         return await run_blocking(_read)
 

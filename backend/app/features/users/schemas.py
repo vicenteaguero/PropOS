@@ -111,6 +111,22 @@ class UserUpdate(BaseModel):
     view: UserView | None = None
 
 
+class TenantMember(BaseModel):
+    """The minimum needed to show and pick a colleague.
+
+    Separate from `UserResponse` because that carries the whole profile — email,
+    RUT, scopes, dev flags — behind an ADMIN-only route, and assigning a task to
+    a colleague does not require an agent to learn any of it.
+    """
+
+    id: UUID
+    full_name: str | None = None
+    avatar_url: str | None = None
+    role: UserRole = UserRole.AGENT
+
+    model_config = {"from_attributes": True}
+
+
 class UserResponse(UserBase):
     id: UUID
     tenant_id: UUID

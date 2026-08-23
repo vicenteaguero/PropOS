@@ -5,10 +5,13 @@ import { tasksApi, type TaskInput } from "../api/tasks-api";
 
 export const tasksKeys = {
   all: ["tasks"] as const,
-  list: (params: { only_open?: boolean; status?: string }) => ["tasks", "list", params] as const,
+  list: (params: { only_open?: boolean; status?: string; owner_user?: string }) =>
+    ["tasks", "list", params] as const,
 };
 
-export function useTasks(params: { only_open?: boolean; status?: string } = {}) {
+export function useTasks(
+  params: { only_open?: boolean; status?: string; owner_user?: string } = {},
+) {
   return useQuery({
     queryKey: tasksKeys.list(params),
     queryFn: () => tasksApi.list(params),
