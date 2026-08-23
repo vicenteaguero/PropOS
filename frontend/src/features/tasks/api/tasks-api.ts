@@ -12,6 +12,21 @@ export interface TaskRelated {
   properties?: string[];
   people?: string[];
   projects?: string[];
+  /**
+   * Deals. Added because a task about a closing had nowhere to say which
+   * closing — the key did not exist, and neither did the label resolution
+   * behind it (`tasks/service.py::_deal_labels`).
+   */
+  opportunities?: string[];
+  /**
+   * Links, as a field rather than as prose to be mined.
+   *
+   * They used to be found by running a regex over `description`, which meant a
+   * link could not be added without editing the paragraph around it, could not
+   * be removed at all, and vanished when someone rewrote the sentence it lived
+   * in. `related` is JSONB, so this needed no migration.
+   */
+  links?: string[];
 }
 
 export interface TaskAttachment {
@@ -45,6 +60,7 @@ export interface Task {
   related_labels?: {
     properties?: { id: string; label: string | null }[];
     people?: { id: string; label: string | null }[];
+    opportunities?: { id: string; label: string | null }[];
   };
   created_at: string;
 }

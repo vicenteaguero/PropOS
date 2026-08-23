@@ -37,13 +37,15 @@ def _hydrate_related_labels(tenant_id: str, rows: list[dict]) -> None:
     """Attach `related_labels` to each task, in place."""
     property_ids: set[str] = set()
     contact_ids: set[str] = set()
+    opportunity_ids: set[str] = set()
     for row in rows:
         related = row.get("related") or {}
         property_ids.update(related.get("properties") or [])
         contact_ids.update(related.get("people") or [])
-    if not property_ids and not contact_ids:
+        opportunity_ids.update(related.get("opportunities") or [])
+    if not property_ids and not contact_ids and not opportunity_ids:
         for row in rows:
-            row["related_labels"] = {"properties": [], "people": []}
+            row["related_labels"] = {"properties": [], "people": [], "opportunities": []}
         return
 
     client = get_supabase_client()
@@ -64,12 +66,64 @@ def _hydrate_related_labels(tenant_id: str, rows: list[dict]) -> None:
 
     properties = _names("properties", property_ids, "title")
     contacts = _names("contacts", contact_ids, "full_name")
+    # A deal has no title column of its own — it IS "this person, about this
+    # property" — so its label is built from the two ids it carries. The two
+    # name maps above are reused rather than re-queried; anything a deal points
+    # at that is not already in them is fetched in one extra pair of reads.
+    deals = _deal_labels(client, opportunity_ids, properties, contacts)
+
     for row in rows:
         related = row.get("related") or {}
         row["related_labels"] = {
             "properties": [{"id": pid, "label": properties.get(pid)} for pid in (related.get("properties") or [])],
             "people": [{"id": cid, "label": contacts.get(cid)} for cid in (related.get("people") or [])],
+            "opportunities": [{"id": oid, "label": deals.get(oid)} for oid in (related.get("opportunities") or [])],
         }
+
+
+def _deal_labels(
+    client, opportunity_ids: set[str], properties: dict[str, str], contacts: dict[str, str]
+) -> dict[str, str]:
+    """`{opportunity_id: "Ana Pérez · Depto Macul"}`."""
+    if not opportunity_ids:
+        return {}
+    rows: list[dict] = []
+    ids = list(opportunity_ids)
+    for i in range(0, len(ids), _LABEL_CHUNK):
+        try:
+            rows += (
+                client.table("opportunities")
+                .select("id, person_id, property_id, pipeline_stage")
+                .in_("id", ids[i : i + _LABEL_CHUNK])
+                .execute()
+                .data
+                or []
+            )
+        except Exception:  # noqa: BLE001 — a label is never worth a 500
+            continue
+
+    missing_people = {r["person_id"] for r in rows if r.get("person_id") and r["person_id"] not in contacts}
+    missing_props = {r["property_id"] for r in rows if r.get("property_id") and r["property_id"] not in properties}
+    names = {**contacts}
+    titles = {**properties}
+    if missing_people or missing_props:
+        for table, want, sink, field in (
+            ("contacts", missing_people, names, "full_name"),
+            ("properties", missing_props, titles, "title"),
+        ):
+            if not want:
+                continue
+            try:
+                got = client.table(table).select(f"id, {field}").in_("id", list(want)).execute().data or []
+            except Exception:  # noqa: BLE001
+                continue
+            sink.update({r["id"]: r.get(field) for r in got if r.get(field)})
+
+    out: dict[str, str] = {}
+    for row in rows:
+        parts = [names.get(row.get("person_id") or ""), titles.get(row.get("property_id") or "")]
+        out[row["id"]] = " · ".join(p for p in parts if p) or "Negocio"
+    return out
 
 
 def _hydrate_attachments(tenant_id: UUID, rows: list[dict]) -> None:
