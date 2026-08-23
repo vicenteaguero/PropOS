@@ -9,17 +9,29 @@ undo a bad deploy.
 |---|---|---|
 | Branch | `main` | `dev` |
 | Vercel project | `prop-os` | `prop-os-edge` |
-| URL | https://prop-os-delta.vercel.app | https://prop-os-edge.vercel.app |
+| URL | https://app.propos.cl (`prop-os-delta.vercel.app` still resolves) | https://dev.propos.cl (`prop-os-edge.vercel.app` still resolves) |
 | Vercel Root Directory | `.` (uses root `vercel.json`) | `frontend` (uses `frontend/vercel.json`) |
-| Backend | Cloud Run `propos-api`, `us-central1` | **the same service** |
-| Database | Supabase `tlbkwrjzraaikdrajwqh`, schema `public` | **the same schema** |
+| Backend | Cloud Run `propos-api`, `us-central1` | Cloud Run `propos-api-dev`, `us-central1` (`--min 0`) |
+| Backend deploys on push | Cloud Build trigger `propos-api-deploy` (`^main$`) **and** the `deploy-backend` job in `ci.yml` — see below | Cloud Build trigger `propos-api-dev-deploy` (`^dev$`, `cloudbuild-dev.yaml`) |
+| Database | Supabase `tlbkwrjzraaikdrajwqh`, schema `public` | **the same project**, schema `propos_test` |
 
 Two things follow from that table and are easy to forget:
 
-- **There is one backend and one database.** Staging is a frontend-only
-  environment. A migration, a schema change, or a backend deploy hits production
-  the moment it lands, whichever branch triggered it. `propos_test` is a schema
-  for the automated test suite, not a staging database.
+- **One Supabase project, one auth, one set of buckets.** Staging got its own
+  backend and its own schema on 2026-08-23 (`SUPABASE_DB_SCHEMA=propos_test`), so
+  business rows are genuinely isolated — the same token returns 40 properties in
+  production and 0 in staging. What is *not* isolated: **migrations** (they run
+  against the project and reach `public` whichever branch you are on; refresh the
+  mirror afterwards with `make test-schema-rebuild`), **auth** (a staging user is
+  a production user) and **Storage** (staging uploads land in the real buckets).
+  Until that date this file said staging was frontend-only and shared the
+  production service — verify before trusting either version:
+
+  ```bash
+  gcloud builds triggers list --region=us-central1 \
+    --format="value(name,disabled,github.push.branch,filename)"
+  gcloud run services list --format="value(metadata.name,status.url)"
+  ```
 - **Both frontends talk to the same Cloud Run service**, so `ALLOWED_ORIGINS`
   must list both origins. It is generated with both by
   `scripts/sync_cloud_env.sh`; dropping one silently breaks that frontend with a
@@ -52,9 +64,11 @@ loudly; the deploy just never happened.
 Reconnecting a legacy GitHub App is a console OAuth flow that cannot be scripted,
 so the deploy now lives in the repo instead:
 
-- The trigger is **disabled**, with the reason in its description. Re-enable it
-  only after reconnecting the App in the console, and disable the Actions job
-  first — otherwise both would deploy the same commit.
+- The trigger was **disabled**, with the reason in its description. It is
+  **enabled again** as of 2026-08-23 — and the Actions job was never turned off,
+  so both now deploy the same commit (see "Production deploys twice" below). The
+  description still opens with `DISABLED:`; the description is prose, the
+  `disabled` field is the fact.
 - Auth is **Workload Identity Federation**, so there is no service-account key
   anywhere. The pool provider only accepts tokens whose `repository` claim is
   `vicenteaguero/PropOS`:
@@ -104,6 +118,33 @@ curl -s "$U" -H "Authorization: Bearer $T" \
   | python3 -c "import json,sys; d=json.load(sys.stdin); [d.pop(k,None) for k in ('disabled','createTime','resourceName')]; print(json.dumps(d))" \
   | curl -s -X PATCH "$U" -H "Authorization: Bearer $T" -H "Content-Type: application/json" -d @- > /dev/null
 gcloud builds triggers describe propos-api-deploy --region=us-central1 --format='value(disabled)'  # empty = enabled
+```
+
+### Production deploys twice per push, and one of them does not wait for CI
+
+A push to `main` that touches `backend/**` currently produces **two Cloud Run
+revisions from the same commit**: the re-enabled `propos-api-deploy` trigger
+fires on the push, and `ci.yml`'s `deploy-backend` job deploys again after the
+test jobs pass. Measured on `ec9e018e` (2026-08-23):
+
+```
+12:34  Cloud Build bb846528 (trigger)      → revision propos-api-00087
+12:39  Actions "Backend (ruff + pytest)"   → success
+12:41  Actions "Deploy backend (Cloud Run)" → revision propos-api-00088
+```
+
+Two consequences. The harmless one is waste: two builds, two revisions, one
+commit. The one that matters is **ordering** — the trigger's revision is serving
+five minutes before pytest has an opinion, so a commit that fails CI is live in
+the meantime. `cloudbuild.yaml`'s in-build `ci-gate` is the only thing standing
+in front of it.
+
+Pick one path and turn the other off; do not leave both. Check which are live:
+
+```bash
+gcloud builds triggers list --region=us-central1 --format="value(name,disabled,github.push.branch)"
+gcloud run revisions list --service=propos-api --region=us-central1 --limit=4 \
+  --format="value(metadata.name,metadata.creationTimestamp)"   # two per push = both paths running
 ```
 
 ### CI gates the backend deploy

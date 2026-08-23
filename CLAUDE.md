@@ -24,7 +24,9 @@ Two things are deliberately still off: **Titan/IMAP email-sync** (owner's call �
 - **Frontend**: React 19 + TypeScript + Vite 6 + Tailwind v4 + shadcn/ui + TanStack Query + react-router 7 + vite-plugin-pwa. Path aliases: `@/`, `@shared`, `@features`, `@core`, `@layouts`.
 - **Backend**: FastAPI + Poetry + structlog + pydantic-settings + Supabase Python client. Feature pattern: `router.py`, `service.py`, `schemas.py`.
 - **DB**: Supabase Postgres (project `tlbkwrjzraaikdrajwqh`, us-east-2). Migrations in `supabase/migrations/` (sequential SQL).
-- **Deploy**: GCP Cloud Run (backend), Vercel (frontend). Full matrix, secrets inventory and rollback in `docs/deployment.md`. Short version: `main` → `prop-os` (prod), `dev` → `prop-os-edge` (staging), and **staging is frontend-only** — both branches share one Cloud Run service and one Supabase schema (`public`). Env vars are per-Vercel-project and baked at build time.
+- **Deploy**: GCP Cloud Run (backend), Vercel (frontend). Full matrix, secrets inventory and rollback in `docs/deployment.md`. Short version: `main` → `prop-os` + Cloud Run `propos-api` (schema `public` = production); `dev` → `prop-os-edge` + Cloud Run `propos-api-dev` (schema `propos_test`). **Both deploy on push — there is a Cloud Build trigger per branch** (`propos-api-deploy` on `^main$`, `propos-api-dev-deploy` on `^dev$`). Env vars are per-Vercel-project and baked at build time.
+  Auth, Storage and **migrations** are per-project, not per-branch, so those still hit production from either branch.
+  This bullet said "staging is frontend-only, both branches share one Cloud Run service" until 2026-08-23, months after it stopped being true. Before trusting it again: `gcloud builds triggers list --region=us-central1 --format="value(name,disabled,github.push.branch)"`.
 
 **Branch flow**: work on `dev` → verify on `prop-os-edge` → merge to `main` = production. Backend or DB changes reach production regardless of branch, so treat those as production changes wherever they land.
 
@@ -50,8 +52,11 @@ docs/{architecture,api,api-conventions,roles,disaster-recovery}.md
     `documents` both existed as routes, as did `personas` and `properties`. English paths remain as
     `<Navigate>` redirects, listed in `frontend/src/app/legacy-routes.ts`; never delete one.
 - **Light + dark; default dark.** `<html class="dark">` is the static default (set in `index.html`); the toggle (`@core/theme/theme.ts` + `ThemeProvider`) only removes `.dark` for light. Light palette lives in `:root`, dark in `.dark` (see `src/index.css`).
-- **One accent, three tokens, two owners.** Every colour in the app derives from
-  `--accent-brand`, `--accent-2` and `--tint`, written inline on `<html>`. Exactly one thing
+- **One palette, four colours, two owners.** Every colour in the app derives from
+  `--accent-brand` (marca), `--accent-2` (apoyo), `--accent-3` (tercera), `--accent-soft`
+  (el pálido: hover del sidebar, chips) and `--tint`, all written inline on `<html>`.
+  Four is not arbitrary — it is what a source palette hands you, and the first pass carried
+  only two, so the cream and the fourth hue of every palette went on the floor. Exactly one thing
   owns them at a time: the **user's palette** (`@core/theme/palette.ts`, ~11 palettes, each
   with a light tone and a dark tone) when they picked one, otherwise the **workspace accent**
   (`@core/theme/tenant-accent.ts`, `settings.brand_color` or a hue hashed from the tenant id).
@@ -184,10 +189,21 @@ Los límites, dichos: auth y Storage son **por proyecto**, no por schema, así q
 de staging es un usuario de producción y los archivos subidos caen en los buckets reales.
 Aísla los datos de negocio, no la identidad ni los archivos.
 
-Desplegar staging es manual (`make deploy-staging`) a propósito: el trigger de git sigue
-siendo sólo de producción. Tras una migración, `make test-schema-rebuild` para refrescar la
-estructura del espejo; si necesitas entrar, hay que re-sembrar `tenants`, `profiles` y
-`tenant_memberships` (`profiles.full_name` es columna generada, cópiala excluyéndola).
+Staging **se despliega solo**: el trigger `propos-api-dev-deploy` (`^dev$`,
+`config/docker/cloudbuild-dev.yaml`) construye `propos-api-dev` en cada push a `dev`.
+`make deploy-staging` sigue existiendo como escape a mano. Esta nota decía lo contrario
+("desplegar staging es manual a propósito, el trigger de git sigue siendo sólo de
+producción") — se escribió el mismo día que se creó el trigger y quedó obsoleta en horas.
+Compruébalo antes de creerle a esta línea o a la de arriba:
+
+```bash
+gcloud builds triggers list --region=us-central1 \
+  --format="value(name,disabled,github.push.branch,filename)"   # disabled vacío = habilitado
+```
+
+Tras una migración, `make test-schema-rebuild` para refrescar la estructura del espejo; si
+necesitas entrar, hay que re-sembrar `tenants`, `profiles` y `tenant_memberships`
+(`profiles.full_name` es columna generada, cópiala excluyéndola).
 
 **Un solo proyecto Supabase.** `public` es producción. `propos_test` es el schema espejo que usa la suite de integración; se regenera desde la estructura viva con `make test-schema-rebuild` (`make test-schema-rebuild DRY=1` imprime el SQL sin ejecutar). No se mantiene a mano: la migración `...0002` lo dejó congelado en 28 tablas mientras `public` llegaba a 59. El fixture de integración aborta si PostgREST no expone `propos_test`, en vez de caer a `public`.
 
