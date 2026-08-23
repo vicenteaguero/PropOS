@@ -204,18 +204,21 @@ echo ""
 echo "Next: git add + commit + push (auto-deploys via Cloud Build trigger)."
 
 # === STAGING VARIANT ==========================================================
-# propos-api-dev serves dev.propos.cl and differs from prod in exactly four
-# values. The important one is SUPABASE_DB_SCHEMA: same Supabase project, same
-# auth, but every domain table read and written in `propos_test`, so staging
-# cannot touch a broker's rows. Regenerate alongside the prod file so the two
-# never drift.
+# propos-api-dev serves dev.propos.cl. One database for both environments: the
+# staging backend reads and writes the same `public` schema production does, so
+# what separates them is access, not data. DEV_ADMIN_ONLY is the whole boundary.
+# Regenerate alongside the prod file so the two never drift.
 DEV_ENV_FILE="$ROOT/config/docker/cloudrun-env-dev.yaml"
 python3 - "$OUT_YAML" "$DEV_ENV_FILE" <<'PYEOF'
 import re, sys, pathlib
 
 src, dst = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
 overrides = {
-    "SUPABASE_DB_SCHEMA": "propos_test",
+    # Same database as production, on purpose: staging exists to run branch code
+    # against real data. The boundary is therefore WHO gets in, not what they
+    # see -- DEV_ADMIN_ONLY refuses every account without is_dev_admin, for the
+    # whole deployment rather than route by route.
+    "DEV_ADMIN_ONLY": "true",
     "ALLOWED_ORIGINS": '["https://dev.propos.cl","https://prop-os-edge.vercel.app"]',
     "APP_BASE_URL": "https://dev.propos.cl",
     "LOG_LEVEL": "debug",

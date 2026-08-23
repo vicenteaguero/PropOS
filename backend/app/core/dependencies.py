@@ -7,6 +7,7 @@ from uuid import UUID
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from app.core.config.settings import settings
 from app.core.logging.logger import get_logger
 from app.core.supabase.auth import get_user_profile, verify_token
 from app.core.tenant import resolve_active_tenant
@@ -51,6 +52,16 @@ async def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Account is deactivated",
+        )
+
+    # Staging gate. `dev.propos.cl` runs branch code against the SAME database
+    # production serves, so the boundary cannot be the data -- it has to be who
+    # gets in. Refusing here rather than per-route means a new endpoint is
+    # covered the day it is written, without anyone remembering to gate it.
+    if settings.dev_admin_only and not profile.get("is_dev_admin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This environment is restricted to developer accounts",
         )
 
     return {
