@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
 import { useTopbarSlot } from "@layouts/topbar-slot";
@@ -44,8 +44,13 @@ interface TabBarProps {
  *
  * Both variants scroll horizontally rather than wrap: a wrapped second row of
  * tabs pushes content down by a whole line on exactly the narrow screens that
- * can least afford it. Because that scroll is otherwise invisible, the strip
- * paints a fade over whichever edge still has content behind it.
+ * can least afford it.
+ *
+ * There is deliberately no edge fade. It was here, and it read as a rendering
+ * fault — a blurred tab looks broken, not scrollable — while doing nothing for
+ * the case that matters, which is a strip that overflows by 20px and so has no
+ * room to show the fade anyway. The real fix for a strip that does not fit is
+ * to make it fit.
  */
 export function TabBar({
   items,
@@ -56,7 +61,6 @@ export function TabBar({
   className,
 }: TabBarProps) {
   const scrollerRef = useRef<HTMLDivElement>(null);
-  const { atStart, atEnd, sync } = useOverflowEdges(scrollerRef, items.length);
   const header = variant === "header";
   // `header` is `underline` with the chrome stripped: same accent bar, same
   // metrics rules, no page gutter and no rule beneath (the bar has its own).
@@ -100,7 +104,6 @@ export function TabBar({
     >
       <div
         ref={scrollerRef}
-        onScroll={sync}
         role="tablist"
         className={cn(
           "flex overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
@@ -162,66 +165,8 @@ export function TabBar({
         })}
       </div>
 
-      {/* Scroll affordance: the fade has to start from whatever sits behind the
-          strip, which is the page for `underline` and the track for `pill`. */}
-      <ScrollFade side="left" hidden={atStart} underline={underline} />
-      <ScrollFade side="right" hidden={atEnd} underline={underline} />
     </div>
   );
-}
-
-function ScrollFade({
-  side,
-  hidden,
-  underline,
-}: {
-  side: "left" | "right";
-  hidden: boolean;
-  underline: boolean;
-}) {
-  return (
-    <div
-      aria-hidden
-      className={cn(
-        "pointer-events-none absolute inset-y-0 w-10 transition-opacity",
-        underline ? "" : "rounded-full",
-        side === "left" ? "left-0 bg-gradient-to-r" : "right-0 bg-gradient-to-l",
-        underline ? "from-background to-transparent" : "from-secondary to-transparent",
-        hidden && "opacity-0",
-      )}
-    />
-  );
-}
-
-/**
- * Tracks whether a horizontal scroller is pinned to either end, so the caller
- * can hide the fade on the edge that has nothing behind it. Re-measures on
- * resize and whenever the item count changes.
- */
-function useOverflowEdges(ref: React.RefObject<HTMLElement | null>, itemCount: number) {
-  const [edges, setEdges] = useState({ atStart: true, atEnd: true });
-
-  const sync = useCallback(() => {
-    const el = ref.current;
-    if (!el) return;
-    const max = el.scrollWidth - el.clientWidth;
-    setEdges({
-      atStart: el.scrollLeft <= 1,
-      // `max <= 1` covers "fits entirely", which must hide BOTH fades.
-      atEnd: max <= 1 || el.scrollLeft >= max - 1,
-    });
-  }, [ref]);
-
-  useLayoutEffect(() => {
-    sync();
-    const el = ref.current;
-    if (!el) return;
-    const ro = new ResizeObserver(sync);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [ref, sync, itemCount]);
-
-  return { ...edges, sync };
 }
 
 export interface SectionTab extends TabBarItem {
