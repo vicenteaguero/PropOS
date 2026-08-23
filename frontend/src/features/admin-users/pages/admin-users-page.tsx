@@ -49,7 +49,7 @@ export function AdminUsersPage() {
   );
 
   const emptyBlock = !isLoading && !error && users.length === 0 && (
-    <div className="px-5 lg:px-8">
+    <div className="px-[var(--page-x)] lg:px-8">
       <EmptyState
         title="Sin usuarios"
         description="Invita al primer usuario de la plataforma."

@@ -132,7 +132,7 @@ function DesktopCard({
 }) {
   return (
     <section className={cn("rounded-xl border border-border bg-card", className)}>
-      <h2 className="border-b border-border px-5 py-3.5 text-sm font-bold tracking-tight text-foreground">
+      <h2 className="border-b border-border px-[var(--page-x)] py-3.5 text-sm font-bold tracking-tight text-foreground">
         {title}
       </h2>
       <div className="p-5">{children}</div>
@@ -280,7 +280,7 @@ export function SettingsPage() {
   if (!tenantQ.data) {
     return (
       <PageLayout width="md" noPadding>
-        <div className="px-5 pt-6">
+        <div className="px-[var(--page-x)] pt-6">
           <ErrorState
             message="No se pudo cargar la configuración del workspace. Reintenta antes de editar."
             error={tenantQ.error}
@@ -602,21 +602,25 @@ export function SettingsPage() {
           header. */}
       {sections.map((sec, i) => (
         <div key={sec.key}>
-          <SectionLabel className={cn("mb-2 px-5 lg:px-0", i === 0 ? "mt-3" : "mt-6")}>
+          <SectionLabel
+            className={cn("mb-2 px-[var(--page-x)] lg:px-0", i === 0 ? "mt-3" : "mt-6")}
+          >
             {sec.title}
           </SectionLabel>
-          <div className={sec.key === "notificaciones" ? undefined : "px-5"}>{sec.body}</div>
+          <div className={sec.key === "notificaciones" ? undefined : "px-[var(--page-x)]"}>
+            {sec.body}
+          </div>
         </div>
       ))}
 
       {import.meta.env.DEV && (
-        <div className="mt-7 px-5">
+        <div className="mt-7 px-[var(--page-x)]">
           <SectionLabel className="mb-2">Desarrollo</SectionLabel>
           <DevSchemaSwitch />
         </div>
       )}
 
-      <div className="mt-8 px-5">{saveButton}</div>
+      <div className="mt-8 px-[var(--page-x)]">{saveButton}</div>
       {paperSheet}
     </PageLayout>
   );

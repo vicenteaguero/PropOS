@@ -121,7 +121,7 @@ export function AnalyticsPage() {
   return (
     // Mobile: capped centered column (unchanged). Desktop: full-bleed dashboard.
     <PageLayout width="lg" noPadding className="pb-10 lg:max-w-none">
-      <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-4 lg:px-8 lg:pt-7">
+      <div className="flex items-start justify-between gap-3 px-[var(--page-x)] pt-5 pb-4 lg:px-8 lg:pt-7">
         <div></div>
         <RoundButton
           tone="muted"
@@ -139,7 +139,7 @@ export function AnalyticsPage() {
       </div>
 
       {/* KPIs — 3-up on mobile, spread across the full width on desktop. */}
-      <div className="grid grid-cols-2 gap-3 px-5 md:grid-cols-3 lg:px-8 lg:gap-4">
+      <div className="grid grid-cols-2 gap-3 px-[var(--page-x)] md:grid-cols-3 lg:px-8 lg:gap-4">
         <StatCard
           label="Ingresos totales"
           value={statText(revenue, formatCLP(totalIn / 100))}
@@ -157,7 +157,7 @@ export function AnalyticsPage() {
       </div>
 
       {/* Charts */}
-      <div className="mt-3 grid grid-cols-1 gap-3 px-5 lg:mt-4 lg:grid-cols-2 lg:gap-4 lg:px-8">
+      <div className="mt-3 grid grid-cols-1 gap-3 px-[var(--page-x)] lg:mt-4 lg:grid-cols-2 lg:gap-4 lg:px-8">
         <ChartCard title="Ingresos por mes">
           <ChartBody
             query={revenue}
@@ -227,7 +227,7 @@ export function AnalyticsPage() {
       </div>
 
       {/* Ad ROI (wide table) + active pipeline (compact) share the width on desktop. */}
-      <div className="mt-3 grid grid-cols-1 gap-3 px-5 lg:mt-4 lg:grid-cols-3 lg:gap-4 lg:px-8">
+      <div className="mt-3 grid grid-cols-1 gap-3 px-[var(--page-x)] lg:mt-4 lg:grid-cols-3 lg:gap-4 lg:px-8">
         <div className="lg:col-span-2">
           <ChartCard title="ROI por campaña">
             <ChartBody

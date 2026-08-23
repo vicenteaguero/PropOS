@@ -93,7 +93,7 @@ export function ImportPage() {
     // upload (left) and preview (right) sit side by side, both visible at once.
     <PageLayout width="md" noPadding className="pb-6 lg:max-w-4xl lg:px-8 lg:pt-7">
       {/* Header */}
-      <div className="px-5 pt-5 pb-3 lg:px-0 lg:pt-0">
+      <div className="px-[var(--page-x)] pt-5 pb-3 lg:px-0 lg:pt-0">
         <h1 className="text-[17px] font-semibold leading-tight tracking-tight text-foreground">
           Importar datos
         </h1>
@@ -112,7 +112,7 @@ export function ImportPage() {
 
       <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-6">
         {/* Upload card */}
-        <div className="px-5 lg:px-0">
+        <div className="px-[var(--page-x)] lg:px-0">
           <div className="rounded-xl border border-border bg-card p-5">
             {/* The clear control is a sibling of the label, not a child: a
                 <label> may not contain interactive content, and nested inside
@@ -174,7 +174,7 @@ export function ImportPage() {
 
         {/* Preview — second column on desktop, stacked below on mobile. */}
         {preview ? (
-          <div className="mt-4 px-5 lg:mt-0 lg:px-0">
+          <div className="mt-4 px-[var(--page-x)] lg:mt-0 lg:px-0">
             <div className="rounded-xl border border-border bg-card p-5">
               <div className="flex flex-wrap items-center gap-2">
                 <Pill tone="success">{preview.valid_rows} válidos</Pill>
@@ -226,7 +226,7 @@ export function ImportPage() {
 
       {/* History — a staged job stays PREVIEW until it is confirmed, so this is
           also where an interrupted import shows up. */}
-      <section className="mt-8 px-5 lg:px-0">
+      <section className="mt-8 px-[var(--page-x)] lg:px-0">
         <h2 className="mb-2 text-[16px] font-bold tracking-tight text-foreground">
           Importaciones recientes
         </h2>

@@ -43,7 +43,8 @@ export function BottomSheet({
         {...drag.handlers}
         style={drag.style}
         className={cn(
-          "max-h-[92dvh] gap-0 overflow-y-auto rounded-t-3xl border-border px-5 pt-3 pb-[calc(var(--safe-bottom)+2rem)]",
+          // `--page-x`, so a sheet's content lines up with the page it covers.
+          "max-h-[92dvh] gap-0 overflow-y-auto rounded-t-3xl border-border px-[var(--page-x)] pt-3 pb-[calc(var(--safe-bottom)+2rem)]",
           // While a finger is on it the sheet must track the finger exactly;
           // Radix's own `transition` would lag every frame behind.
           drag.dragging && "transition-none",

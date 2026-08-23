@@ -666,7 +666,7 @@ function MonthGrid({
   onCreate?: (d: Date) => void;
 }) {
   return (
-    <div className="px-5 lg:px-0">
+    <div className="px-[var(--page-x)] lg:px-0">
       <div className="grid grid-cols-7 gap-y-1">
         {WEEKDAYS.map((d, i) => (
           <div key={i} className="pb-1 text-center text-xs font-semibold text-faint">
@@ -734,7 +734,7 @@ function DayAgenda({
 }) {
   if (items.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-2 px-5 py-10 text-center">
+      <div className="flex flex-col items-center gap-2 px-[var(--page-x)] py-10 text-center">
         <CalendarDays className="size-9 text-faint" strokeWidth={1.5} />
         <p className="text-sm text-muted-foreground">Sin eventos este día.</p>
       </div>
@@ -959,7 +959,7 @@ function TimeGrid({
 
 function MobileEmpty({ label }: { label: string }) {
   return (
-    <div className="flex flex-col items-center gap-2 px-5 py-12 text-center">
+    <div className="flex flex-col items-center gap-2 px-[var(--page-x)] py-12 text-center">
       <CalendarDays className="size-9 text-faint" strokeWidth={1.5} />
       <p className="text-sm text-muted-foreground">{label}</p>
     </div>

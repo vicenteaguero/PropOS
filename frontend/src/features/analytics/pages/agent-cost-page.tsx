@@ -45,7 +45,7 @@ export function AgentCostPage() {
   if (isLoading) {
     return (
       <PageLayout width="lg" noPadding className="lg:max-w-none">
-        <div className="px-5 pt-6 lg:px-8">
+        <div className="px-[var(--page-x)] pt-6 lg:px-8">
           <PageSkeleton variant="kpi-grid" />
         </div>
       </PageLayout>
@@ -68,10 +68,10 @@ export function AgentCostPage() {
   return (
     // Mobile: capped centered column (unchanged). Desktop: full-bleed dashboard.
     <PageLayout width="lg" noPadding className="pb-10 lg:max-w-none">
-      <div className="px-5 pt-5 pb-4 lg:px-8 lg:pt-7"></div>
+      <div className="px-[var(--page-x)] pt-5 pb-4 lg:px-8 lg:pt-7"></div>
 
       {/* Totals */}
-      <div className="grid grid-cols-2 gap-3 px-5 lg:grid-cols-4 lg:gap-4 lg:px-8">
+      <div className="grid grid-cols-2 gap-3 px-[var(--page-x)] lg:grid-cols-4 lg:gap-4 lg:px-8">
         <StatCard label="Mensajes" value={String(data.totals.message_count)} />
         <StatCard label="Tokens entrada" value={data.totals.tokens_in.toLocaleString()} />
         <StatCard label="Tokens salida" value={data.totals.tokens_out.toLocaleString()} />
@@ -79,7 +79,7 @@ export function AgentCostPage() {
       </div>
 
       {/* Daily cost */}
-      <div className="mt-3 px-5 lg:mt-4 lg:px-8">
+      <div className="mt-3 px-[var(--page-x)] lg:mt-4 lg:px-8">
         <ChartCard title="Costo por día">
           {data.by_day.length === 0 ? (
             <p className="py-12 text-center text-sm text-muted-foreground">Sin actividad aún.</p>
@@ -104,7 +104,7 @@ export function AgentCostPage() {
       </div>
 
       {/* Sessions */}
-      <div className="mt-3 px-5 lg:mt-4 lg:px-8">
+      <div className="mt-3 px-[var(--page-x)] lg:mt-4 lg:px-8">
         <ChartCard title="Sesiones (top 50 recientes)">
           {data.by_session.length === 0 ? (
             <p className="py-12 text-center text-sm text-muted-foreground">Sin sesiones aún.</p>

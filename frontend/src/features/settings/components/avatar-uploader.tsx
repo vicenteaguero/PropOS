@@ -46,7 +46,7 @@ export function AvatarUploader({ user }: Props) {
   const busy = uploading || setUrl.isPending;
 
   return (
-    <div className="flex flex-col items-center px-5 pt-2 pb-6 text-center">
+    <div className="flex flex-col items-center px-[var(--page-x)] pt-2 pb-6 text-center">
       <button
         type="button"
         onClick={() => inputRef.current?.click()}

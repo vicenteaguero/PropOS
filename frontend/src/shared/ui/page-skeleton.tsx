@@ -40,7 +40,10 @@ function ListSkeleton({ count }: { count: number }) {
   return (
     <div className="divide-y divide-border">
       {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className="flex items-center gap-3 px-5 py-3">
+        // The same gutter `Row` uses. It was a hard-coded `px-5` against
+        // `Row`'s `--page-x`, so every list shifted sideways by a few pixels
+        // the moment it finished loading.
+        <div key={i} className="flex items-center gap-3 px-[var(--page-x)] py-3">
           <Skeleton className="size-10 shrink-0 rounded-xl" />
           <div className="min-w-0 flex-1 space-y-2">
             <Skeleton className="h-4 w-1/2" />
