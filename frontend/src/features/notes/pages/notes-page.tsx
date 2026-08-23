@@ -21,6 +21,7 @@ import {
   LinkInput,
   PageSkeleton,
   Pill,
+  CONTROL_SQUARE,
 } from "@shared/ui";
 import { listTime } from "@shared/utils/relative-time";
 import { createPortal } from "react-dom";
@@ -387,7 +388,7 @@ export function NotesPage() {
           <Button
             variant="outline"
             size="icon"
-            className="shrink-0 rounded-full"
+            className={cn("shrink-0 rounded-full", CONTROL_SQUARE)}
             aria-label="Nueva nota"
             onClick={openComposer}
           >
