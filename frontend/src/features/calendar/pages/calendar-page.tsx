@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useOpenOnParam } from "@shared/hooks/use-open-on-param";
-import { label } from "@shared/lib/labels";
 import {
   addDays,
   addMonths,
@@ -26,10 +25,8 @@ import {
   Loader2,
   MapPin,
   Mic,
-  Pencil,
   Plus,
   Sparkles,
-  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,8 +46,6 @@ import {
   Row,
   SectionLabel,
   Segmented,
-  TOUCH_TARGET_HIT_AREA,
-  TOUCH_TARGET_ROW_COARSE,
 } from "@shared/ui";
 import { useIsDesktop } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
@@ -65,6 +60,22 @@ import {
   useUpdateEvent,
 } from "../hooks/use-calendar";
 import type { CalendarItem, EventKind } from "../api/calendar-api";
+import { CalendarToolbar, type MobileView as ToolbarView } from "../components/calendar-toolbar";
+import { WeekCarousel } from "../components/week-carousel";
+import { EventRow as DenseEventRow } from "../components/event-row";
+import { VisitNavRow } from "../components/visit-nav-row";
+import { EventDetailDialog } from "../components/event-detail-dialog";
+import { dayHeading as dayHeadingOneLine, feedRange, weekDaysOf } from "../lib/calendar-range";
+import {
+  filterFromParam,
+  isImminentVisit,
+  matchesFilter,
+  paramForFilter,
+  type CalFilter,
+} from "../lib/calendar-item";
+import { useTopbarActionsSlot } from "@layouts/topbar-slot";
+import { createPortal } from "react-dom";
+import { useSearchParams } from "react-router-dom";
 import type { PillTone } from "@shared/ui";
 
 /** Per-type tone + dot color + kind icon (semantic tokens only). */
@@ -92,22 +103,11 @@ function asKind(value: string | null | undefined): EventKind {
   return hit ? hit.id : "OTHER";
 }
 
-function kindLabel(value: string | null | undefined): string {
-  return KIND_ITEMS.find((k) => k.id === value)?.label ?? "Otro";
-}
-
 const WEEKDAYS = ["L", "M", "M", "J", "V", "S", "D"];
 
 type View = "month" | "week" | "day";
 
-/** Mobile view order matches the mockup: Día / Semana / Mes. */
 type MobileView = "day" | "week" | "month";
-
-const MOBILE_VIEW_ITEMS: { id: MobileView; label: string }[] = [
-  { id: "day", label: "Día" },
-  { id: "week", label: "Semana" },
-  { id: "month", label: "Mes" },
-];
 
 const VIEW_ITEMS = [
   { id: "month", label: "Mes" },
@@ -126,20 +126,6 @@ function dayKey(d: Date): string {
 function timeLabel(it: CalendarItem): string {
   if (it.all_day || !it.start_at) return "Todo";
   return format(new Date(it.start_at), "HH:mm");
-}
-
-/** Compact duration shown under the time (e.g. "1h", "45 min", "1h 30") or "Todo". */
-function durationLabel(it: CalendarItem): string {
-  if (it.all_day || !it.start_at) return "Todo";
-  if (!it.end_at) return "1h";
-  const minutes = Math.round(
-    (new Date(it.end_at).getTime() - new Date(it.start_at).getTime()) / 60000,
-  );
-  if (minutes <= 0) return "1h";
-  if (minutes < 60) return `${minutes} min`;
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  return m === 0 ? `${h}h` : `${h}h ${m}`;
 }
 
 /** Minutes from midnight for a timed item (0 when missing). */
@@ -202,6 +188,22 @@ export function CalendarPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const propo = useAgentOverlay();
+  const [params, setParams] = useSearchParams();
+  // In the URL so the phone's Back button undoes it and so a filtered calendar
+  // can be linked to. `view` and the anchor deliberately stay out: a swipe per
+  // history entry would make Back useless.
+  const filter = filterFromParam(params.get("tipo"));
+  const setFilter = (next: CalFilter) =>
+    setParams(
+      (prev) => {
+        const sp = new URLSearchParams(prev);
+        const value = paramForFilter(next);
+        if (value) sp.set("tipo", value);
+        else sp.delete("tipo");
+        return sp;
+      },
+      { replace: true },
+    );
 
   // Propo (agent pipeline) is backend ADMIN-only — mirror the Home gate.
   const role = (user?.role ?? "ADMIN").toLowerCase();
@@ -256,34 +258,22 @@ export function CalendarPage() {
   // Mobile range is anchored on `selected` and driven by the mobile view.
   // `weekDays` always covers the selected week (the day-strip); `monthDays`
   // covers the month grid for the Mes view.
-  const { mobileRangeStart, mobileRangeEnd, weekDays, monthDays } = useMemo(() => {
-    const weekStart = startOfWeek(selected, { weekStartsOn: 1 });
-    const weekEnd = endOfWeek(selected, { weekStartsOn: 1 });
-    const week = eachDayOfInterval({ start: weekStart, end: weekEnd });
+  const { monthDays } = useMemo(() => {
     const monthGridStart = startOfWeek(startOfMonth(selected), { weekStartsOn: 1 });
     const monthGridEnd = endOfWeek(endOfMonth(selected), { weekStartsOn: 1 });
     const month = eachDayOfInterval({ start: monthGridStart, end: monthGridEnd });
-    // Range must cover whatever the active mobile view renders.
-    const start = mobileView === "month" ? monthGridStart : weekStart;
-    const end = mobileView === "month" ? addDays(monthGridEnd, 1) : addDays(weekEnd, 1);
-    return {
-      mobileRangeStart: start,
-      mobileRangeEnd: end,
-      weekDays: week,
-      monthDays: month,
-    };
-  }, [selected, mobileView]);
+    return { monthDays: month };
+  }, [selected]);
 
-  // Both the mobile and desktop trees stay mounted (toggled via CSS), so the
-  // single query window must span the union of both ranges.
-  const queryStart = useMemo(
-    () => (rangeStart < mobileRangeStart ? rangeStart : mobileRangeStart),
-    [rangeStart, mobileRangeStart],
-  );
-  const queryEnd = useMemo(
-    () => (rangeEnd > mobileRangeEnd ? rangeEnd : mobileRangeEnd),
-    [rangeEnd, mobileRangeEnd],
-  );
+  // One tree is mounted at a time now, so the window is whichever one is on
+  // screen — and on mobile it is quantised to whole weeks (see `feedRange`), so
+  // moving between days inside a week reuses the same cache entry instead of
+  // refetching the feed on every tap.
+  const { queryStart, queryEnd } = useMemo(() => {
+    if (isDesktop) return { queryStart: rangeStart, queryEnd: rangeEnd };
+    const { start, end } = feedRange(selected, mobileView);
+    return { queryStart: start, queryEnd: end };
+  }, [isDesktop, rangeStart, rangeEnd, selected, mobileView]);
 
   const { data, isLoading, error, refetch } = useCalendarFeed(
     queryStart.toISOString(),
@@ -307,6 +297,7 @@ export function CalendarPage() {
     const m = new Map<string, CalendarItem[]>();
     for (const it of data ?? []) {
       if (!it.start_at) continue;
+      if (!matchesFilter(it, filter)) continue;
       const key = format(new Date(it.start_at), "yyyy-MM-dd");
       if (!m.has(key)) m.set(key, []);
       m.get(key)!.push(it);
@@ -315,7 +306,7 @@ export function CalendarPage() {
       list.sort((a, b) => (a.start_at ?? "").localeCompare(b.start_at ?? ""));
     }
     return m;
-  }, [data]);
+  }, [data, filter]);
 
   const selectedKey = dayKey(selected);
   const selectedItems = itemsByDay.get(selectedKey) ?? [];
@@ -444,8 +435,28 @@ export function CalendarPage() {
     toast.success("Evento eliminado");
   };
 
+  const actionsHost = useTopbarActionsSlot();
+
   return (
     <>
+      {/* The create action belongs in the bar on a phone, where the toolbar row
+          below is already carrying the view switch, Agendar and the mic. On the
+          sidebar shell there is no bar to portal into, so the desktop toolbar
+          keeps its own button. */}
+      {!isDesktop &&
+        actionsHost &&
+        createPortal(
+          <Button
+            onClick={() => openCreate()}
+            variant="ink"
+            size="icon"
+            aria-label="Nuevo evento"
+            className="rounded-full"
+          >
+            <Plus className="size-4" strokeWidth={1.8} />
+          </Button>,
+          actionsHost,
+        )}
       {/* Mobile keeps the capped (md) centered column; desktop goes full-bleed. */}
       <PageLayout width="app" noPadding className="max-w-4xl lg:max-w-none">
         <AppShellScroll>
@@ -456,7 +467,7 @@ export function CalendarPage() {
                 used to occupy three separate bands plus an empty PageHeader, so
                 ~300px of a laptop screen was chrome before a single hour of the
                 calendar was visible. */}
-            <div className="flex flex-wrap items-center gap-2 px-5 pt-4 pb-3 lg:px-8 lg:pt-6">
+            <div className="hidden flex-wrap items-center gap-2 px-5 pt-4 pb-3 lg:flex lg:px-8 lg:pt-6">
               {/* `first-letter:uppercase`, not `capitalize`: the latter title-cases
                   EVERY word, so "17–23 de agosto" came out "17–23 De Ago…" —
                   English casing rules applied to a Spanish date. */}
@@ -503,71 +514,80 @@ export function CalendarPage() {
             )}
           </div>
 
-          {/* Body. Mobile: Día / Semana / Mes (rebuilt). Desktop: per-view. */}
-          {/* ---- Mobile ---- */}
-          <div className="lg:hidden">
+          {/* One tree, not two behind `lg:hidden`.
+              Both used to stay mounted, so every render did the work twice and
+              the query window had to span the union of the two ranges — which
+              is what made switching views refetch. It also disagreed with
+              `useIsDesktop` (768px) about where the boundary was, so tablets
+              got desktop state under a mobile layout. */}
+          {!isDesktop && (
             <MobileCalendar
               mobileView={mobileView}
               onViewChange={setMobileView}
               selected={selected}
               onSelect={setSelected}
-              weekDays={weekDays}
               monthDays={monthDays}
               itemsByDay={itemsByDay}
               isLoading={isLoading}
               onOpen={setDetail}
               canPropo={canPropo}
               onOpenPropo={() => propo.open("voice")}
+              filter={filter}
+              onFilterChange={setFilter}
+              onCreate={() => openCreate()}
+              role={role}
             />
-          </div>
+          )}
 
           {/* ---- Desktop ---- */}
-          <div className="hidden min-h-0 flex-1 lg:flex lg:flex-col">
-            {canPropo && (
-              <div className="px-8 pb-1 pt-2">
-                <PropoCard onOpen={() => propo.open("voice")} />
-              </div>
-            )}
-
-            {isLoading && <PageSkeleton variant="list" count={6} className="px-8 pt-2" />}
-
-            {!isLoading && activeView === "month" && (
-              <div className="flex min-h-0 flex-1 gap-6 px-8 pb-6 pt-2">
-                <div className="min-w-0 flex-[2]">
-                  <MonthGrid
-                    days={gridDays}
-                    cursor={cursor}
-                    selected={selected}
-                    itemsByDay={itemsByDay}
-                    onSelect={(d) => {
-                      // Selecting a day in the month grid drops into the Día view.
-                      setSelected(d);
-                      setCursor(d);
-                      pickView("day");
-                    }}
-                    onCreate={openCreate}
-                  />
+          {isDesktop && (
+            <div className="flex min-h-0 flex-1 flex-col">
+              {canPropo && (
+                <div className="px-8 pb-1 pt-2">
+                  <PropoCard onOpen={() => propo.open("voice")} />
                 </div>
-                <div className="flex min-h-0 w-80 shrink-0 flex-col overflow-y-auto rounded-xl border border-border">
-                  {/* Same rule as the period heading: only the first letter.
+              )}
+
+              {isLoading && <PageSkeleton variant="list" count={6} className="px-8 pt-2" />}
+
+              {!isLoading && activeView === "month" && (
+                <div className="flex min-h-0 flex-1 gap-6 px-8 pb-6 pt-2">
+                  <div className="min-w-0 flex-[2]">
+                    <MonthGrid
+                      days={gridDays}
+                      cursor={cursor}
+                      selected={selected}
+                      itemsByDay={itemsByDay}
+                      onSelect={(d) => {
+                        // Selecting a day in the month grid drops into the Día view.
+                        setSelected(d);
+                        setCursor(d);
+                        pickView("day");
+                      }}
+                      onCreate={openCreate}
+                    />
+                  </div>
+                  <div className="flex min-h-0 w-80 shrink-0 flex-col overflow-y-auto rounded-xl border border-border">
+                    {/* Same rule as the period heading: only the first letter.
                       `capitalize` gave "Jueves 21 De Agosto". */}
-                  <SectionLabel className="mb-1 mt-3 px-4 first-letter:uppercase">
-                    {format(selected, "EEEE d 'de' MMMM", { locale: es })}
-                  </SectionLabel>
-                  <DayAgenda items={selectedItems} onOpen={setDetail} />
+                    <SectionLabel className="mb-1 mt-3 px-4 first-letter:uppercase">
+                      {format(selected, "EEEE d 'de' MMMM", { locale: es })}
+                    </SectionLabel>
+                    <DayAgenda items={selectedItems} onOpen={setDetail} />
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {!isLoading && (activeView === "week" || activeView === "day") && (
-              <TimeGrid
-                days={gridDays}
-                itemsByDay={itemsByDay}
-                onOpen={setDetail}
-                onCreate={openCreate}
-              />
-            )}
-          </div>
+              {!isLoading && (activeView === "week" || activeView === "day") && (
+                <TimeGrid
+                  days={gridDays}
+                  itemsByDay={itemsByDay}
+                  onOpen={setDetail}
+                  onCreate={openCreate}
+                />
+              )}
+            </div>
+          )}
         </AppShellScroll>
 
         {/* Create flow */}
@@ -616,84 +636,19 @@ export function CalendarPage() {
           </div>
         </ResponsiveSheet>
 
-        {/* Event detail */}
-        <ResponsiveSheet
-          open={!!detail}
+        {/* Event detail — a centred dialog on every size, not a drag-up sheet.
+            See `EventDetailDialog` for why, and for what it now links to. */}
+        <EventDetailDialog
+          item={detail}
+          full={fullEvent}
+          loading={loadingEvent}
+          error={eventError}
+          onRetry={() => refetchEvent()}
           onOpenChange={(o) => !o && setDetail(null)}
-          title={detail?.title ?? "Sin título"}
-          description={
-            detail
-              ? format(new Date(detail.start_at ?? Date.now()), "EEEE d 'de' MMMM", { locale: es })
-              : undefined
-          }
-        >
-          {detail && (
-            <div className="mt-4 space-y-4">
-              <div className="flex flex-wrap items-center gap-2">
-                <Pill tone={TYPE_META[detail.item_type].tone}>
-                  {TYPE_META[detail.item_type].label}
-                </Pill>
-                {editableId && (
-                  <Pill tone="neutral">{kindLabel(fullEvent?.kind ?? detail.kind)}</Pill>
-                )}
-                <span className="text-sm font-medium text-muted-foreground">
-                  {detail.all_day || !detail.start_at
-                    ? "Todo el día"
-                    : `${format(new Date(detail.start_at), "HH:mm")}${
-                        detail.end_at ? ` – ${format(new Date(detail.end_at), "HH:mm")}` : ""
-                      }`}
-                </span>
-              </div>
-              {fullEvent?.location && (
-                <div className="flex items-center gap-2 text-sm text-foreground">
-                  <MapPin className="size-4 shrink-0 text-muted-foreground" strokeWidth={1.8} />
-                  <span className="min-w-0 truncate">{fullEvent.location}</span>
-                </div>
-              )}
-              {detail.status && (
-                <div className="text-sm text-muted-foreground">
-                  Estado:{" "}
-                  <span className="text-foreground">{label("eventStatus", detail.status)}</span>
-                </div>
-              )}
-              {eventError && (
-                <ErrorState
-                  compact
-                  message="No se pudo cargar el detalle del evento."
-                  onRetry={() => refetchEvent()}
-                />
-              )}
-              {editableId && (
-                <div className="flex gap-2">
-                  <Button
-                    variant="secondary"
-                    className="flex-1 gap-2"
-                    onClick={openEdit}
-                    disabled={loadingEvent || !!eventError}
-                  >
-                    {loadingEvent ? (
-                      <Loader2 className="size-4 animate-spin" />
-                    ) : (
-                      <Pencil className="size-4" strokeWidth={1.8} />
-                    )}
-                    Editar
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    className="flex-1 gap-2 text-destructive hover:text-destructive"
-                    onClick={() => setConfirmingDelete(true)}
-                  >
-                    <Trash2 className="size-4" strokeWidth={1.8} />
-                    Eliminar
-                  </Button>
-                </div>
-              )}
-              <Button variant="ghost" size="block" onClick={() => setDetail(null)}>
-                Cerrar
-              </Button>
-            </div>
-          )}
-        </ResponsiveSheet>
+          onEdit={openEdit}
+          onDelete={() => setConfirmingDelete(true)}
+          role={role}
+        />
 
         <ConfirmDialog
           open={confirmingDelete}
@@ -1092,161 +1047,6 @@ function TimeGrid({
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Mobile calendar (rebuilt to match the reference mockup)            */
-/* ------------------------------------------------------------------ */
-
-/** "Hoy" / "Mañana" / capitalized weekday for a day heading. */
-function dayHeading(day: Date): string {
-  const today = startOfDay(new Date());
-  if (isSameDay(day, today)) return "Hoy";
-  if (isSameDay(day, addDays(today, 1))) return "Mañana";
-  const w = format(day, "EEEE", { locale: es });
-  return w.charAt(0).toUpperCase() + w.slice(1);
-}
-
-/** Full-width Día / Semana / Mes pill switch (active = filled ink). */
-function MobileViewSwitch({
-  value,
-  onChange,
-}: {
-  value: MobileView;
-  onChange: (v: MobileView) => void;
-}) {
-  return (
-    <div className="flex gap-2 px-5 pb-4">
-      {MOBILE_VIEW_ITEMS.map((it) => {
-        const active = it.id === value;
-        return (
-          <button
-            key={it.id}
-            type="button"
-            onClick={() => onChange(it.id)}
-            className={cn(
-              "flex-1 rounded-full py-2.5 text-sm font-semibold transition active:scale-[0.98]",
-              TOUCH_TARGET_ROW_COARSE,
-              active
-                ? "bg-ink text-ink-foreground"
-                : "border border-line-strong text-foreground hover:bg-secondary",
-            )}
-          >
-            {it.label}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-/** Horizontal week day-strip: weekday letter + day number + event dot. */
-function WeekStrip({
-  days,
-  selected,
-  itemsByDay,
-  onSelect,
-}: {
-  days: Date[];
-  selected: Date;
-  itemsByDay: Map<string, CalendarItem[]>;
-  onSelect: (d: Date) => void;
-}) {
-  return (
-    <div className="flex gap-1.5 px-4 pb-4">
-      {days.map((day, i) => {
-        const isSelected = isSameDay(day, selected);
-        const isToday = isSameDay(day, new Date());
-        const has = (itemsByDay.get(dayKey(day)) ?? []).length > 0;
-        return (
-          <button
-            key={dayKey(day)}
-            type="button"
-            onClick={() => onSelect(day)}
-            className={cn(
-              // Seven columns leave 42px per cell on a 360px phone, so the box
-              // cannot grow without overflowing — widen the hit area instead.
-              "flex flex-1 flex-col items-center gap-1 rounded-xl py-2 transition active:scale-[0.97]",
-              TOUCH_TARGET_HIT_AREA,
-              isSelected ? "bg-foreground" : "hover:bg-secondary",
-            )}
-          >
-            <span
-              className={cn(
-                "text-[11px] font-semibold",
-                isSelected ? "text-background/60" : "text-faint",
-              )}
-            >
-              {WEEKDAYS[i]}
-            </span>
-            <span
-              className={cn(
-                "text-base font-bold tabular-nums",
-                isSelected ? "text-background" : isToday ? "text-primary" : "text-foreground",
-              )}
-            >
-              {format(day, "d")}
-            </span>
-            <span
-              className="size-1 rounded-full"
-              style={{
-                background: has
-                  ? isSelected
-                    ? "var(--color-background)"
-                    : "var(--color-accent-brand)"
-                  : "transparent",
-              }}
-            />
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-/** Rich event row: time + duration, colored bar, kind icon + label, title, meta. */
-function EventRow({ item, onOpen }: { item: CalendarItem; onOpen: (it: CalendarItem) => void }) {
-  const meta = TYPE_META[item.item_type];
-  const KindIcon = meta.icon;
-  return (
-    <button
-      type="button"
-      onClick={() => onOpen(item)}
-      className="flex w-full gap-3 px-5 py-3 text-left transition active:scale-[0.99] hover:bg-secondary/50"
-    >
-      {/* Time + duration */}
-      <div className="w-[46px] shrink-0 text-right">
-        <div className="text-[15px] font-bold tabular-nums text-foreground">{timeLabel(item)}</div>
-        <div className="mt-0.5 text-[11px] text-faint">{durationLabel(item)}</div>
-      </div>
-      {/* Colored vertical bar */}
-      <span className="w-[3px] shrink-0 rounded-full" style={{ background: meta.dot }} />
-      {/* Content */}
-      <div className="min-w-0 flex-1">
-        <div className="mb-0.5 flex items-center gap-1.5">
-          <KindIcon className="size-3.5 shrink-0" strokeWidth={2} style={{ color: meta.dot }} />
-          <span
-            className="text-[11px] font-bold uppercase tracking-wide"
-            style={{ color: meta.dot }}
-          >
-            {meta.label}
-          </span>
-        </div>
-        <div className="text-[15px] font-semibold leading-snug text-foreground">
-          {item.title ?? "Sin título"}
-        </div>
-        {item.status && (
-          // Through the registry, not `toLowerCase()`. That printed the raw enum
-          // — "Open", "Scheduled" — in English, on the Spanish surface a broker
-          // reads, for the one line meant to say what state the item is in.
-          <div className="mt-1.5 text-[12.5px] text-muted-foreground">
-            {label(item.item_type === "TASK" ? "taskStatus" : "eventStatus", item.status)}
-          </div>
-        )}
-      </div>
-    </button>
-  );
-}
-
-/** Empty state for a day/week with no events. */
 function MobileEmpty({ label }: { label: string }) {
   return (
     <div className="flex flex-col items-center gap-2 px-5 py-12 text-center">
@@ -1331,25 +1131,30 @@ function MobileCalendar({
   onViewChange,
   selected,
   onSelect,
-  weekDays,
   monthDays,
   itemsByDay,
   isLoading,
   onOpen,
   canPropo,
   onOpenPropo,
+  filter,
+  onFilterChange,
+  onCreate,
 }: {
   mobileView: MobileView;
   onViewChange: (v: MobileView) => void;
   selected: Date;
   onSelect: (d: Date) => void;
-  weekDays: Date[];
   monthDays: Date[];
   itemsByDay: Map<string, CalendarItem[]>;
   isLoading: boolean;
   onOpen: (it: CalendarItem) => void;
   canPropo: boolean;
   onOpenPropo: () => void;
+  filter: CalFilter;
+  onFilterChange: (f: CalFilter) => void;
+  onCreate: () => void;
+  role: string;
 }) {
   // Tapping a month-grid day selects it and drops back into the Día view.
   const selectFromMonth = (d: Date) => {
@@ -1358,23 +1163,23 @@ function MobileCalendar({
   };
 
   const selectedItems = itemsByDay.get(dayKey(selected)) ?? [];
+  const weekDays = weekDaysOf(selected);
 
   return (
     <div className="pb-6">
-      <MobileViewSwitch value={mobileView} onChange={onViewChange} />
+      <CalendarToolbar
+        view={mobileView as ToolbarView}
+        onViewChange={(v) => onViewChange(v as MobileView)}
+        filter={filter}
+        onFilterChange={onFilterChange}
+        onSchedule={onCreate}
+        onVoice={onOpenPropo}
+        canPropo={canPropo}
+      />
 
       {mobileView !== "month" && (
-        <WeekStrip
-          days={weekDays}
-          selected={selected}
-          itemsByDay={itemsByDay}
-          onSelect={onSelect}
-        />
-      )}
-
-      {canPropo && (
-        <div className="px-5 pb-4">
-          <PropoCard onOpen={onOpenPropo} />
+        <div className="pb-2">
+          <WeekCarousel anchor={selected} itemsByDay={itemsByDay} onSelect={onSelect} />
         </div>
       )}
 
@@ -1382,17 +1187,20 @@ function MobileCalendar({
         <PageSkeleton variant="list" count={4} />
       ) : mobileView === "day" ? (
         <div>
-          <div className="flex items-baseline gap-2 px-5 pb-2 pt-1">
-            <span className="text-lg font-bold tracking-tight text-foreground">
-              {dayHeading(selected)}
-            </span>
-            <span className="text-[13px] text-faint">
-              {format(selected, "d 'de' MMMM", { locale: es })}
+          {/* One line, one size. It used to print the weekday large and then
+              "lun 17 ago" small beside it — the same day twice, in a row that
+              had room for neither. */}
+          <div className="px-[var(--page-x)] pb-1.5 pt-1">
+            <span className="text-[19px] font-bold tracking-tight text-foreground">
+              {dayHeadingOneLine(selected)}
             </span>
           </div>
           {selectedItems.length ? (
             selectedItems.map((it) => (
-              <EventRow key={`${it.item_type}-${it.id}`} item={it} onOpen={onOpen} />
+              <div key={`${it.item_type}-${it.id}`}>
+                <DenseEventRow item={it} onOpen={onOpen} />
+                {isImminentVisit(it) && it.location && <VisitNavRow address={it.location} />}
+              </div>
             ))
           ) : (
             <MobileEmpty label="Sin eventos este día." />
@@ -1405,17 +1213,17 @@ function MobileCalendar({
               const items = itemsByDay.get(dayKey(day)) ?? [];
               if (!items.length) return null;
               return (
-                <div key={dayKey(day)} className="mb-1">
-                  <div className="flex items-baseline gap-2 px-5 pb-1 pt-3">
-                    <span className="text-base font-bold tracking-tight text-foreground">
-                      {dayHeading(day)}
-                    </span>
-                    <span className="text-[13px] text-faint">
-                      {format(day, "EEE d MMM", { locale: es })}
+                <div key={dayKey(day)}>
+                  <div className="px-[var(--page-x)] pb-1.5 pt-3">
+                    <span className="text-[17px] font-bold tracking-tight text-foreground">
+                      {dayHeadingOneLine(day)}
                     </span>
                   </div>
                   {items.map((it) => (
-                    <EventRow key={`${it.item_type}-${it.id}`} item={it} onOpen={onOpen} />
+                    <div key={`${it.item_type}-${it.id}`}>
+                      <DenseEventRow item={it} onOpen={onOpen} />
+                      {isImminentVisit(it) && it.location && <VisitNavRow address={it.location} />}
+                    </div>
                   ))}
                 </div>
               );

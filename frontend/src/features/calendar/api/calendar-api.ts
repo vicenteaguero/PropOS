@@ -22,6 +22,8 @@ export interface CalendarItem {
    * on their way out the door.
    */
   location?: string | null;
+  /** The deal this belongs to, if any. Added in 20240601000077. */
+  opportunity_id?: string | null;
 }
 
 /** Mirrors the backend `EventKind` enum (events/schemas.py). */
@@ -54,6 +56,7 @@ export interface EventDetail {
   status: string;
   property_id: string | null;
   contact_id: string | null;
+  opportunity_id?: string | null;
 }
 
 export const calendarApi = {

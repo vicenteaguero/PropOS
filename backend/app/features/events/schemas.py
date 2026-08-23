@@ -33,6 +33,7 @@ class EventBase(BaseModel):
     property_id: UUID | None = None
     contact_id: UUID | None = None
     project_id: UUID | None = None
+    opportunity_id: UUID | None = None
     assignee_user: UUID | None = None
 
 
@@ -53,6 +54,7 @@ class EventUpdate(BaseModel):
     property_id: UUID | None = None
     contact_id: UUID | None = None
     project_id: UUID | None = None
+    opportunity_id: UUID | None = None
     assignee_user: UUID | None = None
 
 
@@ -80,6 +82,7 @@ class CalendarItem(BaseModel):
     property_id: UUID | None = None
     contact_id: UUID | None = None
     amount_cents: int | None = None
+    opportunity_id: UUID | None = None
     # `v_calendar_feed` has carried this since 20240601000070, but the field was
     # never declared here -- and `response_model=list[CalendarItem]` drops every
     # key the model does not name, so the address was stripped from every feed
