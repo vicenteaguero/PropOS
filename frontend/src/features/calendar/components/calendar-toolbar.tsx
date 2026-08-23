@@ -114,7 +114,7 @@ export function CalendarToolbar({
         {canPropo && (
           <RoundButton
             tone="muted"
-            size={40}
+            inBar
             onClick={onVoice}
             aria-label="Agendar dictando"
             className="shrink-0 bg-primary/15 text-primary"
