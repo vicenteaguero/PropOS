@@ -1,7 +1,7 @@
 include .env
 export
 
-.PHONY: seed-demo seed-demo-wipe setup dev dev-frontend dev-hmr dev-pwa dev-pwa-hmr dev-pwa-hmr-kapso dev-docker-hmr dev-docker-pwa-hmr dev-docker-pwa-hmr-kapso stop build migrate seed format lint test clean logs backend-shell db-studio gcloud-auth deploy-setup deploy-secrets-sync deploy-trigger-setup deploy-trigger-list deploy-backend deploy-verify deploy-frontend-edge deploy-rollback kapso-templates-sync kapso-webhook-tunnel query query-write test-schema-rebuild backfill-thumbnails jupyter scale-up scale-down scale-status
+.PHONY: seed-demo seed-demo-wipe setup dev dev-frontend dev-hmr dev-pwa dev-pwa-hmr dev-pwa-hmr-kapso dev-docker-hmr dev-docker-pwa-hmr dev-docker-pwa-hmr-kapso stop build migrate seed format lint test clean logs backend-shell db-studio gcloud-auth deploy-setup deploy-secrets-sync deploy-trigger-setup deploy-trigger-list deploy-backend deploy-verify deploy-frontend-edge deploy-rollback kapso-templates-sync kapso-webhook-tunnel query query-write test-schema-rebuild backfill-thumbnails jupyter scale-up scale-down scale-status deploy-staging
 
 setup:
 	@bash scripts/setup.sh
@@ -324,6 +324,25 @@ scale-status: gcloud-auth
 	@gcloud scheduler jobs list --location=$(GCP_REGION) \
 		--filter='name~propos-scale' \
 		--format='table(name.basename(),schedule,timeZone,state)'
+
+# Staging backend (dev.propos.cl). Same Supabase project and the same auth, but
+# SUPABASE_DB_SCHEMA=propos_test, so every domain table read and written lives in
+# the mirror schema and staging cannot touch a broker's rows. Deploys are manual
+# on purpose: the prod trigger stays the only thing wired to a git push.
+#
+# Regenerate the mirror's structure with `make test-schema-rebuild` after a
+# migration, then re-seed identity if you need to sign in against it.
+deploy-staging: gcloud-auth
+	@bash scripts/log.sh DEPLOY "🧪" "Deploying propos-api-dev (schema propos_test)"
+	@IMG=$$(gcloud run services describe propos-api --region $(GCP_REGION) \
+		--format='value(spec.template.spec.containers[0].image)'); \
+	SECRETS=$$(gcloud run services describe propos-api --region $(GCP_REGION) --format=json \
+		| python3 -c "import sys,json;d=json.load(sys.stdin);e=d['spec']['template']['spec']['containers'][0].get('env',[]);print(','.join(f\"{x['name']}={x['valueFrom']['secretKeyRef']['name']}:latest\" for x in e if 'valueFrom' in x))"); \
+	gcloud run deploy propos-api-dev --image="$$IMG" --region $(GCP_REGION) \
+		--platform=managed --allow-unauthenticated --port=8000 \
+		--min-instances=0 --max-instances=1 --memory=512Mi --cpu=1 --cpu-boost \
+		--concurrency=8 --env-vars-file=config/docker/cloudrun-env-dev.yaml \
+		--set-secrets="$$SECRETS"
 
 kapso-templates-sync:
 	@bash scripts/log.sh KAPSO "📨" "Syncing WhatsApp HSM templates to Kapso"
