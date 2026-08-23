@@ -1,4 +1,4 @@
-import { Mic, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, Mic, Plus, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Chip, Chips, RoundButton } from "@shared/ui";
 import { cn } from "@/lib/utils";
@@ -20,6 +20,19 @@ interface CalendarToolbarProps {
   onSchedule: () => void;
   onVoice: () => void;
   canPropo: boolean;
+  /**
+   * Desktop keeps a stepper and its own create button.
+   *
+   * Not because the design differs, but because the two affordances that
+   * replace them on a phone do not exist here: there is no swipeable week strip
+   * to step the date, and no top bar to portal the `+` into.
+   */
+  variant?: "mobile" | "desktop";
+  onStep?: (dir: 1 | -1) => void;
+  onToday?: () => void;
+  onCreate?: () => void;
+  /** Month name in month view; empty elsewhere, where the grid says the dates. */
+  periodLabel?: string;
 }
 
 /**
@@ -42,10 +55,21 @@ export function CalendarToolbar({
   onSchedule,
   onVoice,
   canPropo,
+  variant = "mobile",
+  onStep,
+  onToday,
+  onCreate,
+  periodLabel,
 }: CalendarToolbarProps) {
+  const desktop = variant === "desktop";
   return (
-    <div className="space-y-2 px-[var(--page-x)] pb-2 pt-2">
-      <div className="flex items-center gap-2">
+    <div className={cn("space-y-2 pb-2 pt-2", desktop ? "px-8 pt-4" : "px-[var(--page-x)]")}>
+      <div className="flex flex-wrap items-center gap-2">
+        {desktop && periodLabel && (
+          <h2 className="mr-1 shrink-0 text-xl font-bold tracking-tight text-foreground first-letter:uppercase">
+            {periodLabel}
+          </h2>
+        )}
         {/* Compact on purpose: at 12px with tight padding the three labels come
             to ~140px, which is what leaves room for Agendar and the mic on one
             row at 360px — the narrowest phone we target. */}
@@ -71,7 +95,10 @@ export function CalendarToolbar({
         <Button
           onClick={onSchedule}
           variant="ink"
-          className="h-10 min-w-0 flex-1 gap-1.5 rounded-full px-3 text-[13px]"
+          className={cn(
+            "h-10 min-w-0 gap-1.5 rounded-full px-3 text-[13px]",
+            desktop ? "shrink-0 px-4" : "flex-1",
+          )}
         >
           {/* Sparkles is Propo everywhere else in the shell (the centre FAB). */}
           <Sparkles className="size-4 shrink-0" strokeWidth={2} />
@@ -88,6 +115,29 @@ export function CalendarToolbar({
           >
             <Mic className="size-[18px]" strokeWidth={2} />
           </RoundButton>
+        )}
+
+        {desktop && (
+          <div className="ml-auto flex shrink-0 items-center gap-1.5">
+            <RoundButton onClick={() => onStep?.(-1)} aria-label="Anterior">
+              <ChevronLeft className="size-5" strokeWidth={1.8} />
+            </RoundButton>
+            <Button variant="secondary" size="sm" className="rounded-full" onClick={onToday}>
+              Hoy
+            </Button>
+            <RoundButton onClick={() => onStep?.(1)} aria-label="Siguiente">
+              <ChevronRight className="size-5" strokeWidth={1.8} />
+            </RoundButton>
+            <Button
+              onClick={onCreate}
+              variant="outline"
+              size="icon"
+              aria-label="Nuevo evento"
+              className="ml-1 rounded-full"
+            >
+              <Plus className="size-4" strokeWidth={1.8} />
+            </Button>
+          </div>
         )}
       </div>
 
