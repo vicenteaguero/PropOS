@@ -22,6 +22,7 @@ import { useNavGroups } from "@layouts/use-nav-groups";
 import { CommandBar } from "@shared/components/command-bar/command-bar";
 import { useAuth } from "@shared/hooks/use-auth";
 import { useShellMode } from "@shared/hooks/use-shell-mode";
+import { useKeyboardInset } from "@shared/hooks/use-keyboard-inset";
 import { useThemeMode } from "@core/theme/theme-provider";
 import { tenantSwatch } from "@core/theme/tenant-accent";
 import { AgentFAB } from "@features/agent/components/agent-fab";
@@ -158,6 +159,13 @@ export function AppLayout() {
   const { user, signOut } = useAuth();
   const shellMode = useShellMode();
   useUfDailyRefresh();
+  // Held for the lifetime of the app, in BOTH shell branches, so the viewport
+  // store's refcount never reaches zero and its four CSS variables are never
+  // torn down while a surface is still using them. It also seeds `restHeight`
+  // at boot — before any input exists that could open a keyboard — which is
+  // what stops a surface mounting mid-keyboard from measuring a shrunken page
+  // as if it were the resting height.
+  useKeyboardInset();
 
   const { groups } = useNavGroups();
   const navLabels = groups.flatMap((g) => g.items.map((i) => i.label));
