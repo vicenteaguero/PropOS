@@ -20,6 +20,12 @@ class Settings(BaseSettings):
     supabase_anon_key: str
     supabase_service_role_key: str
     app_env: str = "development"
+    #: Staging switch. When true, only accounts with `is_dev_admin` may use the
+    #: API at all -- the whole deployment, not a route or a scope. The staging
+    #: backend serves the same database as production, so the only thing keeping
+    #: half-finished branch code away from a broker's rows is that the broker
+    #: cannot reach it.
+    dev_admin_only: bool = False
     log_level: str = "debug"
     allowed_origins: Annotated[list[str], NoDecode] = [
         "http://localhost:5173",
