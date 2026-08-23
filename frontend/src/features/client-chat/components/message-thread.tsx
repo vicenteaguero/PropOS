@@ -193,7 +193,7 @@ export function MessageThread({ conversation, title, subtitle, onBack }: Props) 
                   >
                     <div
                       className={cn(
-                        "max-w-[80%] rounded-2xl px-3 py-2 text-[14.5px] leading-snug",
+                        "max-w-[80%] min-w-0 rounded-2xl px-3 py-2 text-[14.5px] leading-snug",
                         isInbound
                           ? "rounded-bl-md bg-secondary text-foreground"
                           : isAi
@@ -201,7 +201,12 @@ export function MessageThread({ conversation, title, subtitle, onBack }: Props) 
                             : "rounded-br-md bg-primary text-primary-foreground",
                       )}
                     >
-                      <div className="whitespace-pre-wrap">{m.content}</div>
+                      {/* `break-words`: a pasted portal link is one token with
+                          no break opportunity in it, and `pre-wrap` alone let
+                          it run past the bubble and past the screen. */}
+                      <div className="overflow-hidden break-words whitespace-pre-wrap">
+                        {m.content}
+                      </div>
                       <div
                         className={cn(
                           "mt-0.5 flex items-center justify-end gap-1 text-[10.5px] tabular-nums",
@@ -229,7 +234,13 @@ export function MessageThread({ conversation, title, subtitle, onBack }: Props) 
       </div>
 
       {/* Composer */}
-      <div className="pb-composer border-t border-border px-[var(--page-x)] pt-2.5">
+      {/* `shrink-0` so the composer keeps its full height when the thread above
+          it is long — as a flex child of a bounded column it was allowed to
+          compress, and `min-w-0` on the row below is what stops the `<input>`
+          from pushing the send button off the right edge: an input carries an
+          intrinsic min-content width (`size` defaults to ~20 characters) and a
+          flex item's `min-width:auto` refuses to shrink past it. */}
+      <div className="pb-composer shrink-0 border-t border-border bg-background px-[var(--page-x)] pt-2.5">
         {!inWindow && (
           <div className="mb-2 space-y-2">
             <div className="rounded-xl border border-warning/40 bg-warning/10 p-2.5 text-xs text-warning">
@@ -241,7 +252,7 @@ export function MessageThread({ conversation, title, subtitle, onBack }: Props) 
             <TemplatePicker conversationId={conversation.id} />
           </div>
         )}
-        <div className="flex items-center gap-2">
+        <div className="flex w-full min-w-0 items-center gap-2">
           <input
             aria-label="Mensaje"
             value={text}
@@ -254,7 +265,7 @@ export function MessageThread({ conversation, title, subtitle, onBack }: Props) 
             }}
             placeholder={inWindow ? "Escribe un mensaje…" : "Sólo plantillas (24 h cerrada)"}
             disabled={!inWindow || send.isPending}
-            className={`h-11 flex-1 rounded-full border border-border bg-secondary px-4 text-sm text-foreground transition placeholder:text-muted-foreground disabled:opacity-50 ${FOCUS_RING}`}
+            className={`h-11 w-full min-w-0 flex-1 rounded-full border border-border bg-secondary px-4 text-sm text-foreground transition placeholder:text-muted-foreground disabled:opacity-50 ${FOCUS_RING}`}
           />
           <RoundButton
             tone="ink"
