@@ -24,6 +24,14 @@ export interface ClientConversation {
   first_response_at: string | null;
   first_response_due_at: string | null;
   /**
+   * Inbound messages this user has not seen. Resolved per caller by the list
+   * endpoint — "read" is a fact about a person, so two brokers sharing a
+   * number get different numbers here.
+   */
+  unread_count?: number;
+  /** The last message in the thread, either direction. */
+  last_preview?: string | null;
+  /**
    * Resolved by the list endpoint, not stored on the row.
    *
    * The inbox is read by name and by property; the browser used to build both

@@ -16,6 +16,12 @@ export interface AttentionItem {
   at: string | null;
   /** When this stops being fixable cheaply. Null when nothing forces it. */
   deadline: string | null;
+  /** The last message, either direction. Null for non-conversation rows. */
+  preview?: string | null;
+  /** Inbound messages THIS user has not read. */
+  unread?: number;
+  /** When the thread last moved. `at` is what drives urgency, not display. */
+  last_at?: string | null;
   contact_id: string | null;
   property_id: string | null;
   conversation_id: string | null;

@@ -24,6 +24,10 @@ export const clientChatApi = {
     return apiRequest<ClientConversation[]>(`${BASE}/conversations${qs}`);
   },
 
+  /** Everything up to now is read, for the calling user only. */
+  markRead: (conversationId: string) =>
+    apiRequest<void>(`${BASE}/conversations/${conversationId}/read`, { method: "POST" }),
+
   /** Point an unidentified thread at a person, filing the number under them. */
   linkContact: (conversationId: string, contactId: string) =>
     apiRequest<ClientConversation>(`${BASE}/conversations/${conversationId}/contact`, {
