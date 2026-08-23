@@ -12,10 +12,12 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ENV_FILE="$ROOT/.env"
 OUT_YAML="$ROOT/config/docker/cloudrun-env.yaml"
+APP_FRONTEND_URL="https://app.propos.cl"
 PROD_FRONTEND_URL="https://prop-os-delta.vercel.app"
 # Staging frontend (branch `dev` -> Vercel project prop-os-edge). It talks to the
 # same Cloud Run service, so its origin must be allowed too or staging is dead on
 # CORS.
+DEV_FRONTEND_URL="https://dev.propos.cl"
 EDGE_FRONTEND_URL="https://prop-os-edge.vercel.app"
 
 [ -f "$ENV_FILE" ] || { echo "ERROR: $ENV_FILE missing" >&2; exit 1; }
@@ -47,7 +49,11 @@ read_env "$ENV_FILE"
 # .env has dev values; these substitute the prod-correct ones.
 KV_APP_ENV="production"
 KV_LOG_LEVEL="info"
-KV_ALLOWED_ORIGINS='["'"$PROD_FRONTEND_URL"'","'"$EDGE_FRONTEND_URL"'"]'
+# Both the propos.cl names and the vercel.app ones. The .vercel.app origins stay
+# on purpose: a service worker installed before the domain switch keeps serving
+# the old bundle, which still calls the API from the old origin. Drop them once
+# every client has taken an update -- roughly a week, not today.
+KV_ALLOWED_ORIGINS='["'"$APP_FRONTEND_URL"'","'"$DEV_FRONTEND_URL"'","'"$PROD_FRONTEND_URL"'","'"$EDGE_FRONTEND_URL"'"]'
 # The Titan mailbox is out of scope for v0.1.0, so the IMAP poller stays off in
 # production regardless of what .env says. Delete this line (and provision
 # email-imap-user / email-imap-password) when the mailbox comes into scope.

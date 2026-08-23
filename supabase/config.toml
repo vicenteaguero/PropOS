@@ -20,8 +20,12 @@ port = 54323
 # themselves into the project. Nothing in the product uses the signup path.
 enable_signup = false
 minimum_password_length = 8
-site_url = "https://prop-os-delta.vercel.app"
+site_url = "https://app.propos.cl"
 additional_redirect_urls = [
+  "https://app.propos.cl/auth/setup",
+  "https://app.propos.cl/auth/recovery",
+  "https://dev.propos.cl/auth/setup",
+  "https://dev.propos.cl/auth/recovery",
   "https://prop-os-delta.vercel.app/auth/setup",
   "https://prop-os-delta.vercel.app/auth/recovery",
   "https://prop-os-edge.vercel.app/auth/setup",
@@ -52,13 +56,19 @@ secure_password_change = false
 #   set -a && . ./.env && set +a && \
 #   SUPABASE_AUTH_SMTP_PASS="$RESEND_API_KEY" supabase config push --yes
 # Until then, leave enabled = false (Supabase default SMTP, with "powered by Supabase" footer).
+# CUIDADO: el PATCH de /config/auth trata este bloque como atomico. Mandar un
+# solo campo (por ejemplo smtp_admin_email) borra host, port, user y pass, y el
+# reset de contrasena pasa en silencio al SMTP interno de Supabase, que solo
+# entrega a miembros del proyecto. Ademas el GET devuelve smtp_pass enmascarado
+# como hex: reescribir lo que leiste deja la password invalida y /auth/v1/recover
+# responde 500. La password correcta es la API key de Resend.
 [auth.email.smtp]
 enabled = true
 host = "smtp.resend.com"
 port = 465
 user = "resend"
 pass = "env(SUPABASE_AUTH_SMTP_PASS)"
-admin_email = "no-reply@anaida.cl"
+admin_email = "no-reply@propos.cl"
 sender_name = "PropOS"
 
 [auth.email.template.invite]
