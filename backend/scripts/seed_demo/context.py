@@ -24,7 +24,7 @@ from scripts.db_query import _conn_kwargs
 # be aimed at anything else. Hex-only per the UUID rules in CLAUDE.md.
 DEMO_TENANT_ID = "dededede-0000-4000-8000-000000000001"
 DEMO_TENANT_SLUG = "propos-demo"
-DEMO_TENANT_NAME = "PropOS Demo"
+DEMO_TENANT_NAME = "DEMO"
 
 # Every table the seed writes, in dependency order. The wipe walks this list in
 # reverse. Keeping one list means a new generator cannot leave orphans behind.
