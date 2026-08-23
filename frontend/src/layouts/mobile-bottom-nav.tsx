@@ -38,36 +38,75 @@ import { initials } from "@shared/utils/format";
 const NAV_ICON = "size-[24px]";
 const NAV_LABEL = "text-[9.5px] leading-tight";
 
+const NAV_SLOT = "relative flex min-w-0 flex-1 flex-col items-center gap-0.5 py-1";
+
+/** The inside of a slot, so the link and the button versions cannot drift. */
+function NavTabBody({
+  icon: Icon,
+  label,
+  active,
+  badge,
+}: {
+  icon: LucideIcon;
+  label: string;
+  active: boolean;
+  badge?: boolean;
+}) {
+  return (
+    <>
+      <Icon
+        className={cn(NAV_ICON, active ? "text-foreground" : "text-muted-foreground")}
+        strokeWidth={active ? 2.2 : 1.8}
+      />
+      {badge && (
+        <span
+          aria-hidden
+          className="absolute right-[calc(50%-16px)] top-0 size-2 rounded-full bg-primary"
+        />
+      )}
+      <span
+        className={cn(
+          "max-w-full truncate",
+          NAV_LABEL,
+          active ? "font-bold text-foreground" : "font-medium text-muted-foreground",
+        )}
+      >
+        {label}
+      </span>
+    </>
+  );
+}
+
 function NavTab({
   to,
   end,
-  icon: Icon,
+  icon,
   label,
+  as,
+  onClick,
+  ariaLabel,
+  badge,
 }: {
-  to: string;
+  to?: string;
   end?: boolean;
   icon: LucideIcon;
   label: string;
+  /** "Más" opens a sheet rather than navigating, so it is a button. */
+  as?: "button";
+  onClick?: () => void;
+  ariaLabel?: string;
+  badge?: boolean;
 }) {
+  if (as === "button") {
+    return (
+      <button type="button" onClick={onClick} aria-label={ariaLabel} className={NAV_SLOT}>
+        <NavTabBody icon={icon} label={label} active={false} badge={badge} />
+      </button>
+    );
+  }
   return (
-    <NavLink to={to} end={end} className="flex min-w-0 flex-1 flex-col items-center gap-0.5 py-1">
-      {({ isActive }) => (
-        <>
-          <Icon
-            className={cn(NAV_ICON, isActive ? "text-foreground" : "text-muted-foreground")}
-            strokeWidth={isActive ? 2.2 : 1.8}
-          />
-          <span
-            className={cn(
-              "max-w-full truncate",
-              NAV_LABEL,
-              isActive ? "font-bold text-foreground" : "font-medium text-muted-foreground",
-            )}
-          >
-            {label}
-          </span>
-        </>
-      )}
+    <NavLink to={to!} end={end} className={NAV_SLOT}>
+      {({ isActive }) => <NavTabBody icon={icon} label={label} active={isActive} badge={badge} />}
     </NavLink>
   );
 }
@@ -220,8 +259,16 @@ export function MobileBottomNav() {
           {/* Everything the sidebar can reach lives behind this tab. Without
               it the phone shell could only open whatever the four tabs and the
               home tiles hardcoded, stranding 13 routes at URL-only. */}
-          <button
-            type="button"
+          {/* `NavTab`'s markup, not a hand-written copy of it. The copy had
+              already drifted — it kept `gap-0.5` and a `text-[10px]` label
+              after both moved into the shared constants — so "Más" sat a
+              pixel off from the four tabs beside it. */}
+          <NavTab
+            as="button"
+            icon={LayoutGrid}
+            label="Más"
+            badge={pendingCount > 0}
+            ariaLabel={pendingCount > 0 ? `Más · ${pendingCount} pendientes` : "Más"}
             onClick={() => {
               // Opening the sheet is the signal: whatever is tapped next is one
               // of these, and every one of them is a lazy chunk that would
@@ -230,18 +277,7 @@ export function MobileBottomNav() {
               prefetchRoute(SETTINGS_PATH);
               setMoreOpen(true);
             }}
-            aria-label={pendingCount > 0 ? `Más · ${pendingCount} pendientes` : "Más"}
-            className="relative flex min-w-0 flex-1 flex-col items-center gap-0.5 py-1 text-muted-foreground"
-          >
-            <LayoutGrid className={NAV_ICON} strokeWidth={1.8} />
-            {pendingCount > 0 && (
-              <span
-                aria-hidden
-                className="absolute right-[calc(50%-16px)] top-0 size-2 rounded-full bg-primary"
-              />
-            )}
-            <span className={cn("font-medium", NAV_LABEL)}>Más</span>
-          </button>
+          />
         </div>
       </nav>
 
