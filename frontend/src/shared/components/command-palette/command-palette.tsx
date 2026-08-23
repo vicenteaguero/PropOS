@@ -143,11 +143,7 @@ export function CommandPalette({
         >
           <DialogTitle className="sr-only">Buscar y navegar</DialogTitle>
           <Command loop>
-            <CommandInput
-              value={query}
-              onValueChange={setQuery}
-              placeholder="Buscar en PropOS…"
-            />
+            <CommandInput value={query} onValueChange={setQuery} placeholder="Buscar en PropOS…" />
             <CommandList className="max-h-[60dvh]">
               <CommandEmpty>Sin resultados.</CommandEmpty>
 

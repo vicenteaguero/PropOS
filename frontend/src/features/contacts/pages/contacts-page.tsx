@@ -3,7 +3,6 @@ import { useOpenOnParam } from "@shared/hooks/use-open-on-param";
 import { useIntentPrefetch } from "@shared/hooks/use-intent-prefetch";
 import { apiRequest } from "@shared/api/http";
 import { useSearchParams } from "react-router-dom";
-import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
