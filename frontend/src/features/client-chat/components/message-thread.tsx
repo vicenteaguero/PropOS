@@ -19,6 +19,7 @@ import { RoundButton, WhatsAppMark, FOCUS_RING } from "@shared/ui";
 import { cn } from "@/lib/utils";
 import { useKeyboardInset } from "@shared/hooks/use-keyboard-inset";
 import { useImmersive } from "@layouts/immersive";
+import { useShellMode } from "@shared/hooks/use-shell-mode";
 import { IdentifyBanner } from "./identify-banner";
 import { TemplatePicker } from "./template-picker";
 import { useConversationMessages, useSendMessage, useTakeover } from "../hooks/use-client-chat";
@@ -67,6 +68,12 @@ export function MessageThread({ conversation, title, subtitle, onBack }: Props) 
   // `onBack` is only passed by the phone pane, so it doubles as "this thread is
   // the whole screen right now" — which is when the shell's two bars should go.
   useImmersive(!!onBack);
+  // The notch inset belongs to whoever is the topmost element on screen. In the
+  // phone shell that is this header, because the claim above has unmounted
+  // `MobileTopBar`; in the sidebar shell the app's own <header> is already
+  // under the notch and adding it again indents this bar a second time.
+  const bare = useShellMode() === "bottom-nav";
+
   const { data: messages = [], isLoading } = useConversationMessages(conversation.id);
   const send = useSendMessage(conversation.id);
   const takeover = useTakeover(conversation.id);
@@ -116,7 +123,12 @@ export function MessageThread({ conversation, title, subtitle, onBack }: Props) 
           entire job is showing messages. Both actions are rare and both are
           about the thread rather than about this reply, which is what an
           overflow menu is for. */}
-      <div className="flex items-center gap-3 border-b border-border px-[var(--page-x)] py-2.5 pt-[calc(var(--safe-top)+0.625rem)]">
+      <div
+        className={cn(
+          "flex items-center gap-3 border-b border-border px-[var(--page-x)] py-2.5",
+          bare && "pt-[calc(var(--safe-top)+0.625rem)]",
+        )}
+      >
         {onBack && (
           <RoundButton
             tone="ghost"
