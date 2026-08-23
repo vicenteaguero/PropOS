@@ -18,15 +18,11 @@ import { es } from "date-fns/locale";
 import {
   Banknote,
   CalendarDays,
-  ChevronLeft,
-  ChevronRight,
   type LucideIcon,
   ListTodo,
   Loader2,
   MapPin,
-  Mic,
   Plus,
-  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,10 +38,8 @@ import {
   PageSkeleton,
   Pill,
   ResponsiveSheet,
-  RoundButton,
   Row,
   SectionLabel,
-  Segmented,
 } from "@shared/ui";
 import { useIsDesktop } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
@@ -66,8 +60,8 @@ import { EventRow as DenseEventRow } from "../components/event-row";
 import { VisitNavRow } from "../components/visit-nav-row";
 import { EventDetailDialog } from "../components/event-detail-dialog";
 import { dayHeading as dayHeadingOneLine, feedRange, weekDaysOf } from "../lib/calendar-range";
+import { placeOverlapping } from "../lib/overlap";
 import {
-  FILTER_ITEMS,
   filterFromParam,
   isImminentVisit,
   matchesFilter,
@@ -109,12 +103,6 @@ const WEEKDAYS = ["L", "M", "M", "J", "V", "S", "D"];
 type View = "month" | "week" | "day";
 
 type MobileView = "day" | "week" | "month";
-
-const VIEW_ITEMS = [
-  { id: "month", label: "Mes" },
-  { id: "week", label: "Semana" },
-  { id: "day", label: "Día" },
-];
 
 /** Time-grid geometry: one hour = HOUR_PX tall, full 24h column. */
 const HOUR_PX = 48;
@@ -468,64 +456,22 @@ export function CalendarPage() {
                 used to occupy three separate bands plus an empty PageHeader, so
                 ~300px of a laptop screen was chrome before a single hour of the
                 calendar was visible. */}
-            <div className="hidden flex-wrap items-center gap-2 px-5 pt-4 pb-3 lg:flex lg:px-8 lg:pt-6">
-              {/* `first-letter:uppercase`, not `capitalize`: the latter title-cases
-                  EVERY word, so "17–23 de agosto" came out "17–23 De Ago…" —
-                  English casing rules applied to a Spanish date. */}
-              <h2 className="min-w-0 flex-1 truncate text-xl font-bold tracking-tight text-foreground first-letter:uppercase">
-                {periodLabel}
-              </h2>
-              {/* Same four filters the phone toolbar carries, inline here.
-                  They were mobile-only, so the laptop — where a week grid shows
-                  visits, tasks and payments stacked in the same column — was
-                  the one place you could not narrow it down. */}
-              <Chips className="shrink-0">
-                {FILTER_ITEMS.map((item) => (
-                  <Chip
-                    key={item.id}
-                    active={filter === item.id}
-                    onClick={() => setFilter(item.id)}
-                  >
-                    {item.id !== "all" && (
-                      <span
-                        aria-hidden
-                        className="mr-1.5 size-1.5 shrink-0 rounded-full"
-                        style={{ background: TYPE_META[item.id].dot }}
-                      />
-                    )}
-                    {item.label}
-                  </Chip>
-                ))}
-              </Chips>
-              <div className="hidden lg:block">
-                <Segmented
-                  items={VIEW_ITEMS}
-                  value={view}
-                  onChange={(v) => pickView(v as View)}
-                  className="border-b-0 px-0"
-                />
-              </div>
-              <div className="flex items-center gap-1.5">
-                <RoundButton onClick={() => step(-1)} aria-label="Anterior">
-                  <ChevronLeft className="size-5" strokeWidth={1.8} />
-                </RoundButton>
-                <Button variant="secondary" size="sm" className="rounded-full" onClick={goToday}>
-                  Hoy
-                </Button>
-                <RoundButton onClick={() => step(1)} aria-label="Siguiente">
-                  <ChevronRight className="size-5" strokeWidth={1.8} />
-                </RoundButton>
-                <Button
-                  onClick={() => openCreate()}
-                  variant="ink"
-                  size="icon"
-                  aria-label="Nuevo evento"
-                  className="ml-1 rounded-full"
-                >
-                  <Plus className="size-4" strokeWidth={1.8} />
-                </Button>
-              </div>
-            </div>
+            {isDesktop && (
+              <CalendarToolbar
+                variant="desktop"
+                view={view === "month" ? "month" : view === "week" ? "week" : "day"}
+                onViewChange={(v) => pickView(v as View)}
+                filter={filter}
+                onFilterChange={setFilter}
+                onSchedule={() => openCreate()}
+                onVoice={() => propo.open("voice")}
+                canPropo={canPropo}
+                onStep={step}
+                onToday={goToday}
+                onCreate={() => openCreate()}
+                periodLabel={activeView === "month" ? periodLabel : undefined}
+              />
+            )}
 
             {error && (
               <ErrorState
@@ -565,12 +511,6 @@ export function CalendarPage() {
           {/* ---- Desktop ---- */}
           {isDesktop && (
             <div className="flex min-h-0 flex-1 flex-col">
-              {canPropo && (
-                <div className="px-8 pb-1 pt-2">
-                  <PropoCard onOpen={() => propo.open("voice")} />
-                </div>
-              )}
-
               {isLoading && <PageSkeleton variant="list" count={6} className="px-8 pt-2" />}
 
               {!isLoading && activeView === "month" && (
@@ -769,28 +709,6 @@ function EventFormFields({
         </div>
       )}
     </>
-  );
-}
-
-/** Dashed call-to-action that opens Propo in voice mode. */
-function PropoCard({ onOpen }: { onOpen: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className="flex w-full items-center gap-3 rounded-xl border border-dashed border-line-strong bg-transparent p-3.5 text-left transition active:scale-[0.99]"
-    >
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-ink text-ink-foreground">
-        <Sparkles className="size-[18px]" />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold text-foreground">Agenda con Propo</span>
-        <span className="block text-xs text-muted-foreground">
-          Agéndame una visita el sábado y recuérdame revisar los planos
-        </span>
-      </span>
-      <Mic className="size-[19px] shrink-0 text-foreground" strokeWidth={1.9} />
-    </button>
   );
 }
 
@@ -1035,28 +953,38 @@ function TimeGrid({
                       style={{ height: HOUR_PX }}
                     />
                   ))}
-                  {/* Timed events */}
-                  {timed.map((it) => {
+                  {/* Timed events, laid side by side when they overlap. */}
+                  {placeOverlapping(timed).map(({ item: it, column, columns }) => {
                     const meta = TYPE_META[it.item_type];
+                    const height = durationPx(it);
+                    // Under ~34px there is only room for one line, so the time
+                    // is dropped rather than clipped mid-glyph.
+                    const tight = height < 34;
+                    const width = `calc((100% - 0.5rem) / ${columns})`;
                     return (
                       <button
                         key={`${it.item_type}-${it.id}`}
                         type="button"
                         onClick={() => onOpen(it)}
-                        className="absolute inset-x-1 overflow-hidden rounded-lg border-l-2 px-2 py-1 text-left"
+                        title={it.title ?? "Sin título"}
+                        className="absolute overflow-hidden rounded-lg border-l-2 px-1.5 py-0.5 text-left ring-1 ring-background transition hover:z-10 hover:brightness-110"
                         style={{
                           top: (startMinutes(it) / 60) * HOUR_PX,
-                          height: durationPx(it),
+                          height,
+                          left: `calc(0.25rem + ${column} * ${width})`,
+                          width,
                           borderColor: meta.dot,
                           background: `color-mix(in oklab, ${meta.dot} 16%, var(--color-card))`,
                         }}
                       >
-                        <span className="block truncate text-xs font-semibold text-foreground">
+                        <span className="block truncate text-[11.5px] font-semibold leading-tight text-foreground">
                           {it.title ?? "Sin título"}
                         </span>
-                        <span className="block truncate text-[11px] text-muted-foreground">
-                          {timeLabel(it)}
-                        </span>
+                        {!tight && (
+                          <span className="block truncate text-[10.5px] leading-tight text-muted-foreground">
+                            {timeLabel(it)}
+                          </span>
+                        )}
                       </button>
                     );
                   })}
