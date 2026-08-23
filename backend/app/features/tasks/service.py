@@ -70,7 +70,7 @@ def _hydrate_related_labels(tenant_id: str, rows: list[dict]) -> None:
     # property" — so its label is built from the two ids it carries. The two
     # name maps above are reused rather than re-queried; anything a deal points
     # at that is not already in them is fetched in one extra pair of reads.
-    deals = _deal_labels(client, opportunity_ids, properties, contacts)
+    deals = _deal_labels(client, tenant_id, opportunity_ids, properties, contacts)
 
     for row in rows:
         related = row.get("related") or {}
@@ -82,7 +82,11 @@ def _hydrate_related_labels(tenant_id: str, rows: list[dict]) -> None:
 
 
 def _deal_labels(
-    client, opportunity_ids: set[str], properties: dict[str, str], contacts: dict[str, str]
+    client,
+    tenant_id: str,
+    opportunity_ids: set[str],
+    properties: dict[str, str],
+    contacts: dict[str, str],
 ) -> dict[str, str]:
     """`{opportunity_id: "Ana Pérez · Depto Macul"}`."""
     if not opportunity_ids:
@@ -94,6 +98,7 @@ def _deal_labels(
             rows += (
                 client.table("opportunities")
                 .select("id, person_id, property_id, pipeline_stage")
+                .eq("tenant_id", str(tenant_id))
                 .in_("id", ids[i : i + _LABEL_CHUNK])
                 .execute()
                 .data
@@ -114,7 +119,15 @@ def _deal_labels(
             if not want:
                 continue
             try:
-                got = client.table(table).select(f"id, {field}").in_("id", list(want)).execute().data or []
+                got = (
+                    client.table(table)
+                    .select(f"id, {field}")
+                    .eq("tenant_id", str(tenant_id))
+                    .in_("id", list(want))
+                    .execute()
+                    .data
+                    or []
+                )
             except Exception:  # noqa: BLE001
                 continue
             sink.update({r["id"]: r.get(field) for r in got if r.get(field)})

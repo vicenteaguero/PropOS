@@ -19,6 +19,9 @@ class _Table:
         self._fields = fields
         return self
 
+    def eq(self, _col, _val):
+        return self
+
     def in_(self, _col, ids):
         self._ids = ids
         return self
