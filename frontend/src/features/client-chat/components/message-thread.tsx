@@ -23,6 +23,7 @@ import { IdentifyBanner } from "./identify-banner";
 import { TemplatePicker } from "./template-picker";
 import { useConversationMessages, useSendMessage, useTakeover } from "../hooks/use-client-chat";
 import type { ClientConversation, ClientMessage, DeliveryStatus } from "../types";
+import { dayLabel } from "@shared/utils/relative-time";
 
 interface Props {
   conversation: ClientConversation;
@@ -39,7 +40,6 @@ interface Props {
   onBack?: () => void;
 }
 
-const DAY = new Intl.DateTimeFormat("es-CL", { weekday: "long", day: "numeric", month: "long" });
 const TIME = new Intl.DateTimeFormat("es-CL", {
   hour: "2-digit",
   minute: "2-digit",
@@ -47,16 +47,6 @@ const TIME = new Intl.DateTimeFormat("es-CL", {
 });
 
 const dayKey = (iso: string) => iso.slice(0, 10);
-
-/** `Hoy` · `Ayer` · `lunes, 18 de agosto`. */
-function daySeparator(iso: string, now = new Date()): string {
-  const d = new Date(iso);
-  const midnight = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
-  const days = Math.round((midnight(now) - midnight(d)) / 86_400_000);
-  if (days <= 0) return "Hoy";
-  if (days === 1) return "Ayer";
-  return DAY.format(d);
-}
 
 /**
  * Delivery, as WhatsApp draws it. `delivery_status` was printed raw beside a
@@ -189,7 +179,7 @@ export function MessageThread({ conversation, title, subtitle, onBack }: Props) 
                 them but a clock time that made it look like minutes. */}
             <div className="flex justify-center py-2">
               <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold text-muted-foreground first-letter:uppercase">
-                {daySeparator(items[0]!.created_at)}
+                {dayLabel(new Date(items[0]!.created_at))}
               </span>
             </div>
             <div className="space-y-1.5">

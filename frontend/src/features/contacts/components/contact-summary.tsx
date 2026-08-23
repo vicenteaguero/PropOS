@@ -4,23 +4,8 @@ import { Pill } from "@shared/ui";
 import { formatClp } from "@shared/utils/currency";
 import { label } from "@shared/lib/labels";
 import { stageDot, STAGE_LABELS } from "@features/opportunities/types";
-import { timeAgoInline } from "@shared/utils/relative-time";
+import { timeAgoInline, whenLabelInline } from "@shared/utils/relative-time";
 import { useContactOverview } from "../hooks/use-contacts";
-
-function eventWhen(iso: string): string {
-  const at = new Date(iso);
-  const today = new Date();
-  const sameDay = at.toDateString() === today.toDateString();
-  // `hour12: false` explicitly: es-CL defaults to a twelve-hour clock, so this
-  // read "04:15 p. m." while every other timestamp in the app reads 16:15.
-  const time = at.toLocaleTimeString("es-CL", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
-  if (sameDay) return `hoy ${time}`;
-  return `${at.toLocaleDateString("es-CL", { weekday: "short", day: "numeric", month: "short" })} ${time}`;
-}
 
 /** One fact per line, label left, value right. */
 function Fact({
@@ -68,7 +53,7 @@ export function ContactSummary({ contactId, role }: { contactId: string; role: s
         )}
         {next && (
           <Fact icon={<CalendarClock className="size-4" strokeWidth={1.8} />}>
-            {label("eventKind", next.kind)} {eventWhen(next.starts_at)}
+            {label("eventKind", next.kind)} {whenLabelInline(next.starts_at)}
             {next.property_title ? ` · ${next.property_title}` : ""}
           </Fact>
         )}
