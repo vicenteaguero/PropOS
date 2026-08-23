@@ -57,7 +57,19 @@ export function AgentOverlay({ onClose, initialMode = "chat" }: Props) {
   // band above and below a black panel.
   useEffect(() => {
     overrideThemeColor(PANEL_BG);
-    return () => overrideThemeColor(null);
+    // The root's own paint, too. Everything above is a covering layer, and a
+    // covering layer can only be as correct as its geometry; the root canvas is
+    // what the compositor shows wherever no box happens to land — including the
+    // strip iOS opens between the visible viewport and the keyboard. Painting
+    // it the panel's colour makes the worst case a black gap instead of the
+    // broker's own Inicio page peering through.
+    const root = document.documentElement;
+    const previous = root.style.backgroundColor;
+    root.style.backgroundColor = PANEL_BG;
+    return () => {
+      overrideThemeColor(null);
+      root.style.backgroundColor = previous;
+    };
   }, []);
   const sessionQuery = useAgentSession();
   const sessionId = sessionQuery.data?.id;
@@ -116,10 +128,18 @@ export function AgentOverlay({ onClose, initialMode = "chat" }: Props) {
           overscroll can lift the layout viewport's edge above the visible one
           and leave an uncovered strip. Extending past both edges is correct
           before the store's first write, correct without `visualViewport`, and
-          correct at every frame of the animation. */}
+          correct at every frame of the animation.
+
+          Sized in `lvh`, not in percentages. A percentage resolves against the
+          initial containing block, and in an installed iOS PWA the keyboard
+          resizes that block — so `-top-1/2/-bottom-1/2` shrank along with the
+          page and stopped covering the strip the keyboard was about to occupy.
+          `lvh` is the LARGE viewport: fixed to the window at its tallest, never
+          moved by the keyboard or by browser chrome, which is the only unit
+          here that means what this element needs it to mean. */}
       <div
         aria-hidden
-        className="fixed inset-x-0 -top-1/2 -bottom-1/2 z-50 bg-[#0A0A0A] md:bg-overlay/50 md:backdrop-blur-md"
+        className="fixed inset-x-0 top-[-50lvh] z-50 h-[200lvh] bg-[#0A0A0A] md:bg-overlay/50 md:backdrop-blur-md"
       />
       {/* And this one is pinned to the VISIBLE box, so the header and the
           composer stay where the eye is instead of scrolling off the top when
