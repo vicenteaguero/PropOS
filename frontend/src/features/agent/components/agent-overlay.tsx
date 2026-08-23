@@ -23,12 +23,35 @@ interface Props {
 /**
  * The panel's own background, for the window chrome.
  *
- * Three places have to agree on this value — the backdrop, the panel and the
- * `theme-color` meta — and Tailwind arbitrary values are static strings, so the
- * two class names carry the literal and this constant carries it for the one
- * consumer that is real JS. Change all three together.
+ * It used to be a hardcoded `#0A0A0A`, which is not any colour PropOS actually
+ * uses: the app's dark background is `#0c0e12` tinted with the workspace hue,
+ * so the panel sat as a visibly cooler black against it and the seam showed
+ * wherever the two met. The panel now paints `bg-background` inside its own
+ * forced-dark subtree, which picks up the tenant tint for free.
+ *
+ * The one consumer that needs a real string is `theme-color`, which cannot take
+ * a `color-mix()`. So it is read off the rendered element instead of being
+ * duplicated here — one source of truth, and it cannot drift again.
  */
-const PANEL_BG = "#0A0A0A";
+function useChromeColor(el: HTMLElement | null): void {
+  useEffect(() => {
+    if (!el) return;
+    const colour = getComputedStyle(el).backgroundColor;
+    if (!colour) return;
+    overrideThemeColor(colour);
+    // The root canvas, too. Everything above is a covering layer, and a
+    // covering layer can only be as correct as its geometry; the root is what
+    // the compositor shows wherever no box happens to land — including the
+    // strip iOS opens between the visible viewport and the keyboard.
+    const root = document.documentElement;
+    const previous = root.style.backgroundColor;
+    root.style.backgroundColor = colour;
+    return () => {
+      overrideThemeColor(null);
+      root.style.backgroundColor = previous;
+    };
+  }, [el]);
+}
 
 const SUGGESTIONS = [
   "Resume mis pendientes de hoy",
@@ -55,22 +78,8 @@ export function AgentOverlay({ onClose, initialMode = "chat" }: Props) {
   // The panel forces its own dark palette, so the PWA's status bar and bottom
   // safe area have to follow it — otherwise a light-theme broker gets a white
   // band above and below a black panel.
-  useEffect(() => {
-    overrideThemeColor(PANEL_BG);
-    // The root's own paint, too. Everything above is a covering layer, and a
-    // covering layer can only be as correct as its geometry; the root canvas is
-    // what the compositor shows wherever no box happens to land — including the
-    // strip iOS opens between the visible viewport and the keyboard. Painting
-    // it the panel's colour makes the worst case a black gap instead of the
-    // broker's own Inicio page peering through.
-    const root = document.documentElement;
-    const previous = root.style.backgroundColor;
-    root.style.backgroundColor = PANEL_BG;
-    return () => {
-      overrideThemeColor(null);
-      root.style.backgroundColor = previous;
-    };
-  }, []);
+  const [panel, setPanel] = useState<HTMLElement | null>(null);
+  useChromeColor(panel);
   const sessionQuery = useAgentSession();
   const sessionId = sessionQuery.data?.id;
   const messagesQuery = useAgentMessages(sessionId);
@@ -139,7 +148,11 @@ export function AgentOverlay({ onClose, initialMode = "chat" }: Props) {
           here that means what this element needs it to mean. */}
       <div
         aria-hidden
-        className="fixed inset-x-0 top-[-50lvh] z-50 h-[200lvh] bg-[#0A0A0A] md:bg-overlay/50 md:backdrop-blur-md"
+        // `dark` on this element, not only on the panel: the class defines the
+        // palette custom properties on whatever carries it, so `bg-background`
+        // right here resolves to the app's dark background even when the broker
+        // is in light mode.
+        className="dark fixed inset-x-0 top-[-50lvh] z-50 h-[200lvh] bg-background md:bg-overlay/50 md:backdrop-blur-md"
       />
       {/* And this one is pinned to the VISIBLE box, so the header and the
           composer stay where the eye is instead of scrolling off the top when
@@ -152,7 +165,10 @@ export function AgentOverlay({ onClose, initialMode = "chat" }: Props) {
           className="absolute inset-0 hidden cursor-default md:block"
         />
         {/* Mobile: full-screen. Desktop: docked right-hand panel (slide-over). */}
-        <div className="dark relative flex h-full w-full flex-col overflow-hidden bg-[#0A0A0A] text-white duration-300 animate-in fade-in max-md:slide-in-from-bottom-4 md:w-[26rem] md:slide-in-from-right md:border-l md:border-white/10 md:shadow-2xl">
+        <div
+          ref={setPanel}
+          className="dark relative flex h-full w-full flex-col overflow-hidden bg-background text-white duration-300 animate-in fade-in max-md:slide-in-from-bottom-4 md:w-[26rem] md:slide-in-from-right md:border-l md:border-white/10 md:shadow-2xl"
+        >
           {/* header */}
           <div
             className={`flex shrink-0 items-center justify-between px-4 pt-[calc(var(--safe-top)+1rem)] pl-[calc(var(--safe-left)+1rem)] pr-[calc(var(--safe-right)+1rem)] pb-3 md:pt-4 ${
