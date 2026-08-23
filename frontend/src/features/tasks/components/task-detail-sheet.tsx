@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ImagePlus, Link as LinkIcon, Loader2, Trash2, X } from "lucide-react";
+import { ImagePlus, Link as LinkIcon, Loader2, Pencil, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Chip, Chips, Field, Pill, ResponsiveSheet, SheetActions } from "@shared/ui";
+import { Chip, Chips, LinkInput, Pill, ResponsiveSheet, SheetActions } from "@shared/ui";
 import { ConfirmDialog } from "@shared/components/confirm-dialog/confirm-dialog";
+import { PhotoViewer } from "@shared/components/photo-viewer/photo-viewer";
 import { initials } from "@shared/utils/format";
+import { shortName, shortPropertyTitle } from "@shared/utils/display-name";
+import { dueText } from "@shared/utils/relative-time";
 import { useTenantMembers } from "@shared/hooks/use-tenant-members";
 import { AudioPlayer, EntityLinkRow } from "@shared/ui";
 import { extractLinks, linkLabel } from "@shared/lib/links";
@@ -55,7 +58,14 @@ export function TaskDetailSheet({
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState(0);
   const [owner, setOwner] = useState<string | null>(null);
+  const [links, setLinks] = useState<string[]>([]);
   const [confirming, setConfirming] = useState(false);
+  // Read first. Opening straight into a form makes every glance at a task an
+  // edit session — one stray keystroke and the title has changed — and it puts
+  // the two things people open a task FOR (the photo, the link) below three
+  // text inputs.
+  const [editing, setEditing] = useState(false);
+  const [lightbox, setLightbox] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const upload = useUploadTaskAttachments();
   const removeAttachment = useRemoveTaskAttachment();
@@ -66,23 +76,27 @@ export function TaskDetailSheet({
     setDescription(task.description ?? "");
     setPriority(task.priority ?? 0);
     setOwner(task.owner_user);
+    setLinks(task.related?.links ?? extractLinks(task.description));
+    setEditing(false);
   }, [task]);
 
   if (!task) return null;
 
-  // Links live in the detail text — this just makes the ones already there
-  // tappable, instead of asking the user to select and copy a URL on a phone.
-  const links = extractLinks(description);
   const attachments = task.attachments ?? [];
   const photos = attachments.filter((a) => a.role === "PHOTO");
   const audio = attachments.filter((a) => a.role === "AUDIO");
   const properties = task.related_labels?.properties ?? [];
   const people = task.related_labels?.people ?? [];
+  const deals = task.related_labels?.opportunities ?? [];
+  const savedLinks = task.related?.links ?? extractLinks(task.description);
   const dirty =
     title !== task.title ||
     description !== (task.description ?? "") ||
     priorityBucket(priority) !== priorityBucket(task.priority) ||
-    owner !== task.owner_user;
+    owner !== task.owner_user ||
+    links.join("|") !== savedLinks.join("|");
+  const priorityLabel = PRIORITIES.find((p) => p.value === priorityBucket(priority))?.label;
+  const ownerMember = members?.find((m) => m.id === owner) ?? null;
 
   const go = (path: string) => {
     onOpenChange(false);
@@ -98,138 +112,144 @@ export function TaskDetailSheet({
         desktopClassName="max-w-lg"
       >
         <div className="mt-2 space-y-4">
-          <Field label="Título">
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} />
-          </Field>
-
-          <Field label="Detalle">
-            <Textarea
-              rows={3}
-              value={description}
-              placeholder="Notas, links, lo que haga falta…"
-              onChange={(e) => setDescription(e.target.value)}
+          {/* Title first, then state, then the things you came for. In edit
+              mode the same order holds — placeholders instead of labels above
+              every field, the way the event sheet does it. */}
+          {editing ? (
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="¿Qué hay que hacer?"
+              aria-label="Título"
+              className="text-[16px] font-semibold"
             />
-          </Field>
-
-          {links.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {links.map((href) => (
-                <a
-                  key={href}
-                  href={href}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex max-w-full items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-[12.5px] font-medium text-foreground"
-                >
-                  <LinkIcon className="size-3 shrink-0" strokeWidth={2} />
-                  <span className="truncate">{linkLabel(href)}</span>
-                </a>
-              ))}
-            </div>
+          ) : (
+            <h2 className="text-[19px] font-bold leading-snug tracking-tight text-foreground">
+              {title}
+            </h2>
           )}
 
-          <div>
-            <p className="mb-1.5 text-[13px] font-medium text-muted-foreground">Prioridad</p>
-            <Chips>
-              {PRIORITIES.map((p) => (
-                <Chip
-                  key={p.value}
-                  active={priorityBucket(priority) === p.value}
-                  onClick={() => setPriority(p.value)}
-                >
-                  {p.label}
-                </Chip>
-              ))}
-            </Chips>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {task.status === "DONE" ? (
+              <Pill tone="success">Completada</Pill>
+            ) : (
+              task.due_at && <Pill tone="neutral">{dueText(task.due_at)}</Pill>
+            )}
+            {!editing && priorityLabel && priorityBucket(priority) > 0 && (
+              <Pill tone={priorityBucket(priority) === 2 ? "destructive" : "warning"}>
+                {priorityLabel}
+              </Pill>
+            )}
+            {!editing && ownerMember && (
+              <Pill tone="neutral">{shortName(ownerMember.full_name, "Sin nombre")}</Pill>
+            )}
           </div>
 
-          {members && members.length > 1 && (
-            <div>
-              <p className="mb-1.5 text-[13px] font-medium text-muted-foreground">Responsable</p>
-              <Chips>
-                <Chip active={!owner} onClick={() => setOwner(null)}>
-                  Sin asignar
-                </Chip>
-                {members.map((m) => (
-                  <Chip key={m.id} active={owner === m.id} onClick={() => setOwner(m.id)}>
-                    <Avatar size="sm" className="mr-1.5 size-4">
-                      {m.avatar_url && <AvatarImage src={m.avatar_url} alt="" />}
-                      <AvatarFallback className="text-[9px]">
-                        {initials(m.full_name ?? "?")}
-                      </AvatarFallback>
-                    </Avatar>
-                    {m.full_name ?? "Sin nombre"}
-                  </Chip>
+          {/* Links, before the prose. They are the reason a task gets opened on
+              a phone more often than the description is. */}
+          {editing ? (
+            <LinkInput value={links} onChange={setLinks} />
+          ) : (
+            links.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {links.map((href) => (
+                  <a
+                    key={href}
+                    href={href}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="inline-flex max-w-full items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-[12.5px] font-medium text-foreground"
+                  >
+                    <LinkIcon className="size-3 shrink-0" strokeWidth={2} />
+                    <span className="truncate">{linkLabel(href)}</span>
+                  </a>
                 ))}
-              </Chips>
-            </div>
+              </div>
+            )
           )}
 
           {/* Photos and voice memos. A task used to be a title and a date, so
               "the photo of the damp patch" had to live in a note that merely
               mentioned the task by name. */}
-          <div>
-            <div className="mb-1.5 flex items-center justify-between">
-              <p className="text-[13px] font-medium text-muted-foreground">Adjuntos</p>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="gap-1.5 rounded-full"
-                onClick={() => fileRef.current?.click()}
-                disabled={upload.isPending}
-              >
-                {upload.isPending ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <ImagePlus className="size-4" strokeWidth={1.9} />
-                )}
-                Agregar
-              </Button>
+          {(photos.length > 0 || audio.length > 0 || editing) && (
+            <div>
+              {editing && (
+                <div className="mb-1.5 flex items-center justify-between">
+                  <p className="text-[13px] font-medium text-muted-foreground">Adjuntos</p>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="gap-1.5 rounded-full"
+                    onClick={() => fileRef.current?.click()}
+                    disabled={upload.isPending}
+                  >
+                    {upload.isPending ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <ImagePlus className="size-4" strokeWidth={1.9} />
+                    )}
+                    Agregar
+                  </Button>
+                </div>
+              )}
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                aria-label="Adjuntar fotos"
+                onChange={(e) => {
+                  const picked = Array.from(e.target.files ?? []);
+                  if (picked.length) upload.mutate({ taskId: task.id, files: picked });
+                  e.target.value = "";
+                }}
+              />
+              {photos.length > 0 && (
+                <div className="flex gap-2 overflow-x-auto">
+                  {photos.map((a) => (
+                    <span key={a.id} className="relative shrink-0">
+                      {/* Opens the photo. It used to be an inert 80px square,
+                          so the one thing an attachment is for — looking at it
+                          — was the one thing you could not do. */}
+                      <button
+                        type="button"
+                        onClick={() => setLightbox(a.url)}
+                        aria-label={a.title ? `Ver ${a.title}` : "Ver foto"}
+                      >
+                        <img
+                          src={a.thumb_url ?? a.url}
+                          alt={a.title ?? ""}
+                          loading="lazy"
+                          className="size-20 rounded-lg object-cover"
+                        />
+                      </button>
+                      {editing && (
+                        <button
+                          type="button"
+                          aria-label="Quitar adjunto"
+                          onClick={() =>
+                            removeAttachment.mutate({ taskId: task.id, assetId: a.id })
+                          }
+                          className="absolute right-1 top-1 flex size-6 items-center justify-center rounded-full bg-black/60 text-white"
+                        >
+                          <X className="size-3" strokeWidth={2.4} />
+                        </button>
+                      )}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {audio.map((a) => (
+                <AudioPlayer key={a.id} src={a.url} />
+              ))}
+              {editing && photos.length === 0 && audio.length === 0 && (
+                <p className="text-[12.5px] text-faint">Sin fotos todavía.</p>
+              )}
             </div>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              multiple
-              className="hidden"
-              aria-label="Adjuntar fotos"
-              onChange={(e) => {
-                const picked = Array.from(e.target.files ?? []);
-                if (picked.length) upload.mutate({ taskId: task.id, files: picked });
-                e.target.value = "";
-              }}
-            />
-            {photos.length > 0 && (
-              <div className="flex gap-2 overflow-x-auto">
-                {photos.map((a) => (
-                  <span key={a.id} className="relative shrink-0">
-                    <img
-                      src={a.thumb_url ?? a.url}
-                      alt={a.title ?? ""}
-                      loading="lazy"
-                      className="size-20 rounded-lg object-cover"
-                    />
-                    <button
-                      type="button"
-                      aria-label="Quitar adjunto"
-                      onClick={() => removeAttachment.mutate({ taskId: task.id, assetId: a.id })}
-                      className="absolute right-1 top-1 flex size-6 items-center justify-center rounded-full bg-black/60 text-white"
-                    >
-                      <X className="size-3" strokeWidth={2.4} />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
-            {audio.map((a) => (
-              <AudioPlayer key={a.id} src={a.url} />
-            ))}
-            {photos.length === 0 && audio.length === 0 && (
-              <p className="text-[12.5px] text-faint">Sin fotos todavía.</p>
-            )}
-          </div>
+          )}
 
-          {(properties.length > 0 || people.length > 0) && (
+          {(properties.length > 0 || people.length > 0 || deals.length > 0) && (
             <div>
               <p className="mb-1.5 text-[13px] font-medium text-muted-foreground">
                 Relacionado con
@@ -239,7 +259,7 @@ export function TaskDetailSheet({
                   <EntityLinkRow
                     key={p.id}
                     kind="PROPERTY"
-                    label={p.label}
+                    label={shortPropertyTitle(p.label)}
                     onClick={() => go(`/${role}/propiedades/${p.id}`)}
                   />
                 ))}
@@ -247,41 +267,135 @@ export function TaskDetailSheet({
                   <EntityLinkRow
                     key={p.id}
                     kind="CONTACT"
-                    label={p.label}
+                    label={shortName(p.label, "Sin nombre")}
                     onClick={() => go(`/${role}/personas/${p.id}`)}
+                  />
+                ))}
+                {deals.map((d) => (
+                  <EntityLinkRow
+                    key={d.id}
+                    kind="DEAL"
+                    label={d.label ?? "Negocio"}
+                    onClick={() => go(`/${role}/negocios/${d.id}`)}
                   />
                 ))}
               </div>
             </div>
           )}
 
-          {task.status === "DONE" && <Pill tone="success">Completada</Pill>}
+          {/* Description last: it is the least-read part of a task and the
+              tallest, so leading with it pushed everything else off screen. */}
+          {editing ? (
+            <Textarea
+              rows={3}
+              value={description}
+              placeholder="Notas, contexto, lo que haga falta…"
+              aria-label="Detalle"
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          ) : (
+            description.trim() && (
+              <p className="whitespace-pre-wrap text-[14px] leading-relaxed text-muted-foreground">
+                {description}
+              </p>
+            )
+          )}
+
+          {editing && (
+            <>
+              <div>
+                <p className="mb-1.5 text-[13px] font-medium text-muted-foreground">Prioridad</p>
+                <Chips>
+                  {PRIORITIES.map((p) => (
+                    <Chip
+                      key={p.value}
+                      active={priorityBucket(priority) === p.value}
+                      onClick={() => setPriority(p.value)}
+                    >
+                      {p.label}
+                    </Chip>
+                  ))}
+                </Chips>
+              </div>
+
+              {members && members.length > 1 && (
+                <div>
+                  <p className="mb-1.5 text-[13px] font-medium text-muted-foreground">
+                    Responsable
+                  </p>
+                  <Chips>
+                    <Chip active={!owner} onClick={() => setOwner(null)}>
+                      Sin asignar
+                    </Chip>
+                    {members.map((m) => (
+                      <Chip key={m.id} active={owner === m.id} onClick={() => setOwner(m.id)}>
+                        <Avatar size="sm" className="mr-1.5 size-4">
+                          {m.avatar_url && <AvatarImage src={m.avatar_url} alt="" />}
+                          <AvatarFallback className="text-[9px]">
+                            {initials(m.full_name ?? "?")}
+                          </AvatarFallback>
+                        </Avatar>
+                        {shortName(m.full_name, "Sin nombre")}
+                      </Chip>
+                    ))}
+                  </Chips>
+                </div>
+              )}
+            </>
+          )}
 
           <SheetActions>
-            <Button
-              variant="ghost"
-              className="text-destructive"
-              onClick={() => setConfirming(true)}
-            >
-              <Trash2 className="size-4" strokeWidth={1.8} /> Eliminar
-            </Button>
-            <Button
-              variant="ink"
-              disabled={!dirty || saving || !title.trim()}
-              onClick={() =>
-                onSave(task.id, {
-                  title: title.trim(),
-                  description: description.trim() || null,
-                  priority,
-                  owner_user: owner,
-                })
-              }
-            >
-              Guardar
-            </Button>
+            {editing ? (
+              <>
+                <Button
+                  variant="ghost"
+                  className="text-destructive sm:mr-auto"
+                  onClick={() => setConfirming(true)}
+                >
+                  <Trash2 className="size-4" strokeWidth={1.8} /> Eliminar
+                </Button>
+                <Button variant="ghost" onClick={() => setEditing(false)} disabled={saving}>
+                  Cancelar
+                </Button>
+                <Button
+                  variant="ink"
+                  disabled={!dirty || saving || !title.trim()}
+                  onClick={() => {
+                    onSave(task.id, {
+                      title: title.trim(),
+                      description: description.trim() || null,
+                      priority,
+                      owner_user: owner,
+                      // Merged, never replaced: `related` also carries the
+                      // property, person and deal links.
+                      related: { ...(task.related ?? {}), links },
+                    });
+                    setEditing(false);
+                  }}
+                >
+                  Guardar
+                </Button>
+              </>
+            ) : (
+              <Button variant="ink" onClick={() => setEditing(true)}>
+                <Pencil className="size-4" strokeWidth={1.9} /> Editar
+              </Button>
+            )}
           </SheetActions>
         </div>
       </ResponsiveSheet>
+
+      {/* The photo, full size. `PhotoViewer` is what the property gallery uses,
+          so a task photo behaves the same as every other photo in the app. */}
+      <PhotoViewer
+        open={!!lightbox}
+        onClose={() => setLightbox(null)}
+        slides={photos.map((a) => ({ src: a.url }))}
+        index={Math.max(
+          0,
+          photos.findIndex((a) => a.url === lightbox),
+        )}
+      />
 
       <ConfirmDialog
         open={confirming}
