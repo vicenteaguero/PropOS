@@ -2,6 +2,7 @@ import { WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DocumentKindPill } from "./document-kind-pill";
 import { DocumentThumb } from "./document-thumb";
+import { PriorityToggle } from "./priority-toggle";
 import { primaryAssignmentLabel } from "../lib/assignment-label";
 import type { DocumentItem } from "../types";
 
@@ -27,25 +28,34 @@ export function DocumentRow({
   // and the modified date were three facts nobody scans a list for.
   const where = primaryAssignmentLabel(doc);
   return (
-    <button
-      type="button"
-      onClick={() => onOpen(doc)}
+    // The star is a sibling of the row button, not a child: an interactive
+    // element nested inside another is invalid and unreachable by keyboard.
+    <div
       style={style}
       className={cn(
-        "flex items-center gap-3 border-b border-border px-4 text-left transition last:border-b-0 hover:bg-secondary/50",
+        "flex items-center border-b border-border pr-3 transition last:border-b-0 hover:bg-secondary/50",
         absolute ? "absolute left-0 right-0" : "w-full",
         doc.is_priority && "bg-warning/10",
       )}
     >
-      <DocumentThumb doc={doc} variant="rail" />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5 truncate text-[15px] font-semibold leading-tight text-foreground">
-          {doc.pin_offline && <WifiOff className="size-3.5 shrink-0 text-primary" />}
-          <span className="truncate">{doc.display_name}</span>
+      <button
+        type="button"
+        onClick={() => onOpen(doc)}
+        className="flex min-w-0 flex-1 items-center gap-3 py-3 pl-4 text-left"
+      >
+        <DocumentThumb doc={doc} variant="rail" />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 truncate text-[15px] font-semibold leading-tight text-foreground">
+            {doc.pin_offline && <WifiOff className="size-3.5 shrink-0 text-primary" />}
+            <span className="truncate">{doc.display_name}</span>
+          </div>
+          {where && (
+            <div className="mt-0.5 truncate text-[13px] text-muted-foreground">{where}</div>
+          )}
         </div>
-        {where && <div className="mt-0.5 truncate text-[13px] text-muted-foreground">{where}</div>}
-      </div>
-      <DocumentKindPill doc={doc} />
-    </button>
+        <DocumentKindPill doc={doc} />
+      </button>
+      <PriorityToggle doc={doc} className="ml-1 size-9" />
+    </div>
   );
 }
