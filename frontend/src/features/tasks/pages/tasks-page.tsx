@@ -14,7 +14,6 @@ import { es } from "date-fns/locale";
 import { Calendar, Flag, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { PageLayout } from "@shared/components/page-layout";
 import { createPortal } from "react-dom";
@@ -23,26 +22,27 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useTenantMembers } from "@shared/hooks/use-tenant-members";
 import { TaskDetailSheet } from "../components/task-detail-sheet";
 import {
-  TASK_ORDERS,
-  TASK_PRIORITY_FILTERS,
   matchesPriority,
   sortTasks,
   type TaskOrder,
   type TaskPriorityFilter,
 } from "../lib/task-order";
+import { type Period, type TaskScope } from "../lib/task-periods";
+import { TaskControls } from "../components/task-controls";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
 import {
   ActionIcon,
   Chip,
   Chips,
   ErrorState,
-  FieldGroup,
   FilterSelect,
+  LinkInput,
   PageSkeleton,
   Pill,
   ResponsiveSheet,
   Row,
   SectionLabel,
+  SheetActions,
   TOUCH_TARGET_HIT_AREA,
 } from "@shared/ui";
 import { toast } from "sonner";
@@ -88,6 +88,13 @@ const PRIORITY_OPTIONS: { value: number; label: string }[] = [
   { value: 2, label: "Alta" },
 ];
 
+/** Minutes before the due date. Same ladder the event sheet offers. */
+const TASK_REMINDER_OFFSETS: { value: number; label: string }[] = [
+  { value: 15, label: "15 min antes" },
+  { value: 60, label: "1 hora antes" },
+  { value: 24 * 60, label: "1 día antes" },
+];
+
 /** Priority pill: backend orders desc, higher = more urgent. 0 → none. */
 function priorityPill(priority: number) {
   if (priority >= 2) return <Pill tone="destructive">Alta</Pill>;
@@ -120,7 +127,7 @@ function BucketSection({
 }) {
   return (
     <section>
-      <SectionLabel className="mb-2 px-5 lg:px-0">{bucket}</SectionLabel>
+      <SectionLabel className="mb-2 px-[var(--page-x)] lg:px-0">{bucket}</SectionLabel>
       <div className="overflow-hidden">
         {tasks.map((t, i) => {
           const due = t.due_at ? dueLabel(t.due_at) : null;
@@ -182,17 +189,6 @@ function BucketSection({
 
 /** Urgency of a single task — drives the checkbox ring + due-label color. */
 type Urgency = "overdue" | "today" | "tomorrow" | "week" | "nextweek" | "nodate";
-
-/** Period bucket a task lands in (overdue is folded into "today"). */
-type Period = "today" | "tomorrow" | "week" | "nextweek" | "nodate";
-
-const PERIOD_META: { id: Period; label: string; title: string }[] = [
-  { id: "today", label: "Hoy", title: "Hoy" },
-  { id: "tomorrow", label: "Mañana", title: "Mañana" },
-  { id: "week", label: "Esta semana", title: "Esta semana" },
-  { id: "nextweek", label: "Próxima", title: "Próxima semana" },
-  { id: "nodate", label: "Sin fecha", title: "Sin fecha" },
-];
 
 /** Inline color for the checkbox ring + calendar icon, keyed by urgency. */
 const URGENCY_COLOR: Record<Urgency, string> = {
@@ -324,7 +320,9 @@ function MobileTaskRow({
   const highPriority = t.priority >= 2;
 
   return (
-    <div className={`flex items-center gap-3 px-5 py-3 ${divider ? "border-b border-border" : ""}`}>
+    <div
+      className={`flex items-center gap-3 px-[var(--page-x)] py-3 ${divider ? "border-b border-border" : ""}`}
+    >
       <TaskCheck done={done} color={ringColor} onToggle={() => onComplete(t.id)} />
 
       {/* The row opens the task. Deleting used to live out here, one mis-tap
@@ -381,7 +379,7 @@ function AddTaskRow({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full items-center gap-3 px-5 py-3 text-left transition active:scale-[0.99]"
+      className="flex w-full items-center gap-3 px-[var(--page-x)] py-3 text-left transition active:scale-[0.99]"
     >
       <span
         className="flex shrink-0 items-center justify-center rounded-full border-2 border-dashed text-faint"
@@ -393,8 +391,6 @@ function AddTaskRow({ onClick }: { onClick: () => void }) {
     </button>
   );
 }
-
-type TaskScope = "mine" | "team";
 
 export function TasksPage() {
   const { user } = useAuth();
@@ -438,7 +434,10 @@ export function TasksPage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [dueAt, setDueAt] = useState("");
-  const [remindAt, setRemindAt] = useState("");
+  // Minutes before the due date, not an absolute time: moving the due date
+  // used to leave the reminder ringing on the old one.
+  const [remindOffset, setRemindOffset] = useState<number | null>(null);
+  const [links, setLinks] = useState<string[]>([]);
   const [priority, setPriority] = useState(0);
   const [link, setLink] = useState<TaskLink | null>(null);
   // Bumped on reset so the entity picker drops its internal mode + query.
@@ -481,17 +480,24 @@ export function TasksPage() {
     setTitle("");
     setDescription("");
     setDueAt("");
-    setRemindAt("");
+    setRemindOffset(null);
     setPriority(0);
     setLink(null);
+    setLinks([]);
     setFormKey((k) => k + 1);
   };
 
-  /** Picking a due date pre-fills the reminder so the task actually notifies. */
+  /** Setting a due date turns the reminder on, since that is what it is for. */
   const handleDueChange = (value: string) => {
-    if (!remindAt || remindAt === dueAt) setRemindAt(value);
+    if (value && remindOffset === null) setRemindOffset(60);
     setDueAt(value);
   };
+
+  /** The reminder, resolved against whatever the due date currently is. */
+  const remindAtIso = (): string | null =>
+    !dueAt || remindOffset === null
+      ? null
+      : new Date(new Date(dueAt).getTime() - remindOffset * 60_000).toISOString();
 
   const submit = async () => {
     if (!title.trim()) {
@@ -505,7 +511,7 @@ export function TasksPage() {
         description: description.trim() || null,
         priority,
         due_at: dueAt ? new Date(dueAt).toISOString() : null,
-        related: linkToRelated(link),
+        related: { ...(linkToRelated(link) ?? {}), ...(links.length ? { links } : {}) },
         // Claim it. Without an owner a new task is invisible to the "Mías"
         // filter that just shipped, and reassigning is one tap in the sheet.
         owner_user: user?.id ?? null,
@@ -518,12 +524,13 @@ export function TasksPage() {
     // The reminder is a separate row: `TaskCreate` carries no `remind_at`, so
     // without this second call the task never reaches the push dispatcher.
     let reminderFailed = false;
+    const remindAt = remindAtIso();
     if (remindAt) {
       try {
         await createReminder.mutateAsync({
           target_table: "tasks",
           target_row_id: task.id,
-          remind_at: new Date(remindAt).toISOString(),
+          remind_at: remindAt,
           message: task.title,
         });
       } catch {
@@ -569,7 +576,6 @@ export function TasksPage() {
     (t) => periodOf(t) === period && !periodTasks.some((p) => p.id === t.id),
   );
   const todayOnly = sortTasks([...openInPeriod, ...doneInPeriod], order);
-  const periodTitle = PERIOD_META.find((p) => p.id === period)!.title;
   const subtitle = periodSubtitle(period);
 
   return (
@@ -615,79 +621,32 @@ export function TasksPage() {
            * Mobile: Todoist × Uber time view — period chips + section.
            * ---------------------------------------------------------- */}
           <div className="pb-6 lg:hidden">
-            {/* A scrolling strip of chips put half the periods off screen with
-                no sign the rest existed. `FilterSelect` states the current
-                choice in one line and opens as a sheet under a thumb — and it
-                leaves room beside it for whose tasks these are. */}
-            <div className="flex items-center gap-2 px-5 pb-3 pt-1">
-              <FilterSelect
-                label="Tareas de"
-                value={scope}
-                allLabel={undefined}
-                options={[
-                  { value: "mine", label: "Mías" },
-                  { value: "team", label: "Todo el equipo" },
-                ]}
-                onChange={(v: string | null) => setScope((v as TaskScope) ?? "mine")}
-              />
-              <div className="min-w-0 flex-1">
-                <FilterSelect
-                  label="Cuándo"
-                  value={period}
-                  options={PERIOD_META.filter(
-                    (p) => p.id !== "nodate" || periodCount("nodate") > 0,
-                  ).map((p) => ({
-                    value: p.id,
-                    label: p.label,
-                    sub: periodCount(p.id) ? `${periodCount(p.id)} tareas` : "Sin tareas",
-                  }))}
-                  onChange={(v: string | null) => setPeriod((v as Period) ?? "today")}
-                />
-              </div>
-            </div>
+            <TaskControls
+              scope={scope}
+              onScope={setScope}
+              period={period}
+              onPeriod={setPeriod}
+              periodCount={periodCount}
+              priority={priorityFilter}
+              onPriority={setPriorityFilter}
+              order={order}
+              onOrder={setOrder}
+              className="px-[var(--page-x)] pb-2.5 pt-1"
+            />
 
-            {/* Priority was visible on every row and actionable from the sheet,
-                but the list could neither order nor narrow by it — so a column
-                of "P1 · Alta" badges was decoration. */}
-            <div className="flex items-center gap-2 px-5 pb-3">
-              <FilterSelect
-                label="Prioridad"
-                value={priorityFilter === "all" ? null : priorityFilter}
-                allLabel="Todas"
-                options={TASK_PRIORITY_FILTERS.filter((f) => f.value !== "all").map((f) => ({
-                  value: f.value,
-                  label: f.label,
-                }))}
-                onChange={(v: string | null) =>
-                  setPriorityFilter((v as TaskPriorityFilter) ?? "all")
-                }
-              />
-              <div className="min-w-0 flex-1">
-                <FilterSelect
-                  label="Ordenar"
-                  value={order}
-                  options={TASK_ORDERS.map((o) => ({
-                    value: o.value,
-                    label: o.label,
-                    sub: o.sub,
-                  }))}
-                  onChange={(v: string | null) => setOrder((v as TaskOrder) ?? "due")}
-                />
+            {/* Only the date range. The period's NAME is on the segmented
+                control directly above, and a 22px heading repeating it cost a
+                whole row to say the word you had just tapped. */}
+            {subtitle && (
+              <div className="px-[var(--page-x)] pb-1.5">
+                <span className="text-[13px] text-faint">{subtitle}</span>
               </div>
-            </div>
-
-            {/* Big period title + date-range subtext. */}
-            <div className="flex items-baseline gap-2.5 px-5 pb-1.5">
-              <h2 className="text-[22px] font-bold tracking-tight text-foreground">
-                {periodTitle}
-              </h2>
-              {subtitle && <span className="text-[13px] text-faint">{subtitle}</span>}
-            </div>
+            )}
 
             {/* Overdue sub-section, only inside "Hoy". */}
             {period === "today" && overdue.length > 0 && (
               <div className="mb-1">
-                <div className="px-5 pt-2.5 pb-1">
+                <div className="px-[var(--page-x)] pb-1 pt-2.5">
                   <span className="text-[13.5px] font-bold text-destructive">Atrasadas</span>
                 </div>
                 {overdue.map((t, i) => (
@@ -722,7 +681,7 @@ export function TasksPage() {
 
             {/* Per-period empty states (overdue still counts for "Hoy"). */}
             {todayOnly.length === 0 && !(period === "today" && overdue.length > 0) && (
-              <div className="px-5 py-8 text-center text-sm text-faint">
+              <div className="px-[var(--page-x)] py-8 text-center text-sm text-faint">
                 {period === "today" ? "Todo al día 🎉" : "Sin tareas · disfruta 🎉"}
               </div>
             )}
@@ -733,53 +692,42 @@ export function TasksPage() {
           {/* ---------------------------------------------------------- *
            * Desktop: two columns — near-term left, later right. (unchanged)
            * ---------------------------------------------------------- */}
-          {/* The same controls as the phone. This used to be a chip strip with
-              no scope switch, no priority filter and no ordering — so the
-              laptop, where there is the most room for them, had the fewest. */}
-          <div className="hidden flex-wrap items-center gap-2 px-8 pb-5 lg:flex">
-            <FilterSelect
-              label="Tareas de"
-              value={scope}
-              options={[
-                { value: "mine", label: "Mías" },
-                { value: "team", label: "Todo el equipo" },
-              ]}
-              onChange={(v: string | null) => setScope((v as TaskScope) ?? "mine")}
+          {/* The same component the phone renders — not a second, wordier copy.
+              The laptop used to carry `FilterSelect`s spelling out "Prioridad:
+              Todas · Ordenar: Vencimiento" beside a chip strip, which is the
+              screen with the most room showing the least usable version. */}
+          <div className="hidden flex-col gap-2 px-8 pb-5 lg:flex">
+            <TaskControls
+              scope={scope}
+              onScope={setScope}
+              period={period}
+              onPeriod={setPeriod}
+              periodCount={periodCount}
+              priority={priorityFilter}
+              onPriority={setPriorityFilter}
+              order={order}
+              onOrder={setOrder}
             />
-            <FilterSelect
-              label="Prioridad"
-              value={priorityFilter === "all" ? null : priorityFilter}
-              allLabel="Todas"
-              options={TASK_PRIORITY_FILTERS.filter((f) => f.value !== "all").map((f) => ({
-                value: f.value,
-                label: f.label,
-              }))}
-              onChange={(v: string | null) => setPriorityFilter((v as TaskPriorityFilter) ?? "all")}
-            />
-            <FilterSelect
-              label="Ordenar"
-              value={order}
-              options={TASK_ORDERS.map((o) => ({ value: o.value, label: o.label, sub: o.sub }))}
-              onChange={(v: string | null) => setOrder((v as TaskOrder) ?? "due")}
-            />
-            <Chips className="min-w-0 flex-1">
-              {FILTERS.filter((f) => f.id === "all" || grouped.has(f.id)).map((f) => (
-                <Chip
-                  key={f.id}
-                  active={filter === f.id}
-                  count={f.id === "all" ? (scoped?.length ?? 0) : grouped.get(f.id)?.length}
-                  onClick={() => setFilter(f.id)}
-                >
-                  {f.label}
-                </Chip>
-              ))}
-            </Chips>
-            {!actionsHost && (
-              <Button onClick={() => setOpen(true)} variant="ink" className="shrink-0 gap-2">
-                <ActionIcon name="createTask" />
-                Nueva
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+              <Chips className="min-w-0 flex-1">
+                {FILTERS.filter((f) => f.id === "all" || grouped.has(f.id)).map((f) => (
+                  <Chip
+                    key={f.id}
+                    active={filter === f.id}
+                    count={f.id === "all" ? (scoped?.length ?? 0) : grouped.get(f.id)?.length}
+                    onClick={() => setFilter(f.id)}
+                  >
+                    {f.label}
+                  </Chip>
+                ))}
+              </Chips>
+              {!actionsHost && (
+                <Button onClick={() => setOpen(true)} variant="ink" className="shrink-0 gap-2">
+                  <ActionIcon name="createTask" />
+                  Nueva
+                </Button>
+              )}
+            </div>
           </div>
 
           <div className="hidden gap-x-8 px-8 pb-6 lg:grid lg:grid-cols-2">
@@ -830,66 +778,68 @@ export function TasksPage() {
         title="Nueva tarea"
         className="max-h-[88dvh] overflow-y-auto"
       >
-        <div className="mt-4 space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="t-title">Título</Label>
-            <Input id="t-title" value={title} onChange={(e) => setTitle(e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="t-desc">Detalle (opcional)</Label>
-            <Textarea
-              id="t-desc"
-              rows={2}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="t-due">Vence (opcional)</Label>
+        <div className="mt-4 space-y-3">
+          {/* Placeholders, not a label above every field — the same language as
+              the event sheet, which this used to disagree with on every axis. */}
+          <Input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="¿Qué hay que hacer?"
+            aria-label="Título"
+            className="text-[15px] font-semibold"
+          />
+
+          {/* Two controls that belong together, on one row. */}
+          <div className="grid grid-cols-2 gap-2">
             <Input
-              id="t-due"
               type="datetime-local"
+              aria-label="Vence"
               value={dueAt}
               onChange={(e) => handleDueChange(e.target.value)}
+              className="min-w-0"
+            />
+            <FilterSelect
+              label="Prioridad"
+              value={String(priority)}
+              options={PRIORITY_OPTIONS.map((o) => ({ value: String(o.value), label: o.label }))}
+              onChange={(v) => setPriority(Number(v ?? 0))}
             />
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="t-remind">Recordatorio (opcional)</Label>
-            <Input
-              id="t-remind"
-              type="datetime-local"
-              value={remindAt}
-              onChange={(e) => setRemindAt(e.target.value)}
-            />
-            <p className="text-[12px] text-muted-foreground">
-              Te avisamos con una notificación push a esa hora.
-            </p>
-          </div>
-          <FieldGroup label="Prioridad">
-            <Chips className="pb-0">
-              {PRIORITY_OPTIONS.map((p) => (
-                <Chip
-                  key={p.value}
-                  active={priority === p.value}
-                  onClick={() => setPriority(p.value)}
-                >
-                  {p.label}
-                </Chip>
-              ))}
-            </Chips>
-          </FieldGroup>
-          <FieldGroup label="Vincular a">
-            <TaskEntityPicker key={formKey} value={link} onChange={setLink} disabled={busy} />
-          </FieldGroup>
-          <div className="flex flex-col gap-2 pt-2">
-            <Button onClick={submit} disabled={busy} variant="ink" size="block">
+
+          {/* An offset, not a second calendar: the reminder follows the due
+              date instead of being a date you have to keep in sync by hand. */}
+          <FilterSelect
+            label="Recordatorio"
+            value={remindOffset === null ? null : String(remindOffset)}
+            allLabel="Sin recordatorio"
+            options={TASK_REMINDER_OFFSETS.map((o) => ({
+              value: String(o.value),
+              label: o.label,
+            }))}
+            onChange={(v) => setRemindOffset(v === null ? null : Number(v))}
+          />
+
+          <LinkInput value={links} onChange={setLinks} />
+
+          <TaskEntityPicker key={formKey} value={link} onChange={setLink} disabled={busy} />
+
+          <Textarea
+            rows={2}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Notas, contexto, lo que haga falta…"
+            aria-label="Detalle"
+          />
+
+          <SheetActions>
+            <Button variant="ghost" onClick={() => setOpen(false)} disabled={busy}>
+              Cancelar
+            </Button>
+            <Button onClick={submit} disabled={busy} variant="ink">
               {busy && <Loader2 className="size-4 animate-spin" />}
               Crear
             </Button>
-            <Button variant="ghost" size="block" onClick={() => setOpen(false)} disabled={busy}>
-              Cancelar
-            </Button>
-          </div>
+          </SheetActions>
         </div>
       </ResponsiveSheet>
     </PageLayout>

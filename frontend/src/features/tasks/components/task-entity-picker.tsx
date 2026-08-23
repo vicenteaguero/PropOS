@@ -34,10 +34,23 @@ function hasScope(scope: string[] | undefined, needed: string): boolean {
   return current.length === 0 || current.includes(needed);
 }
 
-/** Maps the picked link onto the `tasks.related` JSONB shape the backend stores. */
-export function linkToRelated(link: TaskLink | null): TaskRelated | undefined {
-  if (!link) return undefined;
-  return link.kind === "PROPERTY" ? { properties: [link.id] } : { people: [link.id] };
+/**
+ * Maps the picked link onto the `tasks.related` JSONB shape the backend stores.
+ *
+ * `current` is merged rather than replaced. This used to return a fresh object,
+ * so saving a task that had a linked property and then picking a contact wrote
+ * `{people: [...]}` over the whole column — the property link was gone, with no
+ * error and nothing on screen to say so.
+ */
+export function linkToRelated(
+  link: TaskLink | null,
+  current: TaskRelated = {},
+): TaskRelated | undefined {
+  const { properties: _p, people: _c, ...rest } = current;
+  if (!link) return Object.keys(rest).length ? rest : undefined;
+  return link.kind === "PROPERTY"
+    ? { ...rest, properties: [link.id] }
+    : { ...rest, people: [link.id] };
 }
 
 interface Props {
