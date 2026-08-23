@@ -23,6 +23,14 @@ import { useTopbarActionsSlot } from "@layouts/topbar-slot";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useTenantMembers } from "@shared/hooks/use-tenant-members";
 import { TaskDetailSheet } from "../components/task-detail-sheet";
+import {
+  TASK_ORDERS,
+  TASK_PRIORITY_FILTERS,
+  matchesPriority,
+  sortTasks,
+  type TaskOrder,
+  type TaskPriorityFilter,
+} from "../lib/task-order";
 import { EmptyState } from "@shared/components/empty-state/empty-state";
 import {
   Chip,
@@ -385,6 +393,8 @@ export function TasksPage() {
   const memberById = useMemo(() => new Map((members ?? []).map((m) => [m.id, m])), [members]);
   const { data, isLoading, error, refetch } = useTasks({ only_open: true });
   const [detailTask, setDetailTask] = useState<Task | null>(null);
+  const [order, setOrder] = useState<TaskOrder>("due");
+  const [priorityFilter, setPriorityFilter] = useState<TaskPriorityFilter>("all");
   // A task ticked off should leave the flow, not vanish mid-thought. The list
   // only asks for open tasks, so the ones completed in this sitting are kept
   // here and rendered at the end of their group until the next load.
@@ -401,9 +411,10 @@ export function TasksPage() {
    */
   const scoped = useMemo(() => {
     if (!data) return data;
-    if (scope === "team") return data;
-    return data.filter((t) => !t.owner_user || t.owner_user === user?.id);
-  }, [data, scope, user?.id]);
+    const byScope =
+      scope === "team" ? data : data.filter((t) => !t.owner_user || t.owner_user === user?.id);
+    return byScope.filter((t) => matchesPriority(t, priorityFilter));
+  }, [data, scope, user?.id, priorityFilter]);
   const create = useCreateTask();
   const update = useUpdateTask();
   const del = useDeleteTask();
@@ -543,7 +554,7 @@ export function TasksPage() {
   const doneInPeriod = Object.values(justDone).filter(
     (t) => periodOf(t) === period && !periodTasks.some((p) => p.id === t.id),
   );
-  const todayOnly = [...openInPeriod, ...doneInPeriod];
+  const todayOnly = sortTasks([...openInPeriod, ...doneInPeriod], order);
   const periodTitle = PERIOD_META.find((p) => p.id === period)!.title;
   const subtitle = periodSubtitle(period);
 
@@ -629,6 +640,36 @@ export function TasksPage() {
                     sub: periodCount(p.id) ? `${periodCount(p.id)} tareas` : "Sin tareas",
                   }))}
                   onChange={(v: string | null) => setPeriod((v as Period) ?? "today")}
+                />
+              </div>
+            </div>
+
+            {/* Priority was visible on every row and actionable from the sheet,
+                but the list could neither order nor narrow by it — so a column
+                of "P1 · Alta" badges was decoration. */}
+            <div className="flex items-center gap-2 px-5 pb-3">
+              <FilterSelect
+                label="Prioridad"
+                value={priorityFilter === "all" ? null : priorityFilter}
+                allLabel="Todas"
+                options={TASK_PRIORITY_FILTERS.filter((f) => f.value !== "all").map((f) => ({
+                  value: f.value,
+                  label: f.label,
+                }))}
+                onChange={(v: string | null) =>
+                  setPriorityFilter((v as TaskPriorityFilter) ?? "all")
+                }
+              />
+              <div className="min-w-0 flex-1">
+                <FilterSelect
+                  label="Ordenar"
+                  value={order}
+                  options={TASK_ORDERS.map((o) => ({
+                    value: o.value,
+                    label: o.label,
+                    sub: o.sub,
+                  }))}
+                  onChange={(v: string | null) => setOrder((v as TaskOrder) ?? "due")}
                 />
               </div>
             </div>

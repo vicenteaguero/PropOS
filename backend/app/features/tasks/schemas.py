@@ -7,6 +7,8 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
+from app.features.notes.schemas import NoteAttachment
+
 
 class TaskKind(str, Enum):
     TODO = "TODO"
@@ -59,6 +61,8 @@ class TaskResponse(TaskBase):
     # Names for the ids in `related`, resolved server-side. Without this the
     # client would join against the capped entity endpoints.
     related_labels: dict[str, Any] = {}
+    # Photos and voice memos, same `media_assets` rows notes use.
+    attachments: list[NoteAttachment] = []
     completed_at: datetime | None = None
     source: str
     created_by: UUID | None = None

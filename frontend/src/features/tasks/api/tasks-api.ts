@@ -14,6 +14,18 @@ export interface TaskRelated {
   projects?: string[];
 }
 
+export interface TaskAttachment {
+  id: string;
+  media_file_id: string;
+  role: "PHOTO" | "AUDIO";
+  position: number;
+  url: string;
+  thumb_url?: string | null;
+  card_url?: string | null;
+  title?: string | null;
+  created_at?: string | null;
+}
+
 export interface Task {
   id: string;
   tenant_id: string;
@@ -27,6 +39,8 @@ export interface Task {
   related: TaskRelated;
   /** Profile id of whoever owns this task. Null = nobody claimed it. */
   owner_user: string | null;
+  /** Photos and voice memos — the same `media_assets` rows notes use. */
+  attachments?: TaskAttachment[];
   /** Names for the ids in `related`, resolved server-side. */
   related_labels?: {
     properties?: { id: string; label: string | null }[];
@@ -54,4 +68,17 @@ export const tasksApi = {
   update: (id: string, body: Partial<TaskInput>) =>
     apiRequest<Task>(`/v1/tasks/${id}`, { method: "PATCH", body }),
   remove: (id: string) => apiRequest<void>(`/v1/tasks/${id}`, { method: "DELETE" }),
+
+  attachments: {
+    upload: (taskId: string, files: Blob[]) => {
+      const fd = new FormData();
+      files.forEach((f, i) => fd.append("files", f, (f as File).name ?? `adjunto-${i}`));
+      return apiRequest<TaskAttachment[]>(`/v1/tasks/${taskId}/attachments`, {
+        method: "POST",
+        formData: fd,
+      });
+    },
+    remove: (taskId: string, assetId: string) =>
+      apiRequest<void>(`/v1/tasks/${taskId}/attachments/${assetId}`, { method: "DELETE" }),
+  },
 };

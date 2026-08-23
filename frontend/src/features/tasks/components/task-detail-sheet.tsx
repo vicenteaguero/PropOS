@@ -1,6 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Building2, ChevronRight, Trash2, User } from "lucide-react";
+import {
+  Building2,
+  ChevronRight,
+  ImagePlus,
+  Link as LinkIcon,
+  Loader2,
+  Trash2,
+  User,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,6 +18,10 @@ import { Chip, Chips, Field, Pill, ResponsiveSheet, SheetActions } from "@shared
 import { ConfirmDialog } from "@shared/components/confirm-dialog/confirm-dialog";
 import { initials } from "@shared/utils/format";
 import { useTenantMembers } from "@shared/hooks/use-tenant-members";
+import { AudioPlayer } from "@shared/ui";
+import { extractLinks, linkLabel } from "@shared/lib/links";
+import { priorityBucket } from "../lib/task-order";
+import { useRemoveTaskAttachment, useUploadTaskAttachments } from "../hooks/use-tasks";
 import type { Task } from "../api/tasks-api";
 
 const PRIORITIES = [
@@ -16,17 +29,6 @@ const PRIORITIES = [
   { value: 1, label: "Media" },
   { value: 2, label: "Alta" },
 ];
-
-/**
- * `tasks.priority` is a bare SMALLINT with no check constraint, and rows in the
- * wild carry 3 and above. The rest of the app already reads it as a range
- * ("2 or more is Alta"), so the picker has to bucket rather than match exactly —
- * otherwise a priority-3 task opens with no option selected at all.
- */
-function priorityBucket(value: number | null | undefined): number {
-  if (!value || value <= 0) return 0;
-  return value === 1 ? 1 : 2;
-}
 
 interface TaskDetailSheetProps {
   task: Task | null;
@@ -63,6 +65,9 @@ export function TaskDetailSheet({
   const [priority, setPriority] = useState(0);
   const [owner, setOwner] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const upload = useUploadTaskAttachments();
+  const removeAttachment = useRemoveTaskAttachment();
 
   useEffect(() => {
     if (!task) return;
@@ -74,6 +79,12 @@ export function TaskDetailSheet({
 
   if (!task) return null;
 
+  // Links live in the detail text — this just makes the ones already there
+  // tappable, instead of asking the user to select and copy a URL on a phone.
+  const links = extractLinks(description);
+  const attachments = task.attachments ?? [];
+  const photos = attachments.filter((a) => a.role === "PHOTO");
+  const audio = attachments.filter((a) => a.role === "AUDIO");
   const properties = task.related_labels?.properties ?? [];
   const people = task.related_labels?.people ?? [];
   const dirty =
@@ -109,13 +120,30 @@ export function TaskDetailSheet({
             />
           </Field>
 
+          {links.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {links.map((href) => (
+                <a
+                  key={href}
+                  href={href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex max-w-full items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-[12.5px] font-medium text-foreground"
+                >
+                  <LinkIcon className="size-3 shrink-0" strokeWidth={2} />
+                  <span className="truncate">{linkLabel(href)}</span>
+                </a>
+              ))}
+            </div>
+          )}
+
           <div>
             <p className="mb-1.5 text-[13px] font-medium text-muted-foreground">Prioridad</p>
             <Chips>
               {PRIORITIES.map((p) => (
                 <Chip
                   key={p.value}
-                  active={priority === p.value}
+                  active={priorityBucket(priority) === p.value}
                   onClick={() => setPriority(p.value)}
                 >
                   {p.label}
@@ -145,6 +173,70 @@ export function TaskDetailSheet({
               </Chips>
             </div>
           )}
+
+          {/* Photos and voice memos. A task used to be a title and a date, so
+              "the photo of the damp patch" had to live in a note that merely
+              mentioned the task by name. */}
+          <div>
+            <div className="mb-1.5 flex items-center justify-between">
+              <p className="text-[13px] font-medium text-muted-foreground">Adjuntos</p>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="gap-1.5 rounded-full"
+                onClick={() => fileRef.current?.click()}
+                disabled={upload.isPending}
+              >
+                {upload.isPending ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <ImagePlus className="size-4" strokeWidth={1.9} />
+                )}
+                Agregar
+              </Button>
+            </div>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              aria-label="Adjuntar fotos"
+              onChange={(e) => {
+                const picked = Array.from(e.target.files ?? []);
+                if (picked.length) upload.mutate({ taskId: task.id, files: picked });
+                e.target.value = "";
+              }}
+            />
+            {photos.length > 0 && (
+              <div className="flex gap-2 overflow-x-auto">
+                {photos.map((a) => (
+                  <span key={a.id} className="relative shrink-0">
+                    <img
+                      src={a.thumb_url ?? a.url}
+                      alt={a.title ?? ""}
+                      loading="lazy"
+                      className="size-20 rounded-lg object-cover"
+                    />
+                    <button
+                      type="button"
+                      aria-label="Quitar adjunto"
+                      onClick={() => removeAttachment.mutate({ taskId: task.id, assetId: a.id })}
+                      className="absolute right-1 top-1 flex size-6 items-center justify-center rounded-full bg-black/60 text-white"
+                    >
+                      <X className="size-3" strokeWidth={2.4} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            {audio.map((a) => (
+              <AudioPlayer key={a.id} src={a.url} />
+            ))}
+            {photos.length === 0 && audio.length === 0 && (
+              <p className="text-[12.5px] text-faint">Sin fotos todavía.</p>
+            )}
+          </div>
 
           {(properties.length > 0 || people.length > 0) && (
             <div>
