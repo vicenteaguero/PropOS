@@ -61,6 +61,7 @@ import {
   type TypeResolver,
 } from "../lib/calendar-item";
 import { dayKey } from "../lib/calendar-range";
+import { UPCOMING_PAGE_DAYS, upcomingDays, upcomingWindow } from "../lib/upcoming";
 import { EventForm, emptyEventForm, type EventFormState } from "../components/event-form";
 import { useEventTypes } from "../hooks/use-event-types";
 import { useTopbarActionsSlot } from "@layouts/topbar-slot";
@@ -113,7 +114,7 @@ export function CalendarPage() {
   const { resolve: resolveType } = useEventTypes();
   // Days shown in the month view's upcoming list. Widens the FEED window, not
   // just the render — the whole point is not to fetch a year of events.
-  const [upcomingDays, setUpcomingDays] = useState(UPCOMING_PAGE_DAYS);
+  const [upcomingDaysCount, setUpcomingDaysCount] = useState(UPCOMING_PAGE_DAYS);
   const [view, setView] = useState<View>("month");
   // Mobile drives Día/Semana/Mes independently from the desktop time-grid view.
   const [mobileView, setMobileView] = useState<MobileView>("day");
@@ -171,7 +172,7 @@ export function CalendarPage() {
       if (document.visibilityState !== "visible") return;
       const today = new Date();
       setSelected((current) => (isSameDay(current, today) ? current : today));
-      setUpcomingDays(UPCOMING_PAGE_DAYS);
+      setUpcomingDaysCount(UPCOMING_PAGE_DAYS);
     };
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
@@ -224,7 +225,7 @@ export function CalendarPage() {
     if (isDesktop) {
       // The month view draws the upcoming list beside the grid, and its pages
       // run past the end of the month.
-      const upcomingEnd = addDays(startOfDay(new Date()), upcomingDays);
+      const upcomingEnd = upcomingWindow(upcomingDaysCount).to;
       return {
         queryStart: rangeStart,
         queryEnd: activeView === "month" && upcomingEnd > rangeEnd ? upcomingEnd : rangeEnd,
@@ -235,9 +236,9 @@ export function CalendarPage() {
     // The month view also draws the upcoming list, whose pages extend past the
     // month grid. Widen the window rather than paginating an array we already
     // paid to fetch — the reason for paging at all is the request, not the map.
-    const upcomingEnd = addDays(startOfDay(new Date()), upcomingDays);
+    const upcomingEnd = upcomingWindow(upcomingDaysCount).to;
     return { queryStart: start, queryEnd: upcomingEnd > end ? upcomingEnd : end };
-  }, [isDesktop, activeView, rangeStart, rangeEnd, selected, mobileView, upcomingDays]);
+  }, [isDesktop, activeView, rangeStart, rangeEnd, selected, mobileView, upcomingDaysCount]);
 
   const { data, isLoading, error, refetch } = useCalendarFeed(
     queryStart.toISOString(),
@@ -511,8 +512,8 @@ export function CalendarPage() {
               onCreate={() => openCreate()}
               role={role}
               resolveType={resolveType}
-              upcomingDays={upcomingDays}
-              onLoadMoreDays={() => setUpcomingDays((d) => d + UPCOMING_PAGE_DAYS)}
+              upcomingDays={upcomingDaysCount}
+              onLoadMoreDays={() => setUpcomingDaysCount((d) => d + UPCOMING_PAGE_DAYS)}
             />
           )}
 
@@ -552,9 +553,9 @@ export function CalendarPage() {
                         seven days. */}
                     <UpcomingList
                       itemsByDay={itemsByDay}
-                      days={upcomingDays}
+                      days={upcomingDaysCount}
                       onOpen={setDetail}
-                      onLoadMore={() => setUpcomingDays((d) => d + UPCOMING_PAGE_DAYS)}
+                      onLoadMore={() => setUpcomingDaysCount((d) => d + UPCOMING_PAGE_DAYS)}
                       canLoadMore
                       resolveType={resolveType}
                     />
@@ -1056,9 +1057,6 @@ function MobileMonthGrid({
   );
 }
 
-/** How many days the upcoming list shows per page. Today plus six. */
-const UPCOMING_PAGE_DAYS = 7;
-
 /**
  * What is coming, under the month grid.
  *
@@ -1082,9 +1080,7 @@ function UpcomingList({
   canLoadMore: boolean;
   resolveType: TypeResolver;
 }) {
-  const today = startOfDay(new Date());
-  const window = Array.from({ length: days }, (_, i) => addDays(today, i));
-  const withItems = window.filter((d) => (itemsByDay.get(dayKey(d)) ?? []).length > 0);
+  const withItems = upcomingDays(itemsByDay, days);
 
   return (
     <div className="border-t border-border pb-6 pt-2">
@@ -1214,7 +1210,7 @@ function MobileCalendar({
   onFilterChange,
   onCreate,
   resolveType,
-  upcomingDays,
+  upcomingDays: upcomingDayCount,
   onLoadMoreDays,
 }: {
   mobileView: MobileView;
@@ -1308,7 +1304,7 @@ function MobileCalendar({
           />
           <UpcomingList
             itemsByDay={itemsByDay}
-            days={upcomingDays}
+            days={upcomingDayCount}
             onOpen={onOpen}
             onLoadMore={onLoadMoreDays}
             canLoadMore

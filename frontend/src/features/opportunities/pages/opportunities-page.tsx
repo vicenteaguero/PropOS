@@ -25,6 +25,13 @@ import { OpportunityKanban } from "../components/opportunity-kanban";
 import { OpportunityStageList } from "../components/opportunity-stage-list";
 import { OpportunityFormDialog } from "../components/opportunity-form-dialog";
 import type { Opportunity } from "../types";
+import {
+  DEAL_ORDERS,
+  comunasIn,
+  filterDeals,
+  orderDeals,
+  type DealOrder,
+} from "../lib/deal-filters";
 
 /**
  * Pipeline — the open deals as a board.
@@ -35,14 +42,6 @@ import type { Opportunity } from "../types";
  * the header now names it and carries the search and the create button on one
  * line with it.
  */
-type DealOrder = "stage" | "value" | "age";
-
-const DEAL_ORDERS: { value: DealOrder; label: string; sub: string }[] = [
-  { value: "stage", label: "Por etapa", sub: "El orden del pipeline" },
-  { value: "value", label: "Monto", sub: "Los más grandes primero" },
-  { value: "age", label: "Antigüedad", sub: "Los que llevan más tiempo sin moverse" },
-];
-
 export function OpportunitiesPage() {
   const { data, isLoading, error, refetch } = useOpportunities({ status: "OPEN", limit: 500 });
   const { data: contacts } = useContacts({ limit: 500 });
@@ -89,38 +88,24 @@ export function OpportunitiesPage() {
   // broken filter, because it was one.
   const comunaFor = (opp: Opportunity) => opp.comunas?.[0] ?? null;
 
-  /** Every comuna present in the current book, for the filter's options. */
-  const comunas = useMemo(() => {
-    const seen = new Set<string>();
-    for (const o of data ?? []) for (const c of o.comunas ?? []) seen.add(c);
-    return [...seen].sort((a, b) => a.localeCompare(b, "es"));
-  }, [data]);
+  const comunas = useMemo(() => comunasIn(data ?? []), [data]);
 
   // Filtering the board rather than a list: with 100+ open deals, finding one
   // by eye means scanning six columns. The lanes stay, they just get shorter.
-  const shown = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    let rows = data ?? [];
-    if (comuna) rows = rows.filter((o) => (o.comunas ?? []).includes(comuna));
-    if (q) {
-      rows = rows.filter((o) =>
-        `${nameFor(o.person_id)} ${propertyFor(o.property_id) ?? ""} ${o.notes ?? ""}`
-          .toLowerCase()
-          .includes(q),
-      );
-    }
-    if (order === "value") {
-      rows = [...rows].sort(
-        (a, b) => (b.expected_value_cents ?? 0) - (a.expected_value_cents ?? 0),
-      );
-    } else if (order === "age") {
-      // Oldest first: the point of ordering by age is to surface what has been
-      // sitting untouched, not to re-show what you created this morning.
-      rows = [...rows].sort((a, b) => a.created_at.localeCompare(b.created_at));
-    }
-    return rows;
+  const shown = useMemo(
+    () =>
+      orderDeals(
+        filterDeals(data ?? [], {
+          comuna,
+          query: search,
+          labelFor: (o) =>
+            `${nameFor(o.person_id)} ${propertyFor(o.property_id) ?? ""} ${o.notes ?? ""}`,
+        }),
+        order,
+      ),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- nameFor is derived from nameMap
-  }, [data, search, comuna, order, nameMap, propertyMap]);
+    [data, search, comuna, order, nameMap, propertyMap],
+  );
 
   const move = (id: string, stage: string) =>
     update.mutate({ id, body: { pipeline_stage: stage } });
