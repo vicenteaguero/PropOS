@@ -108,7 +108,7 @@ iPhone same Wi-Fi → `https://192.168.0.62:5443`. mkcert root CA installed on M
 
 Service Worker disabled in dev (`devOptions.enabled = false` in `vite.config.ts`) — broke HMR.
 
-**Project location**: `/Users/vicenteaguero/real-state/PropOS`. Moved out of iCloud Desktop on 2026-05-05 — file-provider made bulk ops (tsc, vite build, rollup) hang. Native tooling now fast: build 5s, lint 1.7s, ruff 1.8s. Backend Poetry venv at `~/Library/Caches/pypoetry/virtualenvs/propos-backend-F68E3XRv-py3.12`.
+**Project location**: `/Users/vicenteaguero/work/business/consulting/propos`. Owned by the consulting company, which sells it to the real-estate tenants; client-specific data lives in `~/work/business/anaida/`, not here. Moved out of iCloud Desktop on 2026-05-05 — file-provider made bulk ops (tsc, vite build, rollup) hang. Native tooling now fast: build 5s, lint 1.7s, ruff 1.8s. Backend Poetry venv at `~/Library/Caches/pypoetry/virtualenvs/propos-backend-F68E3XRv-py3.12`.
 
 `.gitignore` ignores `lib/` but negates the three source paths (`frontend/src/lib/`, `frontend/src/shared/lib/`, `frontend/src/features/**/lib/`), so nothing under `frontend/src` is ignored. Verify with `git status --ignored -s frontend/src` — it must print nothing.
 
