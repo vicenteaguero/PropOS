@@ -308,6 +308,7 @@ export default defineConfig({
     hmr: { clientPort: Number(process.env.VITE_HMR_CLIENT_PORT ?? 5443) },
     host: "0.0.0.0",
     port: 5173,
+    allowedHosts: ["workstation", "workstation.tailb2b505.ts.net"],
     proxy: {
       "/api": {
         target: process.env.VITE_DEV_API_TARGET ?? "http://127.0.0.1:8000",
